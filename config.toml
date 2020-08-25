@@ -1,7 +1,7 @@
-baseURL = "http://localhost:1313/"
-languageCode = "en"
-defaultContentLanguage = "en"                             # en / zh-cn / ... (This field determines which i18n file to use)
-title = "若叶知秋 - A super concise theme for Hugo"
+baseURL = "https://www.cheng92.com"
+languageCode = "zh-cn"
+defaultContentLanguage = "zh-cn"                             # en / zh-cn / ... (This field determines which i18n file to use)
+title = "若叶知秋"
 preserveTaxonomyNames = true
 enableRobotsTXT = true
 enableEmoji = true
@@ -60,7 +60,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
 
   # site info (optional)                                  # 站点信息（可选，不需要的可以直接注释掉）
   logoTitle = "若叶知秋"        # default: the title value    # 默认值: 上面设置的title值
-  keywords = ["Hugo", "theme","even"]
+  keywords = ["Vue", "React", "JavaScript", "Python"]
   description = "落叶相依浑似醉，潦倒何妨；悠悠岁月谁高歌，绝胜柳狂。"
 
   # paginate of archives, tags and categories             # 归档、标签、分类每页显示的文章数目，建议修改为一个较大的值
@@ -92,7 +92,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
 
   postMetaInFooter = true   # contain author, lastMod, markdown link, license           # 包含作者，上次修改时间，markdown链接，许可信息
   linkToMarkDown = false    # Only effective when hugo will output .md files.           # 链接到markdown原始文件（仅当允许hugo生成markdown文件时有效）
-  contentCopyright = ''     # e.g. '<a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a>'
+  contentCopyright = '<a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a>'
 
   changyanAppid = ""        # Changyan app id             # 畅言
   changyanAppkey = ""       # Changyan app key
@@ -157,7 +157,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     verify = false # Verification code
     avatar = 'mm'
     placeholder = '说点什么吧...'
-    visitor = false
+    visitor = true
 
   [params.flowchartDiagrams]# see https://blog.olowolo.com/example-site/post/js-flowchart-diagrams/
     enable = false
@@ -175,11 +175,12 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
 
   [params.reward]                                         # 文章打赏
     enable = false
+    # /img/weixin-donate.jpeg
     wechat = "/path/to/your/wechat-qr-code.png"           # 微信二维码
     alipay = "/path/to/your/alipay-qr-code.png"           # 支付宝二维码
 
   [params.social]                                         # 社交链接
-    a-email = "gccll.love@email.com"
+    a-email = "mailto:gccll.love@email.com"
     b-stack-overflow = "https://stackoverflow.com/users/6062239/simon"
     c-twitter = "https://twitter.com/gccll_love"
     d-facebook = "https://www.facebook.com/profile.php?id=100013995916088"
