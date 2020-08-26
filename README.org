@@ -1,0 +1,2 @@
+
+[[https://app.netlify.com/sites/hardcore-northcutt-b697b8/deploys][https://api.netlify.com/api/v1/badges/8da2a02e-79cc-4aac-a93e-cc6b90d04b0e/deploy-status.png]]
