@@ -6,9 +6,28 @@
     <description>Recent content in Tags on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
+    <lastBuildDate>Tue, 25 Aug 2020 16:57:34 +0800</lastBuildDate>
     
 	<atom:link href="https://www.cheng92.com/tags/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>markdown</title>
+      <link>https://www.cheng92.com/tags/markdown/</link>
+      <pubDate>Tue, 25 Aug 2020 16:57:34 +0800</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/markdown/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>test</title>
+      <link>https://www.cheng92.com/tags/test/</link>
+      <pubDate>Tue, 25 Aug 2020 16:57:34 +0800</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/test/</guid>
+      <description></description>
+    </item>
     
   </channel>
 </rss>

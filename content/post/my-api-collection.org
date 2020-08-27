@@ -1,0 +1,122 @@
+#+TITLE: My Api Collection
+#+DATE: <2020-08-26 Wed>
+#+TAGS[]: api, org
+#+LANGUAGE: zh-cn
+
+#+begin_example
+简介：所有 API 收集，包含测试代码，通过 Emacs =restclient= 直接在 Org 文档中即可测试，有趣的东西
+。。。
+#+end_example  
+* DONE gnu.org                                                         :verb:
+  CLOSED: [2020-08-27 Thu 00:07]
+  - State "DONE"       from              [2020-08-27 Thu 00:07]
+  template https://www.gnu.org
+** PDF
+   get /licenses/quick-guide-gplv3.pdf
+
+** Images
+   template /graphics
+*** PNG image
+    get /gnu-head.png
+
+* DONE openlibrary.org
+  CLOSED: [2020-08-27 Thu 00:07]
+  - State "DONE"       from              [2020-08-27 Thu 00:07]
+  template https://openlibrary.org
+  User-Agent: Verb/Emacs Emacs/{{emacs-version}}
+  Accept: application/json
+** Seach
+   template /search.json
+** Sbujects
+   # 支持取用户如数，read-string "Tip: "
+   # 比如：输入 search
+   # 最后请求链接为：/subjects/search.json
+   get /subjects/{{(read-string "Subject: ")}}.json
+** books
+   # verb 变量声明:
+   :properties:
+   :Verb-Store: book
+   :end:
+
+   # test useing ISBNs, OCLS Numbers, LCCNs and OLIDs(Open Library IDs).
+   get /api/books?bibkeys=ISBN:{{(verb-var isbn)}}&format=json
+
+* DONE reqres.in                                                       :verb:
+  CLOSED: [2020-08-27 Thu 00:07]
+  - State "DONE"       from              [2020-08-27 Thu 00:07]
+  template https://reqres.in
+  # 共用的部分可以放到 template 下面来统一声明
+  Accept: application/json
+  # verb 变量
+  Authentication: {{(verb-var token)}}
+** User
+*** User management
+    get
+    Content-Language: de-DE
+*** Get users list
+    get /api/users
+    Content-Language: de-DE
+
+*** create a user
+
+    post /api/users
+    Content-Type: application/json; charset=utf-8
+
+    #+begin_src js
+      {
+        "name": "John",
+        "age": 42
+      }
+    #+end_src
+
+    post /api/users
+
+    #+begin_src js
+      {
+
+        "name": "{{(user-full-name)}}",
+        "age": "{{(read-string "Age: ")}}"
+      }
+    #+end_src
+
+    #+RESULTS:
+* DONE foobar-blog-api                                                 :verb:
+  CLOSED: [2020-08-27 Thu 00:08]
+  - State "DONE"       from "TODO"       [2020-08-27 Thu 00:08]
+  template http://120.197.194.44:10081/api/epg
+  Accept: application/json
+
+** Auth
+   post /auth/login
+
+   #+begin_src js
+     {
+       "iptvAccount": "sycs001",
+       "stbId": "xxxx"
+     }
+   #+end_src
+** Users
+   template /users
+*** Create a user
+    post
+    Content-Type: application/json; charset=utf-8
+
+    #+begin_src js
+      {
+        "name": "John",
+        "posts": []
+      }
+    #+end_src
+*** Search users
+    get ?name=John
+*** Delete all users
+    delete
+*** Posts
+    template /posts?lang=en
+*** Search posts
+    get ?text=example
+*** Delete all posts
+    delete
+* DONE gboss
+  CLOSED: [2020-08-27 Thu 00:05]
+  - State "DONE"       from              [2020-08-27 Thu 00:05]

@@ -1,0 +1,11 @@
+span.tags > span {
+  visibility: hidden;
+}
+
+span.todo {
+  color: #d05f24;
+}
+
+span.done {
+  color: #76d924;
+}
