@@ -1,155 +1,155 @@
 #+TITLE: My Emacs(Spacemacs) Configuration
 #+DATE: <2020-08-27 14:20:16>
 #+TAGS[]: emacs
-#+CATEGORIES[]: emacs 
+#+CATEGORIES[]: emacs
 #+LANGUAGE: zh-cn
 
 我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
 
 * Key bindings
-  
-我的自定义按键：
-  
-| Key Binding | Description                                                                  |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC b i~   | ibuffer                                                                      |
-| ~SPC b D~   | spacemacs/kill-other-buffers                                                 |
-| ~SPC b m s~ | bookmark-set                                                                 |
-| ~SPC b m r~ | bookmark-rename                                                              |
-| ~SPC b m d~ | bookmark-delete                                                              |
-| ~SPC b m j~ | counsel-bookmark                                                             |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC d d~   | dash-at-point                                                                |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC e n~   | flycheck-next-error                                                          |
-| ~SPC e p~   | flycheck-previous-error                                                      |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC f d~   | projectile-find-file-dwim-other-window                                       |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC g g~   | magit                                                                        |
-| ~SPC g L~   | magit-log-buffer-file, show git logs                                         |
-| ~SPC g n~   | smerge-next                                                                  |
-| ~SPC g p~   | smerge-prev                                                                  |
-| ~SPC g M~   | git-messenger:popup-message, show git log message, with `f' open in browser. |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC h h~   | zilongshanren/highlight-dwim                                                 |
-| ~SPC h c~   | zilongshanren/clearn-highlight, TODO                                         |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC o o~   | zilongshanren/helm-hotspots                                                  |
-| ~SPC o x~   | org-open-at-point-global, open link                                          |
-| ~SPC o r~   | zilongshanren/browser-refresh--chrome-applescript                            |
-| ~SPC o s~   | spacemacs/search-engine-select, open search engine list to search            |
-| ~SPC o g~   | my-git-timemachine, git record                                               |
-| ~SPC o !~   | zilongshanren/iterm-shell-command, go current dir & run command              |
-| ~SPC o e~   | tiny-expand                                                                  |
-| ~SPC o i~   | org-mode insert command                                                      |
-| ~SPC o i t~ | org-set-tags-command, --> :done:                                            |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC p b~   | counsel-projectile-switch-to-buffer                                          |
-| ~SPC p t~   | my-simple-todo                                                               |
-| ~SPC p f~   | zilongshanren/open-file-with-projectile-or-counsel-git                       |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC r l~   | ivy-resume, resume last search result                                        |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC s j~   | counsel-jump-in-buffer                                                       |
-|-------------+------------------------------------------------------------------------------|
-| ~SPC y i~   | yas/insert-snippet                                                           |
-| ~SPC y d~   | youdao-dictionary-search-at-point+                                           |
-|-------------+------------------------------------------------------------------------------|
-| ~C-c l~     | zilongshanren/insert-chrome-current-tab-url                                  |
-| ~C-c t~     | org-capture                                                                  |
-| ~C-c r~     | vr/replace                                                                   |
-| ~C-c q~     | vr/query-replace                                                             |
-|-------------+------------------------------------------------------------------------------|
-| ~M--~       | zilongshanren/goto-match-paren                                               |
-| ~M-i~       | string-inflection-java-style-cycle                                           |
-| ~M-'~       | avy-goto-char-2                                                              |
-|-------------+------------------------------------------------------------------------------|
-| ~s-p~       | find-file-in-project                                                         |
-|-------------+------------------------------------------------------------------------------|
-| ~, '~       | ielm, lisp-repl                                                              |
-|-------------+------------------------------------------------------------------------------|
-| ~+~         | evil-numbers/inc-at-pt，number +1                                            |
-| ~-~         | evil-numbers/dec-at-pt, number -1                                            |
-|-------------+------------------------------------------------------------------------------|
-| ~g [~       | beginning-of-defun                                                           |
-| ~g ]~       | end-of-defun                                                                 |
-|-------------+------------------------------------------------------------------------------|
-| ~z [~       | sp-wrap-square                                                               |
-| ~z (~       | sp-wrap-round                                                                |
-| ~z {~       | sp-wrap-curly                                                                |
-| ~z -~       | sp-splice-sexp                                                               |
-| ~z .~       | emmet-wrap-with-markup                                                       |
-|-------------+------------------------------------------------------------------------------|
+
+  我的自定义按键：
+
+  | Key Binding | Description                                                                  |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC b i~   | ibuffer                                                                      |
+  | ~SPC b D~   | spacemacs/kill-other-buffers                                                 |
+  | ~SPC b m s~ | bookmark-set                                                                 |
+  | ~SPC b m r~ | bookmark-rename                                                              |
+  | ~SPC b m d~ | bookmark-delete                                                              |
+  | ~SPC b m j~ | counsel-bookmark                                                             |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC d d~   | dash-at-point                                                                |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC e n~   | flycheck-next-error                                                          |
+  | ~SPC e p~   | flycheck-previous-error                                                      |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC f d~   | projectile-find-file-dwim-other-window                                       |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC g g~   | magit                                                                        |
+  | ~SPC g L~   | magit-log-buffer-file, show git logs                                         |
+  | ~SPC g n~   | smerge-next                                                                  |
+  | ~SPC g p~   | smerge-prev                                                                  |
+  | ~SPC g M~   | git-messenger:popup-message, show git log message, with `f' open in browser. |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC h h~   | zilongshanren/highlight-dwim                                                 |
+  | ~SPC h c~   | zilongshanren/clearn-highlight, TODO                                         |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC o o~   | zilongshanren/helm-hotspots                                                  |
+  | ~SPC o x~   | org-open-at-point-global, open link                                          |
+  | ~SPC o r~   | zilongshanren/browser-refresh--chrome-applescript                            |
+  | ~SPC o s~   | spacemacs/search-engine-select, open search engine list to search            |
+  | ~SPC o g~   | my-git-timemachine, git record                                               |
+  | ~SPC o !~   | zilongshanren/iterm-shell-command, go current dir & run command              |
+  | ~SPC o e~   | tiny-expand                                                                  |
+  | ~SPC o i~   | org-mode insert command                                                      |
+  | ~SPC o i t~ | org-set-tags-command, --> :done:                                            |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC p b~   | counsel-projectile-switch-to-buffer                                          |
+  | ~SPC p t~   | my-simple-todo                                                               |
+  | ~SPC p f~   | zilongshanren/open-file-with-projectile-or-counsel-git                       |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC r l~   | ivy-resume, resume last search result                                        |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC s j~   | counsel-jump-in-buffer                                                       |
+  |-------------+------------------------------------------------------------------------------|
+  | ~SPC y i~   | yas/insert-snippet                                                           |
+  | ~SPC y d~   | youdao-dictionary-search-at-point+                                           |
+  |-------------+------------------------------------------------------------------------------|
+  | ~C-c l~     | zilongshanren/insert-chrome-current-tab-url                                  |
+  | ~C-c t~     | org-capture                                                                  |
+  | ~C-c r~     | vr/replace                                                                   |
+  | ~C-c q~     | vr/query-replace                                                             |
+  |-------------+------------------------------------------------------------------------------|
+  | ~M--~       | zilongshanren/goto-match-paren                                               |
+  | ~M-i~       | string-inflection-java-style-cycle                                           |
+  | ~M-'~       | avy-goto-char-2                                                              |
+  |-------------+------------------------------------------------------------------------------|
+  | ~s-p~       | find-file-in-project                                                         |
+  |-------------+------------------------------------------------------------------------------|
+  | ~, '~       | ielm, lisp-repl                                                              |
+  |-------------+------------------------------------------------------------------------------|
+  | ~+~         | evil-numbers/inc-at-pt，number +1                                            |
+  | ~-~         | evil-numbers/dec-at-pt, number -1                                            |
+  |-------------+------------------------------------------------------------------------------|
+  | ~g [~       | beginning-of-defun                                                           |
+  | ~g ]~       | end-of-defun                                                                 |
+  |-------------+------------------------------------------------------------------------------|
+  | ~z [~       | sp-wrap-square                                                               |
+  | ~z (~       | sp-wrap-round                                                                |
+  | ~z {~       | sp-wrap-curly                                                                |
+  | ~z -~       | sp-splice-sexp                                                               |
+  | ~z .~       | emmet-wrap-with-markup                                                       |
+  |-------------+------------------------------------------------------------------------------|
 
 ** vue-mode
    [[https://github.com/syl20bnr/spacemacs/tree/develop/layers/%2Bframeworks/vue][vue-mode-key-bindings]]
 
-   
 * Modes
-** ranger
-   
-| key       | function               |
-|-----------+------------------------|
-| ~SPC a r~ | open ranger            |
-| ~q~       | quit                   |
-| ~j~       | move down              |
-| ~k~       | move up                |
-| ~l~       | into current directory |
-| ~h~       | up to parent dir       |
+** DONE ranger
+   CLOSED: [2020-08-27 Thu 21:14]
 
-file manangement:
+   - State "DONE"       from              [2020-08-27 Thu 21:14]
+   | key       | function               |
+   |-----------+------------------------|
+   | ~SPC a r~ | open ranger            |
+   | ~q~       | quit                   |
+   | ~j~       | move down              |
+   | ~k~       | move up                |
+   | ~l~       | into current directory |
+   | ~h~       | up to parent dir       |
 
-| key          | function                                    |
-|--------------+---------------------------------------------|
-| ~r~          | revert buffer                               |
-| ~R~          | rename                                      |
-| ~D~          | delete                                      |
-| ~yy~         | copy                                        |
-| ~pp~         | paste                                       |
-| ~f~          | search file names                           |
-| ~i~          | toggle showing literal / full-text previews |
-| ~zh~         | toggle dot files                            |
-| ~o~          | sort options                                |
-| ~H~          | search through history                      |
-| ~z-~ or ~z+~ | reduce/increase parents                     |
-| ~C-SPC~      | mark a file or directory                    |
-| ~v~          | toggle mark                                 |
-| ~V~          | visually select lines                       |
-| ~;C~         | copy / move directory                       |
-| ~;+~         | create directory                            |
-| ~SPC a d~    | deer                                        |
-| ~C-j~        | scroll preview window down                  |
-| ~C-k~        | scroll preview window up                    |
-| ~S~          | enter shell                                 |
+   file manangement:
 
+   | key          | function                                    |
+   |--------------+---------------------------------------------|
+   | ~r~          | revert buffer                               |
+   | ~R~          | rename                                      |
+   | ~D~          | delete                                      |
+   | ~yy~         | copy                                        |
+   | ~pp~         | paste                                       |
+   | ~f~          | search file names                           |
+   | ~i~          | toggle showing literal / full-text previews |
+   | ~zh~         | toggle dot files                            |
+   | ~o~          | sort options                                |
+   | ~H~          | search through history                      |
+   | ~z-~ or ~z+~ | reduce/increase parents                     |
+   | ~C-SPC~      | mark a file or directory                    |
+   | ~v~          | toggle mark                                 |
+   | ~V~          | visually select lines                       |
+   | ~;C~         | copy / move directory                       |
+   | ~;+~         | create directory                            |
+   | ~SPC a d~    | deer                                        |
+   | ~C-j~        | scroll preview window down                  |
+   | ~C-k~        | scroll preview window up                    |
+   | ~S~          | enter shell                                 |
 
 ** org-mode
-   
-ref: https://practicalli.github.io/spacemacs/org-mode/
 
-| key     | function     |
-|---------+--------------|
-| ~, i p~ | set property |
-|         |              |
+   ref: https://practicalli.github.io/spacemacs/org-mode/
+
+   | key     | function     |
+   |---------+--------------|
+   | ~, i p~ | set property |
+   |         |              |
 
 *** text-style
-    
+
     ~code: , x c~
-    
+
     /italic: , x i/
-    
+
     +line-throught: , x s+
-    
-    _underline: , x u_ 
-    
+
+    _underline: , x u_
+
     =verbatim: , x v=
-    
+
     *bold: , x b*
 *** checkbox
-- [ ] todo one, =C-c C-c= change status
-- [X] todo two, done
-- [X] todo three
+    - [ ] todo one, =C-c C-c= change status
+    - [X] todo two, done
+    - [X] todo three
 
 *** todos
 **** TODO todo one
@@ -162,14 +162,26 @@ ref: https://practicalli.github.io/spacemacs/org-mode/
      SCHEDULED: <2020-08-25 Tue>
 ** TODO tiny, SPC o e
    https://github.com/abo-abo/tiny
-   
+
 ** TODO multiple-cursors
 ** TODO prodigy
-blog settings.
+   blog settings.
 
- 
-   
-   
+
+
+
 ** TODO wrap-region
    https://github.com/rejeep/wrap-region.el/blob/master/wrap-region.el
 
+* Misc Settings
+
+超过 80 列自动换行：
+
+#+begin_src elisp
+  (add-hook 'org-mode-hook 'turn-on-auto-fill)
+  (setq-default fill-column 80)
+#+end_src
+* Issues
+** Points
+*** org-mode 简介
+    1. Jump to inner link: ~<<text>> <- [[test][text]]~
