@@ -3,16 +3,16 @@ span.tags > span {
 }
 
 span.todo {
-  /* color: #d05f24; */
   color: #ffffff;
   font-size: 18px;
   background-color: #d72c35;
   border-radius: 2px;
   padding: 0 5px;
+}
 
-  &.done {
-    color: #76d924;
-  }
+span.todo.done {
+  background-color: #76d924;
+  color: black;
 }
 
 strong {

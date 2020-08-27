@@ -1,7 +1,7 @@
 $(function () {
   $("span.todo").each(function () {
     var node = $(this);
-    if (node.text().toLowerCase() === "DONE") {
+    if (node.text() === "DONE") {
       node.addClass("done");
     }
   });
