@@ -1,6 +1,7 @@
 #+TITLE: My Api Collection
 #+DATE: <2020-08-26 Wed>
 #+TAGS[]: api, org
+#+CATEGORIES[]: collection
 #+LANGUAGE: zh-cn
 
 #+begin_example

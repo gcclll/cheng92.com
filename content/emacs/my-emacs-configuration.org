@@ -1,6 +1,0 @@
----
-title: "My Emacs Configuration"
-date: 2020-08-27T00:11:22+08:00
-draft: true
----
-

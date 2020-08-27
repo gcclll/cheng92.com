@@ -35,11 +35,6 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   identifier = "home"
   url = "/"
 [[menu.main]]
-  name = "LearnEmacs"
-  weight = 20
-  identifier = "emacs"
-  url = "/emacs/"
-[[menu.main]]
   name = "Archives"
   weight = 30
   identifier = "archives"
