@@ -3,6 +3,8 @@
 #+TAGS[]: emacs, org-mode
 #+CATEGORIES[]: emacs
 #+LANGUAGE: zh-cn
+#+STARTUP: indent
+
 
 * org-mode
   :PROPERTIES:
@@ -10,14 +12,12 @@
   :CUSTOM_ID: doc_header
   :END:
 
-
-
 * Hyperlinks(超链接)
 ** Internal Links(内部链接)
    1. org file
       link target: <<target>>
       link source: [[target]]
-      
+
       这种方式在 hugo 中无法时候用，但是可以通过第二种方式的 ~PROP:
       CUSTOM_ID~ 来实现。
    2. in *hugo*
@@ -63,3 +63,27 @@
    jumps to point-min.
 
    link: [[#literal_eg][literal_eg]]
+
+* 16 Miscellaneous(杂项)
+** 16.2 Structure Templates(结构化模板)
+
+   #+begin_example
+     a	‘#+BEGIN_EXPORT ascii’ … ‘#+END_EXPORT’
+     c	‘#+BEGIN_CENTER’ … ‘#+END_CENTER’
+     C	‘#+BEGIN_COMMENT’ … ‘#+END_COMMENT’
+     e	‘#+BEGIN_EXAMPLE’ … ‘#+END_EXAMPLE’
+     E	‘#+BEGIN_EXPORT’ … ‘#+END_EXPORT’
+     h	‘#+BEGIN_EXPORT html’ … ‘#+END_EXPORT’
+     l	‘#+BEGIN_EXPORT latex’ … ‘#+END_EXPORT’
+     q	‘#+BEGIN_QUOTE’ … ‘#+END_QUOTE’
+     s	‘#+BEGIN_SRC’ … ‘#+END_SRC’
+     v	‘#+BEGIN_VERSE’ … ‘#+END_VERSE’
+   #+end_example
+** 16.7 Summary of In-Buffer Settings(文件设置)
+   
+   1. `#+STARTUP:`
+
+      | option   | function     |
+      |----------+--------------|
+      | indent   | 开启自动缩进 |
+      | noindent | 关闭西东缩进 |

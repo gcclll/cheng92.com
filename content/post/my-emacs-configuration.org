@@ -3,6 +3,7 @@
 #+TAGS[]: emacs
 #+CATEGORIES[]: emacs
 #+LANGUAGE: zh-cn
+#+STARTUP: indent
 
 我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
 
@@ -175,12 +176,17 @@
 
 * Misc Settings
 
-超过 80 列自动换行：
+*超过 80 列自动换行* ：
 
 #+begin_src elisp
   (add-hook 'org-mode-hook 'turn-on-auto-fill)
   (setq-default fill-column 80)
 #+end_src
+
+*自动缩进*:
+
+~(global-aggressive-indent-mode)~
+
 * Issues
 ** Points
 *** org-mode 简介

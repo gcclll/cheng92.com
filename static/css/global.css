@@ -26,6 +26,7 @@ strong {
   color: darkorchid;
 }
 
-.post-content h2:before {
-  border-bottom: 1px solid blueviolet;
+.post-content h3 {
+  // blueviolet
+  color: #c05b4d;
 }
