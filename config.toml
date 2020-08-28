@@ -40,6 +40,11 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   identifier = "emacs"
   url = "/emacs/"
 [[menu.main]]
+  name = "Algorithm"
+  weight = 21
+  identifier = "algo"
+  url = "/algo/"
+[[menu.main]]
   name = "Vue"
   weight = 30
   identifier = "vue"
