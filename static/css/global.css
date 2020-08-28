@@ -25,3 +25,7 @@ span.todo.done {
 strong {
   color: darkorchid;
 }
+
+.post-content h2:before {
+  border-bottom: 1px solid blueviolet;
+}

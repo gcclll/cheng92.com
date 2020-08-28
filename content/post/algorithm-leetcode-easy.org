@@ -103,6 +103,49 @@
     | 1 天前   | 通过     | 152 ms                         | 51.9 MB  | Javascript |
 
 *** 方案三: 递归
+    *这个方法也可以通过，但效率上面感觉并没什么优势，并且这个方法找出的并不是第一个重复的元素。*
+
+    对比[方案二]：
+
+    1. 重复元素在中心点两边，同样需要遍历相同的次数才能找到这个重复元素(因为左边的递归必须先完成)
+    2. 重复元素在左边，左边递归次数和方案二循环次数是一样的
+    3. 重复元素在右边，左边必须递归完，右边的也必须递归直到两个重复元素出现(同方案一一样)
+
+    能否针对上面的情况进行优化( @@html:<font color="red">@@text 考虑中心点两边同
+    时进行比较，而不是等一边完成再处理另一边，那貌似就不适用递归了
+    @@html:</font>@@)???
+    
+    #+begin_src js
+
+      findRepeatNumber = function _(nums, res = {}) {
+        if (!Array.isArray(nums)) return -1 // 过滤掉非数组的情况
+
+        let len = nums.length,
+            mid = ~~(len / 2)
+
+        const v = nums[0]
+        const val = res[v]
+
+        if (v !== void 0) { // 这里应该可以再优化下，空数组不应该会到这里
+          res[v] = val >= 0 ? val + 1 : 0
+          // console.log(v, "-------", res)
+          if (res[v] > 0) {
+            return v // 这里的返回值会被下面递归是的 x 变量接受
+          }
+        }
+
+        let x = null
+        if (mid > 0) {// 这里优化空数组情况，不应该继续往下分解了
+          x = _(nums.slice(1, mid), res)
+          if (x > -1) return x
+          x = _(nums.slice(mid), res)
+          if (x > -1) return x
+        }
+
+        return -1
+      }
+    #+end_src
+
 *** 方案四：二分 for
 *** 其他方案(leetcoders)
 ** [[https://leetcode-cn.com/problems/two-sum-ii-input-array-is-sorted/][02. 两数之和 II - 输入有序数组]]

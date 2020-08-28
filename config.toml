@@ -35,22 +35,45 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   identifier = "home"
   url = "/"
 [[menu.main]]
-  name = "Archives"
+  name = "Emacs"
+  weight = 20
+  identifier = "emacs"
+  url = "/emacs/"
+[[menu.main]]
+  name = "Vue"
   weight = 30
+  identifier = "vue"
+  url = "/vue/"
+[[menu.main]]
+  name = "React"
+  weight = 40
+  identifier = "react"
+  url = "/react/"
+[[menu.main]]
+  name = "Archives"
+  weight = 50
   identifier = "archives"
   url = "/post/"
 [[menu.main]]
   name = "Tags"
-  weight = 40
+  weight = 60
   identifier = "tags"
   url = "/tags/"
 [[menu.main]]
   name = "Categories"
-  weight = 50
+  weight = 70
   identifier = "categories"
   url = "/categories/"
 
 [params]
+  google_fonts = [
+    ["Fira Code", "400, 700"],
+    ["Open Sans", "400, 400i, 700, 700i"]
+  ]
+
+  heading_font = "Fira Code"
+  body_font = "Open Sans"
+
   version = "4.x"           # Used to give a friendly message when you have an incompatible update
   debug = false             # If true, load `eruda.min.js`. See https://github.com/liriliri/eruda
 

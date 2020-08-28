@@ -1,0 +1,65 @@
+#+TITLE: My Emacs Org-Mode Document
+#+DATE: <2020-08-28 10:31:10>
+#+TAGS[]: emacs, org-mode
+#+CATEGORIES[]: emacs
+#+LANGUAGE: zh-cn
+
+* org-mode
+  :PROPERTIES:
+  :COLUMNS:  %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: doc_header
+  :END:
+
+
+
+* Hyperlinks(超链接)
+** Internal Links(内部链接)
+   1. org file
+      link target: <<target>>
+      link source: [[target]]
+      
+      这种方式在 hugo 中无法时候用，但是可以通过第二种方式的 ~PROP:
+      CUSTOM_ID~ 来实现。
+   2. in *hugo*
+      link target: doc_header
+      必须在某个标题下面声明属性，才能其效果。
+      #+begin_example
+        :PROPERTIES:
+        :COLUMNS: %CUSTOM_ID[(Custom Id)]
+        :CUSTOM_ID: doc_header
+        :END:
+      #+end_example
+
+      link source: ~C-c C-l~ 或者 ~org-insert-link~ 或者直接 ~[[#doc_header][文档开
+      头位置]]~ ，请点击：[[#doc_header][文档开头位置]]
+
+* Markup for Rich Contents(富文本)
+
+** Literal Examples(文本模板)
+   :PROPERTIES:
+   :COLUMNS:  %CUSTOM_ID[(Custom Id)]
+   :CUSTOM_ID: literal_eg
+   :END:
+
+   适合长文本内容的：
+   #+begin_example
+   ,* some example from a text file
+   #+end_example
+
+   如果只是简短的语句，可直接使用 `:`(冒号)也可以达到同样效果：
+   : * some short example from a text file
+
+   代码模板：
+   #+BEGIN_SRC emacs-lisp -n
+     (defun org-xor (a b) (ref:sc)
+            "Exclusive or."    (ref:jump)
+            (if a (not b) b))
+   #+END_SRC
+
+   配置选项: ~-n~ ，可以在代码中加入引用 ~(ref:sc)~ ，然后在文章任意地方使用
+   ~[[(sc)]]~ 创建一个链接，点击后可以定位到代码中该出。
+
+   In line [[(sc)]] we remember the current position. [[(jump)][Line (jump)]]
+   jumps to point-min.
+
+   link: [[#literal_eg][literal_eg]]
