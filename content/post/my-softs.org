@@ -1,0 +1,11 @@
+#+TITLE: 软件使用收集
+#+DATE: <2020-08-28 17:39:28>
+#+TAGS[]: soft, macos, window
+#+CATEGORIES[]: tools
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* 图床
+** PicGo
+   
+https://github.com/PicGo

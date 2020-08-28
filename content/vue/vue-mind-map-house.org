@@ -1,0 +1,14 @@
+#+TITLE: Vue 相关的导图仓库
+#+DATE: <2020-08-28 16:35:34>
+#+TAGS[]: vue, vue3, xmind
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* vue3
+** compiler-core
+*** 带指令的标签解析全过程(~v-bind~)
+
+    ~<div v-bind:keyup.enter.prevent="ok"></div>~
+
+    [[https://raw.githubusercontent.com/gcclll/mind-maps/imgbed/img/20200828182453.png]]
