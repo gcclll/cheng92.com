@@ -26,7 +26,24 @@ strong {
   color: darkorchid;
 }
 
-.post-content h3 {
-  // blueviolet
-  color: #c05b4d;
+.post-content h2:before {
+  content: "2";
+}
+
+.post-content h3:before {
+  content: "3";
+}
+
+.post-content h4:before {
+  content: "4";
+}
+
+.post-content h2:before,
+.post-content h3:before,
+.post-content h4:before {
+  position: relative;
+  left: 0;
+  top: 0.2rem;
+  font-size: 0.8rem;
+  color: blueviolet;
 }
