@@ -7,6 +7,8 @@ categories: ["vue"]
 
 > 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。
 
+<kbd>文字比较长，如果不想看文字可直接转到[这里](/vue/vue-mind-map-house/ "vue3脑图仓库")看脑图</kbd>
+
 # 简介
 
 `reactivity` 是 vue next 里面通过 `proxy` + `reflect` 实现的响应式模块。
