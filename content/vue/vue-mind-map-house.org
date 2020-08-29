@@ -5,27 +5,26 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-* vue3
-** compiler-core
-*** 解析 ~simple text~
+* compiler-core
+** 解析 ~simple text~
     
-    解析纯文本，只会进入 while 循环中的 !node 检测然后进入 ~parseText~ 纯文本解
-    析，会匹配 ~<, {{, ]]>~ 作为纯文本的结束标志。
+   解析纯文本，只会进入 while 循环中的 !node 检测然后进入 ~parseText~ 纯文本解
+   析，会匹配 ~<, {{, ]]>~ 作为纯文本的结束标志。
 
-    得到纯文本内容后传递给 ~parseTextData~ 替换 ~/&(gt|lt|amp|apos|quot);/g~
-    html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返回。
+   得到纯文本内容后传递给 ~parseTextData~ 替换 ~/&(gt|lt|amp|apos|quot);/g~
+   html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返回。
     
-    退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
+   退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
 
-    [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png]]
-*** 解析无效的 ~</div>~
-    [[https://img.cheng92.com/vue3/compiler-core/tests/invalid-end-tag.png]]
-*** 标签解析(~<div>hello world</div>~)
+   [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png]]
+** 解析无效的 ~</div>~
+   [[https://img.cheng92.com/vue3/compiler-core/tests/invalid-end-tag.png]]
+** 标签解析(~<div>hello world</div>~)
 
-    [[https://img.cheng92.com/vue3/compiler-core/tests/simple-tag-div.png]]
+   [[https://img.cheng92.com/vue3/compiler-core/tests/simple-tag-div.png]]
 
-*** 带指令的标签解析全过程(~v-bind~)
+** 带指令的标签解析全过程(~v-bind~)
 
-    ~<div v-bind:keyup.enter.prevent="ok"></div>~
+   ~<div v-bind:keyup.enter.prevent="ok"></div>~
 
-    [[https://img.cheng92.com/vue3/compiler-core/tests/tag-with-directive-v-bind.png]]
+   [[https://img.cheng92.com/vue3/compiler-core/tests/tag-with-directive-v-bind.png]]
