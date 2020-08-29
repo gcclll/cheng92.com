@@ -1,0 +1,40 @@
+#+TITLE: 我的私人空间
+#+DATE: <2020-08-28 17:39:28>
+#+TAGS[]: soft, macos, window
+#+CATEGORIES[]: tools
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+
+* 软件
+** PicGo
+   
+https://github.com/PicGo
+* 问题列表
+
+** 添加 submodule 失败
+
+#+begin_example
+  ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
+  A git directory for 'themes/even' is found locally with remote(s):
+    origin	https://github.com/olOwOlo/hugo-theme-even.git
+  If you want to reuse this local git directory instead of cloning again from
+    https://github.com/gcclll/hugo-theme-even.git
+  use the '--force' option. If the local git directory is not the correct repo
+  or you are unsure what this means choose another name with the '--name' option.
+#+end_example
+
+本意就是 fork themes/even 出来修改，结果出现问题。
+
+*解决方案 1:*
+
+1. ~$ git ls-files stage themes/even~
+2. ~$ git rm --cached themes/even~
+3. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
+
+*解决方案 2:*
+
+1. ~$ cd .git/modules~
+2. ~$ rm -rf themes/even~
+3. ~$ cd ../..~
+4. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
