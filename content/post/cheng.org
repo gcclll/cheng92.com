@@ -5,14 +5,116 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_quote
+杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，:smile::smile:。
+#+end_quote
 
-* 软件
+* api
+
+| 名称          | 简介         | 其他               |
+|---------------+--------------+--------------------|
+| [[https://github.com/iptv-org/iptv][IPTV channels]] | IPTV 频道接口 | [[https://iptv-org.github.io/iptv/channels.json][所有数据 json 文件]] |
+|               |              |                    |
+
+* 前端开发
+** vue
+[[https://github.com/vitejs/vite][vite(vue-cli)]]
+
+#+begin_src shell
+  $ yarn create vite-app <project-name>
+  $ cd <project-name>
+  $ yarn
+  $ yarn dev
+#+end_src
+
+或
+
+#+begin_src shell
+  $ npm install -g @vue/cli
+  $ vue create 01-vue3-cli
+  $ cd 01-vue3-cli
+  $ vue add vue-next
+  $ npm run serve
+#+end_src
+** v3boss(Based on vue3)
+
+*** 问题列表
+
+1. 请求出现 <font color="red">500</font>，对比差异只有 RemoteAddress 有点异常???
+
+   #+begin_example
+   答：证书问题，使用 `secure: false` 配置选项跳过证书认证
+   #+end_example
+
+2. assets 资源引入问题
+
+   #+begin_example
+   答：使用 `alias: {}` 选项配置别名，注意必须是 `/@assets/` 方式，以斜杠开始斜杠结束。
+   #+end_example
+   
+   #+begin_src json
+     alias: {
+       '/@/': path.resolve(__dirname, 'src'),
+       '/@assets/': path.resolve(__dirname, 'src/assets')
+     }
+   #+end_src
+   
+* 软件&命令
+** git 命令
+
+删除远程分支： ~$ git push origin :test1~
+
+删除本地分支： ~$ git branch -d test1~
+
+强制删除本地分支： ~$ git branch -D test1~
+
+新增本地分支： ~$ git branch test1~
+
+推送到远程分支： ~$ git push origin test1:test1~
+
+查看远程分支： ~$ git branch -r~
+
+查看本地分支： ~$ git branch -a~
+
+** htop 可视化进程查看工具
+~$ brew install htop~
+** Travis-CI(Blog 系统集成方案)
+
+1. [[http://www.ruanyifeng.com/blog/2017/12/travis_ci_tutorial.html#:~:text=Travis%20CI%20%E6%8F%90%E4%BE%9B%E7%9A%84%E6%98%AF,%E5%92%8C%E6%B5%8B%E8%AF%95%EF%BC%8C%E5%8F%8D%E9%A6%88%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%9C%E3%80%82][持续集成服务 Travis CI 教程-阮一峰]]
+
+2. [[https://cola.workxplay.net/ci-cd-travis-cl-and-github-use-rsync-auto-deploy/][travis-ci-ssh-token 问题]]
+
+#+begin_src shell
+  $ travis login --pro --github-token xxxx
+  $ ssh-keygen -t rsa -b 4096 -C "gccll.love@gmail.com"
+  $ travis whoami
+  $ ssh-keygen -t rsa
+  $ ls
+  # 这里是关键，登录的时候用的 --pro 这里也必须用 --pro，不然加到 .org 上去了
+  # 坑逼
+  $ travis encrypt-file deploy_key --add --pro
+  $ ls
+#+end_src
+
 ** PicGo
    
 https://github.com/PicGo
 * 问题列表
 
-** 添加 submodule 失败
+** 怎么更新项目中所有的 ~npm~ 包?
+
+[[https://flaviocopes.com/update-npm-dependencies/][参考链接。]]
+
+#+begin_src shell
+  $ npm install -g npm-check-updates
+  $ ncu -u
+  $ npm update
+  $ npm install
+  $ ncu -u && npm update && npm install
+#+end_src
+
+** 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
+** 添加 submodule 失败 ?
 
 #+begin_example
   ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even

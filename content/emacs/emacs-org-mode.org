@@ -87,3 +87,25 @@
       |----------+--------------|
       | indent   | 开启自动缩进 |
       | noindent | 关闭西东缩进 |
+
+* Org-mode in hugo
+  
+  给图片增加属性(使用 ~#+attr_html~)：
+
+  #+begin_example
+  #+attr_html: :width 100 :height 200
+  [[/images/some-img.png]]
+  #+end_example
+
+  [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png]]
+  
+** ~#+~ 开头的属性
+   
+   - ~#+caption: 设置表名称~
+   - ~#+attr_html~ 增加 html 属性，比如：
+     1. 增加样式名： ~#+attr_html: :class classname~
+     2. 设置宽高： ~#+attr_html: :width 100 :height 100~
+     
+   - ~#+attr_css~ 增加 css 样式，比如：
+     1. 设置宽高： ~#+attr_css: :width 100px :height 200px :text-align center~ ，注意和 html 属性区
+        分开
