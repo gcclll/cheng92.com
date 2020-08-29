@@ -7,6 +7,8 @@ categories: ["vue"]
 
 > 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。
 
+<kbd>文字比较长，如果不想看文字可直接转到[这里](/vue/vue-mind-map-house/ "vue3脑图仓库")看脑图</kbd>
+
 <font color="#fc02ff">**可能感兴趣列表：**</font>
 
 1. [各种流程图(函数/功能/实现/...)无图无真相系列](#flowchart-list) 🛬 🛬 🛬 🛬 🛬

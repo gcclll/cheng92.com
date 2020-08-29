@@ -7,6 +7,10 @@
 
 * vue3
 ** compiler-core
+*** 标签解析(~<div>hello world</div>~)
+    
+    [[https://img.cheng92.com/img/test-parse-simple-tag.png]]
+
 *** 带指令的标签解析全过程(~v-bind~)
 
     ~<div v-bind:keyup.enter.prevent="ok"></div>~
