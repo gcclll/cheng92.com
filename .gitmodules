@@ -1,6 +1,3 @@
 [submodule "themes/even"]
 	path = themes/even
 	url = https://github.com/gcclll/hugo-theme-even.git
-[submodule "theme/even"]
-	path = theme/even
-	url = https://github.com/gcclll/hugo-theme-even.git
