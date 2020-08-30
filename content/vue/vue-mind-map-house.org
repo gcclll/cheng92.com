@@ -20,6 +20,23 @@
 
    http://qiniu.ii6g.com/img/simple-text.png
 
+** 插值解析 ~some {{ foo + bar }} text~
+
+   1. parseChildren :arrow_right: while: ~some {{ foo + bar }} text~
+   2. parseText :arrow_right: node[0]: ~`some`~
+   3. ~{{ foo + bar }} text~  :arrow_right:  parseInterpolation  :arrow_right:
+      node[1]: ~foor + bar~
+   4. ~` text`~ :arrow_right: parseText :arrow_right: node[2]: ~`text`~
+   5. nodes -> root.children
+
+
+   解析过程中需要注意的几点：
+   1. 插值解析，首先是匹配 `{{` 然后去的 *}}* 的索引，最后通过 ~slice(startIdx,
+      endIdx)~ 取到要解析的表达式。
+   2. ~`some`~ 和  ~`text`~ 不会合并到一个 node 中，因为不是相邻的，请注意合并文
+      本 ndoe 的前提条件：前一个节点也必须是文本节点类型。
+
+   [[http://qiniu.ii6g.com/img/text-with-interpolation.png]]
 ** 解析无效的 ~</div>~
 
    ~some text</div>~
@@ -55,7 +72,7 @@
    1. parseChildren :arrow_right: while
    2. parseElement :arrow_left: ~<div ....></div>~
    3. parseTag :arrow_right: *node: div* :arrow_right: parseAttributes 解析属性 :arrow_left: ~v-bind:keyup...></div>~
-   4. parseAttribute :arrow_right: 
+   4. parseAttribute :arrow_right:
       1) 先解析 ~="ok"~ 出值
       2) 后解析 ~v-bind:keyup.enter.prevent~
    5. 最后得到 ~props[0] -> { name: 'bind', arg: { content: 'keyup', ... }, exp:
