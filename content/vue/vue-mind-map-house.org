@@ -7,37 +7,64 @@
 
 * compiler-core
 ** 解析 ~simple text~
-    
+
    解析纯文本，只会进入 while 循环中的 !node 检测然后进入 ~parseText~ 纯文本解
    析，会匹配 ~<, {{, ]]>~ 作为纯文本的结束标志。
 
    得到纯文本内容后传递给 ~parseTextData~ 替换 ~/&(gt|lt|amp|apos|quot);/g~
    html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返回。
-    
+
    退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
 
    [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png][图片外网(原图)链接]]
-   
+
    http://qiniu.ii6g.com/img/simple-text.png
 
 ** 解析无效的 ~</div>~
+
+   ~some text</div>~
+
+   经过的函数：
+
+   1. parseChildren 进入解析 while
+   2. parseText 解析出有效文本
+   3. 回到 parseChildren while 循环解析 ~</div>~ 报错
+
    [[https://img.cheng92.com/vue3/compiler-core/tests/invalid-end-tag.png][图片外网(原图)链接]]
-   
+
    http://qiniu.ii6g.com/img/invalid-end-tag.png
 
 ** 标签解析(~<div>hello world</div>~)
 
+   1. parseChildren while 开始解析
+   2. 遇到 ~<d~ 满足 ~/^[z-a]/i~ 进入 parseElement 解析标签
+   3. parseElement -> parseTag 解析出名为 *div* 的标签节点， ~content = `hello world</div>`~
+   4. parseElement -> parseChildren 解析出 *hello world* 文本节点作为 div 节点的
+      children[0]， ~content = `</div>`~
+   5. 返回到 parseChildren 解析 ~</div>~ 发现 ~ancestors~ 有内容且找到了
+      ~</div>~ 匹配的 ~<div>~ 节点，最后完成匹配。
+
    [[https://img.cheng92.com/vue3/compiler-core/tests/simple-tag-div.png][图片外网(原图)链接]]
-   
+
    http://qiniu.ii6g.com/img/simple-tag-div.png
-   
 
 ** 带指令的标签解析全过程(~v-bind~)
 
    ~<div v-bind:keyup.enter.prevent="ok"></div>~
-   
+
+   1. parseChildren :arrow_right: while
+   2. parseElement :arrow_left: ~<div ....></div>~
+   3. parseTag :arrow_right: *node: div* :arrow_right: parseAttributes 解析属性 :arrow_left: ~v-bind:keyup...></div>~
+   4. parseAttribute :arrow_right: 
+      1) 先解析 ~="ok"~ 出值
+      2) 后解析 ~v-bind:keyup.enter.prevent~
+   5. 最后得到 ~props[0] -> { name: 'bind', arg: { content: 'keyup', ... }, exp:
+      { content: 'ok', ... }, modifiers: ['enter', 'prevent' ]}~
+      1) name: 指令的名称， ~v-bind, @~ 都会转成 *bind* 名称
+      2) arg: 表示指令绑定的参数名称，这里可以是动态变量，如：
+         ~v-bind:[dynamicVarName]~ ，由 ~arg.isConstant~ 标识。
+      3) exp: 表示表达式的值
+
    [[https://img.cheng92.com/vue3/compiler-core/tests/tag-with-directive-v-bind.png][图片外网(原图)链接]]
-   
+
    http://qiniu.ii6g.com/img/tag-with-directive-v-bind.png
-
-
