@@ -3101,23 +3101,6 @@ export interface ParserContext {
 
    好像还不是很明确为何要 push->pop。
 
-# 流程图
-
-<span id="flowchart-list"></span>
-
-由于有些流程图挺大的，内容多，因此放到最后。
-
-## 带指令的模板/标签解析
-
-实例：
-
-1. 用例：[05-template element with directives](#test-element-05)
-2. more...
-
-图片完整地址：http://qiniu.ii6g.com/test-element-directive.png?imageMogr2/thumbnail/!100p
-
-![](http://qiniu.ii6g.com/test-element-directive.png?imageMogr2/thumbnail/!100p)
-
 
 
 

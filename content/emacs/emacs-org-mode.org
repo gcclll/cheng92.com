@@ -97,8 +97,6 @@
   [[/images/some-img.png]]
   #+end_example
 
-  [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png]]
-  
 ** ~#+~ 开头的属性
    
    - ~#+caption: 设置表名称~

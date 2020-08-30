@@ -170,8 +170,8 @@
 
 
 
-
 ** TODO wrap-region
+   
    https://github.com/rejeep/wrap-region.el/blob/master/wrap-region.el
 
 * Misc Settings
