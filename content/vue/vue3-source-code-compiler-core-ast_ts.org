@@ -1,0 +1,68 @@
+#+TITLE: Vue3.0 源码系列（二）编译器核心 - Compiler core 2: ast.ts
+#+DATE: <2020-08-31 23:50:23>
+#+TAGS[]: vue, vue3, vuenext, compiler
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+抽象语法树代码源文件。
+#+end_quote
+
+* createRoot(children, loc = locStub)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ast-createroot
+:END: 
+
+创建根节点对象，返回一个 [[#td-ast-rootnode][RootNode]] 类型对象。
+
+参数：
+
+1. children 节点子孙节点，类型：[[#td-ast-tcn][TemplateChildNode[]​]]
+
+   #+begin_src typescript
+     export type TemplateChildNode =
+         | ElementNode // 节元素点类型
+         | InterpolationNode // 插值节点
+         | CompoundExpressionNode // 混合表达式节点
+         | TextNode // 文本节点
+         | CommentNode // 注释节点
+         | IfNode // v-if 节点
+         | IfBranchNode // v-else, v-else-if 分支节点
+         | ForNode // v-ofr 节点
+         | TextCallNode // ???
+   #+end_src
+
+2. loc 一个 SourceLoation 类型的结构，默认值为 =locStub=
+   #+begin_src typescript
+     export const locStub: SourceLocation = {
+         source: '',
+         start: { line: 1, column: 1, offset: 0 },
+         end: { line: 1, column: 1, offset: 0 }
+     }
+   #+end_src
+
+代码：
+
+#+begin_src typescript
+  export function createRoot(
+      children: TemplateChildNode[],
+      loc = locStub
+  ): RootNode {
+      return {
+          type: NodeTypes.ROOT,
+          children,
+          helpers: [],
+          components: [],
+          directives: [],
+          hoists: [],
+          imports: [],
+          cached: 0,
+          temps: 0,
+          codegenNode: undefined,
+          loc
+      }
+  }
+#+end_src
+
