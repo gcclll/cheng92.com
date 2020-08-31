@@ -65,6 +65,41 @@
 
    http://qiniu.ii6g.com/img/simple-tag-div.png
 
+   自闭合标签的解析，也在 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 里面，有一个针对这个的处理：
+
+   #+begin_src js
+
+     // 解析到这里的时候 content 应该是这样的：`/>xxx`
+     isSelfClosing = startsWith(context.source, '/>')
+     if (type === TagType.End && isSelfClosing) {
+       // 如果自闭合没有开始标签，是非法的
+       emitError(context, ErrorCodes.END_TAG_WITH_TRAILING_SOLIDUS)
+     }
+
+     // 这里判断如果是自闭合的，那么该标签的解析就已经结束了
+     advanceBy(context, isSelfClosing ? 2 : 1)
+   #+end_src
+   
+   空标签的处理，需要在调用解析函数 [[/vue/vue3-source-code-compiler-core/#baseparsecontext-options][baseParse]] 的时候明确告知它哪些是空标签(如：
+   ~<img>~)：
+
+   #+begin_src js
+     const ast = baseParse('<img>after', {
+       isVoidTag: (tag) => tag === 'img'
+     })
+   #+end_src
+   
+   ~isVoidTag~ 会在 [[/vue/vue3-source-code-compiler-core/#parseelementcontext-mode][parseElement]] 的时候被调用，在调用 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 解析完
+   *TagType.Start* 之后检测，如果是空标签类型，会直接退出解析即完成该标签的解析
+   过程(因为是空标签，所以后面的内容就不再属于它了，可以结束了)：
+
+   #+begin_src js
+     // 自闭合的到这里就可以结束了
+     if (element.isSelfClosing || context.options.isVoidTag?.(element.tag)) {
+       return element;
+     }
+   #+end_src
+   
 ** 带指令的标签解析全过程(~v-bind~)
 
    ~<div v-bind:keyup.enter.prevent="ok"></div>~

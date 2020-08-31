@@ -1939,7 +1939,6 @@ __proto__: Array(0)
 <font color="blue">PS: 对于 foo 和 bar 变量数据解析执行结果这块暂时不讨论，也不知道如何做到的，现阶段只关心模板的解析。</font>
 
 ## parseTag(context, type, parent)
-
 <span id="parse-parsetag"></span>
 
 ### 阶段一([simple text<\/div>](#test-text-02))

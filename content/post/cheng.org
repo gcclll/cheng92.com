@@ -60,6 +60,15 @@
    #+end_src
    
 * 软件&命令
+** qshell 批量下载七牛
+https://github.com/qiniu/qshell
+
+1. ~$ qshell account <Your AccessKey> <Your SecretKey> <Your Name>~
+2. ~$ qshell account -- <Your AccessKey> <Your SecretKey> <Your Name>~ key 可能
+   以是以 *-* 开头，就用这个。
+   
+@@html:<kbd>@@配置文件：~/.qshell.json@@html:</kbd>@@
+
 ** git 命令
 
 删除远程分支： ~$ git push origin :test1~
