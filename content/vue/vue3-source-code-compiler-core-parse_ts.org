@@ -1236,15 +1236,15 @@ parseTag 实现到这里就可以满足通过测试用例的条件了，这里�
 
 * 函数列表
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-funcs
-:END: 
+:END:
 
 ** baseParse(context, options)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-baseparse
-:END: 
+:END:
 
 #+begin_src js
   function baseParse(content, options /* ParserOptions */) /*RootNode*/ {
@@ -1269,15 +1269,15 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pic-baseparse
-:END: 
+:END:
 
 [[/img/parse-ts-baseparse-0.png]]
 
 ** createParseContext(context, options)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-createparsecontext
-:END: 
+:END:
 
 函数作用：*创建解析器上下文对象(包含解析过程中的一些记录信息)*
 
@@ -1297,7 +1297,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
       return {
           options: {
               // 解析器的默认选项给了些默认值，比如：isVoidTag: No, isPreTag: NO， 等等
-              ...defaultParserOptions, 
+              ...defaultParserOptions,
               ...options
           },
           column: 1,
@@ -1313,9 +1313,9 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 
 ** parseChildren(context, mode, ancestors)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-parsechildren
-:END: 
+:END:
 
 #+begin_src js
   function parseChildren(
@@ -1465,9 +1465,9 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 
 ** parseComment(context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-parsecomment
-:END: 
+:END:
 
 注释处理函数，解析原则是匹配 =<!--= 开头和 =-->= 结尾，中间部分统统视为注释，中
 间需要考虑嵌套注释问题。
@@ -1502,7 +1502,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
       // 嵌套注释??? 这里slice 之后的 s 不包含结束 -->
       const s = context.source.slice(0, match.index)
       let prevIndex = 1,
-        nestedIndex = 0
+          nestedIndex = 0
 
       console.log({ s })
       // 首先能进入 parseComment，说明 source 是以 <!-- 开头的，且是包含 --> 的
@@ -1535,9 +1535,9 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 #+end_src
 ** parseElement(context, mode)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-parseelement
-:END: 
+:END:
 
 这个解析函数，用来解析 =<div>= 标签。
 
@@ -1566,13 +1566,13 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
     if (element.isSelfClosing || context.options.isVoidTag?.(element.tag)) {
       return element
     }
-  
+
     // 子元素 children，被漏掉的代码，会进入递归调用 parseChildren 去解析
     // <span>...</span> 标签内的模板
     ancestors.push(element)
     const mode = context.options.getTextMode(element, parent)
     const children = parseChildren(context, mode, ancestors)
- 
+
     ancestors.pop()
     element.children = children
     // P1.... 解析之后 children 里面应该包含两个 node
@@ -1630,7 +1630,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
   {
     "type":1, // 节点类型是 NodeTypes.ELEMENT
     "ns":0, // 命名空间就是 HTML
-    "tag":"span", 
+    "tag":"span",
     "tagType":0, // 标签类型 ElementTypes.ELEMENT
     "props":[ // 标签属性，这里没有
     ],
@@ -1648,9 +1648,9 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
         // 这里值的变化分两步
         // parseTag:start 的时候
         // 1. 解析出 <span ，这个时候 offset 其实是 10
-        // 2. 检测是不是自闭合标签，决定 advancedBy 
+        // 2. 检测是不是自闭合标签，决定 advancedBy
         // 移动指针位置数(自闭合：2，非自闭合：1)，到这里 offset = 11
-        "offset":11 
+        "offset":11
       },
       "source":"<span>" // 为什么不是 `<span>` ??? 漏了自闭合标签检测指针移位
     }
@@ -1713,69 +1713,686 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
   // 重点我们要看的是这个节点的 children 因为其内部有 `{{ foo < bar + foo }} text`
   // 所以它 的 element 应该有两个节点：`foo < bar + foo` 和 ` text`
   {
-      // <span> 节点本身的属性，我们重点需要关注的是 children
-      "children":[
-          { // 第一个 child 是 {{ ... }} 检测到插值进入 parseInterpolation 分支
-            // 处理，得到下面的节点结构，插值解析在 parseInterpolation 一章有分析过了
-              "type":5,
-              "content":{
-                  "type":4,
-                  "isStatic":false,
-                  "isConstant":false,
-                  "content":"foo < bar + foo",
-                  "loc":{
-                      "start":{
-                          "column":15,
-                          "line":1,
-                          "offset":14
-                      },
-                      "end":{
-                          "column":30,
-                          "line":1,
-                          "offset":29
-                      },
-                      "source":"foo < bar + foo"
-                  }
-              },
-              "loc":{
-                  "start":{
-                      "column":12,
-                      "line":1,
-                      "offset":11
-                  },
-                  "end":{
-                      "column":33,
-                      "line":1,
-                      "offset":32
-                  },
-                  "source":"{{ foo < bar + foo }}"
-              }
-          },
-          {
-              "type":2,
-              "content":" text",
-              "loc":{
-                  "start":{
-                      "column":33,
-                      "line":1,
-                      "offset":32
-                  },
-                  "end":{
-                      "column":38,
-                      "line":1,
-                      "offset":37
-                  },
-                  "source":" text"
-              }
+    // <span> 节点本身的属性，我们重点需要关注的是 children
+    "children":[
+      { // 第一个 child 是 {{ ... }} 检测到插值进入 parseInterpolation 分支
+        // 处理，得到下面的节点结构，插值解析在 parseInterpolation 一章有分析过了
+        "type":5,
+        "content":{
+          "type":4,
+          "isStatic":false,
+          "isConstant":false,
+          "content":"foo < bar + foo",
+          "loc":{
+            "start":{
+              "column":15,
+              "line":1,
+              "offset":14
+            },
+            "end":{
+              "column":30,
+              "line":1,
+              "offset":29
+            },
+            "source":"foo < bar + foo"
           }
-      ],
-      // <span> 本身节点的 loc
+        },
+        "loc":{
+          "start":{
+            "column":12,
+            "line":1,
+            "offset":11
+          },
+          "end":{
+            "column":33,
+            "line":1,
+            "offset":32
+          },
+          "source":"{{ foo < bar + foo }}"
+        }
+      },
+      {
+        "type":2,
+        "content":" text",
+        "loc":{
+          "start":{
+            "column":33,
+            "line":1,
+            "offset":32
+          },
+          "end":{
+            "column":38,
+            "line":1,
+            "offset":37
+          },
+          "source":" text"
+        }
+      }
+    ],
+    // <span> 本身节点的 loc
   }
 #+end_src
 
 这里也没什么好解释的，插值在 [[#parse-parseinterpolation][parseInterpolation]] 处分析过了，文本解析在 [[#parse-parsetext][parseText]]
 处分析了。
 
+** parseInterpolation(context, mode)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parseinterpolation
+:END:
+
+函数声明：
+
+#+begin_src typescript
+  function parseInterpolation(
+      context: ParserContext,
+      mode: TextModes
+  ): InterpolationNode | undefined {}
+#+end_src
+
+*context*: 将被解析的上下文，此时这里的 source 应该是以差值 (={{=)开始的字符串。
+
+*mode*: 文本模式。
+
+#+begin_src js
+  function parseInterpolation(context, mode) {
+    // 找出插值模板的开始和结束符号，默认是 {{ 和 }}
+    const [open, close] = context.options.delimiters;
+    const closeIndex = context.source.indexOf(close, open.length);
+    if (closeIndex === -1) {
+      emitError(context, ErrorCodes.X_MISSING_INTERPOLATION_END);
+      return undefined;
+    }
+
+    const start = getCursor(context);
+    advanceBy(context, open.length);
+
+    // 下面是从 {{ 之后的字符串开始解析
+    const innerStart = getCursor(context),
+          innerEnd = getCursor(context),
+          // 插值里面的字符串长度
+          rawContentLength = closeIndex - open.length,
+          // 插值里面的字符串内容
+          rawContent = context.source.slice(0, rawContentLength),
+          preTrimContent = parseTextData(context, rawContentLength, mode),
+          content = preTrimContent.trim(),
+          startOffset = preTrimContent.indexOf(content);
+    if (startOffset > 0) {
+      advancePositionWithMutation(innerStart, rawContent, startOffset);
+    }
+
+    // {{ foo + bar }} ->
+    // res = (' foo + bar '.length - 'foo + bar'.length - ' '.length)
+    // 插值里面字符串的长度 - 去掉空格后的长度 - 起始空格的长度，得到的
+    // 就是结束位置的 offset
+    const endOffset =
+          rawContentLength - (preTrimContent.length - content.length - startOffset);
+    advancePositionWithMutation(innerEnd, rawContent, endOffset);
+    // 定位到 }} 位置
+    advanceBy(context, close.length);
+
+    console.log(innerEnd, innerStart, "1");
+    return {
+      type: NodeTypes.INTERPOLATION,
+      content: {
+        type: NodeTypes.SIMPLE_EXPRESSION,
+        isStatic: false,
+        isConstant: false,
+        content,
+        loc: getSelection(context, innerStart, innerEnd),
+      },
+      loc: getSelection(context, start),
+    };
+  }
+#+end_src
+
+[[/img/1595570127.png]]
+
+图中我们看到在经过解析之后 innerStart 和 innerEnd 都数据都正确定位到了相应位置，
+innerStart 是解析后插值字符串的开始位置(第一个 ={= offset = 8(@@html:<font
+color='red'>@@'some {{ '的长度</font>))，innerEnd 是解析后插值字符串的结束位置
+(最后一个 =}= offset = 17(<font color="purple">'some {{ foo + bar '的长
+度))@@html:</font>@@。
+
+[[/img/parse-ts-parseinterpolation.png]]
+
+解析之后得到的 =ast.children= 将会有三个节点：
+
+#+begin_src json
+  (3) [{…}, {…}, {…}]
+  0: {type: 2, content: "some ", loc: {…}} // 左侧文本
+  1: {type: 5, content: {…}, loc: {…}} // 插值部分
+  2: {type: 2, content: " text", loc: {…}} // 右侧文本
+  length: 3
+  __proto__: Array(0)
+#+end_src
+
+解析回顾(分别解析出了三个节点对象)：
+
+1. =0: {type: 2, content: "some ", loc: {…}}=
+   :PROPERTIES:
+   :COLUMNS: %CUSTOM_ID[(Custom Id)]
+   :CUSTOM_ID: x-1
+   :END:
+   详细结构：
+
+   #+begin_src json
+     0:
+     content: "some " // 解析出的文本内容
+     loc: // 位置信息
+     end: {column: 6, line: 1, offset: 5} // 该节点在模板中的位置信息
+     source: "some " // 文本源内容
+     start: {column: 1, line: 1, offset: 0} // 该节点在模板中的结束信息
+     __proto__: Object
+     type: 2 // 节点类型
+     __proto__: Object
+   #+end_src
+
+   那么是如何得到上面的结果的呢？？？那得从 [[#parse-parsechildren][parseChildren]] 说起了，模板：
+
+   @@html:<kbd>@@
+   --->> "some {{ foo + bar }} text"
+   @@html:</kbd>@@
+
+   =(!context.inVPre && s.startsWith(context.options.delimiters[0]))=
+   @@html:<font color='red'>@@检测失败@@html:</font>@@
+
+   ~mode === TextModes.DATA && s[0] === "<"~ @@html:<font color='red'>@@检测失败@@html:</font>@@
+
+   即一开始并不会进入插值和标签解析代码，而是直接进入 [[#parse-parsetext][parseText(context, mode)]]
+   中解析文本，解析时候直到遇到 ={{= 之前都一直会当做文本解析，而之前的文本中又
+   不包含 =decodeMap= 中的字符，因此知道遇到 ={= 之前会一直执行 while 里面的：
+
+   #+begin_src js
+     if (!node) {
+       node = parseText(context, mode);
+     }
+
+     if (Array.isArray(node)) {
+       for (let i = 0; i < node.length; i++) {
+         pushNode(nodes, node[i]);
+       }
+     } else {
+       pushNode(nodes, node);
+     }
+   #+end_src
+
+   这段代码，而由于 "some " 都是普通字符，每个字符串会对应一个 node ，然后又都是
+   普通文本节点，会经过 [[#parse-pushnode][pushNode(nodes, node[i])]] 处理掉，进行合并最后成为上面的
+   一个完整的 "some " 对应[[#x-1][文本节点结构]]。
+
+2. ~1: {type: 5, content: {…}, loc: {…}}~
+   :PROPERTIES:
+   :COLUMNS: %CUSTOM_ID[(Custom Id)]
+   :CUSTOM_ID: x-2
+   :END:
+   节点结构：
+
+   #+begin_example
+   1:
+     content: // 这里的数据是经过插值解析之后的模板对象
+       content: "foo + bar" // trim 之后的插值字符串，没有 }} ???
+       isConstant: false // 非常量类型
+       isStatic: false // 非静态节点
+       loc:  // 解析之后的该节点在整个模板中的位置信息
+        // 17 -> r 所在的位置
+         end: {column: 18, line: 1, offset: 17}
+         source: "foo + bar"
+        // 8 -> f 所在的位置，即 start -> end => 'f <-> r'
+         start: {column: 9, line: 1, offset: 8}
+       __proto__: Object
+       type: 4 // 插值表达式类型
+       __proto__: Object
+    loc: // 这里是没经过去尾部空格的位置信息
+      // 20 -> 'some {{ foo + bar ' 最后一个空格位置
+       end: {column: 21, line: 1, offset: 20}
+       source: "{{ foo + bar }}"
+      // 5 -> 'some ' 第一个 { 位置
+       start: {column: 6, line: 1, offset: 5}
+       __proto__: Object
+     type: 5 // 插值类型
+     __proto__: Object
+   #+end_example
+
+   如上所注释的，第一级的 loc 是通过解析 *"{{ foo + bar}}"* 在整个模板中的位置
+   信息，content 里面包含的是插值内部的信息，即真正的表达式结构信息。
+
+3. ~{type: 2, content: " text", loc: {…}}~
+   :PROPERTIES:
+   :COLUMNS: %CUSTOM_ID[(Custom Id)]
+   :CUSTOM_ID: x-3
+   :END:
+
+   和第一步中一样，只会经过 =parseText(context, mode)= 解析出纯文本内容：" text"，最后的结构：
+   #+begin_src json
+     {
+       type: 2,
+       content: " text",
+       loc: {
+         // 从 text 前面的空格开始记录，"some {{ foo + bar }}" 长度为 20
+         start: { column: 21, line: 1, offset: 20 },
+         source: " text",
+         end: { column: 26, line: 1, offset: 25}
+       }
+     }
+   #+end_src
+
+三步分析完之后，到现在我们应该具备脱离代码就可以直接根据模板得到解析后对应的
+children 结构。分析的重点是要得到一个 ={ type, content, loc: { start, source, end }}= 结构的对象。
+
+#+begin_src json
+  // start/end:
+  {
+    column/*该节点起始结束的列，从 1 开始计数的值*/,
+    line/*该节点模板所在的行，从 1 开始计数的值*/,
+    offset/*该节点起始结束的索引，从 0 开始计数的值*/
+  }
+#+end_src
+
+#+begin_export html
+<font color="blue">PS: 对于 foo 和 bar 变量数据解析执行结果这块暂时不讨论，也不知道如何做到的，现阶段只关心模板的解析。</font>
+#+end_export
+
+** parseTag(context, type, parent)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetag
+:END:
+
+*** 阶段一([[#test-text-02][simple text<\/div>]])
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetag-01
+:END:
+
+1. 为什么只匹配 =</div= 而忽略掉最后一个 =>=???
+   参数:
+   #+begin_src typescript
+     function parseTag(
+         context: ParserContext, // 要继续解析的模板对象 simple text</div> 里面的 </div>
+         type: TagType, // Start(<div>), End(</div>)开始结束标签
+         parent: ElementNode | undefined // 该标签的父级
+     ): ElementNode
+   #+end_src
+
+   具体实现：
+
+   #+begin_src js
+     function parseTag(context, type, parent) {
+       // 获取当前解析的起始位置，此时值应该是 simple text 的长度
+       const start = getCursor(context);
+       // 匹配 </div 过滤掉空格字符，但是为什么要把 > 给忽略掉???
+       const match = /^<\/?([a-z][^\t\r\n\f />]*)/i.exec(context.source);
+       const tag = match[1];
+       const ns = context.options.getNamespace(tag, parent);
+       // 改变位移，将 offset 定位到 </div> 的最有一个 > 上
+       advanceBy(context, match[0].length);
+       // 过滤掉空格
+       advanceSpaces(context);
+
+       const cursor = getCursor(context);
+       const currSource = context.source;
+     }
+   #+end_src
+
+*** 阶段二([[#test-text-05][test-text-05]])
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetag-02
+:END:
+
+满足用例 5(=some <span>{{ foo < bar + foo }} text</span>=) 的代码实现，这里只需
+要能解析 =<span> ... </span>= 标签就可以，没有 =pre=, =v-pre=, =<span/>自闭合标
+签= ，因此下面省略这几部分检测代码。
+
+#+begin_src js
+  function parseTag(context, type, parent) {
+    // 获取当前解析的起始位置，此时值应该是 some text 的长度
+    const start = getCursor(context)
+    // 匹配 </div 过滤掉空格字符，但是为什么要把 > 给忽略掉???
+    const match = /^<\/?([a-z][^\t\r\n\f />]*)/i.exec(context.source)
+    const tag = match[1]
+    const ns = context.options.getNamespace(tag, parent)
+    // log1: 改变位移，将 offset 定位到 </div> 的最有一个 > 上
+    // 在这里 context.offset = 10, context.line = 1
+    advanceBy(context, match[0].length)
+    // 过滤掉空格
+    advanceSpaces(context)
+    // log2: 经过 advance之后 context.offset = 15, context.line = 1
+    // 正好过滤 </div 5个字符
+    const cursor = getCursor(context)
+    const currSource = context.source
+
+    // TODO-1 解析标签元素的属性
+
+    // TODO-2 in pre ...
+
+    // TODO-3 v-pre 指令
+
+    // TODO-3 <div/> 自闭标签
+    // 这里要实现，不然最后解析完成之后 source 会是：>...</span>
+    // 需要检测下是不是自闭合标签来移动指针位置
+    let isSelfClosing = false
+    if (context.source.length === 0) {
+      emitError(context, ErrorCodes.EOF_IN_TAG)
+    } else {
+      // some <div> ... </div> 到这里的 source = > ... </div>
+      // 所以可以检测是不是以 /> 开头的
+      isSelfClosing = context.source.startsWith('/>')
+      if (type === TagType.End && isSelfClosing) {
+        emitError(context, ErrorCodes.END_TAG_WITH_TRAILING_SOLIDUS)
+      }
+      // 如果是自闭合指针移动两位(/>)，否则只移动一位(>)
+      // 到这里 source = ... </div>
+      advanceBy(context, isSelfClosing ? 2 : 1)
+    }
+
+    let tagType = ElementTypes.ELEMENT
+    const options = context.options
+    // 不是 v-pre，且不是自定义组件，这个 if 目的是为了检测并改变
+    // tagType 标签类型
+    if (!context.inVPre && !options.isCustomElement(tag)) {
+      // TODO-4 检测 tagType
+    }
+
+    return {
+      type: NodeTypes.ELEMENT,
+      ns,
+      tag,
+      tagType,
+      props,
+      isSelfClosing: false, // TODO
+      children: [],
+      loc: getSelection(context, start),
+      codegenNode: undefined
+    }
+  }
+#+end_src
+
+要能通过[[#test-text-05][用例5]]必须搭配 [[#parse-parseelement][parseElement(context, ancestors)]] 才行，并且重点在
+*parseElement* 中，因为有了开始标签才会有结束标签的解析，不然会触发结束标签解析分
+支里面的 error:
+
+#+begin_src js
+  else if (/[a-z]/i.test(s[2])) {
+    // 这里都出错了，为啥后面还有个 parseTag ???
+    emitError(context, ErrorCodes.X_INVALID_END_TAG)
+    parseTag(context, TagType.End, parent)
+    continue
+  }
+#+end_src
+
+因此如果这里不会触发 X_INVALID_END_TAG 那必定是 parseElement 里面做了什么处理，
+这个实现了 parseElement 才得以知晓(目前只是猜测~~~)，[[#parse-parseelement][传送门🚪>>>]]
+
+*** 阶段三([[#test-element-03][test-element-03]])
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetag-03
+:END:
+
+支持自闭标签解析，实现了阶段二之后，这里其实很简单，在上一阶段中的实现在
+parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这个用例，只要将
+它的值赋值为实际的 =isSelfClosing= 就可以了。
+
+#+begin_src js
+  parseTag() {
+    // ...
+    let isSelfClosing = false
+    if (context.source.length === 0) {
+      emitError(context, ErrorCodes.EOF_IN_TAG)
+    } else {
+      // some <div> ... </div> 到这里的 source = > ... </div>
+      // 所以可以检测是不是以 /> 开头的
+      isSelfClosing = context.source.startsWith('/>')
+      if (type === TagType.End && isSelfClosing) {
+        emitError(context, ErrorCodes.END_TAG_WITH_TRAILING_SOLIDUS)
+      }
+      // 如果是自闭合指针移动两位(/>)，否则只移动一位(>)
+      // 到这里 source = ... </div>
+      advanceBy(context, isSelfClosing ? 2 : 1)
+    }
+    // ...
+  }
+#+end_src
+
+*** 阶段四(支持 template + v-if)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetag-04
+:END:
+
+#+begin_src js
+  function parseTag(context, type, parent) {
+    // 获取当前解析的起始位置，此时值应该是 some text 的长度
+    const start = getCursor(context)
+    // 匹配 <div 或 </div 过滤掉空格字符，但是为什么要把 > 给忽略掉???
+    // 其实不是忽略掉 > 而是因为如果是 <div 开头，那么后面有可能是 < 或
+    // /> 后面需要处理闭合和非闭合问题
+    const match = /^<\/?([a-z][^\t\r\n\f />]*)/i.exec(context.source)
+    const tag = match[1]
+    const ns = context.options.getNamespace(tag, parent)
+    // log1: 改变位移，将 offset 定位到 </div> 的最有一个 > 上
+    // 在这里 context.offset = 10, context.line = 1
+    advanceBy(context, match[0].length)
+    // 过滤掉空格
+    advanceSpaces(context)
+    // log2: 经过 advance 之后 context.offset = 15, context.line = 1
+    // 正好过滤 </div 5 个字符
+    const cursor = getCursor(context)
+    const currSource = context.source
+
+    // 解析标签元素的属性
+    let props = parseAttributes(context, type)
+
+    // TODO-2 in pre ...
+
+    // TODO-3 v-pre 指令
+
+    // ....
+
+    let tagType = ElementTypes.ELEMENT
+    const options = context.options
+    // 不是 v-pre，且不是自定义组件，这个 if 目的是为了检测并改变
+    // tagType 标签类型
+    // TODO-4 检测 tagType
+    if (!context.inVPre && !options.isCustomElement(tag)) {
+      // 是否有 is 指令？
+      const hasVIs = props.some(
+        (p) => p.type === NodeTypes.DIRECTIVE && p.name === 'is'
+      )
+
+      if (options.isNativeTag && !hasVIs) {
+        // 没有 is 指令，且不是原生标签，那就是自定义的组件了
+        if (!options.isNativeTag(tag)) tagType = ElementTypes.COMPONENT
+      } else if (
+        hasVIs ||
+          isCoreComponent(tag) ||
+          options.isBuiltInComponent?.(tag) ||
+          /^[A-Z]/.test(tag) ||
+          tag === 'component'
+      ) {
+        // 有 is 指令 || vue 核心组件(keep-alive...) || 内置组件
+        // || 标签名大写开头
+        tagType === ElementTypes.COMPONENT
+      }
+
+      if (tag === 'slot') {
+        tagType === ElementTypes.SLOT
+      } else if (
+        tag === 'template' &&
+          props.some(
+            (p) =>
+            p.type === NodeTypes.DIRECTIVE && isSpecialTemplateDirective(p.name)
+          )
+      ) {
+        // 是模板的前提是有指令，并且是特殊的模板指令
+        tagType = ElementTypes.TEMPLATE
+      }
+    }
+
+    const val = {
+      type: NodeTypes.ELEMENT,
+      ns,
+      tag,
+      tagType,
+      props: [], // TODO
+      isSelfClosing,
+      children: [],
+      loc: getSelection(context, start),
+      codegenNode: undefined
+    }
+    return val
+  }
+#+end_src
+
+这里的实现涉及到几个新的函数：
+
+1. =options.isCustomElement(tag)= 默认在 options 里面是 =NO=
+
+2. =options.isNativeTag(tag)= 作为可选 =OptionalOptions= 选项类型，并没默认值
+
+3. =isCoreComponent(tag)= vue 内部作为核心组件的标签
+
+   #+begin_src json
+     { // 主要就这四个
+       Teleport: TELEPORT,
+       Suspense: SUSPENSE,
+       KeepAlive: KEEP_ALIVE,
+       BaseTransition: BASE_TRANSITION
+     }
+   #+end_src
+
+4. =options.isBuiltInComponent?.(tag)=  和 =isNativeTag= 一样作为可选选项，无默认值
+
+5. =isSpecialTemplateDirective(p.name)= 特殊的模板指令
+
+   #+begin_src typescript
+     const isSpecialTemplateDirective = /*#__PURE__*/ makeMap(
+         `if,else,else-if,for,slot`
+     )
+   #+end_src
+
+   从上面的代码可以看出，如果要被定义为是 =<template>= 类型必须包含
+   =if,else,else-if,for,slot= 这其中的任一个指令属性，判断条件：
+
+   #+begin_src js
+     if (
+       tag === 'template' &&
+         props.some(
+           (p) =>
+           // isSpecialTemplateDirective 是使用 makeMap 创建的函数
+           // 即 key => true/false 的一些函数
+           p.type === NodeTypes.DIRECTIVE && isSpecialTemplateDirective(p.name)
+         )
+     ) {
+       // 是模板的前提是有指令，并且是特殊的模板指令(if, else, else-if, slot, for)
+       tagType = ElementTypes.TEMPLATE
+     }
+   #+end_src
+
+** parseText(context, mode)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetext
+:END: 
+
+解析文本节点，直到遇到结束标记(=<=, ={{=, =]]>=)。
+
+#+begin_src typescript
+  function parseText(context: ParserContext, mode: TextModes): TextNode {
+      __TEST__ && assert(context.source.length > 0)
+
+      const endTokens = ['<', context.options.delimiters[0]]
+      if (mode === TextModes.CDATA) {
+          endTokens.push(']]>')
+      }
+
+      let endIndex = context.source.length
+      for (let i = 0; i < endTokens.length; i++) {
+          const index = context.source.indexOf(endTokens[i], 1)
+          if (index !== -1 && endIndex > index) {
+              endIndex = index
+          }
+      }
+
+      __TEST__ && assert(endIndex > 0)
+
+      const start = getCursor(context)
+      // 文本内容可能包含 &gt; &lt; &amp; &apos; &quot; 等html符号，需要
+      // 将他们替换成对应 >    <    &     '      "
+      const content = parseTextData(context, endIndex, mode)
+
+      return {
+          type: NodeTypes.TEXT,
+          content,
+          loc: getSelection(context, start)
+      }
+  }
+#+end_src
+
+导图：
+
+[[/img/parse-ts-parsetext.png]]
+
+** parseTextData(context, length, mode)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsetextdata
+:END: 
+
+文本节点可能包含数据，通过 *context.options.decodeEntities(???)* 来解析。
+
+一些字符的 html 书写格式，有 =/&(gt|lt|amp|apos|quot);/= ，最终会被对应的字符替换掉。
+
+=decodeEntities: (rawText: string): string => rawText.replace(decodeRE, (_, p1) => decodeMap[p1])=
+
+字符集：
+
+#+begin_src typescript
+  const decodeMap: Record<string, string> = {
+      gt: '>',
+      lt: '<',
+      amp: '&',
+      apos: "'",
+      quot: '"'
+  }
+#+end_src
+
+代码：
+
+#+begin_src typescript
+  /**
+   ,* Get text data with a given length from the current location.
+   ,* This translates HTML entities in the text data.
+   ,*/
+  function parseTextData(
+      context: ParserContext,
+      length: number,
+      mode: TextModes
+  ): string {
+      const rawText = context.source.slice(0, length)
+      advanceBy(context, length)
+      if (
+          mode === TextModes.RAWTEXT ||
+              mode === TextModes.CDATA ||
+              rawText.indexOf('&') === -1
+      ) {
+          return rawText // 如果不包含 &gt; &lt; 等html标记
+      } else {
+          // DATA or RCDATA containing "&"". Entity decoding required.
+          // 如果字符串中包含这些字符，得去将他们替换成对应的明文字符。
+          return context.options.decodeEntities(
+              rawText,
+              mode === TextModes.ATTRIBUTE_VALUE
+          )
+      }
+  }
+#+end_src
+
+导图：
+[[/img/parse-ts-parsetextdata.png]]
 
 * 重要类型声明
 
@@ -1930,7 +2547,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: link-02
-:END: 
+:END:
 3. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-02-some-text-div-02][text02: some text \<div> 02 代码备份]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -1940,17 +2557,17 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: link-04
-:END: 
+:END:
 5. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-03-interpolation][text04: some {{ a<b && c>d }} text 代码备份]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: link-05
-:END: 
+:END:
 6. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/comment-test][comment: <!--x-->注释解析代码备份]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: link-06
-:END: 
+:END:
 
 * 问题/疑问列表
 :PROPERTIES:
@@ -1962,7 +2579,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 1. @@html:<font color='red'>@@如何区分内置标签|内置组件|核心组件|自定义组件？[[#parse-parsetag-04][🛫]]@@html:</font>@@
 
 2. @@html:<font color='red'>@@为什么 [parseTag](#parse-parsetag) 解析 `<div>` 之后只会得
-   到 `<div` 而不会将 `>` 解析进去？[🛫](#parse-parseelement)@@html:</font>@@ 
+   到 `<div` 而不会将 `>` 解析进去？[🛫](#parse-parseelement)@@html:</font>@@
 
    #+begin_example
    答：是因为漏掉实现了一部分代码，自闭合标签的检测，移动指针(2/1位)
@@ -1972,8 +2589,8 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
    #+begin_src js
      function parseTag(context, type) {
        // .... 省略
-  
-  
+
+
        // TODO-3 <div/> 自闭标签
        // 这里要实现，不然最后解析完成之后 source 会是：>...</span>
        // 需要检测下是不是自闭合标签来移动指针位置
@@ -1991,7 +2608,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
          // 到这里 source = ... </div>
          advanceBy(context, isSelfClosing ? 2 : 1)
        }
-  
+
        // ... 省略
      }
    #+end_src
@@ -2004,21 +2621,20 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 
    #+begin_src js
      // 解析流程(用例5)：
-     // 1. 先 parseChildren(context, mode, ancestors) 
+     // 1. 先 parseChildren(context, mode, ancestors)
      // 解析 `some <span>{{ foo < bar + foo }} text</span>`
      //   1) 首先得到的是 `some ` 文本节点
-     //   2) 检测到 <span> 进入标签解析 parseElement(context, ancestors) 注意这里的 		//				ancestors，是由 parseChildren 继承过来的
+     //   2) 检测到 <span> 进入标签解析 parseElement(context, ancestors) 注意这里的     //				ancestors，是由 parseChildren 继承过来的
      // 2. 进入 parseElement 解析进程
-     //   	1) 遇到 <span> 解析出标签节点 span
-     //   	2) 在自身函数内检测到标签内还有内容，重新调用 parseChildren(..., ancestors) 
+     //     1) 遇到 <span> 解析出标签节点 span
+     //     2) 在自身函数内检测到标签内还有内容，重新调用 parseChildren(..., ancestors)
      //    3) 所以重点来了
      // ...
      // ...
      // ancestors 是 parseChildren 传递过来的，parseElement 里面将
-     // push 的目的：让子节点有所依赖，知道自己的父级是谁，但好像 parseChildren 里面用到 
-     // 		parent 也是为了获取命名空间去用了
+     // push 的目的：让子节点有所依赖，知道自己的父级是谁，但好像 parseChildren 里面用到
+     //     parent 也是为了获取命名空间去用了
      // pop 的目的：难道是为了不污染 ancestors ???
    #+end_src
 
    好像还不是很明确为何要 push->pop。
-

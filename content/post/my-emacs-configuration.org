@@ -86,6 +86,17 @@
 ** vue-mode
    [[https://github.com/syl20bnr/spacemacs/tree/develop/layers/%2Bframeworks/vue][vue-mode-key-bindings]]
 
+** smartparens(括号操作)
+
+| key   | function               |
+|-------+------------------------|
+| =C-<= | sp-backward-slurp-sexp |
+| =C->= | sp-forward-slurp-sexp  |
+| =s-<= | sp-backward-barf-sexp  |
+| =s->= | sp-forward-barf-sexp   |
+| =C-{= | sp-backward-sexp       |
+| =C-}= | sp-forward-sexp        |
+
 * Modes
 ** DONE ranger
    CLOSED: [2020-08-27 Thu 21:14]
@@ -167,7 +178,6 @@
 ** TODO multiple-cursors
 ** TODO prodigy
    blog settings.
-
 
 
 ** TODO wrap-region
