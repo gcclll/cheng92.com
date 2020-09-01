@@ -44,7 +44,7 @@
   | ~SPC o !~   | zilongshanren/iterm-shell-command, go current dir & run command              |
   | ~SPC o e~   | tiny-expand                                                                  |
   | ~SPC o i~   | org-mode insert command                                                      |
-  | ~SPC o i t~ | org-set-tags-command, --> :done:                                            |
+  | ~SPC o i t~ | org-set-tags-command, --> :done:                                             |
   |-------------+------------------------------------------------------------------------------|
   | ~SPC p b~   | counsel-projectile-switch-to-buffer                                          |
   | ~SPC p t~   | my-simple-todo                                                               |
@@ -69,6 +69,8 @@
   | ~s-p~       | find-file-in-project                                                         |
   |-------------+------------------------------------------------------------------------------|
   | ~, '~       | ielm, lisp-repl                                                              |
+  | ~, g d~     | xref-find-definition                                                         |
+  | ~, g b~     | xref-pop-marker-stack                                                       |
   |-------------+------------------------------------------------------------------------------|
   | ~+~         | evil-numbers/inc-at-pt，number +1                                            |
   | ~-~         | evil-numbers/dec-at-pt, number -1                                            |
@@ -90,12 +92,19 @@
 
 | key   | function               |
 |-------+------------------------|
-| =C-<= | sp-backward-slurp-sexp |
-| =C->= | sp-forward-slurp-sexp  |
-| =s-<= | sp-backward-barf-sexp  |
-| =s->= | sp-forward-barf-sexp   |
+| =C-(= | sp-backward-slurp-sexp |
+| =s-(= | sp-backward-barf-sexp  |
+| =C-)= | sp-forward-slurp-sexp  |
+| =s-)= | sp-forward-barf-sexp   |
 | =C-{= | sp-backward-sexp       |
 | =C-}= | sp-forward-sexp        |
+
+** move-text, up/down
+
+| key   | function      |
+|-------+---------------|
+| ~s-<~ | move-text-up  |
+| ~s->~ | move-text-down |
 
 * Modes
 ** DONE ranger
