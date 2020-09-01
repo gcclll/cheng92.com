@@ -2394,10 +2394,398 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
 导图：
 [[/img/parse-ts-parsetextdata.png]]
 
+** parseAttribute(context, nameSet)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parseattribute
+:END: 
+
+解析标签属性或指令：
+
+#+begin_src js
+  function parseAttribute(context, nameSet) {
+    const start = getCursor(context)
+    const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source)
+    const name = match[0]
+
+    if (nameSet.has(name)) {
+      // 重复属性名
+      emitError(context, ErrorCodes.DUPLICATE_ATTRIBUTE)
+    }
+    nameSet.add(name)
+
+    if (name[0] === '=') {
+      // =name=value ?
+      emitError(context, ErrorCodes.UNEXPECTED_EQUALS_SIGN_BEFORE_ATTRIBUTE_NAME)
+    }
+
+    {
+      const pattern = /["'<]/g
+      let m
+      while ((m = pater.exec(name))) {
+        // 不合法的属性名
+        emitError(
+          context,
+          ErrorCodes.UNEXPECTED_CHARACTER_IN_ATTRIBUTE_NAME,
+          m.index
+        )
+      }
+    }
+
+    // 移动指针
+    advanceBy(context, name.length)
+
+    // type: { content, isQuoted, loc }
+    let value
+
+    // 去空格解析属性值
+    if (/^[\t\r\n\f ]*=/.test(context.source)) {
+      // 属性名与 = 之间存在空格的情况，去掉空格
+      advanceSpaces(context)
+      advanceBy(context, 1)
+      advanceSpaces(context)
+      // 去掉空格之后解析属性值
+      value = parseAttributeValue(context)
+      if (!value) {
+        emitError(context, ErrorCodes.MISSING_ATTRIBUTE_VALUE)
+      }
+    }
+
+    const loc = getSelection(context, start)
+
+    // v-dir 或 缩写
+    if (!context.inVPre && /^(v-|:|@|#)/.test(name)) {
+      // ?: 非捕获组
+      // 1. (?:^v-([a-z0-9]+))? -> 匹配 v-dir 指令，非贪婪匹配，捕获指令名
+      //   称([a-z0=9]+)
+      // 2. (?:(?::|^@|^#)([^\.]+))? -> 匹配 :,@,#
+      // 3. (.+)?$ 匹配任意字符
+      const match = /(?:^v-([a-z0-9]+))?(?:(?::|^@|^#)([^\.]+))?(.+)?$/i.exec(
+        name
+      )
+
+      let arg
+
+      // ([a-z0-9]+), ([^\.]+)
+      if (match[2]) {
+        const startOffset = name.indexOf(match[2])
+        const loc = getSelection(
+          context,
+          getNewPosition(context, start, startOffset),
+          getNewPosition(context, start, startOffset + match[2].length)
+        )
+
+        let content = match[2]
+        let isStatic = true // 静态属性名
+
+        // 动态属性名解析
+        if (content.startsWith('[')) {
+          isStatic = false
+
+          if (!content.endsWith(']')) {
+            // 如果是动态属性名，必须是 [varName] 形式
+            emitError(
+              context,
+              ErrorCodes.X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END
+            )
+          }
+
+          content = content.substr(1, content.length - 2)
+        }
+
+        arg = {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content,
+          isStatic,
+          isConstant: isStatic,
+          loc
+        }
+      }
+
+      // 属性是否被引号包起来
+      if (value && value.isQuoted) {
+        const valueLoc = value.loc
+        valueLoc.start.offset++
+        valueLoc.start.column++
+        valueLoc.end = advancePositionWithClone(valueLoc.start, value.content)
+        // 取引号内的所有内容
+        valueLoc.source = valueLoc.source.slice(1, -1)
+      }
+
+      return {
+        type: NodeTypes.DIRECTIVE,
+        // : -> v-bind, @ -> v-on, # -> v-slot 的缩写
+        name:
+          match[1] ||
+          (name.startsWith(':') ? 'bind' : name.startsWith('@') ? 'on' : 'slot'),
+        exp: value && {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content: value.content,
+          isStatic: false,
+          isConstant: false,
+          loc: value.loc
+        },
+        arg,
+        // 修饰符处理, v-bind.m1.m2 -> .m1.m2 -> ['m1', 'm2']
+        modifiers: match[3] ? match[3].substr[1].split('.') : [],
+        loc
+      }
+    }
+
+    return {
+      type: NodeTypes.ATTRIBUTE,
+      name,
+      value: value && {
+        type: NodeTypes.TEXT,
+        content: value.content,
+        loc: value.loc
+      },
+      loc
+    }
+  }
+#+end_src
+
+该函数实现主要有几部分(以 ~<div v-bind:keyup.enter.prevent="ok"></div>~ 为例)：
+
+1. 匹配属性名，关键正则： ~/^[^\t\r\n\f />][^\t\r\n\f />=]*/~ 会将
+   ~v-if="varname"~ 中等号前面的 ~v-bind:keyup.enter.prevent~ 都匹配出来。
+2. 将匹配到的属性名收集到 =nameSet[]= 中，检测重复性。
+   
+   @@html:<font color='purple'>@@这里需要注意的是，属性名匹配的结果会将变量名，
+   修饰符都匹配到，如： ~<div v-bind:keyup.enter.prevent="ok">~ ，最后
+   add 到 nameSet 中的完整属性名为： ~v-bind:keyup.enter.prevent~ 。
+   @@html:</font>@@
+
+3. 非法属性名检测(如： ~=name=value~ ，或属性名中包含 =["'<]= 字符)，异常
+4. 移动指针 =advanceBy(context, name.length)= 定位到属性名后的位置，目的是为了取
+   属性值，剩下： =="ok"= 。
+5. 正则： =/^[\t\r\n\f ]*=/= ，解析属性值，调用 [[#pars-parseattributevalue][parseAttributeValue]] 解析出属性值来
+   1. 指针归位至开始位置，如： ~v-bind:keyup.enter.prevent="ok"~ 的开始位置为
+      ~v~ 位置，解析修饰符，得到 ~modifiers: []~ ，这里的关键在于正
+      则： ~/(?:^v-([a-z0-9]+))?(?:(?::|^@|^#)([^\.]+))?(.+)?$/i~ ，会匹配 ~v-if,
+      :, @, #...~ 指令和指令缩写以及修饰符。
+   2. 解析指令后面的变量名称，如： =keyup= ，有可能是动态值 =v-bind:[varname]= 。
+   3. 检测属性值有没被引号包起来，如果有，要更新 =value.loc= ，只取引号内的内容
+      ~content.source = valueLoc.source.slice(1, -1)~
+   4. 返回指令节点类型对象
+6. 否则返回普通属性类型节点
+
+** parseAttributeValue(context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parseattributevalue
+:END: 
+
+解析属性值。
+
+#+begin_src js
+  function parseAttributeValue(context) {
+    // 保存模板字符串指针起点位置
+    const start = getCursor(context)
+
+    let content
+
+    const quote = context.source[0]
+    const isQuoted = quote === `"` || quote === `'`
+    if (isQuoted) {
+      // 有引号
+      advanceBy(context, 1)
+      const endIndex = context.source.indexOf(quote)
+      // 没有结束引号??? 整个 source 当做文本数据处理???
+      if ((endIndex = -1)) {
+        content = parseTextData(
+          context,
+          context.source.length,
+          TextModes.ATTRIBUTE_VALUE
+        )
+      } else {
+        content = parseTextData(context, endIndex, TextModes.ATTRIBUTE_VALUE)
+        advanceBy(context, 1)
+      }
+    } else {
+      // 没有引号
+      const match = /^[^\t\r\n\f >]+/.exec(context.source)
+      if (!match) {
+        // 无属性值
+        return undefined
+      }
+
+      const unexpectedChars = /["'<=`]/g
+      let m
+      while ((m = unexpectedChars.exec(match[0]))) {
+        // 无引号值中非法字符检测
+        emitError(
+          context,
+          ErrorCodes.UNEXPECTED_CHARACTER_IN_UNQUOTED_ATTRIBUTE_VALUE
+        )
+      }
+
+      // 解析文本数据
+      content = parseTextData(context, match[0].length, TextModes.ATTRIBUTE_VALUE)
+    }
+
+    return { content, isQuoted, loc: getSelection(context, start) }
+  }
+#+end_src
+
+** pushNode(nodes, node)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-pushnode
+:END: 
+
+1. 注释节点不处理
+2. 合并文本节点(前提是 prev, node 两个节点是紧挨着的，由 =loc.end.offset= 和
+   =loc.start.offset= 判断)
+3. 返回新增 node 的 nodes 节点数组
+
+#+begin_src js
+  function pushNode(nodes: TemplateChildNode[], node: TemplateChildNode): void {
+    // ignore comments in production
+    /* istanbul ignore next */
+    if (!__DEV__ && node.type === NodeTypes.COMMENT) {
+      return
+    }
+
+    if (node.type === NodeTypes.TEXT) { // 两个连着的文本节点，拼凑到一起去
+      const prev = last(nodes)
+      // Merge if both this and the previous node are text and those are
+      // consecutive. This happens for cases like "a < b".
+      if (
+        prev &&
+          prev.type === NodeTypes.TEXT &&
+          prev.loc.end.offset === node.loc.start.offset
+      ) {
+        prev.content += node.content
+        prev.loc.end = node.loc.end
+        prev.loc.source += node.loc.source
+        return
+      }
+    }
+
+    nodes.push(node)
+  }
+#+end_src
+
+** isEnd(context, mode, ancestors)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-isend
+:END: 
+
+#+begin_src js
+  function isEnd(
+    context: ParserContext,
+    mode: TextModes,
+    ancestors: ElementNode[]
+  ): boolean {
+    const s = context.source
+
+    switch (mode) {
+      case TextModes.DATA:
+        if (startsWith(s, '</')) {
+          //TODO: probably bad performance
+          for (let i = ancestors.length - 1; i >= 0; --i) {
+            if (startsWithEndTagOpen(s, ancestors[i].tag)) {
+              return true
+            }
+          }
+        }
+        break
+
+      case TextModes.RCDATA:
+      case TextModes.RAWTEXT: {
+        const parent = last(ancestors)
+        if (parent && startsWithEndTagOpen(s, parent.tag)) {
+          return true
+        }
+        break
+      }
+
+      case TextModes.CDATA:
+        if (startsWith(s, ']]>')) {
+          return true
+        }
+        break
+    }
+
+    return !s
+  }
+#+end_src
+
+** getCursor(context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-getCursor
+:END: 
+
+#+begin_src typescript
+  function getCursor(context: ParserContext): Position {
+      const { column, line, offset } = context
+      return { column, line, offset }
+  }
+#+end_src
+
+** getSelection(context, start, end?: Postion)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-getselection
+:END: 
+
+取实时解析后的 source，start，end 的值。
+
+#+begin_src typescript
+  function getSelection(
+      context: ParserContext,
+      start: Position,
+      end?: Position
+  ): SourceLocation {
+      end = end || getCursor(context)
+      return {
+          start,
+          end,
+          source: context.originalSource.slice(start.offset, end.offset)
+      }
+  }
+#+end_src
+
 * 重要类型声明
 
 该模块所有类型声明统一归类到此，顺序按照用例解析遇到的顺序为主。
+** defaultParserOptions
 
+#+begin_src typescript
+  // 默认的解析器选项
+  export const defaultParserOptions: MergedParserOptions = {
+      delimiters: [`{{`, `}}`],
+      getNamespace: () => Namespaces.HTML, // 命名空间
+      getTextMode: () => TextModes.DATA, // 文本类型
+      isVoidTag: NO, // 自关闭标签???，如：<img>, <hr> ...
+      isPreTag: NO, // <pre> 代码标签???，需要保留空格保证缩进的
+      isCustomElement: NO, // 自定义标签，如：Transition
+      decodeEntities: (rawText: string): string => 
+          // 解码实例，一些特殊符号表示，如：&gt;, &lt;, &amp;, &apos; &quot;
+          rawText.replace(decodeRE, (_, p1) => decodeMap[p1]),
+      onError: defaultOnError
+  }
+#+end_src
+
+** TextModes
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: td-vars-textmodes
+:END: 
+
+#+begin_src typescript
+  export const enum TextModes {
+      //          | Elements | Entities | End sign              | Inside of
+      DATA, //    | ✔        | ✔        | End tags of ancestors |
+      RCDATA, //  | ✘        | ✔        | End tag of the parent | <textarea>
+      RAWTEXT, // | ✘        | ✘        | End tag of the parent | <style>,<script>
+      CDATA,
+      ATTRIBUTE_VALUE
+  }
+#+end_src
 ** ParserOptions
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -2578,8 +2966,8 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
 
 1. @@html:<font color='red'>@@如何区分内置标签|内置组件|核心组件|自定义组件？[[#parse-parsetag-04][🛫]]@@html:</font>@@
 
-2. @@html:<font color='red'>@@为什么 [parseTag](#parse-parsetag) 解析 `<div>` 之后只会得
-   到 `<div` 而不会将 `>` 解析进去？[🛫](#parse-parseelement)@@html:</font>@@
+2. @@html:<font color='red'>@@为什么 [[#parse-parsetag][parseTag]] 解析 =<div>= 之后只会得
+   到 =<div= 而不会将 =>= 解析进去？[[#parse-parseelement][🛫]] @@html:</font>@@
 
    #+begin_example
    答：是因为漏掉实现了一部分代码，自闭合标签的检测，移动指针(2/1位)
@@ -2613,7 +3001,8 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
      }
    #+end_src
 
-3. @@html:<font color='red'>@@为什么 [parseElement](#parse-parseelement) 解析 children 的时候先 ancestors.push(element) 解析之后又 pop() 掉？@@html:</font>@@
+3. @@html:<font color='red'>@@为什么 [[#parse-parseelement][parseElement]] 解析 children 的时候先
+   ancestors.push(element) 解析之后又 pop() 掉？@@html:</font>@@
 
    #+begin_example
    答：要回到这个问题要从 parseChildren 和 parseElement 两个函数结合来看，如下代码分析
