@@ -17,39 +17,912 @@
 
 1. [[#issues][源码相关的疑问/问题列表及其解答]] 🛳 🛳 🛳 🛳 🛳
 2. [[#stage_code][阶段性的代码备份(比如能 pass 某个用例)]] 🚘 🚘 🚘 🚘 🚘
-* 测试用例分析
-原本是想直接根据源码去了解这部分的实现原理的，但是发现纯粹的代码分析有点困难，这
-部分不像 reactivity 模块那么直观，并且感觉这块比 reactivity 复杂的多，因此先探究
-如何使用，从如何使用到怎么实现去逐步实现，分析源代码。
+3. [[/vue/vue-mind-map-house/][所有脑图列表及简要解析]]
 
-compiler-core 模块的测试用例包含以下部分，将依次进行分析：
-
-1. [ ] parse.spec.ts
-2. [-] compile.spec.ts
-3. [-] codegen.spec.ts
-4. [-] scopeId.spec.ts
-5. [-] transform.spec.ts
-6. [ ] transforms/
-   1. [ ] hoistStatic.spec.ts.
-   2. [ ] noopDirectiveTransform.spec.ts
-   3. [ ] transformElement.spec.ts
-   4. [ ] transformExpressions.spec.ts
-   5. [ ] transformSlotOutlet.spec.ts
-   6. [ ] transformText.spec.ts
-   7. [ ] vBind.spec.ts
-   8. [ ] vFor.spec.ts
-   9. [ ] vIf.spec.ts
-   10. [ ] vModel.spec.ts
-   11. [ ] vOn.spec.ts
-   12. [ ] vOnce.spec.ts
-   13. [ ] vSlot.spec.ts
-7. [-] utils.spec.ts
-8. [-] testUtils.ts
-**  parse.spec.ts
-
+* parse.spec.ts
 测试用例结构：compiler: parse
-*** Element 元素标签解析
-**** 05-template element with directives
+截止：2020-09-02 22:53:14
+
+[[#test-parse-all][所有用例全部通过：parse.ts 的解析功能几乎全部实现(可能会有遗漏)]]
+
+** ErrorCodes 各种错误情况用例
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-parse-errors
+:END: 
+不通过用例：
+- ~<textarea></div></textarea>~
+- ~<template><svg><![CDATA[cdata]]></svg></template>~
+
+用例代码：
+
+#+begin_src js
+  const ast = baseParse(code, {
+    getNamespace: (tag, parent) => {
+    // 这里作用是改变命名空间，从而在 parseChildren while 循环里面
+    // 能进入到 parseCDATA 解析 svg
+      const ns = parent ? parent.ns : Namespaces.HTML;
+      if (ns === Namespaces.HTML) {
+        if (tag === "svg") {
+          return Namespaces.HTML + 1;
+        }
+      }
+      return ns;
+    },
+    getTextMode: ({ tag }) => {
+    // 这里作用改变 textarea 标签的 mode = RCDATA，从而在 parseChildren while
+    // 里面将 textarea 内部的都当做文本交给 parseText 去解析，parseText 里面会从 
+    // </div></textarea> 第二个字符开始匹配 `<` 或 `{{` 以示结束标签的开始位置
+    // 最后解析出 `</div>` 这个纯文本，剩下的 </textarea> 进入 isEnd
+    // 在实现 isEnd 里面的 case RCDATA 分支后顺利推出循环
+      if (tag === "textarea") {
+        return TextModes.RCDATA;
+      }
+      if (tag === "script") {
+        return TextModes.RAWTEXT;
+      }
+      return TextModes.DATA;
+    },
+    ...options,
+    onError: spy,
+  });
+#+end_src
+
+大部分都能通过，只有少部分不能通过的分为几种：
+1. CDATA 类型处理，需要实现 parseBogusComment 和 parseCDATA 两个函数
+2. RCDATA 类型几个用例不能通过，原因在于在 isEnd 函数中没有实现除 DATA 类型外的
+   情况，实现之后就能正常检测 RCDATA 的结束标签。
+   #+begin_src js
+     function isEnd(
+       context /*ParserContext*/,
+       mode /*TextModes*/,
+       ancestors /*ElementNode[]*/
+     ) /*boolean*/ {
+       const s = context.source;
+
+       // mode 为 TextModes 各种情况
+       // ...省略
+       switch (mode) {
+         case TextModes.DATA:
+           if (s.startsWith("</")) {
+             // 标签
+             for (let i = ancestors.length - 1; i >= 0; --i) {
+               if (startsWithEndTagOpen(s, ancestors[i].tag)) {
+                 return true;
+               }
+             }
+           }
+           // 新增 - start
+         case TextModes.RCDATA:
+         case TextModes.RAWTEXT: {
+           const parent = last(ancestors);
+           if (parent && startsWithEndTagOpen(s, parent.tag)) {
+             return true;
+           }
+           break;
+         }
+         case TextModes.CDATA:
+           if (s.startsWith("]]>")) {
+             return true;
+           }
+           break;
+           // 新增 - end
+       }
+
+       // 是 TextModes.TEXT 直接返回 source 的内容是否为空了
+       return !s;
+     }
+   #+end_src
+
+** 其他用例
+*** 02-valid/invalid html
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-test-other-02
+:END: 
+
+#+begin_src js
+  test("valid html", () => {
+    const ast = baseParse(
+      `<div :class="{ some: condition }">\n` +
+        `  <p v-bind:style="{ color: 'red' }"/>\n` +
+        `  <!-- a comment with <html> inside it -->\n` +
+        `</div>`
+    );
+
+    expect(ast).toMatchSnapshot();
+
+    expect(ast.children).toHaveLength(1);
+    const el = ast.children[0];
+    expect(el).toMatchObject({
+      tag: "div",
+    });
+    expect(el.children).toHaveLength(2);
+    expect(el.children[0]).toMatchObject({
+      tag: "p",
+    });
+    expect(el.children[1]).toMatchObject({
+      type: NodeTypes.COMMENT,
+    });
+  });
+
+  test("invalid html", () => {
+    expect(() => {
+      baseParse(`<div>\n<span>\n</div>\n</span>`);
+    }).toThrow("Element is missing end tag.");
+
+    const spy = jest.fn();
+    const ast = baseParse(`<div>\n<span>\n</div>\n</span>`, {
+      onError: spy,
+    });
+
+    expect(spy.mock.calls).toMatchObject([
+      [
+        {
+          code: ErrorCodes.X_MISSING_END_TAG,
+          loc: {
+            start: {
+              offset: 6,
+              line: 2,
+              column: 1,
+            },
+          },
+        },
+      ],
+      [
+        {
+          code: ErrorCodes.X_INVALID_END_TAG,
+          loc: {
+            start: {
+              offset: 20,
+              line: 4,
+              column: 1,
+            },
+          },
+        },
+      ],
+    ]);
+
+    expect(ast).toMatchSnapshot();
+  });
+#+end_src
+
+这里要分析的是 invalid html, 这个用例拿出来说主要原因是它能帮助我们更好的理解标
+签嵌套时候的解析过程。
+
+~<div>\n<span>\n</div>\n</span>~
+
+大致解析流程是： parseChildren -> parseElement -> parseTag -> parseChildren ->
+parseElement -> parseTag -> 报错
+
+debugger local 数据(解析完 *<span>* 之后):
+#+begin_src json
+  Local
+    ancestors: Array(1)
+      0: {type: 1, ns: 0, tag: "div", tagType: 0, props: Array(0), …}
+      length: 1
+    children: []
+    context:
+      column: 1
+      inPref: false
+      inVPref: false
+      line: 3
+      offset: 13
+      options: {delimiters: Array(2), getNamespace: ƒ, getTextMode: ƒ, isVoidTag: ƒ, isPreTag: ƒ, …}
+      originalSource: "<div>↵<span>↵</div>↵</span>"
+      source: "</div>↵</span>"
+#+end_src
+
+1. 解析出 div 标签，所以 ~ancestors.length === 1~
+2. 解析出 span 标签，ancestors.length 应该是 2，但是上面我们只保留了 span 解析之
+   后的数据，所以 ancestors.span 被 ~pop()~ 掉了，因为它不是重点
+3. 解析完 span 之后会去解析 \n ，但是会被 removedWhitespace 那段逻辑过滤掉(满足
+   在 pre 和 next 之间条件)
+4. 那么重点在这，到这一步也是上面代码 ~source = `</div>\n</span>`~ 的时候
+5. 检测到 *</* 开始结束标签解析，注意看 [[#parse-parseelement][parseElement]] 中有这么一段
+
+   #+begin_src js
+     if (startsWithEndTagOpen(context.source, element.tag)) {
+       parseTag(context, TagType.End, parent);
+     }
+   #+end_src
+   
+   经过 4 之后的 source 刚好能满足这个 if ，因此携带 TagType.End 进入 [[#parse-parsetag][parseTag]]，
+   此时有个变量 *parent* 保存了 ~pop()~ 之前的那个 ~ancestors[1]~ 即 span 那个标签
+   ，但是这里的结束标签是 *div* 最后会匹配失败，抛出异常。
+   
+*** 01-self closing single/multiple tag
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-test-other-01
+:END: 
+
+#+begin_src typescript
+  /*
+    不管是单标签还是多标签也好，自闭合标签的处理都一样，在 parseTag 里面解析都需要经过这么
+    一段：advanceBy(context, isSelfClosing ? 2 : 1);
+    然后结合 parseElement 中的检测 isSelfClosing 直接退出返回元素节点，即不需要再继续
+    解析子节点了(它没有)
+   ,*/
+  test('self closing single tag', () => {
+      const ast = baseParse('<div :class="{ some: condition }" />')
+
+      expect(ast.children).toHaveLength(1)
+      expect(ast.children[0]).toMatchObject({ tag: 'div' })
+  })
+
+  test('self closing multiple tag', () => {
+      const ast = baseParse(
+          `<div :class="{ some: condition }" />\n` +
+              `<p v-bind:style="{ color: 'red' }"/>`
+      )
+
+      expect(ast).toMatchSnapshot()
+
+      expect(ast.children).toHaveLength(2)
+      expect(ast.children[0]).toMatchObject({ tag: 'div' })
+      expect(ast.children[1]).toMatchObject({ tag: 'p' })
+  })
+#+end_src
+** Element 元素标签解析
+*** 13-结束标签忽略大小写
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-13
+:END: 
+
+~<div>hello</DIV>after~
+
+因为解析到结束标签的时候匹配结束标签名称的时候会调用 [[#parse-startswithendtagopen][startsWithEndTagOpen]] 检测，
+且里面是忽略大小写的，统一转成小写去比较。
+#+begin_src js
+  // 匹配：</tag> 或</tag 没有 `>` 的情况???
+  function startsWithEndTagOpen(source, tag) {
+    return (
+      source.startsWith("</") &&
+        source.substr(2, tag.length).toLowerCase() === tag.toLowerCase() &&
+        /[\t\n\f />]/.test(source[2 + tag.length] || ">")
+    );
+  }
+#+end_src
+*** 12-v-pre 用例测试
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-12
+:END: 
+
+~`<div v-pre :id="foo"><Comp/>{{ bar }}</div>\n` + `<div :id="foo"><Comp/>{{ bar }}</div>`~
+
+现阶段代码暂时是不支持的 *v-pre* 的。所以解析之后会出现下面的结果：
+
+~root.children[3]~ 有三个孩子节点
+1. first: div v-pre(还没实现所以当做普通标签处理)，first.children[2] 有两个孩子
+   1. component 类型的 ~<Comp/>~ 因为首字母大写所以当做组件类型处理
+   2. bar 插值节点
+2. second: \n 文本节点
+3. third: div :id，third.children[2] 也有两个孩子和 first 一样
+
+#+begin_src json
+  (3) [{…}, {…}, {…}]
+  0: {type: 1, ns: 0, tag: "div", tagType: 0, props: Array(1), …}
+  1: {type: 2, content: "↵", loc: {…}}
+  2: {type: 1, ns: 0, tag: "div", tagType: 0, props: Array(1), …}length: 3__proto__: Array(0)
+#+end_src
+
+实现之后：
+#+begin_example
+0: {type: 1, ns: 0, tag: "div", tagType: 0, props: Array(1), …}
+1: null
+2: {type: 1, ns: 0, tag: "div", tagType: 0, props: Array(1), …}
+length: 3
+__proto__: Array(0)
+#+end_example
+
+要通过该用例需要修改的点：
+
+1. [[#parse-parsechildren][parseChildren]] 里要添加删除空字符换行符操作
+   #+begin_src js
+     function parseChildren(
+       context /* ParserContext*/,
+       mode /*TextModes*/,
+       ancestors /*ElementNode[]*/
+     ) {
+       // ...
+       const parent = last(ancestors);
+       const ns = parent ? parent.ns : Namespaces.HTML;
+       const nodes /*TemplateChildNode[]*/ = [];
+
+       // ... 省略 while
+
+       // 新增-start
+       let removedWhitespace = false;
+       // TODO 空格管理，为了更高效的输出
+       // `\n<div>...` 删除开头的空格字符，之前解析 v-pre 用例是卡在这里了
+       // 这里忘记实现了，所以用例 http://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/#headline-3
+       // 得到了三个 child，第二个是 \n，就是因为这里没实现过滤
+
+       if (mode !== TextModes.RAWTEXT) {
+         if (!context.inPre) {
+           for (let i = 0; i < nodes.length; i++) {
+             const node = nodes[i];
+             if (node.type === NodeTypes.TEXT) {
+               if (!/[^\t\r\n\f ]/.test(node.content)) {
+                 const prev = nodes[i - 1];
+                 const next = nodes[i + 1];
+                 // 1. 空格是第一个或者最后一个节点，或者
+                 // 2. 空格与注释节点相邻
+                 // 3. 空格在两个元素之间，就我们遇到的 <div></div>\n<div>...
+                 // 上面三种情况的空格会被忽略
+                 if (
+                   !prev ||
+                   !next ||
+                   prev.type === NodeTypes.COMMENT ||
+                   next.type === NodeTypes.COMMENT ||
+                   (prev.type === NodeTypes.ELEMENT &&
+                     next.type === NodeTypes.ELEMENT &&
+                     /[\r\n]/.test(node.content))
+                 ) {
+                   removedWhitespace = true;
+                   nodes[i] = null;
+                 } else {
+                   // 否则替换成空格
+                   node.content = " ";
+                 }
+               } else {
+                 // 替换成空格
+                 node.content = node.content.replace(/[\t\r\n\f ]+/g, " ");
+               }
+             }
+           }
+         } else if (parent && context.options.isPreTag(parent.tag)) {
+           //如果是 <pre> 删掉第一行的空行
+           const first = nodes[0];
+           if (first && first.type === NodeTypes.TEXT) {
+             first.content = first.content.replace(/^\r?\n/, "");
+           }
+         }
+       }
+       // <<<<<< 新增-end
+       return removedWhitespace ? nodes.filter(Boolean) : nodes;
+     }
+   #+end_src
+2. 修改 [[#parse-parsetag][parseTag]] 增加 v-pre, <pre> 代码处理
+   
+   这里会有个值得注意的地方就是它检测到是 pre 会回头重新解析属性，然后过滤掉
+   v-pre 指令，并且在 [[#parse-parseattribute][parseAttribute]] 里面会检测到 inVPre 从来不会进
+   行指令解析，只会解析普通的 props。
+  
+   #+begin_src js
+
+     function parseTag(context, type, parent) {
+       // ...
+
+       // 新增-start
+       if (context.options.isPreTag(tag)) {
+         context.inPre = true;
+       }
+
+       // 1. inVPre = false 因为初始化默认不会是 v-pre 的
+       // 2. 只要属性列表中有一个满足：v-pre 指令类型
+       if (
+         !context.inVPre &&
+         props.some((p) => p.type === NodeTypes.DIRECTIVE && p.name === "pre")
+       ) {
+         context.inVPre = true;
+         // 这里恢复之前的解析，因为 <div v-pre>...</div> 走到这里的时候已经解析完了
+         // 所以要恢复属性字符串？
+         extend(context, cursor);
+         context.source = currentSource;
+         // 为什么要重新解析，直接过滤不好吗？
+         // 因为 parseAttribute 中在 inVPre = true 情况下是不会去解析其他指令属性的
+         // 其他指令照样会解析，直接过滤掉所有指令属性不就好了？
+         props = parseAttributes(context, type).filter((p) => p.name !== "v-pre");
+       }
+       // 新增-end
+
+       // ...
+
+       const val = {
+         type: NodeTypes.ELEMENT,
+         ns,
+         tag,
+         tagType,
+         props,
+         isSelfClosing,
+         children: [],
+         loc: getSelection(context, start),
+         codegenNode: undefined,
+       };
+       return val;
+     }
+   #+end_src
+*** 11-~<div> id=a/></div>~ 属性值中没有引号时
+
+没有引号的时候有一些非法字符： ~const unexpectedChars = /["'<=`]/g;~ ，遇到这些
+值的时候会报错。
+
+在这之前有一个匹配使用来匹配出值的：
+
+~const match = /^[^\t\r\n\f >]+/.exec(context.source);~
+
+这个会将 *>* 之前的 *=* 之后的属性值匹配出来，然后交给 [[#parse-parsetextdata][parseTextData]] 进行解析。
+
+*** 10-~<div> id=">\'"></div>~ 属性值中有引号时
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-10
+:END: 
+
+这种情况是合法的，属性值里面的内容会被当做纯文本处理。
+
+#+begin_example
+props: Array(1)
+0:
+  name: "id"
+  type: 6
+  value:
+    content: ">'" // 属性值
+    type: 2
+#+end_example
+
+这个处理跟 [[#test-element-09][用例09]] 是一样的逻辑
+
+多个属性的情况，在 parseAttributes 中有个 while 循环处理。
+
+#+begin_src typescript
+
+  function parseAttributes(
+      context: ParserContext,
+      type: TagType
+  ): (AttributeNode | DirectiveNode)[] {
+      const props = []
+      const attributeNames = new Set<string>()
+      while (
+          context.source.length > 0 &&
+              !startsWith(context.source, '>') &&
+              !startsWith(context.source, '/>')
+      ) {
+          // ...
+
+          const attr = parseAttribute(context, attributeNames)
+          // ...
+      }
+      return props
+  }
+#+end_src
+
+*** 09-~<div id=""></div>~ 属性值为空的情况
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-09
+:END: 
+
+#+begin_src typescript
+
+      test('attribute with empty value, double quote', () => {
+        const ast = baseParse('<div id=""></div>')
+        const element = ast.children[0] as ElementNode
+
+        expect(element).toStrictEqual({
+          type: NodeTypes.ELEMENT,
+          ns: Namespaces.HTML,
+          tag: 'div',
+          tagType: ElementTypes.ELEMENT,
+          codegenNode: undefined,
+          props: [
+            {
+              type: NodeTypes.ATTRIBUTE,
+              name: 'id',
+              value: {
+                type: NodeTypes.TEXT,
+                content: '',
+                loc: {
+                  start: { offset: 8, line: 1, column: 9 },
+                  end: { offset: 10, line: 1, column: 11 },
+                  source: '""'
+                }
+              },
+              loc: {
+                start: { offset: 5, line: 1, column: 6 },
+                end: { offset: 10, line: 1, column: 11 },
+                source: 'id=""'
+              }
+            }
+          ],
+
+          isSelfClosing: false,
+          children: [],
+          loc: {
+            start: { offset: 0, line: 1, column: 1 },
+            end: { offset: 17, line: 1, column: 18 },
+            source: '<div id=""></div>'
+          }
+        })
+      })
+#+end_src
+
+解析： [[#parse-parsetag][parseTag]] -> [[#parse-parseattributes][parseAttributes]] -> [[#parse-parseattribute][parseAttribute]] -> [[#parse-parseattributevalue][parseAttributeValue]]
+ -> [[#parse-parsetextdata][parseTextData]] 直接返回空字符串，组织： ~{ type, content: '', ... }~ 返回
+ 
+#+begin_src typescript
+
+  function parseAttributeValue(
+    context: ParserContext
+  ) {
+      // ...省略
+
+    const quote = context.source[0]
+    const isQuoted = quote === `"` || quote === `'`
+    if (isQuoted) { // id=""，有引号
+      // Quoted value.
+      advanceBy(context, 1)
+
+      const endIndex = context.source.indexOf(quote)
+      if (endIndex === -1) {
+        content = parseTextData(
+          context,
+          context.source.length,
+          TextModes.ATTRIBUTE_VALUE
+        )
+      } else {
+          // 到这里
+        content = parseTextData(context, endIndex, TextModes.ATTRIBUTE_VALUE)
+        advanceBy(context, 1)
+      }
+    } else {
+      // 不会到这里
+    }
+
+    return { content, isQuoted, loc: getSelection(context, start) }
+  }
+#+end_src
+
+*** 08-~<div id></div>~ 无属性值的属性
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-08
+:END: 
+
+#+begin_src js
+  test("attribute with no value", () => {
+    const ast = baseParse("<div id></div>");
+    const element = ast.children[0];
+
+    expect(element).toStrictEqual({
+      type: NodeTypes.ELEMENT,
+      ns: Namespaces.HTML,
+      tag: "div",
+      tagType: ElementTypes.ELEMENT,
+      codegenNode: undefined,
+      props: [
+        {
+          type: NodeTypes.ATTRIBUTE,
+          name: "id",
+          value: undefined,
+          loc: {
+            start: { offset: 5, line: 1, column: 6 },
+            end: { offset: 7, line: 1, column: 8 },
+            source: "id",
+          },
+        },
+      ],
+
+      isSelfClosing: false,
+      children: [],
+      loc: {
+        start: { offset: 0, line: 1, column: 1 },
+        end: { offset: 14, line: 1, column: 15 },
+        source: "<div id></div>",
+      },
+    });
+  }); // attribute with no value
+#+end_src
+
+解析： [[#parse-parsetag][parseTag]] -> [[#parse-parseattributes][parseAttributes]] -> [[#parse-parseattribute][parseAttribute]] 里面有一段针对属性值处理
+
+#+begin_src typescript
+  function parseAttribute(
+    context: ParserContext,
+    nameSet: Set<string>
+  ): AttributeNode | DirectiveNode {
+      // ... 省略
+
+      // 这里检测是不是有 name= 或 name=value 情况
+    if (/^[\t\r\n\f ]*=/.test(context.source)) {
+      advanceSpaces(context)
+      advanceBy(context, 1)
+      advanceSpaces(context)
+      value = parseAttributeValue(context)
+        // 这里是防止 name= 后面没有值得情况报错
+      if (!value) {
+        emitError(context, ErrorCodes.MISSING_ATTRIBUTE_VALUE)
+      }
+    }
+
+      // ... 因为 id 没有 id=? 所以直接回到这里，不会进入
+      // parseAttributeValue 解析属性值
+
+      // ... id 非指令属性，所以直接到最后以普通属性类型退出
+    return {
+      type: NodeTypes.ATTRIBUTE,
+      name,
+      value: value && {
+        type: NodeTypes.TEXT,
+        content: value.content,
+        loc: value.loc
+      },
+      loc
+    }
+  }
+#+end_src
+
+*** 07-isCustomElement 自定义元素
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-07
+:END: 
+
+#+begin_src js
+  test("custom element", () => {
+    const ast = baseParse("<div></div><comp></comp>", {
+      isNativeTag: (tag) => tag === "div",
+      isCustomElement: (tag) => tag === "comp",
+    });
+
+    expect(ast.children[0]).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tag: "div",
+      tagType: ElementTypes.ELEMENT, // 由于是 isNativeTag() 使用了默认 ELEMENT
+    });
+
+    expect(ast.children[1]).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tag: "comp",
+      tagType: ElementTypes.ELEMENT, // 由于是 isCustomElement() 所以压根不会进入到 if ... 中检测类型
+    });
+  })
+#+end_src
+
+自定义类型判断：
+
+#+begin_src typescript
+
+  function parseTag(
+    context: ParserContext,
+    type: TagType,
+    parent: ElementNode | undefined
+  ): ElementNode {
+    // ... 省略
+
+    let tagType = ElementTypes.ELEMENT
+    const options = context.options
+      // <comp> 由于是 isCustomElement 因此压根不会进入下面的 if (false) ...
+    if (!context.inVPre && !options.isCustomElement(tag)) {
+      const hasVIs = props.some(
+        p => p.type === NodeTypes.DIRECTIVE && p.name === 'is'
+      )
+      if (options.isNativeTag && !hasVIs) {
+          // div 会进入到这里，但是检测失败 if (!true) ...
+        if (!options.isNativeTag(tag)) tagType = ElementTypes.COMPONENT
+      } else if (
+          // div 这里都不满足，if (false) ...
+        hasVIs ||
+        isCoreComponent(tag) ||
+        (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
+        /^[A-Z]/.test(tag) ||
+        tag === 'component'
+      ) {
+        tagType = ElementTypes.COMPONENT
+      }
+
+      if (tag === 'slot') {
+        tagType = ElementTypes.SLOT
+      } else if (
+        tag === 'template' &&
+        props.some(p => {
+          return (
+            p.type === NodeTypes.DIRECTIVE && isSpecialTemplateDirective(p.name)
+          )
+        })
+      ) {
+        tagType = ElementTypes.TEMPLATE
+      }
+    }
+
+      // 所以 <div> 最终使用了默认值：ELEMENT
+      // 所以 <comp> 直接到了这里，是：ELEMENT 类型
+    return {
+      type: NodeTypes.ELEMENT,
+      ns,
+      tag,
+      tagType,
+      props,
+      isSelfClosing,
+      children: [],
+      loc: getSelection(context, start),
+      codegenNode: undefined // to be created during transform phase
+    }
+  }
+#+end_src
+*** 06-isNativeTag 原生标签类型
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-element-06
+:END: 
+
+这个用例(~<div></div><comp></comp><Comp></Comp>~)里面有三个标签：
+1. =div=
+2. =comp=
+3. =Comp=
+
+   
+同时传递一个 ~options: { isNativeTag: tag => tag === 'div' }~
+
+意思告诉编译器这里面只有 *div* 属于原生标签，其他的都属于组件类型，这个在 [[#parse-parsetag][parseTag]]
+实现中体现出来。
+
+#+begin_src js
+  test("native element with `isNativeTag`", () => {
+      const ast = baseParse("<div></div><comp></comp><Comp></Comp>", {
+        isNativeTag: (tag) => tag === "div",
+      });
+
+      expect(ast.children[0]).toMatchObject({
+        type: NodeTypes.ELEMENT,
+        tag: "div",
+        tagType: ElementTypes.ELEMENT,
+      });
+
+      expect(ast.children[1]).toMatchObject({
+        type: NodeTypes.ELEMENT,
+        tag: "comp",
+        tagType: ElementTypes.COMPONENT,
+      });
+
+      expect(ast.children[2]).toMatchObject({
+        type: NodeTypes.ELEMENT,
+        tag: "Comp",
+        tagType: ElementTypes.COMPONENT,
+      });
+    }); // native element with `isNativeTag`
+#+end_src
+
+通过该用例的代码实现片段(在[[#test-element-05][用例 05]] 中就已经实现过了，因此该用例顺利通过)：
+
+#+begin_src typescript
+  function parseTag(
+    context: ParserContext,
+    type: TagType,
+    parent: ElementNode | undefined
+  ): ElementNode {
+    // ... 省略
+
+    let tagType = ElementTypes.ELEMENT
+    const options = context.options
+      // 前提，非 v-pre 指令，且非自定义标签(默认：NO)
+    if (!context.inVPre && !options.isCustomElement(tag)) {
+
+        // 是否有 v-is 指令
+      const hasVIs = props.some(
+        p => p.type === NodeTypes.DIRECTIVE && p.name === 'is'
+      )
+
+        // 首先由提供原生标签检测函数，且没有 v-is 情况下进入组件判断
+      if (options.isNativeTag && !hasVIs) {
+          // 类型为 COMPONENT 组件类型
+        if (!options.isNativeTag(tag)) tagType = ElementTypes.COMPONENT
+      }
+
+        // ... 省略
+    }
+
+    return {
+      type: NodeTypes.ELEMENT,
+      ns,
+      tag,
+      tagType,
+      props,
+      isSelfClosing,
+      children: [],
+      loc: getSelection(context, start),
+      codegenNode: undefined // to be created during transform phase
+    }
+  }
+#+end_src
+
+而在没有提供 =isNativeTag()= 的情况下，三种标签的解析结果中的 =tagType= 又是不一
+样的，延续上面的带继续分析：
+
+#+begin_src typescript
+  function parseTag(
+      context: ParserContext,
+      type: TagType,
+      parent: ElementNode | undefined
+  ): ElementNode {
+      // ... 省略
+
+      let tagType = ElementTypes.ELEMENT
+      const options = context.options
+      // 前提，非 v-pre 指令，且非自定义标签(默认：NO)
+      if (!context.inVPre && !options.isCustomElement(tag)) {
+
+          // 是否有 v-is 指令
+          const hasVIs = props.some(
+              p => p.type === NodeTypes.DIRECTIVE && p.name === 'is'
+          )
+
+          // 首先由提供原生标签检测函数，且没有 v-is 情况下进入组件判断
+          if (options.isNativeTag && !hasVIs) {
+              // 类型为 COMPONENT 组件类型
+              if (!options.isNativeTag(tag)) tagType = ElementTypes.COMPONENT
+          } else if (
+              // 把这里省略的部分加上...
+              hasVIs ||
+                  isCoreComponent(tag) ||
+                  (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
+                  // 重点在这里，检测到如果标签名开头是大写的就会被视为组件类型
+                  /^[A-Z]/.test(tag) ||
+                  tag === 'component'
+          ) {
+              tagType = ElementTypes.COMPONENT
+          }
+
+          // ... 省略
+      }
+
+      return {
+          type: NodeTypes.ELEMENT,
+          ns,
+          tag,
+          tagType,
+          props,
+          isSelfClosing,
+          children: [],
+          loc: getSelection(context, start),
+          codegenNode: undefined // to be created during transform phase
+      }
+  }
+#+end_src
+
+那么接下来的用例也不是什么问题了：
+
+#+begin_src js
+
+  test('v-is without `isNativeTag`', () => {
+    const ast = baseParse(
+      `<div></div><div v-is="'foo'"></div><Comp></Comp>`,
+      {
+        isNativeTag: tag => tag === 'div'
+      }
+    )
+
+    expect(ast.children[0]).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tag: 'div',
+      tagType: ElementTypes.ELEMENT // 这里毋庸置疑是默认原生元素类型
+    })
+
+    expect(ast.children[1]).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tag: 'div',
+    // 容易产生疑问的是这个，这里为什么是 COMPONENT，而不是 element 呢
+    // 这里关键在于 v-is，记得：isNativeTag() 检测的优先级最高前提是 !hasVIs 成立情况
+    // 然而这里显然 hasVIs === true
+    // 因此进入了 else if (... || hasVIs || ...) { tagType = ElementTypes.COMPONENT }
+      tagType: ElementTypes.COMPONENT
+    })
+
+    expect(ast.children[2]).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tag: 'Comp',
+    // 这里没啥疑问，大写开头所以是组件类型
+      tagType: ElementTypes.COMPONENT
+    })
+  })
+#+end_src
+
+自定义组件：
+*** 05-template element with directives
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-element-05
@@ -113,7 +986,11 @@ compiler-core 模块的测试用例包含以下部分，将依次进行分析：
 
 该用例考察的其实并不是 ~<template>~ 模板标签解析，而是标签上的属性解析，对普通的
 ~<div>~ 标签依然可以解析出属性 props[]。
-**** 04-void element
+
+#+begin_quote
+*针对模板 =<template>= 标签的处理详情可以[[/vue/vue-mind-map-house/#map-parse-template][查看此处(含脑图)]]，更直观。*
+#+end_quote
+*** 04-void element
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-element-04
@@ -166,7 +1043,7 @@ compiler-core 模块的测试用例包含以下部分，将依次进行分析：
   }
 #+end_src
 
-**** 03-self closing
+*** 03-self closing
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-element-03
@@ -194,7 +1071,7 @@ compiler-core 模块的测试用例包含以下部分，将依次进行分析：
     })
   }
 #+end_src
-**** 02-empty div
+*** 02-empty div
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-element-02
@@ -225,7 +1102,7 @@ compiler-core 模块的测试用例包含以下部分，将依次进行分析：
   }
 #+end_src
 
-**** 01-simple div
+*** 01-simple div
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-element-01
@@ -300,7 +1177,7 @@ true~ 。
   }
 #+end_src
 
-*** Comment 注释解析
+** Comment 注释解析
 
 注释风格： =<!-- ... -->= ，[[#link-05][阶段 5]] 及之前还不支持注释解析，因为还没实现 [[#parse-parsecomment][parseComment]]。
 
@@ -388,9 +1265,9 @@ true~ 。
   }
 #+end_src
 
-*** Interpolation 插值解析
+** Interpolation 插值解析
 
-**** 05-custom delimiters
+*** 05-custom delimiters
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-interpolation-05
@@ -427,7 +1304,7 @@ true~ 。
   })
 #+end_src
 
-**** 04-it can have tag-like notation (3)
+*** 04-it can have tag-like notation (3)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-interpolation-04
@@ -468,7 +1345,7 @@ true~ 。
   })
 #+end_src
 
-**** 03-it can have tag-like notation(2)
+*** 03-it can have tag-like notation(2)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-interpolation-03
@@ -528,7 +1405,7 @@ true~ 。
 
 [[#link-04][支持该用例代码链接🛬]]
 
-**** 02-it can have tag-like notation(1)
+*** 02-it can have tag-like notation(1)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-interpolation-02
@@ -566,7 +1443,7 @@ true~ 。
 
 [[#link-04][通过该用例代码链接🛬]]
 
-****  01- simple interpolation
+***  01- simple interpolation
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-interpolation-01
@@ -599,9 +1476,9 @@ true~ 。
   }
 #+end_src
 
-*** Text 文本解析
+** Text 文本解析
 
-**** 07-lonly "{{" don\'t separate nodes
+*** 07-lonly "{{" don\'t separate nodes
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-06
@@ -674,7 +1551,7 @@ test:
   Ran all test suites matching /compiler-core/i
 #+end_example
 
-****  06-lonly "<" don\'t separate nodes
+***  06-lonly "<" don\'t separate nodes
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-05
@@ -729,7 +1606,7 @@ test:
   }
 #+end_src
 
-***  05-text with mix of tags and interpolations
+** 05-text with mix of tags and interpolations
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-05
@@ -821,7 +1698,7 @@ Ran all test suites matching /compiler-core/i.
 > Cannot find module 'core-js/modules/es6.string.iterator' from 'packages/compiler-core/parse.js'
 
 解决方案：[[https://github.com/babel/babel/issues/9796][是 core-js 降级到 2]]
-**** 04-text with interpolation which has `<`
+*** 04-text with interpolation which has `<`
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-04
@@ -887,7 +1764,7 @@ Ran all test suites matching /compiler-core/i.
 
 #+end_example
 
-**** 03-text with interpolation
+*** 03-text with interpolation
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-03
@@ -959,7 +1836,7 @@ Ran all test suites matching /parse.spec/i.
 ➜  vue-next-code-read git:(master) ✗
 #+end_example
 
-**** 02-simple text\<div>
+*** 02-simple text\<div>
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-02
@@ -1048,7 +1925,7 @@ parseTag 实现到这里就可以满足通过测试用例的条件了，这里�
 
 [[/img/1595444610.png]]
 
-**** 01-simple text
+*** 01-simple text
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-01
@@ -1333,7 +2210,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 
 返回结果： [[/vue/vue3-source-code-compiler-core-ast_ts/#td-ast-tcn][TemplateChildNode[]​]]
 
-### 阶段一([[#test-01-sometext][test01 some text]])
+*** 阶段一([[#test-01-sometext][test01 some text]])
 
 实现 [[#parse-parsetext][parseText()]] 之后的 [[#parse-parsechildren][parseChildren() ]]代码：
 
@@ -1463,6 +2340,154 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 
 [[http://qiniu.ii6g.com/parse-ts-parsechildren-text-part.png][parseChildren-支持纯文本解析]]
 
+*** 阶段二([[#test-element-12][<div ...></div>\n<div ...></div>]])
+
+增加空行节点过滤。
+
+#+begin_src js
+  function parseChildren(
+    context /* ParserContext*/,
+    mode /*TextModes*/,
+    ancestors /*ElementNode[]*/
+  ) {
+    // ...
+    const parent = last(ancestors);
+    const ns = parent ? parent.ns : Namespaces.HTML;
+    const nodes /*TemplateChildNode[]*/ = [];
+
+    let i = 0;
+    while (!isEnd(context, mode, ancestors)) {
+      // do sth
+
+      const s = context.source;
+      let node = undefined;
+
+      // 由于 baseparse里面传过来的是个 DATA 类型，因此会走到这个 if 里
+      // 面去解析
+      if (mode === TextModes.DATA || mode === TextModes.RCDATA) {
+        // 过略掉非文本的
+        if (!context.inVPre && s.startsWith(context.options.delimiters[0])) {
+          // ... 插值处理{{}}
+          node = parseInterpolation(context, mode);
+        } else if (mode === TextModes.DATA && s[0] === "<") {
+          // ... 标签开头 <...
+          if (s.length === 1) {
+            emitError(context, ErrorCodes.EOF_BEFORE_TAG_NAME, 1);
+          } else if (s[1] === "!") {
+            // TODO 注释处理，<!-- ...
+            if (s.startsWith("<!--")) {
+              // 普通的 html 注释
+              node = parseComment(context);
+            }
+          } else if (s[1] === "/") {
+            // </...
+            if (s.length === 2) {
+              emitError(context, ErrorCodes.EOF_BEFORE_TAG_NAME, 2);
+            } else if (s[2] === ">") {
+              // </> 不带标签名的无效标签
+              emitError(context, ErrorCodes.MISSING_END_TAG_NAME, 2);
+              // 过滤掉 </> 这三个字符串，offset>>3 退出本次循环继续解析
+              advanceBy(context, 3);
+              continue;
+            } else if (/[a-z]/i.test(s[2])) {
+              // 这里都出错了，为啥后面还有个 parseTag ???
+              emitError(context, ErrorCodes.X_INVALID_END_TAG);
+              parseTag(context, TagType.End, parent);
+              continue;
+            } else {
+              emitError(
+                context,
+                ErrorCodes.INVALID_FIRST_CHARACTER_OF_TAG_NAME,
+                2
+              );
+              // node = parseBogusComment(context)
+            }
+          } else if (/[a-z]/i.test(s[1])) {
+            // 解析起始标签，即这里才是标签最开始的位置。
+            node = parseElement(context, ancestors);
+          } else if (s[1] === "?") {
+            // <? 开始的
+            emitError(
+              context,
+              ErrorCodes.UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME,
+              1
+            );
+            // node = parseBogusComment(context)
+          } else {
+            // 其他情况都视为非法
+            emitError(context, ErrorCodes.INVALID_FIRST_CHARACTER_OF_TAG_NAME, 1);
+          }
+        }
+
+        // ... 到这里也就是说文本节点不会被这个 if 处理，而是直接到
+        // !node 给 parseText 解析
+      }
+
+      if (!node) {
+        node = parseText(context, mode);
+      }
+
+      if (Array.isArray(node)) {
+        for (let i = 0; i < node.length; i++) {
+          pushNode(nodes, node[i]);
+        }
+      } else {
+        pushNode(nodes, node);
+      }
+    }
+
+    console.log(nodes);
+    let removedWhitespace = false;
+    // TODO 空格管理，为了更高效的输出
+    // `\n<div>...` 删除开头的空格字符，之前解析 v-pre 用例是卡在这里了
+    // 这里忘记实现了，所以用例 http://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/#headline-3
+    // 得到了三个 child，第二个是 \n，就是因为这里没实现过滤
+
+    if (mode !== TextModes.RAWTEXT) {
+      if (!context.inPre) {
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          if (node.type === NodeTypes.TEXT) {
+            if (!/[^\t\r\n\f ]/.test(node.content)) {
+              const prev = nodes[i - 1];
+              const next = nodes[i + 1];
+              // 1. 空格是第一个或者最后一个节点，或者
+              // 2. 空格与注释节点相邻
+              // 3. 空格在两个元素之间，就我们遇到的 <div></div>\n<div>...
+              // 上面三种情况的空格会被忽略
+              if (
+                !prev ||
+                !next ||
+                prev.type === NodeTypes.COMMENT ||
+                next.type === NodeTypes.COMMENT ||
+                (prev.type === NodeTypes.ELEMENT &&
+                  next.type === NodeTypes.ELEMENT &&
+                  /[\r\n]/.test(node.content))
+              ) {
+                removedWhitespace = true;
+                nodes[i] = null;
+              } else {
+                // 否则替换成空格
+                node.content = " ";
+              }
+            } else {
+              // 替换成空格
+              node.content = node.content.replace(/[\t\r\n\f ]+/g, " ");
+            }
+          }
+        }
+      } else if (parent && context.options.isPreTag(parent.tag)) {
+        //如果是 <pre> 删掉第一行的空行
+        const first = nodes[0];
+        if (first && first.type === NodeTypes.TEXT) {
+          first.content = first.content.replace(/^\r?\n/, "");
+        }
+      }
+    }
+
+    return removedWhitespace ? nodes.filter(Boolean) : nodes;
+  }
+#+end_src
 ** parseComment(context)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -2292,6 +3317,7 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
      }
    #+end_src
 
+*** 阶段五([[#test-element-12][<div ...></div>\n<div ...></div>]])
 ** parseText(context, mode)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -2394,6 +3420,55 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
 导图：
 [[/img/parse-ts-parsetextdata.png]]
 
+** parseAttributes(context, type)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parseattributes
+:END: 
+
+这里定义 =props[]= 数组，真正解析单个属性的在 [[#parse-parseattribute][parseAttribute]] 中，解析之后的单个
+属性解构保存到数组中，返回给当前组件作为 =props= 属性字段存在：
+
+#+begin_src js
+
+  // 解析标签所有属性
+  function parseAttributes(context, type) {
+    const props = [];
+    const attributeNames = new Set();
+    while (
+      context.source.length > 0 &&
+        !context.source.startsWith(">") &&
+        !context.source.startsWith("/>")
+    ) {
+      // 非法属性， <div /v-if="ok"></div>??
+      if (context.source.startsWith("/")) {
+        emitError(context, ErrorCodes.UNEXPECTED_SOLIDUS_IN_TAG);
+        advanceBy(context, 1);
+        advanceSpaces(context);
+        continue;
+      }
+
+      // </div> 结束标签，以属性结束的标签?
+      if (type === TagType.End) {
+        emitError(context, ErrorCodes.END_TAG_WITH_ATTRIBUTES);
+      }
+
+      // 逐个解析属性
+      const attr = parseAttribute(context, attributeNames);
+      if (type === TagType.Start) {
+        props.push(attr);
+      }
+
+      if (/^[^\t\r\n\f />]/.test(context.source)) {
+        emitError(context, ErrorCodes.MISSING_WHITESPACE_BETWEEN_ATTRIBUTES);
+      }
+
+      advanceSpaces(context);
+    }
+
+    return props;
+  }
+#+end_src
 ** parseAttribute(context, nameSet)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -2628,6 +3703,8 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
   }
 #+end_src
 
+** TODO parseCDATA(context, ancestors)
+** TODO parseBogusComment(context)
 ** pushNode(nodes, node)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -2927,35 +4004,228 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
 :END:
 
 1. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-01-some-text][text01: some text 的代码备份]]
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: link-01
-:END:
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-01
+  :END:
 2. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-02-some-text-div-01][text02: some text \<div> 01 代码备份]]
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: link-02
-:END:
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-02
+  :END:
 3. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-02-some-text-div-02][text02: some text \<div> 02 代码备份]]
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: link-03
-:END:
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-03
+  :END:
 4. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-03-interpolation][text03: some {{ foo + bar }} text 代码备份]]
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: link-04
-:END:
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-04
+  :END:
 5. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/text-test-03-interpolation][text04: some {{ a<b && c>d }} text 代码备份]]
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: link-05
-:END:
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-05
+  :END:
 6. [[https://github.com/gcclll/vue-next-code-read/tree/master/bakups/compiler-core/comment-test][comment: <!--x-->注释解析代码备份]]
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-06
+  :END:
+7. [[#test-element-12][test-element-v-pre 代码备份]], 支持 v-pre 和 ~<pre>~ 标签，以及换行
+  :PROPERTIES:
+  :COLUMNS: %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: link-07
+  :END: 
+
+  
+所有用例全部通过：
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: link-06
-:END:
+:CUSTOM_ID: test-parse-all
+:END: 
+
+#+begin_src js
+  ➜  packages git:(master) ✗ jest compiler-core -u
+   PASS  compiler-core/__tests__/parse.spec.js (5.287 s)
+    compiler: parse
+      Text
+        ✓ simple text (8 ms)
+        ✓ simple text with invalid end tag (3 ms)
+        ✓ text with interpolation (2 ms)
+        ✓ text with interpolation which has `<` (1 ms)
+        ✓ text with mix of tags and interpolations (2 ms)
+        ✓ lonly "<" don't separate nodes
+        ✓ lonly "{{" don't separate nodes
+      Interpolation
+        ✓ simple interpolation (1 ms)
+        ✓ it can have tag-like notation (1 ms)
+        ✓ it can have tag-like notation (2) (1 ms)
+        ✓ it can have tag-like notation (3) (1 ms)
+        ✓ custom delimiters
+      Comment
+        ✓ empty comment (1 ms)
+        ✓ simple comment (1 ms)
+        ✓ two comments
+      Element
+        ✓ simple div
+        ✓ empty div (1 ms)
+        ✓ self closing (1 ms)
+        ✓ void element
+        ✓ template element with directives (2 ms)
+        ✓ template element without directives (1 ms)
+        ✓ native element with `isNativeTag` (1 ms)
+        ✓ native element without `isNativeTag` (1 ms)
+        ✓ v-is with `isNativeTag` (2 ms)
+        ✓ v-is without `isNativeTag` (5 ms)
+        ✓ custom element (1 ms)
+        ✓ attribute with no value (2 ms)
+        ✓ attribute with empty value, double quote (1 ms)
+        ✓ attribute with empty value, single quote (1 ms)
+        ✓ attribute with value, double quote (1 ms)
+        ✓ attribute with value, single quote (1 ms)
+        ✓ attribute with value, unquoted
+        ✓ multiple attributes (2 ms)
+        ✓ directive with no value (1 ms)
+        ✓ directive with value
+        ✓ directive with argument (1 ms)
+        ✓ directive with a modifier (1 ms)
+        ✓ directive with two modifiers
+        ✓ directive with argument and modifiers (1 ms)
+        ✓ v-bind shorthand (1 ms)
+        ✓ v-bind shorthand with modifier (1 ms)
+        ✓ v-on shorthand
+        ✓ v-on shorthand with modifier (1 ms)
+        ✓ v-slot shorthand (1 ms)
+        ✓ v-pre (1 ms)
+        ✓ end tags are case-insensitive. (1 ms)
+      Others
+        ✓ self closing single tag (1 ms)
+        ✓ self closing multiple tag (5 ms)
+        ✓ valid html (5 ms)
+        ✓ invalid html (54 ms)
+        ✓ parse with correct location info (2 ms)
+      decodeEntities option
+        ✓ use the given map (1 ms)
+      whitespace management
+        ✓ should remove whitespaces at start/end inside an element
+        ✓ should remove whitespaces w/ newline between elements
+        ✓ should remove whitespaces adjacent to comments (3 ms)
+        ✓ should remove whitespaces w/ newline between comments and elements (1 ms)
+        ✓ should NOT remove whitespaces w/ newline between interpolations (1 ms)
+        ✓ should NOT remove whitespaces w/o newline between elements (1 ms)
+        ✓ should condense consecutive whitespaces in text (1 ms)
+      Errors
+        ABRUPT_CLOSING_OF_EMPTY_COMMENT
+          ✓ <template><!--></template> (3 ms)
+          ✓ <template><!---></template> (2 ms)
+          ✓ <template><!----></template> (1 ms)
+        CDATA_IN_HTML_CONTENT
+          ✓ <template><![CDATA[cdata]]></template> (2 ms)
+          ✓ <template><svg><![CDATA[cdata]]></svg></template> (1 ms)
+        DUPLICATE_ATTRIBUTE
+          ✓ <template><div id="" id=""></div></template> (3 ms)
+        END_TAG_WITH_ATTRIBUTES
+          ✓ <template><div></div id=""></template> (1 ms)
+        END_TAG_WITH_TRAILING_SOLIDUS
+          ✓ <template><div></div/></template> (2 ms)
+        EOF_BEFORE_TAG_NAME
+          ✓ <template>< (1 ms)
+          ✓ <template></ (2 ms)
+        EOF_IN_CDATA
+          ✓ <template><svg><![CDATA[cdata (2 ms)
+          ✓ <template><svg><![CDATA[ (2 ms)
+        EOF_IN_COMMENT
+          ✓ <template><!--comment (1 ms)
+          ✓ <template><!-- (1 ms)
+          ✓ <template><! (1 ms)
+          ✓ <template><!- (2 ms)
+          ✓ <template><!abc (1 ms)
+        EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT
+          ✓ <script><!--console.log('hello') (2 ms)
+          ✓ <script>console.log('hello') (3 ms)
+        EOF_IN_TAG
+          ✓ <template><div (2 ms)
+          ✓ <template><div  (2 ms)
+          ✓ <template><div id (2 ms)
+          ✓ <template><div id  (1 ms)
+          ✓ <template><div id = (2 ms)
+          ✓ <template><div id='abc (1 ms)
+          ✓ <template><div id="abc (2 ms)
+          ✓ <template><div id='abc' (2 ms)
+          ✓ <template><div id="abc" (4 ms)
+          ✓ <template><div id=abc (2 ms)
+          ✓ <template><div id='abc'/ (3 ms)
+          ✓ <template><div id="abc"/ (2 ms)
+          ✓ <template><div id=abc / (1 ms)
+        INCORRECTLY_CLOSED_COMMENT
+          ✓ <template><!--comment--!></template> (1 ms)
+        INCORRECTLY_OPENED_COMMENT
+          ✓ <template><!></template> (1 ms)
+          ✓ <template><!-></template> (2 ms)
+          ✓ <template><!ELEMENT br EMPTY></template> (3 ms)
+          ✓ <!DOCTYPE html> (2 ms)
+        INVALID_FIRST_CHARACTER_OF_TAG_NAME
+          ✓ <template>a < b</template> (2 ms)
+          ✓ <template><�></template> (2 ms)
+          ✓ <template>a </ b</template> (1 ms)
+          ✓ <template></�></template> (1 ms)
+          ✓ <template>{{a < b}}</template> (1 ms)
+        MISSING_ATTRIBUTE_VALUE
+          ✓ <template><div id=></div></template> (3 ms)
+          ✓ <template><div id= ></div></template> (2 ms)
+          ✓ <template><div id= /></div></template> (5 ms)
+        MISSING_END_TAG_NAME
+          ✓ <template></></template> (1 ms)
+        MISSING_WHITESPACE_BETWEEN_ATTRIBUTES
+          ✓ <template><div id="foo"class="bar"></div></template> (2 ms)
+          ✓ <template><div id="foo"\x0d;\x0a;class="bar"></div></template> (1 ms)
+        NESTED_COMMENT
+          ✓ <template><!--a<!--b--></template> (2 ms)
+          ✓ <template><!--a<!--b<!--c--></template> (1 ms)
+          ✓ <template><!--a<!--></template> (1 ms)
+          ✓ <template><!--a<!-- (4 ms)
+        UNEXPECTED_CHARACTER_IN_ATTRIBUTE_NAME
+          ✓ <template><div a"bc=''></div></template> (1 ms)
+          ✓ <template><div a'bc=''></div></template> (3 ms)
+          ✓ <template><div a<bc=''></div></template> (3 ms)
+        UNEXPECTED_CHARACTER_IN_UNQUOTED_ATTRIBUTE_VALUE
+          ✓ <template><div foo=bar"></div></template> (2 ms)
+          ✓ <template><div foo=bar'></div></template> (3 ms)
+          ✓ <template><div foo=bar<div></div></template> (2 ms)
+          ✓ <template><div foo=bar=baz></div></template> (2 ms)
+          ✓ <template><div foo=bar`></div></template> (2 ms)
+        UNEXPECTED_EQUALS_SIGN_BEFORE_ATTRIBUTE_NAME
+          ✓ <template><div =foo=bar></div></template> (2 ms)
+          ✓ <template><div =></div></template> (1 ms)
+        UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME
+          ✓ <template><?xml?></template> (1 ms)
+        UNEXPECTED_SOLIDUS_IN_TAG
+          ✓ <template><div a/b></div></template> (2 ms)
+        X_INVALID_END_TAG
+          ✓ <template></div></template>
+          ✓ <template></div></div></template>
+          ✓ <template>{{'</div>'}}</template> (1 ms)
+          ✓ <textarea></div></textarea> (1 ms)
+          ✓ <svg><![CDATA[</div>]]></svg>
+          ✓ <svg><!--</div>--></svg>
+        X_MISSING_END_TAG
+          ✓ <template><div></template> (1 ms)
+          ✓ <template><div> (1 ms)
+        X_MISSING_INTERPOLATION_END
+          ✓ {{ foo (1 ms)
+          ✓ {{ (2 ms)
+          ✓ {{}}
+        X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END
+          ✓ <div v-foo:[sef fsef] /> (1 ms)
+
+  Test Suites: 1 passed, 1 total
+  Tests:       135 passed, 135 total
+  Snapshots:   79 passed, 79 total
+  Time:        6.398 s, estimated 20 s
+  Ran all test suites matching /compiler-core/i.
+#+end_src
 
 * 问题/疑问列表
 :PROPERTIES:
@@ -3026,4 +4296,23 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
      // pop 的目的：难道是为了不污染 ancestors ???
    #+end_src
 
-   好像还不是很明确为何要 push->pop。
+   好像还不是很明确为何要 push->pop(DONE)。
+   
+   *更新：2020-09-02 16:57:35*
+   
+   在测试用例 [[#parse-test-other-01][parse-test-other-01]] 时，嵌套标签解析的时候 ancestors 中保存着多级
+   嵌套标签的父级(当前被解析的节点的父级)。
+
+   比如： ~<div><span>\n</div></span>~ 这个是反例哈，这里只是举例。
+   #+begin_example
+   ancestors: Array(2)
+     0: {type: 1, ns: 0, tag: "div", tagType: 0, props: Array(0), …}
+     1: {type: 1, ns: 0, tag: "span", tagType: 0, props: Array(0), …}
+     length: 2
+   #+end_example
+   
+   解析顺序： div -> ~push:ancestors[0]~ -> span -> ~push:ancestors[1]~ -> ~\n~ 解
+   析完成之后，发现 parent 有内容，那么这个节点解析完之后会被 push 到
+   ~span.children~里面去，到这里 span 解析完了，所以要退出当前递归回到 div 的解
+   析，因此需要将~ancestors.pop()~ 掉最后一个，这样才能保证 div 的 child 能正确
+   push 到~div.ancestors~ 中去。

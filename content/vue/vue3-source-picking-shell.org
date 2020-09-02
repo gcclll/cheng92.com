@@ -1,0 +1,432 @@
+#+TITLE: Vue3.0源码系列 -- 重要知识点捡漏
+#+DATE: <2020-09-01 21:40:31>
+#+TAGS[]: vue, vue3, vuenext
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* packages(模块列表):
+
+  所有模块以“ *包* ”的形式存在。
+
+  + compiler-core/src
+    + ast.ts -> [[/vue/vue3-source-code-compiler-core-ast_ts/][抽象语法树处理文件]]
+    + codegen.ts
+    + compiler.ts -> [[/vue/vue3-source-code-compiler-core-parse_ts/][模板编译器，将标签模板解析成 ast 对象]]。
+    + errors.ts
+    + index.ts
+    + options.ts
+    + parse.ts
+    + runtimeHelpers.ts
+    + transform.ts
+    + transforms/
+      + hoistStatic.ts
+      + noopDirectiveTransform.ts
+      + transformElement.ts
+      + transformExpression.ts
+      + transformSlotOutlet.ts
+      + transformText.ts
+      + vBind.ts
+      + vFor.ts
+      + vIf.ts
+      + vModel.ts
+      + vOn.ts
+      + vOnce.ts
+      + vSlot.ts
+    + utils.ts
+  + compiler-dom
+  + compiler-sfc
+  + compiler-ssr
+  + global.d.ts
+  + reactivity
+  + runtime-core
+  + runtime-dom
+  + runtime-test
+  + server-renderer
+  + shared
+  + size-check
+  + template-explorer
+  + vue
+* 一个较完整的 AST 结构：
+
+  #+begin_src js
+    {
+      "type":0, // root 节点
+      "children":[ // 节点的子组件列表
+        {
+          "type":1, // 标签 div
+          "ns":0, // html
+          "tag":"div", // 标签名
+          "tagType":0, // 标签类型：start-0, end-1
+          "props":[ // 标签的属性列表，如： v-bind:keyup.prevent.enter
+            { // 属性有几个重要的属性：
+              // 1. name, 指令名称，v- 及缩写(#, @, :) 会转换成属性名称，如：bind
+              // 2. exp 表达式即=号后边的值，
+              // 3. arg 参数名，绑定的变量名，可能是动态的
+              // 4. 修饰符，modifiers
+
+              "type":7,
+              "name":"bind",
+              "exp":{
+                "type":4,
+                "content":"ok", // 表达式内容，
+                "isStatic":false,
+                "isConstant":false,
+                "loc":{
+                  "start":{
+                    "column":34,
+                    "line":1,
+                    "offset":33
+                  },
+                  "end":{
+                    "column":36,
+                    "line":1,
+                    "offset":35
+                  },
+                  "source":"ok"
+                }
+              },
+              "arg":{ // 参数，绑定的事件或变量
+                "type":4,
+                "content":"keyup",
+                "isStatic":true, // 支持 v-bind:[varname] 动态属性
+                "isConstant":true,
+                "loc":{
+                  "start":{
+                    "column":13,
+                    "line":1,
+                    "offset":12
+                  },
+                  "end":{
+                    "column":18,
+                    "line":1,
+                    "offset":17
+                  },
+                  "source":"keyup"
+                }
+              },
+              "modifiers":[
+                "prevent",
+                "enter"
+              ],
+              "loc":{
+                "start":{
+                  "column":6,
+                  "line":1,
+                  "offset":5
+                },
+                "end":{
+                  "column":37,
+                  "line":1,
+                  "offset":36
+                },
+                "source":"v-bind:keyup.prevent.enter="ok""
+              }
+            }
+          ],
+          "isSelfClosing":false,
+          "children":[
+            // 如果 <div>...</div> 还有内容这里会递归解析出子节点 ast
+          ],
+          "loc":{
+            "start":{
+              "column":1,
+              "line":1,
+              "offset":0
+            },
+            "end":{
+              "column":44,
+              "line":1,
+              "offset":43
+            },
+            "source":"<div v-bind:keyup.prevent.enter="ok"></div>"
+          }
+        }
+      ],
+      "loc":{
+        "start":{
+          "column":1,
+          "line":1,
+          "offset":0
+        },
+        "end":{
+          "column":44,
+          "line":1,
+          "offset":43
+        },
+        "source":"<div v-bind:keyup.prevent.enter="ok"></div>"
+      },
+      "helpers":[
+
+      ],
+      "components":[
+
+      ],
+      "directives":[
+
+      ],
+      "hoists":[
+
+      ],
+      "imports":[
+
+      ],
+      "cached":0,
+      "temps":0
+    }
+  #+end_src
+
+
+* 标签(组件)种类(element, component, slot, template)
+  :PROPERTIES:
+  :COLUMNS:  %CUSTOM_ID[(Custom Id)]
+  :CUSTOM_ID: shell_tag_types
+  :END:
+
+  @@html:<kbd>@@标签解析时的 TagType 检测@@html:</kbd>@@
+
+  1. element，原生标签类型，默认值(如： =div= ，结合 ~options.isNativeTag()~)
+  2. component 类型
+     - ~!options.isNativeTag()~ 类型
+     - 有 ~v-is~ 指令的
+     - core component 类型的(~[Teleport, Suspense, KeepAlive BaseTransition]~)
+     - ~options.isBuiltInComponent()~ 指定的类型
+     - 大写字母开头的标签(如： ~<Comp></Comp>~)
+     - 标签名直接是 *component* 的(~<component></component>~)
+  3. slot 类型
+  4. template 类型
+
+  这些类型的定义和解析均在 [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag(context, type, parent)]] 函数中完成
+
+  源码：
+
+  #+begin_src typescript
+
+    function parseTag(
+        context: ParserContext,
+        type: TagType,
+        parent: ElementNode | undefined
+    ): ElementNode {
+
+        // ...省略，这里我们之关系 tagType
+
+        let tagType = ElementTypes.ELEMENT
+        const options = context.options
+        if (!context.inVPre && !options.isCustomElement(tag)) {
+
+            const hasVIs = props.some(
+                p => p.type === NodeTypes.DIRECTIVE && p.name === 'is'
+            )
+            if (options.isNativeTag && !hasVIs) {
+                // 1. 如果非原生(isNativeTag 范畴内的)，视为组件类型，优先级最高
+                if (!options.isNativeTag(tag)) tagType = ElementTypes.COMPONENT
+            } else if (
+                // 2. 有 v-is 指令的直接视为组件类型
+                hasVIs ||
+                    // 3. vue 内置的核心组件<Teleport, Suspense, KeepAlive BaseTransition>
+                    isCoreComponent(tag) ||
+                    // 4. 内置组件，由开发者定义的内置类型？
+                    (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
+                    // 5. 标签名以大写字母开头的视为 组件类型
+                    /^[A-Z]/.test(tag) ||
+                    // 6. 标签名直接是 component 的
+                    tag === 'component'
+            ) {
+                tagType = ElementTypes.COMPONENT
+            }
+
+            if (tag === 'slot') {
+                tagType = ElementTypes.SLOT
+            } else if (
+                tag === 'template' &&
+                    props.some(p => {
+                        return (
+                            p.type === NodeTypes.DIRECTIVE && isSpecialTemplateDirective(p.name)
+                        )
+                    })
+            ) {
+                tagType = ElementTypes.TEMPLATE
+            }
+        }
+
+        return {
+            type: NodeTypes.ELEMENT,
+            ns,
+            tag,
+            tagType,
+            props,
+            isSelfClosing,
+            children: [],
+            loc: getSelection(context, start),
+            codegenNode: undefined // to be created during transform phase
+        }
+    }
+  #+end_src
+
+* 指令解析过程
+
+  [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsechildren][parseChildren(context, mode, ancestors)]] ->
+  [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement][parseElement(context, mode)]] -> 解析出整个 element
+  [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag(context, type, parent)]] -> 解析出标签
+  [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattributes][parseAttributes(context, type)]] -> 解析所有属性
+  [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattribute][parseAttribute(context, nameSet)]] -> 解析单个属性，结果返回到 props 中
+
+  解析的时候会根据映射关系，将缩写转换成名称。
+
+  如：
+  | abbrev | name   |
+  |--------+--------|
+  | ~:~    | ~bind~ |
+  | ~@~    | ~on~   |
+  | ~#~    | ~slot~ |
+
+  处理代码：
+
+  #+begin_src js
+    // function: parseAttribute(...)
+    // v-dir 或 缩写
+    if (!context.inVPre && /^(v-|:|@|#)/.test(name)) {
+      // ?: 非捕获组
+      // 1. (?:^v-([a-z0-9]+))? -> 匹配 v-dir 指令，非贪婪匹配，捕获指令名
+      //   称([a-z0=9]+)
+      // 2. (?:(?::|^@|^#)([^\.]+))? -> 匹配 :,@,#
+      // 3. (.+)?$ 匹配任意字符
+      const match = /(?:^v-([a-z0-9]+))?(?:(?::|^@|^#)([^\.]+))?(.+)?$/i.exec(
+        name
+      )
+
+      let arg
+
+      // ([a-z0-9]+), ([^\.]+)
+      if (match[2]) {
+        const startOffset = name.indexOf(match[2])
+        const loc = getSelection(
+          context,
+          getNewPosition(context, start, startOffset),
+          getNewPosition(context, start, startOffset + match[2].length)
+        )
+
+        let content = match[2]
+        let isStatic = true // 静态属性名
+
+        // 动态属性名解析
+        if (content.startsWith('[')) {
+          isStatic = false
+
+          if (!content.endsWith(']')) {
+            // 如果是动态属性名，必须是 [varName] 形式
+            emitError(
+              context,
+              ErrorCodes.X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END
+            )
+          }
+
+          content = content.substr(1, content.length - 2)
+        }
+
+        arg = {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content,
+          isStatic,
+          isConstant: isStatic,
+          loc
+        }
+      }
+
+      // 属性是否被引号包起来
+      if (value && value.isQuoted) {
+        const valueLoc = value.loc
+        valueLoc.start.offset++
+        valueLoc.start.column++
+        valueLoc.end = advancePositionWithClone(valueLoc.start, value.content)
+        // 取引号内的所有内容
+        valueLoc.source = valueLoc.source.slice(1, -1)
+      }
+
+      return {
+        type: NodeTypes.DIRECTIVE,
+        // : -> v-bind, @ -> v-on, # -> v-slot 的缩写
+        name:
+        match[1] ||
+          (name.startsWith(':') ? 'bind' : name.startsWith('@') ? 'on' : 'slot'),
+        exp: value && {
+          type: NodeTypes.SIMPLE_EXPRESSION,
+          content: value.content,
+          isStatic: false,
+          isConstant: false,
+          loc: value.loc
+        },
+        arg,
+        // 修饰符处理, v-bind.m1.m2 -> .m1.m2 -> ['m1', 'm2']
+        modifiers: match[3] ? match[3].substr[1].split('.') : [],
+        loc
+      }
+    }
+  #+end_src
+
+  属性解析的顺序是，先解析属性值，然后解析指令名称(~name~)，参数(~arg~)，修饰符(~modifiers~)。
+
+  [[/vue/vue-mind-map-house/#map-parse-with-directive][这里有完整的解析流程图，可以清晰完整的知道属性，指令解析整个过程。]]
+
+* RCDATA/CDATA 类型解析
+  
+  示例：
+
+  #+begin_src js
+    const ast = baseParse(code, {
+      getNamespace: (tag, parent) => {
+        const ns = parent ? parent.ns : Namespaces.HTML;
+        if (ns === Namespaces.HTML) {
+          // 在 parseChildren while 中将进入 
+          // if (ns !== Namespaces.HTML) {
+          //    node = parseCDATA(context, ancestors);
+          //  }
+          if (tag === "svg") {
+            return Namespaces.HTML + 1;
+          }
+        }
+        return ns;
+      },
+      getTextMode: ({ tag }) => {
+        if (tag === "textarea") {
+        // RCDATA 标签内的内容会直接进入 parsText 当做文本解析 
+          return TextModes.RCDATA;
+        }
+        if (tag === "script") {
+          return TextModes.RAWTEXT;
+        }
+        return TextModes.DATA;
+      },
+      ...options,
+      onError: spy,
+    });
+  #+end_src
+
+  这两种类型数据的解析关键有几点([[/vue/vue3-source-code-compiler-core-parse_ts/#test-parse-errors][详情请移步  🛬🛬🛬]]  )：
+
+  1. 重写 getTextMode 在里面对有需要的 tag 类型指定其是什么 mode
+
+     #+begin_src js
+       function parseElement(...) {
+         // ...
+
+         const mode = context.options.getTextMode(element, parent);
+         // RCDATA 模式，它的内容都会被当做文本来处理
+         // 如：<textarea></div></textarea> 中的 `</div>` 只是个文本内容
+         const children = parseChildren(context, mode, ancestors);
+
+         // ...
+       }
+     #+end_src
+
+  2. 重写 getNamespace 告知 parseChildren 走哪个分支
+     #+begin_src js
+       else if (s.startsWith("<![CDATA[")) {
+         if (ns !== Namespaces.HTML) {
+           node = parseCDATA(context, ancestors);
+         } else {
+           emitError(context, ErrorCodes.CDATA_IN_HTML_CONTENT);
+           node = parseBogusComment(context);
+         }
+       }
+     #+end_src

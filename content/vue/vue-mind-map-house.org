@@ -6,117 +6,222 @@
 #+STARTUP: indent
 
 * compiler-core
-** 解析 ~simple text~
+** 带指令的标签解析全过程(~v-bind~)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-with-directive
+:END:
 
-   解析纯文本，只会进入 while 循环中的 !node 检测然后进入 ~parseText~ 纯文本解
-   析，会匹配 ~<, {{, ]]>~ 作为纯文本的结束标志。
+~<div v-bind:keyup.enter.prevent="ok"></div>~
 
-   得到纯文本内容后传递给 ~parseTextData~ 替换 ~/&(gt|lt|amp|apos|quot);/g~
-   html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返回。
+1. parseChildren :arrow_right: while
+2. parseElement :arrow_left: ~<div ....></div>~
+3. parseTag :arrow_right: *node: div* :arrow_right: parseAttributes 解析属性 :arrow_left: ~v-bind:keyup...></div>~
+4. parseAttribute :arrow_right:
+   1) 先解析 ~="ok"~ 出值
+   2) 后解析 ~v-bind:keyup.enter.prevent~
+5. 最后得到 ~props[0] -> { name: 'bind', arg: { content: 'keyup', ... }, exp:
+   { content: 'ok', ... }, modifiers: ['enter', 'prevent' ]}~
+   1) name: 指令的名称， ~v-bind, @~ 都会转成 *bind* 名称
+   2) arg: 表示指令绑定的参数名称，这里可以是动态变量，如：
+      ~v-bind:[dynamicVarName]~ ，由 ~arg.isConstant~ 标识。
+   3) exp: 表示表达式的值
 
-   退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
 
-   [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png][图片外网(原图)链接]]
+[[https://img.cheng92.com/vue3/compiler-core/tests/tag-with-directive-v-bind.png][图片外网(原图)链接]]
 
-   http://qiniu.ii6g.com/img/simple-text.png
+[[http://qiniu.ii6g.com/img/tag-with-directive-v-bind.png]]
+** 标签解析(~<div>hello world</div>~)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-simple-div
+:END:
+
+1. parseChildren while 开始解析
+2. 遇到 ~<d~ 满足 ~/^[z-a]/i~ 进入 parseElement 解析标签
+3. parseElement -> parseTag 解析出名为 *div* 的标签节点， ~content = `hello world</div>`~
+4. parseElement -> parseChildren 解析出 *hello world* 文本节点作为 div 节点的
+   children[0]， ~content = `</div>`~
+5. 返回到 parseChildren 解析 ~</div>~ 发现 ~ancestors~ 有内容且找到了
+   ~</div>~ 匹配的 ~<div>~ 节点，最后完成匹配。
+
+
+[[https://img.cheng92.com/vue3/compiler-core/tests/simple-tag-div.png][图片外网(原图)链接]]
+
+[[http://qiniu.ii6g.com/img/simple-tag-div.png]]
+
+*** 自闭合标签(=<img/>=)的解析，也在 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 里面，有一个针对这个的处理：
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-self-closing
+:END:
+
+#+begin_src js
+
+  // 解析到这里的时候 content 应该是这样的：`/>xxx`
+  isSelfClosing = startsWith(context.source, '/>')
+  if (type === TagType.End && isSelfClosing) {
+    // 如果自闭合没有开始标签，是非法的
+    emitError(context, ErrorCodes.END_TAG_WITH_TRAILING_SOLIDUS)
+  }
+
+  // 这里判断如果是自闭合的，那么该标签的解析就已经结束了
+  advanceBy(context, isSelfClosing ? 2 : 1)
+#+end_src
+
+*** 空标签的处理，需要在调用解析函数 [[/vue/vue3-source-code-compiler-core/#baseparsecontext-options][baseParse]] 的时候明确告知它哪些是空标签(如： ~<img>~)：
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-void-tag
+:END:
+
+#+begin_src js
+  const ast = baseParse('<img>after', {
+    isVoidTag: (tag) => tag === 'img'
+  })
+#+end_src
+
+~isVoidTag~ 会在 [[/vue/vue3-source-code-compiler-core/#parseelementcontext-mode][parseElement]] 的时候被调用，在调用 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 解析完
+*TagType.Start* 之后检测，如果是空标签类型，会直接退出解析即完成该标签的解析
+过程(因为是空标签，所以后面的内容就不再属于它了，可以结束了)：
+
+#+begin_src js
+  // 自闭合的到这里就可以结束了
+  if (element.isSelfClosing || context.options.isVoidTag?.(element.tag)) {
+    return element;
+  }
+#+end_src
+
+*** 模板标签的解析(~<template></template>~)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-template
+:END:
+
+这个解析和普通标签基本一样，只是在 parseTag 里面解析的时候更新下类型就可以了，很
+简单的操作：
+
+#+begin_src typescript
+  function parseTag(
+      context: ParserContext,
+      type: TagType,
+      parent: ElementNode | undefined
+  ): ElementNode {
+
+      // ...省略，这些都可以省略了，和普通标签处理一模一样
+
+      let tagType = ElementTypes.ELEMENT
+      const options = context.options
+      if (!context.inVPre && !options.isCustomElement(tag)) {
+          // ...省略，vue 内置组件类型
+
+          if (tag === 'slot') {
+              tagType = ElementTypes.SLOT
+          } else if (
+              // 所以这里才是重点，作为模板标签必须满足一定的条件
+              // 1. 必须包含至少一个属性，且类型是指令
+              // 2. 并且满足 const isSpecialTemplateDirective = /*#__PURE__*/ makeMap(`if,else,else-if,for,slot`)
+              // 即该指令必须是 if, else, else-if, for, slot，也就是说模板必须用作循环或插槽时使用
+              tag === 'template' &&
+                  props.some(p => {
+                      return (
+                          p.type === NodeTypes.DIRECTIVE && isSpecialTemplateDirective(p.name)
+                      )
+                  })
+          ) {
+              tagType = ElementTypes.TEMPLATE
+          }
+      }
+
+      return {
+          type: NodeTypes.ELEMENT,
+          ns,
+          tag,
+          tagType,
+          props,
+          isSelfClosing,
+          children: [],
+          loc: getSelection(context, start),
+          codegenNode: undefined // to be created during transform phase
+      }
+  }
+#+end_src
+
+所以下面这两个用例就能很好的得到解释了：
+
+#+begin_src js
+  test("template element with directives", () => {
+    const ast = baseParse('<template v-if="ok"></template>');
+    const element = ast.children[0];
+    expect(element).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tagType: ElementTypes.TEMPLATE, // 这里是模板类型，因为有 `v-if' 指令
+    });
+  }); // template element with directives
+
+  test("template element without directives", () => {
+    const ast = baseParse("<template></template>");
+    const element = ast.children[0];
+    expect(element).toMatchObject({
+      type: NodeTypes.ELEMENT,
+      tagType: ElementTypes.ELEMENT, // 而这里依旧是元素类型，因为没有任何指令
+    });
+  });
+
+#+end_src
+** 解析无效的 ~</div>~
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-invalid-div
+:END:
+~some text</div>~
+
+经过的函数：
+
+1. parseChildren 进入解析 while
+2. parseText 解析出有效文本
+3. 回到 parseChildren while 循环解析 ~</div>~ 报错
+
+[[https://img.cheng92.com/vue3/compiler-core/tests/invalid-end-tag.png][图片外网(原图)链接]]
+
+[[http://qiniu.ii6g.com/img/invalid-end-tag.png]]
 
 ** 插值解析 ~some {{ foo + bar }} text~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-interpolation
+:END: 
 
-   1. parseChildren :arrow_right: while: ~some {{ foo + bar }} text~
-   2. parseText :arrow_right: node[0]: ~`some`~
-   3. ~{{ foo + bar }} text~  :arrow_right:  parseInterpolation  :arrow_right:
-      node[1]: ~foor + bar~
-   4. ~` text`~ :arrow_right: parseText :arrow_right: node[2]: ~`text`~
-   5. nodes -> root.children
+1. parseChildren :arrow_right: while: ~some {{ foo + bar }} text~
+2. parseText :arrow_right: node[0]: ~`some`~
+3. ~{{ foo + bar }} text~  :arrow_right:  parseInterpolation  :arrow_right:
+   node[1]: ~foor + bar~
+4. ~` text`~ :arrow_right: parseText :arrow_right: node[2]: ~`text`~
+5. nodes -> root.children
 
 
-   解析过程中需要注意的几点：
-   1. 插值解析，首先是匹配 `{{` 然后去的 *}}* 的索引，最后通过 ~slice(startIdx,
-      endIdx)~ 取到要解析的表达式。
-   2. ~`some`~ 和  ~`text`~ 不会合并到一个 node 中，因为不是相邻的，请注意合并文
-      本 ndoe 的前提条件：前一个节点也必须是文本节点类型。
+解析过程中需要注意的几点：
+1. 插值解析，首先是匹配 `{{` 然后去的 *}}* 的索引，最后通过 ~slice(startIdx,
+   endIdx)~ 取到要解析的表达式。
+2. ~`some`~ 和  ~`text`~ 不会合并到一个 node 中，因为不是相邻的，请注意合并文
+   本 ndoe 的前提条件：前一个节点也必须是文本节点类型。
 
-   [[http://qiniu.ii6g.com/img/text-with-interpolation.png]]
-** 解析无效的 ~</div>~
 
-   ~some text</div>~
+[[http://qiniu.ii6g.com/img/text-with-interpolation.png]]
+** 解析 ~simple text~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map-parse-simple-text
+:END: 
 
-   经过的函数：
+解析纯文本，只会进入 while 循环中的 !node 检测然后进入 ~parseText~ 纯文本解
+析，会匹配 ~<, {{, ]]>~ 作为纯文本的结束标志。
 
-   1. parseChildren 进入解析 while
-   2. parseText 解析出有效文本
-   3. 回到 parseChildren while 循环解析 ~</div>~ 报错
+得到纯文本内容后传递给 ~parseTextData~ 替换 ~/&(gt|lt|amp|apos|quot);/g~
+html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返回。
 
-   [[https://img.cheng92.com/vue3/compiler-core/tests/invalid-end-tag.png][图片外网(原图)链接]]
+退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
 
-   http://qiniu.ii6g.com/img/invalid-end-tag.png
+[[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png][图片外网(原图)链接]]
 
-** 标签解析(~<div>hello world</div>~)
-
-   1. parseChildren while 开始解析
-   2. 遇到 ~<d~ 满足 ~/^[z-a]/i~ 进入 parseElement 解析标签
-   3. parseElement -> parseTag 解析出名为 *div* 的标签节点， ~content = `hello world</div>`~
-   4. parseElement -> parseChildren 解析出 *hello world* 文本节点作为 div 节点的
-      children[0]， ~content = `</div>`~
-   5. 返回到 parseChildren 解析 ~</div>~ 发现 ~ancestors~ 有内容且找到了
-      ~</div>~ 匹配的 ~<div>~ 节点，最后完成匹配。
-
-   [[https://img.cheng92.com/vue3/compiler-core/tests/simple-tag-div.png][图片外网(原图)链接]]
-
-   http://qiniu.ii6g.com/img/simple-tag-div.png
-
-   自闭合标签的解析，也在 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 里面，有一个针对这个的处理：
-
-   #+begin_src js
-
-     // 解析到这里的时候 content 应该是这样的：`/>xxx`
-     isSelfClosing = startsWith(context.source, '/>')
-     if (type === TagType.End && isSelfClosing) {
-       // 如果自闭合没有开始标签，是非法的
-       emitError(context, ErrorCodes.END_TAG_WITH_TRAILING_SOLIDUS)
-     }
-
-     // 这里判断如果是自闭合的，那么该标签的解析就已经结束了
-     advanceBy(context, isSelfClosing ? 2 : 1)
-   #+end_src
-   
-   空标签的处理，需要在调用解析函数 [[/vue/vue3-source-code-compiler-core/#baseparsecontext-options][baseParse]] 的时候明确告知它哪些是空标签(如：
-   ~<img>~)：
-
-   #+begin_src js
-     const ast = baseParse('<img>after', {
-       isVoidTag: (tag) => tag === 'img'
-     })
-   #+end_src
-   
-   ~isVoidTag~ 会在 [[/vue/vue3-source-code-compiler-core/#parseelementcontext-mode][parseElement]] 的时候被调用，在调用 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 解析完
-   *TagType.Start* 之后检测，如果是空标签类型，会直接退出解析即完成该标签的解析
-   过程(因为是空标签，所以后面的内容就不再属于它了，可以结束了)：
-
-   #+begin_src js
-     // 自闭合的到这里就可以结束了
-     if (element.isSelfClosing || context.options.isVoidTag?.(element.tag)) {
-       return element;
-     }
-   #+end_src
-   
-** 带指令的标签解析全过程(~v-bind~)
-
-   ~<div v-bind:keyup.enter.prevent="ok"></div>~
-
-   1. parseChildren :arrow_right: while
-   2. parseElement :arrow_left: ~<div ....></div>~
-   3. parseTag :arrow_right: *node: div* :arrow_right: parseAttributes 解析属性 :arrow_left: ~v-bind:keyup...></div>~
-   4. parseAttribute :arrow_right:
-      1) 先解析 ~="ok"~ 出值
-      2) 后解析 ~v-bind:keyup.enter.prevent~
-   5. 最后得到 ~props[0] -> { name: 'bind', arg: { content: 'keyup', ... }, exp:
-      { content: 'ok', ... }, modifiers: ['enter', 'prevent' ]}~
-      1) name: 指令的名称， ~v-bind, @~ 都会转成 *bind* 名称
-      2) arg: 表示指令绑定的参数名称，这里可以是动态变量，如：
-         ~v-bind:[dynamicVarName]~ ，由 ~arg.isConstant~ 标识。
-      3) exp: 表示表达式的值
-
-   [[https://img.cheng92.com/vue3/compiler-core/tests/tag-with-directive-v-bind.png][图片外网(原图)链接]]
-
-   http://qiniu.ii6g.com/img/tag-with-directive-v-bind.png
+[[http://qiniu.ii6g.com/img/simple-text.png]]

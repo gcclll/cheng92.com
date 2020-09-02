@@ -9,6 +9,35 @@
 杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，:smile::smile:。
 #+end_quote
 
+* Hugo
+1. 设置文章列表以 year-month 分类，如图：
+   [[http://qiniu.ii6g.com/img/20200901233906.png]]
+   
+   修改：[[/theme/even/layouts/_default/section.html]]
+   
+   其中的 "2006" 修改成 "2006-01" 即可。
+   #+begin_src html
+   {{- range $index, $element := $paginator.Pages -}}
+    {{- $thisYear := $element.Date.Format "2006-01" }}
+    {{- $lastElement := $index | add -1 | index $paginator.Pages }}
+    {{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
+      <div class="collection-title">
+        <h2 class="archive-year">{{ $thisYear }}</h2>
+      </div>
+    {{- end }}
+
+    <div class="archive-post">
+      <span class="archive-post-time">
+        {{ $element.Date.Format "01-02" }}
+      </span>
+      <span class="archive-post-title">
+        <a href="{{ $element.RelPermalink }}" class="archive-post-link">
+          {{ .Title }}
+        </a>
+      </span>
+    </div>
+  {{- end -}}
+   #+end_src
 * api
 
 | 名称          | 简介         | 其他               |
