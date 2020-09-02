@@ -3703,8 +3703,68 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
   }
 #+end_src
 
-** TODO parseCDATA(context, ancestors)
-** TODO parseBogusComment(context)
+** DONE parseCDATA(context, ancestors)
+CLOSED: [2020-09-02 Wed 23:14]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parsecdata
+:END: 
+
+- State "DONE"       from "TODO"       [2020-09-02 Wed 23:14]
+解析 ~<![CDATA[....]]~ xml 类型注释。
+
+#+begin_src js
+
+  // <![CDATA[...
+  function parseCDATA(context, ancestors) {
+    advanceBy(context, 9); // `<![CDATA[`.length = 9
+    const nodes = parseChildren(context, TextModes.CDATA, ancestors);
+    if (context.source.length === 0) {
+      emitError(context, ErrorCodes.EOF_IN_CDATA);
+    } else {
+      advanceBy(context, 3);
+    }
+    return nodes;
+  }
+#+end_src
+** DONE parseBogusComment(context)
+CLOSED: [2020-09-02 Wed 23:11]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-parseboguscomment
+:END: 
+
+- State "DONE"       from "TODO"       [2020-09-02 Wed 23:11]
+
+解析一些注释性的结构，如： ~<!DOCTYPE~ 。
+
+#+begin_src js
+
+  function parseBogusComment(context) {
+    const start = getCursor(context);
+
+    const contentStart = context.source[1] === "?" ? 1 : 2;
+    let content;
+
+    const closeIndex = context.source.indexOf(">");
+
+    if (closeIndex === -1) {
+      // 没有结束索引，后面所有的都将成为注释
+      content = context.source.slice(contentStart);
+      advanceBy(context, context.source.length);
+    } else {
+      content = context.source.slice(contentStart, closeIndex);
+      // 定位到注释后面的字符
+      advanceBy(context, closeIndex + 1);
+    }
+
+    return {
+      type: NodeTypes.COMMENT,
+      content,
+      loc: getSelection(context, start),
+    };
+  }
+#+end_src
 ** pushNode(nodes, node)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
