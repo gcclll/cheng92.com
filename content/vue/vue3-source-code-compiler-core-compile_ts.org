@@ -1,0 +1,165 @@
+#+TITLE: Vue3.0 源码系列（二）编译器核心 - Compiler core 3: compile.ts
+#+DATE: <2020-08-31 22:11:55>
+#+TAGS[]: vue, vue3, vuenext, compiler
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。
+#+end_quote
+
+@@html:<kbd>@@文字比较长，如果不想看文字可直接转到[[/vue/vue-mind-map-house/][这里]]看脑图@@html:</kbd>@@
+
+* 准备工作
+  要完成这一部分，首先要了解它的作用是什么？
+
+  在 [[/vue/vue3-source-code-compiler-core-parse_ts/][parse.ts]] 文中我们完成了解析器的部分，作用是将模板解析成 AST 对象。
+
+  在这里 compile.ts 作用就是将这些 AST 如何翻译成 render 函数。
+
+  为了更直观的体验 compile 的作用，在 vue 源码里面有一个打包之后的目录：
+
+  */vue-next/packages/vue/dist/vue.global.js*
+
+  然后我们使用第一个测试用例的模板，去编译下看看结果：
+
+  #+begin_src js
+    const source = `
+    <div id="foo" :class="bar.baz">
+      {{ world.burn() }}
+      <div v-if="ok">yes</div>
+      <template v-else>no</template>
+      <div v-for="(value, index) in list"><span>{{ value + index }}</span></div>
+    </div>
+         `.trim(),
+  #+end_src
+
+  进行编译(完整示例)：
+
+  #+begin_src html
+    <script src="./vue.global.js"></script>
+    <script>
+      console.log(Vue, "00");
+      const { compile } = Vue;
+      const result = compile(
+      `
+      <div id="foo" :class="bar.baz">
+        {{ world.burn() }}
+        <div v-if="ok">yes</div>
+        <template v-else>no</template>
+        <div v-for="(value, index) in list"><span>{{ value + index }}</span></div>
+      </div>
+      `.trim(),
+      { sourceMap: true, filename: "foo.vue" }
+      );
+      console.log(result, "xx");
+    </script>
+  #+end_src
+
+  运行之后 result 结果：
+
+  #+begin_src js
+    (function anonymous() {
+      const _Vue = Vue;
+      const {
+        createVNode: _createVNode,
+        createCommentVNode: _createCommentVNode,
+        createTextVNode: _createTextVNode,
+      } = _Vue;
+
+      const _hoisted_1 = { key: 0 };
+      // 这里 v-if ... else 里面的 <template>no</template> ？
+      // 创建文本虚拟节点，这里为什么直接在 render 外就执行了？？？
+      // 又是怎么做到的？？？
+      const _hoisted_2 = _createTextVNode("no");
+
+      // 神级函数 >>> render
+      return function render(_ctx, _cache) {
+        with (_ctx) {
+          const {
+            toDisplayString: _toDisplayString,
+            createVNode: _createVNode,
+            openBlock: _openBlock,
+            createBlock: _createBlock,
+            createCommentVNode: _createCommentVNode,
+            createTextVNode: _createTextVNode,
+            Fragment: _Fragment,
+            renderList: _renderList,
+          } = _Vue;
+
+          return (
+            _openBlock(),
+            _createBlock(
+              "div",
+              {
+                // 解析出来的 div 属性， id 和 class
+                // parseAttribute 的结果
+                id: "foo", // 注意这里是字符串
+                class: bar.baz, // 这里是变量形式存在，因为用到了 :class 属于指令解析
+              },
+              [
+                // 这里是孩子节点们
+                // 1. 第一个孩子节点，插值
+                _createTextVNode(
+                  // 插值里面的内容调用转换成文本
+                  _toDisplayString(world.burn()) + " ",
+                  1 /* TEXT */
+                ),
+                // 2. 第二个孩子节点 v-if...v-else
+                // v-if 指令，参数是 ok
+                // 然后这里又是怎么做到 ok ? ... : ...
+                // 指令解析的时候 v-if 的处理又是怎么做的，transform/vIf ???
+                // 相邻的下一个节点检测是否是 v-if 指令簇？？？
+                // 到底真相如何 ???
+
+                ok
+                // 创建 div
+                  ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+                // 创建 template
+                  : (_openBlock(),
+                     _createBlock(
+                       _Fragment,
+                       { key: 1 },
+                       // 提前被解析出来的 template -> no 文本节点
+                       // 难道是提前遍历？？？将所有的 template 如果是
+                       // 静态的就先全部创建出来？？？
+                       [_hoisted_2],
+                       64 /* STABLE_FRAGMENT */
+                     )),
+                // 3. 第三个孩子节点，div v-for
+                (_openBlock(true),
+                 _createBlock(
+                   _Fragment,
+                   null,
+                   // 渲染列表
+                   _renderList(list, (value, index) => {
+                     return (
+                       _openBlock(),
+                       _createBlock("div", null, [
+                         _createVNode(
+                           "span",
+                           null,
+                           _toDisplayString(value + index),
+                           1 /* TEXT */
+                         ),
+                       ])
+                     );
+                   }),
+                   256 /* UNKEYED_FRAGMENT */
+                 )),
+              ],
+              2 /* CLASS */
+            )
+          );
+        }
+      };
+    });
+  #+end_src
+
+  诸多的疑问等着去解答！！！
+
+  但至少有一点很清晰的知道，compile 就是将 AST 编译成 render 函数用的。
+
+  知道了最终目的，接下来就是漫长的探索之路了 :running: :running: :running: 
+* compile.spec.ts

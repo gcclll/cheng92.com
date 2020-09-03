@@ -1,0 +1,9 @@
+#+TITLE: JavaScript Api
+#+DATE: <2020-09-03 16:20:35>
+#+TAGS[]: javascript, api
+#+CATEGORIES[]: javascript
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* Document
+** Document.execCommand()
