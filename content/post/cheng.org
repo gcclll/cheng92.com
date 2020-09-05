@@ -12,31 +12,31 @@
 * Hugo
 1. 设置文章列表以 year-month 分类，如图：
    [[http://qiniu.ii6g.com/img/20200901233906.png]]
-   
+
    修改：[[/theme/even/layouts/_default/section.html]]
-   
+
    其中的 "2006" 修改成 "2006-01" 即可。
    #+begin_src html
-   {{- range $index, $element := $paginator.Pages -}}
-    {{- $thisYear := $element.Date.Format "2006-01" }}
-    {{- $lastElement := $index | add -1 | index $paginator.Pages }}
-    {{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
-      <div class="collection-title">
-        <h2 class="archive-year">{{ $thisYear }}</h2>
-      </div>
-    {{- end }}
+     {{- range $index, $element := $paginator.Pages -}}
+     {{- $thisYear := $element.Date.Format "2006-01" }}
+     {{- $lastElement := $index | add -1 | index $paginator.Pages }}
+     {{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
+     <div class="collection-title">
+       <h2 class="archive-year">{{ $thisYear }}</h2>
+     </div>
+     {{- end }}
 
-    <div class="archive-post">
-      <span class="archive-post-time">
-        {{ $element.Date.Format "01-02" }}
-      </span>
-      <span class="archive-post-title">
-        <a href="{{ $element.RelPermalink }}" class="archive-post-link">
-          {{ .Title }}
-        </a>
-      </span>
-    </div>
-  {{- end -}}
+     <div class="archive-post">
+       <span class="archive-post-time">
+         {{ $element.Date.Format "01-02" }}
+       </span>
+       <span class="archive-post-title">
+         <a href="{{ $element.RelPermalink }}" class="archive-post-link">
+           {{ .Title }}
+         </a>
+       </span>
+     </div>
+     {{- end -}}
    #+end_src
 * api
 
@@ -80,14 +80,14 @@
    #+begin_example
    答：使用 `alias: {}` 选项配置别名，注意必须是 `/@assets/` 方式，以斜杠开始斜杠结束。
    #+end_example
-   
+
    #+begin_src json
      alias: {
        '/@/': path.resolve(__dirname, 'src'),
        '/@assets/': path.resolve(__dirname, 'src/assets')
      }
    #+end_src
-   
+
 * 软件&命令
 ** qshell 批量下载七牛
 https://github.com/qiniu/qshell
@@ -95,7 +95,7 @@ https://github.com/qiniu/qshell
 1. ~$ qshell account <Your AccessKey> <Your SecretKey> <Your Name>~
 2. ~$ qshell account -- <Your AccessKey> <Your SecretKey> <Your Name>~ key 可能
    以是以 *-* 开头，就用这个。
-   
+
 @@html:<kbd>@@配置文件：~/.qshell.json@@html:</kbd>@@
 
 ** git 命令
@@ -135,46 +135,70 @@ https://github.com/qiniu/qshell
 #+end_src
 
 ** PicGo
-   
+
 https://github.com/PicGo
+* 娱乐世界(play the world :game_die:)
+1. [[https://www.jamendo.com/][Jamendo]], English Music Free Download
+2. [[https://www.westonemusic.com/][West One Music]]
+3. [[http://music.ifkdy.com/][疯狂音乐搜索]], 网易云，QQ 音乐，虾米音乐免费下载，搜了一两个点下载弹出 denied
+   拒绝下载。
+4. [[https://music.lkxin.cn/][清酒踏月在线音乐]]
+5. [[http://www.gequdaquan.net/gqss/][音乐聚合搜索引擎 可以下载，但是只能免费下两首，后面要付费。]]
+6. 全网音乐免费下载工具
+7. 墨灵音乐
+8. bin music
+9. [[https://www.sq688.com/][超高无损音乐漫音社，百度网盘方式，试了下了5-6首，应该没限制，真正免费？]]
+10. [[http://hwkxk.cn/][Hwk 小站]]
+11. [[https://link.zhihu.com/?target=http%3A//tool.liumingye.cn/music/][MyFreeMP3]]
+12. [[http://music.runker.net/][行客VIP音乐下载网]]
+13. [[http://www.xieqian.vip/music/][Master.Xie]]
 * 问题列表
 
-** 怎么更新项目中所有的 ~npm~ 包?
+1. 怎么更新项目中所有的 ~npm~ 包?
 
-[[https://flaviocopes.com/update-npm-dependencies/][参考链接。]]
+   [[https://flaviocopes.com/update-npm-dependencies/][  参考链接。]]
 
-#+begin_src shell
-  $ npm install -g npm-check-updates
-  $ ncu -u
-  $ npm update
-  $ npm install
-  $ ncu -u && npm update && npm install
-#+end_src
+   #+begin_src shell
+      $ npm install -g npm-check-updates
+      $ ncu -u
+      $ npm update
+      $ npm install
+      $ ncu -u && npm update && npm install
+    #+end_src
+2. 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
+3. 添加 submodule 失败 ?
 
-** 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
-** 添加 submodule 失败 ?
+    #+begin_example
+      ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
+      A git directory for 'themes/even' is found locally with remote(s):
+        origin	https://github.com/olOwOlo/hugo-theme-even.git
+      If you want to reuse this local git directory instead of cloning again from
+        https://github.com/gcclll/hugo-theme-even.git
+      use the '--force' option. If the local git directory is not the correct repo
+      or you are unsure what this means choose another name with the '--name' option.
+    #+end_example
 
-#+begin_example
-  ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
-  A git directory for 'themes/even' is found locally with remote(s):
-    origin	https://github.com/olOwOlo/hugo-theme-even.git
-  If you want to reuse this local git directory instead of cloning again from
-    https://github.com/gcclll/hugo-theme-even.git
-  use the '--force' option. If the local git directory is not the correct repo
-  or you are unsure what this means choose another name with the '--name' option.
-#+end_example
+    本意就是 fork themes/even 出来修改，结果出现问题。
 
-本意就是 fork themes/even 出来修改，结果出现问题。
+    *解决方案 1:*
 
-*解决方案 1:*
+   1. ~$ git ls-files stage themes/even~
+   2. ~$ git rm --cached themes/even~
+   3. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
 
-1. ~$ git ls-files stage themes/even~
-2. ~$ git rm --cached themes/even~
-3. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
+   *解决方案 2:*
 
-*解决方案 2:*
+   1. ~$ cd .git/modules~
+   2. ~$ rm -rf themes/even~
+   3. ~$ cd ../..~
+   4. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
+4. ssh 登录次数过多问题(many authentication)
 
-1. ~$ cd .git/modules~
-2. ~$ rm -rf themes/even~
-3. ~$ cd ../..~
-4. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
+   ~$ ssh-add -D~ 删除认证缓存
+5. macos install adb
+
+   ~$  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"~
+   
+   ~$ brew cask install android-platform-tools~
+   
+   ~$ adb devices~

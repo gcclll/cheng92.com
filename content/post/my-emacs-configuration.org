@@ -13,6 +13,10 @@
 
   | Key Binding | Description                                                                  |
   |-------------+------------------------------------------------------------------------------|
+  | ~SPC a m n~ | emms-next                                                                    |
+  | ~SPC a m p~ | emms-previous                                                            |
+  |-------------+------------------------------------------------------------------------------|
+  |             |                                                                              |
   | ~SPC b i~   | ibuffer                                                                      |
   | ~SPC b D~   | spacemacs/kill-other-buffers                                                 |
   | ~SPC b m s~ | bookmark-set                                                                 |
@@ -70,7 +74,7 @@
   |-------------+------------------------------------------------------------------------------|
   | ~, '~       | ielm, lisp-repl                                                              |
   | ~, g d~     | xref-find-definition                                                         |
-  | ~, g b~     | xref-pop-marker-stack                                                       |
+  | ~, g b~     | xref-pop-marker-stack                                                        |
   |-------------+------------------------------------------------------------------------------|
   | ~+~         | evil-numbers/inc-at-pt，number +1                                            |
   | ~-~         | evil-numbers/dec-at-pt, number -1                                            |
@@ -107,6 +111,28 @@
 | ~s->~ | move-text-down |
 
 * Modes
+** emms, play music
+(spacemacs/set-leader-keys "ama" 'emms-add-directory-tree)
+(spacemacs/set-leader-keys "ame" 'emms-smart-browse)
+(spacemacs/set-leader-keys "aml" 'emms-play-playlist)
+(spacemacs/set-leader-keys "amn" 'emms-next)
+(spacemacs/set-leader-keys "amp" 'emms-previous)
+(spacemacs/set-leader-keys "amP" 'emms-pause)
+(spacemacs/set-leader-keys "ams" 'emms-start)
+(spacemacs/set-leader-keys "amS" 'emms-stop)
+(spacemacs/set-leader-keys "amt" 'emms-toggle-repeat-playlist)
+| key         | function                     |
+|-------------+------------------------------|
+| ~SPC a m a~ | 'emms-add-directory-tree     |
+| ~SPC a m e~ | 'emms-smart-browse           |
+| ~SPC a m l~ | 'emms-play-playlist          |
+| ~SPC a m n~ | 'emms-next                   |
+| ~SPC a m p~ | 'emms-previous               |
+| ~SPC a m P~ | 'emms-pause                  |
+| ~SPC a m s~ | 'emms-start                  |
+| ~SPC a m S~ | 'emms-stop                   |
+| ~SPC a m t~ | 'emms-toggle-repeat-playlist |
+|             |                              |
 ** DONE ranger
    CLOSED: [2020-08-27 Thu 21:14]
 

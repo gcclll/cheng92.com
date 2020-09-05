@@ -161,5 +161,121 @@
 
   但至少有一点很清晰的知道，compile 就是将 AST 编译成 render 函数用的。
 
-  知道了最终目的，接下来就是漫长的探索之路了 :running: :running: :running: 
+  知道了最终目的，接下来就是漫长的探索之路了 :running: :running: :running:
+
+  构造数据，观察最终生成的 VNode 结构(上面代码执行之后结果返回给 result，其实就
+  是 render 函数):
+
+  #+begin_src js
+    result({
+      list: [1,2,3],
+      ok: true,
+      bar: {
+        baz: 'xx'
+      },
+      world: {
+        burn() {}
+      }
+    })
+  #+end_src
+
+  传递一些参数调用之后结果：
+
+  #+begin_example
+    {_isVNode: true, type: "div", props: {…}, key: null, ref: null, …}
+      anchor: null
+      appContext: null
+      // 三个孩子节点
+      children: Array(3)
+        0: {_isVNode: true, type: Symbol(Text), props: null, key: null, ref: null, …}
+        1: {_isVNode: true, type: "div", props: {…}, key: 0, ref: null, …}
+        2: {_isVNode: true, type: Symbol(Fragment), props: null, key: null, ref: null, …}
+        length: 3
+      component: null
+      dirs: null
+      // 三个动态孩子节点
+      dynamicChildren: Array(3)
+        0: {_isVNode: true, type: Symbol(Text), props: null, key: null, ref: null, …}
+        1: {_isVNode: true, type: "div", props: {…}, key: 0, ref: null, …}
+        2: {_isVNode: true, type: Symbol(Fragment), props: null, key: null, ref: null, …}
+        length: 3
+      dynamicProps: null
+      el: null
+      key: null
+      patchFlag: 2
+      // 属性
+      props: {id: "foo", class: "xx"}
+      ref: null
+      scopeId: null
+      shapeFlag: 17
+      suspense: null
+      target: null
+      targetAnchor: null
+      transition: null
+      // 标签
+      type: "div"
+      // 标识为虚拟节点
+      _isVNode: true
+  #+end_example
+
 * compile.spec.ts
+
+* 函数列表
+
+** baseCompile(template, options)
+   :PROPERTIES:
+   :COLUMNS:  %CUSTOM_ID[(Custom Id)]
+   :CUSTOM_ID: compile-basecompile
+   :END:
+
+   将 template 解析成 render 函数。
+
+   #+begin_src js
+     export function baseCompile(template, options) {
+       const { onError = defaultOnError, mode } = options;
+       const isModuleMode = mode === "module";
+
+       // ... error handler 1
+
+       const prefixIdentifiers =
+             !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode);
+
+       // ... error handler 2
+
+       // .... :arrow_up::arrow_up::arrow_up::arrow_up: 不知道干啥子？？？
+
+       // ... 下面是正文吧 :arrow_down::arrow_down::arrow_down::arrow_down:
+
+       // 如果是字符串解析出 ast
+       const ast =
+             typeof template === "string" ? baseParse(template, options) : template;
+
+       const [nodeTransforms, directiveTransforms] = getBaseTransformPreset(
+         prefixIdentifiers
+       );
+
+       transform(ast, {
+         ...options,
+         prefixIdentifiers,
+         nodeTransforms: [
+           ...nodeTransforms,
+           ...(options.nodeTransforms || []), // 使用者自己的转换
+         ],
+         directiveTransforms: {
+           ...directiveTransforms,
+           ...(options.directiveTransforms || []),
+         },
+       });
+
+       return generate(ast, {
+         ...options,
+         prefixIdentifiers,
+       });
+     }
+   #+end_src
+
+   重点部分:
+
+   1. [[vue/vue3-source-code-compiler-core-parse_ts/][baseParse(template, options)]] 将字符串模板解析成 AST 对象。
+   2. transform(ast, ...) 将 AST 进一步转换处理
+   3. 将转换后的 ast 调用 codegen 的 generate 方法生成 render 。
