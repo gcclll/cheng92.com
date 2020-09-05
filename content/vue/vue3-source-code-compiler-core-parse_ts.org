@@ -54,6 +54,11 @@
 11. [[#parse-parsecdata][parseCDATA]] 解析 xml 注释，当做文本处理
 12. [[#parse-parseboguscomment][parseBogusComment]] 解析 <? 的注释
 * parse.spec.ts
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse.spec.ts
+:END: 
+
 测试用例结构：compiler: parse
 截止：2020-09-02 22:53:14
 
@@ -1525,8 +1530,7 @@ true~ 。
 #+end_src
 
 ** Text 文本解析
-
-*** 07-lonly "{{" don\'t separate nodes
+*** 07-only "{{" don\'t separate nodes
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-06
@@ -1599,7 +1603,7 @@ test:
   Ran all test suites matching /compiler-core/i
 #+end_example
 
-***  06-lonly "<" don\'t separate nodes
+*** 06-only "<" don\'t separate nodes
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-05
@@ -1654,7 +1658,7 @@ test:
   }
 #+end_src
 
-** 05-text with mix of tags and interpolations
+*** 05-text with mix of tags and interpolations
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-05

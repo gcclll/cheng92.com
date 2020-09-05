@@ -11,271 +11,728 @@
 
 @@html:<kbd>@@文字比较长，如果不想看文字可直接转到[[/vue/vue-mind-map-house/][这里]]看脑图@@html:</kbd>@@
 
+@@html:<kbd>@@
+*由于 compile 和 transform 关联性比较强这里将放在一起去完成。*
+@@html:</kbd>@@ 
+
 * 准备工作
-  要完成这一部分，首先要了解它的作用是什么？
+要完成这一部分，首先要了解它的作用是什么？
 
-  在 [[/vue/vue3-source-code-compiler-core-parse_ts/][parse.ts]] 文中我们完成了解析器的部分，作用是将模板解析成 AST 对象。
+在 [[/vue/vue3-source-code-compiler-core-parse_ts/][parse.ts]] 文中我们完成了解析器的部分，作用是将模板解析成 AST 对象。
 
-  在这里 compile.ts 作用就是将这些 AST 如何翻译成 render 函数。
+在这里 compile.ts 作用就是将这些 AST 如何翻译成 render 函数。
 
-  为了更直观的体验 compile 的作用，在 vue 源码里面有一个打包之后的目录：
+为了更直观的体验 compile 的作用，在 vue 源码里面有一个打包之后的目录：
 
-  */vue-next/packages/vue/dist/vue.global.js*
+*/vue-next/packages/vue/dist/vue.global.js*
 
-  然后我们使用第一个测试用例的模板，去编译下看看结果：
+然后我们使用第一个测试用例的模板，去编译下看看结果：
 
-  #+begin_src js
-    const source = `
+#+begin_src js
+  const source = `
+  <div id="foo" :class="bar.baz">
+    {{ world.burn() }}
+    <div v-if="ok">yes</div>
+    <template v-else>no</template>
+    <div v-for="(value, index) in list"><span>{{ value + index }}</span></div>
+  </div>
+       `.trim(),
+#+end_src
+
+进行编译(完整示例)：
+
+#+begin_src html
+  <script src="./vue.global.js"></script>
+  <script>
+    console.log(Vue, "00");
+    const { compile } = Vue;
+    const result = compile(
+    `
     <div id="foo" :class="bar.baz">
       {{ world.burn() }}
       <div v-if="ok">yes</div>
       <template v-else>no</template>
       <div v-for="(value, index) in list"><span>{{ value + index }}</span></div>
     </div>
-         `.trim(),
-  #+end_src
+    `.trim(),
+    { sourceMap: true, filename: "foo.vue" }
+    );
+    console.log(result, "xx");
+  </script>
+#+end_src
 
-  进行编译(完整示例)：
+运行之后 result 结果：
 
-  #+begin_src html
-    <script src="./vue.global.js"></script>
-    <script>
-      console.log(Vue, "00");
-      const { compile } = Vue;
-      const result = compile(
-      `
-      <div id="foo" :class="bar.baz">
-        {{ world.burn() }}
-        <div v-if="ok">yes</div>
-        <template v-else>no</template>
-        <div v-for="(value, index) in list"><span>{{ value + index }}</span></div>
-      </div>
-      `.trim(),
-      { sourceMap: true, filename: "foo.vue" }
-      );
-      console.log(result, "xx");
-    </script>
-  #+end_src
+#+begin_src js
+  (function anonymous() {
+    const _Vue = Vue;
+    const {
+      createVNode: _createVNode,
+      createCommentVNode: _createCommentVNode,
+      createTextVNode: _createTextVNode,
+    } = _Vue;
 
-  运行之后 result 结果：
+    const _hoisted_1 = { key: 0 };
+    // 这里 v-if ... else 里面的 <template>no</template> ？
+    // 创建文本虚拟节点，这里为什么直接在 render 外就执行了？？？
+    // 又是怎么做到的？？？
+    const _hoisted_2 = _createTextVNode("no");
 
-  #+begin_src js
-    (function anonymous() {
-      const _Vue = Vue;
-      const {
-        createVNode: _createVNode,
-        createCommentVNode: _createCommentVNode,
-        createTextVNode: _createTextVNode,
-      } = _Vue;
+    // 神级函数 >>> render
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const {
+          toDisplayString: _toDisplayString,
+          createVNode: _createVNode,
+          openBlock: _openBlock,
+          createBlock: _createBlock,
+          createCommentVNode: _createCommentVNode,
+          createTextVNode: _createTextVNode,
+          Fragment: _Fragment,
+          renderList: _renderList,
+        } = _Vue;
 
-      const _hoisted_1 = { key: 0 };
-      // 这里 v-if ... else 里面的 <template>no</template> ？
-      // 创建文本虚拟节点，这里为什么直接在 render 外就执行了？？？
-      // 又是怎么做到的？？？
-      const _hoisted_2 = _createTextVNode("no");
+        return (
+          _openBlock(),
+          _createBlock(
+            "div",
+            {
+              // 解析出来的 div 属性， id 和 class
+              // parseAttribute 的结果
+              id: "foo", // 注意这里是字符串
+              class: bar.baz, // 这里是变量形式存在，因为用到了 :class 属于指令解析
+            },
+            [
+              // 这里是孩子节点们
+              // 1. 第一个孩子节点，插值
+              _createTextVNode(
+                // 插值里面的内容调用转换成文本
+                _toDisplayString(world.burn()) + " ",
+                1 /* TEXT */
+              ),
+              // 2. 第二个孩子节点 v-if...v-else
+              // v-if 指令，参数是 ok
+              // 然后这里又是怎么做到 ok ? ... : ...
+              // 指令解析的时候 v-if 的处理又是怎么做的，transform/vIf ???
+              // 相邻的下一个节点检测是否是 v-if 指令簇？？？
+              // 到底真相如何 ???
 
-      // 神级函数 >>> render
-      return function render(_ctx, _cache) {
-        with (_ctx) {
-          const {
-            toDisplayString: _toDisplayString,
-            createVNode: _createVNode,
-            openBlock: _openBlock,
-            createBlock: _createBlock,
-            createCommentVNode: _createCommentVNode,
-            createTextVNode: _createTextVNode,
-            Fragment: _Fragment,
-            renderList: _renderList,
-          } = _Vue;
-
-          return (
-            _openBlock(),
-            _createBlock(
-              "div",
-              {
-                // 解析出来的 div 属性， id 和 class
-                // parseAttribute 的结果
-                id: "foo", // 注意这里是字符串
-                class: bar.baz, // 这里是变量形式存在，因为用到了 :class 属于指令解析
-              },
-              [
-                // 这里是孩子节点们
-                // 1. 第一个孩子节点，插值
-                _createTextVNode(
-                  // 插值里面的内容调用转换成文本
-                  _toDisplayString(world.burn()) + " ",
-                  1 /* TEXT */
-                ),
-                // 2. 第二个孩子节点 v-if...v-else
-                // v-if 指令，参数是 ok
-                // 然后这里又是怎么做到 ok ? ... : ...
-                // 指令解析的时候 v-if 的处理又是怎么做的，transform/vIf ???
-                // 相邻的下一个节点检测是否是 v-if 指令簇？？？
-                // 到底真相如何 ???
-
-                ok
-                // 创建 div
-                  ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
-                // 创建 template
-                  : (_openBlock(),
-                     _createBlock(
-                       _Fragment,
-                       { key: 1 },
-                       // 提前被解析出来的 template -> no 文本节点
-                       // 难道是提前遍历？？？将所有的 template 如果是
-                       // 静态的就先全部创建出来？？？
-                       [_hoisted_2],
-                       64 /* STABLE_FRAGMENT */
-                     )),
-                // 3. 第三个孩子节点，div v-for
-                (_openBlock(true),
-                 _createBlock(
-                   _Fragment,
-                   null,
-                   // 渲染列表
-                   _renderList(list, (value, index) => {
-                     return (
-                       _openBlock(),
-                       _createBlock("div", null, [
-                         _createVNode(
-                           "span",
-                           null,
-                           _toDisplayString(value + index),
-                           1 /* TEXT */
-                         ),
-                       ])
-                     );
-                   }),
-                   256 /* UNKEYED_FRAGMENT */
-                 )),
-              ],
-              2 /* CLASS */
-            )
-          );
-        }
-      };
-    });
-  #+end_src
-
-  诸多的疑问等着去解答！！！
-
-  但至少有一点很清晰的知道，compile 就是将 AST 编译成 render 函数用的。
-
-  知道了最终目的，接下来就是漫长的探索之路了 :running: :running: :running:
-
-  构造数据，观察最终生成的 VNode 结构(上面代码执行之后结果返回给 result，其实就
-  是 render 函数):
-
-  #+begin_src js
-    result({
-      list: [1,2,3],
-      ok: true,
-      bar: {
-        baz: 'xx'
-      },
-      world: {
-        burn() {}
+              ok
+              // 创建 div
+                ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+              // 创建 template
+                : (_openBlock(),
+                   _createBlock(
+                     _Fragment,
+                     { key: 1 },
+                     // 提前被解析出来的 template -> no 文本节点
+                     // 难道是提前遍历？？？将所有的 template 如果是
+                     // 静态的就先全部创建出来？？？
+                     [_hoisted_2],
+                     64 /* STABLE_FRAGMENT */
+                   )),
+              // 3. 第三个孩子节点，div v-for
+              (_openBlock(true),
+               _createBlock(
+                 _Fragment,
+                 null,
+                 // 渲染列表
+                 _renderList(list, (value, index) => {
+                   return (
+                     _openBlock(),
+                     _createBlock("div", null, [
+                       _createVNode(
+                         "span",
+                         null,
+                         _toDisplayString(value + index),
+                         1 /* TEXT */
+                       ),
+                     ])
+                   );
+                 }),
+                 256 /* UNKEYED_FRAGMENT */
+               )),
+            ],
+            2 /* CLASS */
+          )
+        );
       }
-    })
-  #+end_src
+    };
+  });
+#+end_src
 
-  传递一些参数调用之后结果：
+诸多的疑问等着去解答！！！
 
-  #+begin_example
-    {_isVNode: true, type: "div", props: {…}, key: null, ref: null, …}
-      anchor: null
-      appContext: null
-      // 三个孩子节点
-      children: Array(3)
-        0: {_isVNode: true, type: Symbol(Text), props: null, key: null, ref: null, …}
-        1: {_isVNode: true, type: "div", props: {…}, key: 0, ref: null, …}
-        2: {_isVNode: true, type: Symbol(Fragment), props: null, key: null, ref: null, …}
-        length: 3
-      component: null
-      dirs: null
-      // 三个动态孩子节点
-      dynamicChildren: Array(3)
-        0: {_isVNode: true, type: Symbol(Text), props: null, key: null, ref: null, …}
-        1: {_isVNode: true, type: "div", props: {…}, key: 0, ref: null, …}
-        2: {_isVNode: true, type: Symbol(Fragment), props: null, key: null, ref: null, …}
-        length: 3
-      dynamicProps: null
-      el: null
-      key: null
-      patchFlag: 2
-      // 属性
-      props: {id: "foo", class: "xx"}
-      ref: null
-      scopeId: null
-      shapeFlag: 17
-      suspense: null
-      target: null
-      targetAnchor: null
-      transition: null
-      // 标签
-      type: "div"
-      // 标识为虚拟节点
-      _isVNode: true
-  #+end_example
+但至少有一点很清晰的知道，compile 就是将 AST 编译成 render 函数用的。
+
+知道了最终目的，接下来就是漫长的探索之路了 :running: :running: :running:
+
+构造数据，观察最终生成的 VNode 结构(上面代码执行之后结果返回给 result，其实就
+是 render 函数):
+
+#+begin_src js
+  result({
+    list: [1,2,3],
+    ok: true,
+    bar: {
+      baz: 'xx'
+    },
+    world: {
+      burn() {}
+    }
+  })
+#+end_src
+
+传递一些参数调用之后结果：
+
+#+begin_example
+  {_isVNode: true, type: "div", props: {…}, key: null, ref: null, …}
+    anchor: null
+    appContext: null
+    // 三个孩子节点
+    children: Array(3)
+      0: {_isVNode: true, type: Symbol(Text), props: null, key: null, ref: null, …}
+      1: {_isVNode: true, type: "div", props: {…}, key: 0, ref: null, …}
+      2: {_isVNode: true, type: Symbol(Fragment), props: null, key: null, ref: null, …}
+      length: 3
+    component: null
+    dirs: null
+    // 三个动态孩子节点
+    dynamicChildren: Array(3)
+      0: {_isVNode: true, type: Symbol(Text), props: null, key: null, ref: null, …}
+      1: {_isVNode: true, type: "div", props: {…}, key: 0, ref: null, …}
+      2: {_isVNode: true, type: Symbol(Fragment), props: null, key: null, ref: null, …}
+      length: 3
+    dynamicProps: null
+    el: null
+    key: null
+    patchFlag: 2
+    // 属性
+    props: {id: "foo", class: "xx"}
+    ref: null
+    scopeId: null
+    shapeFlag: 17
+    suspense: null
+    target: null
+    targetAnchor: null
+    transition: null
+    // 标签
+    type: "div"
+    // 标识为虚拟节点
+    _isVNode: true
+#+end_example
 
 * compile.spec.ts
+由于 compile.spec.ts 原来只有一个用例，相对是比较复杂的，不利于学习。
+
+这里将根据 [[/vue/vue3-source-code-compiler-core-parse_ts/#parse.spec.ts][parse.spec.ts]] 循序渐进的去实现 compile + transform 的功能。
+
+下面所有的测试用例均以 vue.global.js 打包之后的文件，运行结果为前提：
+
+#+begin_src js
+  const test = `simple text`;
+
+  const result = compile(test.trim(), {
+    sourceMap: true,
+    filename: "foo.vue",
+  });
+  console.log(result, "xx");
+#+end_src
+
+通过修改 test 值来得到真实的 render 函数。
+
+*** 01-simple text
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-text-01
+:END: 
+
+compiled：
+#+begin_src js
+  (function anonymous(
+  ) {
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        return "simple text"
+      }
+    }
+  })
+#+end_src
+
+也就是说 *"simple text"* 最后转变成的 render 函数如上所示。
+
+我们的第一步就是如何来实现 compile 和 transform 能得到这样的结果，这将是该模块完
+成第一步 🆙 🆙 🆙 🆙 🆙 🆙 🆙 🆙 🆙 🆙
+
+parse 之后的 ast:
+#+begin_src js
+  {type: 0, children: Array(1), loc: {…}, helpers: Array(0), components: Array(0), …}
+    cached: 0
+    children: Array(1)
+      0:
+      content: "simple text"
+      loc: {start: {…}, end: {…}, source: "simple text"}
+      type: 2
+    length: 1
+    codegenNode: undefined
+    components: []
+    directives: []
+    helpers: []
+    hoists: []
+    imports: []
+    loc: {start: {…}, end: {…}, source: "simple text"}
+    temps: 0
+    type: 0
+#+end_src
+
+
+在完成 [[#transform-transformtext][transformText]] 之后，发现 result.code 是空的，还以为是这里面实现问题的，其
+实是 [[#codegen-generate][generate]] 函数还没实现的原因。
 
 * 函数列表
+** compile.ts
+*** baseCompile(template, options)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-basecompile
+:END:
 
-** baseCompile(template, options)
-   :PROPERTIES:
-   :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-   :CUSTOM_ID: compile-basecompile
-   :END:
+将 template 解析成 render 函数，重点步骤:
 
-   将 template 解析成 render 函数。
+1. [[vue/vue3-source-code-compiler-core-parse_ts/][baseParse(template, options)]] 将字符串模板解析成 AST 对象。
+2. [[#transform-transform][transform(ast, ...)]] 将 AST 进一步转换处理
+3. 将转换后的 ast 调用 codegen 的 generate 方法生成 render 。
+
+#+begin_src js
+  export function baseCompile(template, options) {
+    const isModuleMode = options.mode === "module";
+
+    // ... 略去错误❎处理
+    const prefixIdentifiers =
+      !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode);
+
+    // 1. baseParse 得到 AST 对象，两种情况：1. 未解析的模板，2. 以解析之后的 ast 对象
+    const ast =
+      typeof template === "string" ? baseParse(template, options) : template;
+
+    // 2. 取出所有 node 和 directive 的 transforms
+    const [nodeTransforms, directiveTransforms] = getBaseTransformPreset(
+      prefixIdentifiers
+    );
+
+    // 3. 进行转换，调用 transform
+    transform(ast, {
+      // 合并选项
+      ...options, // 调用 baseCompile 时候的第二个参数
+      prefixIdentifiers, // 还不知道是干啥的???
+      // 节点转换器合并，外部转换器优先，即使用者可自定义自己的转换器
+      nodeTransforms: [...nodeTransforms, ...(options.nodeTransforms || {})],
+      // 指令转换器，同上。
+      directiveTransforms: [
+        ...directiveTransforms,
+        ...(options.directiveTransforms || {}),
+      ],
+    });
+
+    // 4. 调用 generate 生成 render 函数的 codegen 并返回，这就是我们需要的组件渲
+    // 染函数
+    return generate(ast, {
+      ...options,
+      prefixIdentifiers,
+    });
+  }
+#+end_src
+
+这也是除了错误处理之后的完整的 baseCompile 函数实现。
+*** getBaseTransformPreset(prefixIdentifiers: boolean)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile_getbasetransformpreset
+:END: 
+
+合并所有 transform，返回一个 ~TransformPreset~ 类型的数组
+
+stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用例一]] 即可，所以这里就只保留
+[[transform-transformtext][transformText]] 就可以了，剩下的就是去实现它。
+#+begin_src js
+  export function getBaseTransformPreset(prefixIdentifiers) {
+    return [
+      [
+        // ... 省略其他，第一阶段我们应该只需要文本转换
+        transformText,
+      ],
+      {
+        // ...省略指令
+      },
+    ];
+  }
+#+end_src
+
+** tranform.ts
+*** transformText(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformtext
+:END: 
+
+该函数会返回一个用来转换文本节点类型(~NodeTransform~)的函数。
+
+返回函数分析(~return () => { ... }~)，主要由三个 for 构成：
+
+1. 第一个 for 嵌套第二个 for 构成双重循环，用来合并 node.children 里面相邻的文本
+   节点
+   
+   第一个 For 里面使用的是 children.length 动态获取当前数组的长度，结合代码中的
+   splice 和 j--。从而完成合并操作。
+   
+   #+begin_src js
+     // 1. 原来的 child 被重写
+     // 2. child, ` + `, next 合并到了新 child.children 里面
+     currentContainer.children.push(` + `, next);
+     // 删除被合并的文本节点
+     children.splice(j, 1);
+     j--; // -1 是因为上面删除了当前元素，for 循环过程中长度是动态获取的
+   #+end_src
+   
+2. 第三个 for 遍历第一步之后的 children，对每个 child 进行重定义，类型改变成
+   ~NodeTyeps.TEXT_CALL~ 类型，增加 codegenNode 属性。
+   
+
+代码完整版：
+#+begin_src js
+
+  export const transformText = (node, context) => {
+    // 文本转换只能是下面四种类型
+    const validTypes = [
+      NodeTypes.ROOT,
+      NodeTypes.ELEMENT,
+      NodeTypes.FOR,
+      NodeTypes.IF_BRANCH,
+    ];
+
+    // 合法类型检测
+    if (validTypes.indexOf(node.type)) {
+      // 返回一个可执行函数，记得在 transformNode 吗，这个返回的函数
+      // 将会被它在 while 中 执行 掉。
+      return () => {
+        const children = node.children;
+
+        let currentContainer = undefined;
+        let hasText = false;
+
+        // 双重循环，合并所有相邻的文本节点
+        // 如：[text1, text2, element, text3, ele, text4, text5]
+        // text1 和 text2 会合并到text1
+        // text3 不会合并
+        // text4 和 text5 会被合并
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+
+          if (isText(child)) {
+            // TODO 文本节点才进行解析
+            hasText = true;
+            // 合并相邻的文本节点， text1 + text2
+            for (let j = i + 1; j < children.length; j++) {
+              const next = children[j];
+              // 下一个也是文本节点的时候，要将两者合并
+              if (isText(next)) {
+                if (!currentContainer) {
+                  // 这里等于重写了 child 的引用，将自身 push 到了
+                  // 新结构中的 children
+                  currentContainer = children[i] = {
+                    type: NodeTypes.COMPOUND_EXPRESSION,
+                    loc: child.loc,
+                    children: [child],
+                  };
+                }
+
+                // 1. 原来的 child 被重写
+                // 2. child, ` + `, next 合并到了新 child.children 里面
+                currentContainer.children.push(` + `, next);
+                // 删除被合并的文本节点
+                children.splice(j, 1);
+                j--; // -1 是因为上面删除了当前元素，for 循环过程中长度是动态获取的
+              } else {
+                currentContainer = undefined;
+                break;
+              }
+            }
+          }
+        }
+
+        // 集中不满足转换条件的情况
+        if (
+          // 1. 没有文本内容
+          // 2. 只有一个孩子节点
+          //   2.1 组件根节点
+          //   2.2 <element> 元素节点
+          !hasText ||
+          (children.length === 1 &&
+            (node.type === NodeTypes.ROOT ||
+              (node.type === NodeTypes.ELEMENT &&
+                node.tagType === ElementTypes.ELEMENT)))
+        ) {
+          return;
+        }
+
+        // 开始转换
+        for (let i = 0; i < children.length; i++) {
+          const chld = children[i];
+          if (isText(child) || child.type === NodeTypes.COMPOUND_EXPRESSION) {
+            const callArgs = [];
+
+            // 非文本节点，直接 push 掉，这里 child.content !== ' ' 的原因在于
+            // parseChildren 里面 while 循环最后有个remove whitespace 操作
+            // 会将有效的空节点转成一个空格的字符串。
+            // createTextVNode 默认是一个单空格
+            if (child.type !== NodeTypes.TEXT || child.content !== " ") {
+              callArgs.push(child);
+            }
+
+            // 非服务端渲染，且非文本节点
+            if (!context.ssr && child.type !== NodeTypes.TEXT) {
+              callArgs.push(
+                // TODO 这个是干嘛的？？？
+                `${PatchFlags.TEXT} /* ${PatchFlagNames[PatchFlags.TEXT]} */`
+              );
+            }
+
+            children[i] = {
+              type: NodeTypes.TEXT_CALL, // 文本函数
+              content: child,
+              loc: child.loc,
+              codegenNode: createCallExpression(
+                context.helper(CREATE_TEXT),
+                callArgs
+              ),
+            };
+          }
+        }
+      };
+    }
+  }
+#+end_src
+
+使用到的外面函数和属性：
+
+1. CREATE_TEXT： 一个符号属性 ~export const CREATE_TEXT = Symbol(__DEV__ ? `createTextVNode` : ``);~
+2. [[#ast_createcallexpression][createCallExpression(callee, args, loc)]] 返回 JS_CALL_EXPRESSION 类型对象。
+3. PatchFlags 和 PatchFlagNames 一个名字映射
+4. isText 文本节点类型(插值和 text)
 
    #+begin_src js
-     export function baseCompile(template, options) {
-       const { onError = defaultOnError, mode } = options;
-       const isModuleMode = mode === "module";
-
-       // ... error handler 1
-
-       const prefixIdentifiers =
-             !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode);
-
-       // ... error handler 2
-
-       // .... :arrow_up::arrow_up::arrow_up::arrow_up: 不知道干啥子？？？
-
-       // ... 下面是正文吧 :arrow_down::arrow_down::arrow_down::arrow_down:
-
-       // 如果是字符串解析出 ast
-       const ast =
-             typeof template === "string" ? baseParse(template, options) : template;
-
-       const [nodeTransforms, directiveTransforms] = getBaseTransformPreset(
-         prefixIdentifiers
-       );
-
-       transform(ast, {
-         ...options,
-         prefixIdentifiers,
-         nodeTransforms: [
-           ...nodeTransforms,
-           ...(options.nodeTransforms || []), // 使用者自己的转换
-         ],
-         directiveTransforms: {
-           ...directiveTransforms,
-           ...(options.directiveTransforms || []),
-         },
-       });
-
-       return generate(ast, {
-         ...options,
-         prefixIdentifiers,
-       });
+     export function isText(node) {
+       // 插值或 text 均视为文本
+       return node.type === NodeTypes.INTERPOLATION || node.type === NodeTypes.TEXT;
      }
    #+end_src
 
-   重点部分:
+   
+*对应的虚拟节点创建函数： createTextVNode*
+*** transform(root, options)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transform
+:END: 
 
-   1. [[vue/vue3-source-code-compiler-core-parse_ts/][baseParse(template, options)]] 将字符串模板解析成 AST 对象。
-   2. transform(ast, ...) 将 AST 进一步转换处理
-   3. 将转换后的 ast 调用 codegen 的 generate 方法生成 render 。
+调用的函数：
+1. [[#transform_createtransformcontext][createTransformContext(root, options)]] 创建 transform 转换器类型的上下文对象
+2. [[#transform-traversenode][traverseNode(root, context)]] 遍历所有节点
+3. ssr 服务端渲染处理
+4. 初始化 root 根节点上的一些属性
+
+stage-1: [[#test-text-01][01 simple text]]
+#+begin_src js
+
+  export function transform(root, options) {
+    const context = createTransformContext(root, options);
+
+    traverseNode(root, context);
+
+    if (options.hoistStatic) {
+      hoistStatic(root, context);
+    }
+
+    // ... ssr 处理
+
+    // root 属性合并，初始化
+    root.helpers = [...context.helpers];
+    root.components = [...context.components];
+    root.directives = [...context.directives];
+    root.imports = [...context.imports];
+    root.hoists = context.hoists;
+    root.temps = context.temps;
+    root.cached = context.cached;
+  }
+#+end_src
+*** createTransformContext(root, options)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createtransformcontext
+:END: 
+
+单纯的构建和初始化 transform 转换器上下文对象。
+
+#+begin_src js
+  export function createTransformContext(
+    root,
+    {
+      prefixIdentifiers = false,
+      hoistStatic = false,
+      cacheHandlers = false,
+      nodeTransforms = [],
+      directiveTransforms = {},
+      transformHoist = null,
+      isBuiltInComponent = NOOP,
+      expressionPlugins = [],
+      scopeId = null,
+      ssr = false,
+      onError = defaultOnError,
+    }
+  ) {
+    const context = {
+      // options
+      prefixIdentifiers,
+      hoistStatic,
+      cacheHandlers,
+      nodeTransforms,
+      directiveTransforms,
+      transformHoist,
+      isBuiltInComponent,
+      expressionPlugins,
+      scopeId,
+      ssr,
+      onError,
+
+      // state
+      root,
+      helpers: new Set(),
+      components: new Set(),
+      directives: new Set(),
+      hoists: [],
+      imports: new Set(),
+      temps: 0,
+      cached: 0,
+      identifiers: {},
+      scopes: {
+        vFor: 0,
+        vSlot: 0,
+        vPre: 0,
+        vOnce: 0,
+      },
+      parent: null,
+      currentNode: root,
+      childIndex: 0,
+
+      // methods
+      helper(name) {},
+      helperString(name) {},
+      replaceNode(node) {},
+      removeNode(node) {},
+      onNodeRemoved: () => {},
+      addIdentifiers(exp) {},
+      removeIdentifiers(exp) {},
+      hoist(exp) {},
+      cache(exp, isVNode = false) {},
+    };
+
+    function addId(id) {}
+
+    function removeId(id) {}
+
+    return context;
+  }
+#+end_src
+*** traverseNode(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode
+:END: 
+
+stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    context.currentNode = node;
+
+    const { nodeTransforms } = context;
+
+    for (let i = 0; i < nodeTransforms.length; i++) {
+      // 调用诸如  transformText 的函数
+      const onExit = nodeTransforms[i](node, context);
+      if (onExit) {
+        const fns = Array.isArray(onExit) ? onExit : [onExit];
+        exitFns.push(...fns);
+      }
+
+      if (!context.currentNode) {
+        // 可能被移除了
+        return;
+      } else {
+        // 节点可能被替换过，重新建立引用
+        node = context.currentNode;
+      }
+    }
+
+    // ... 省略 switch
+
+    let i = exitFns.length;
+    // 执行所有转换
+    while (--i) {
+      exitFns[i]();
+    }
+  }
+#+end_src
+** codegen.ts
+*** generate()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen_generate
+:END: 
+
+generate 函数雏形：
+
+#+begin_src js
+  export function generate(ast, options) {
+    return {
+      ast,
+      code: "",
+      map: "",
+    };
+  }
+
+#+end_src
+
+函数的目的是：通过 ast 来生成 code，这个 code 将来会被 compileToFunction 调用 ~new
+Function(code)~ 生成 render 函数的。
+** 虚拟节点创建函数
+
+| name              | transform     | desc             |
+|-------------------+---------------+------------------|
+| ~createTextVNode~ | [[#transform-transformtext][transformText]] | 创建文本虚拟节点 |
+|                   |               |                  |
+
+* 问题列表
+
+1. compile.js:37 Uncaught TypeError: object is not iterable (cannot read
+   property Symbol(Symbol.iterator))
+
+   原因是：在数组里面使用展开符的时候 [], {} 混用了
+
+   #+begin_src js
+     transform(ast, {
+       // 合并选项
+       ...options, // 调用 baseCompile 时候的第二个参数
+       prefixIdentifiers, // 还不知道是干啥的???
+       // 节点转换器合并，外部转换器优先，即使用者可自定义自己的转换器
+       // nodeTransforms: [...nodeTransforms, ...(options.nodeTransforms || {})], // FIX: 这里用法有问题修改前
+       nodeTransforms: [...nodeTransforms, ...(options.nodeTransforms || [])], // FIX: 修改后
+       // 指令转换器，同上。
+       directiveTransforms: {
+         ...directiveTransforms,
+         ...(options.directiveTransforms || {}),
+       },
+     });
+
+   #+end_src
