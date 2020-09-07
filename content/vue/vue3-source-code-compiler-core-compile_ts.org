@@ -241,7 +241,97 @@
 
 通过修改 test 值来得到真实的 render 函数。
 
-*** 01-simple text
+完成了 01-simple text 用例之后发现按照 parse.spec.ts 可能不太理想，毕竟 parse 部
+分的用例有点多，如果按照那个来这部分也将会很漫长，思考良久应该还是按照
+compile.spec.ts 中的用例进行拆分之后右简入难式去通过该用例。
+
+完整用例：
+
+#+begin_src js
+  const source = `
+  <div id="foo" :class="bar.baz">
+    {{ world.burn() }}
+    <div v-if="ok">yes</div>
+    <template v-else>no</template>
+    <div v-for="(value, index) in list"><span>{{ value + index }}</span></div>
+  </div>
+  `.trim()
+#+end_src
+
+** 02- ~{{ world.burn() }}~ 第一个孩子节点
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-02-worldburn
+:END: 
+
+测试：
+#+begin_src js
+  const test01 = `{{ world.burn() }}`;
+
+  const result = compile(test01.trim(), {
+    sourceMap: true,
+    filename: "foo.vue",
+  });
+  console.log(result, "xx");
+#+end_src
+
+vue.global 结果：
+#+begin_src js
+  ƒ render(_ctx, _cache) {
+    with (_ctx) {
+      const { toDisplayString: _toDisplayString } = _Vue
+
+      return _toDisplayString(world.burn())
+    }
+  }
+#+end_src
+
+[[#test-text-01][01-simple text]] 阶段代码返回的结果:
+
+#+begin_src js
+  ƒ render(_ctx, _cache) {
+    with (_ctx) {
+      return  // 这里没任何东西
+    }
+  } 
+#+end_src
+
+通过用例 01 大概的完成了一个比较完整的编译过程，要通过该用例应该只需要在这过程中增
+加对插值的处理即可。
+
+处理步骤(通过用例 01 总结出的步骤)：
+
+[[#compile-basecompile][baseCompile]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse]] -> [[#compile-getbasetransformpreset][getBaseTransformPreset]] 得到 transform 函数 ->
+   [[#transform-transform][transform]] -> [[#codegen-generate][generate]]
+
+  1. baseParse -> ast
+  2. [[#compile-getbasetransformpreset][getBaseTransformPreset]] -> [[#transform-transforminterpolation][transformInerpolation]]
+
+     @@html:<font color='red'>@@TODO@@html:</font>@@  需要增加
+     transformInterpolation 函数。
+
+  3. [[#transform-transform][transform]] -> [[#transform-createtransformcontext][createTransformContext]] -> [[#transform-traversenode][traverseNode]] -> [[#transform-createrootcodegen][createRootCodegen]] -> ...
+
+     这一步需要处理的应该只有 [[#transform-traversenode][traverseNode]] 需要修改，在 switch 里增加
+     INTERPOLATION 分支，因为 createRootCodegen 里面 root 如果只有一个孩子的情况
+     下会和用例 01 一样直接赋值 ~context.codegenNode = root.children[0]~
+     
+  4. generate -> createCodegenContext -> genFunctionPreamble 默认是 function 模
+     式 -> push ~function render(_ctx, _cache) {~ -> push ~with (_ctx)~ -> ...
+     -> [[#codegen-gennode][genNode(ast.codegenNode, context)]] 
+     
+     这里需要修改的点应该只有 genNode 里面，也是增加 INTERPOLATION switch 分支，
+     处理插值部分的代码。
+     
+     
+有了上面的初步分析，这里可以比较明确的知道需要修改的点：
+
+1. TODO 增加 *transformInterpolation()* 函数函数
+2. TODO  *traverseNode* 中增加 INTERPOLATION 分支
+3. TODO  *genNode* 中增加 INTERPOLATION 分支
+
+
+** 01-simple text
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-01
@@ -351,6 +441,10 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 在实现 genFunctionPreamble 之后，至此完成了一个得到 render 函数的完整过程。
 
 下面将使用流程图方式进行回顾，分析整个过程。
+
+[[http://qiniu.ii6g.com/img/compiler-simple-text.png][七牛图片链接]]
+
+[[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-simple-text.png]]
 * 函数列表
 ** compile.ts
 *** baseCompile(template, options)
@@ -578,7 +672,7 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
 使用到的外面函数和属性：
 
 1. CREATE_TEXT： 一个符号属性 ~export const CREATE_TEXT = Symbol(__DEV__ ? `createTextVNode` : ``);~
-2. [[#ast_createcallexpression][createCallExpression(callee, args, loc)]] 返回 JS_CALL_EXPRESSION 类型对象。
+2. [[#ast-createcallexpression][createCallExpression(callee, args, loc)]] 返回 JS_CALL_EXPRESSION 类型对象。
 3. PatchFlags 和 PatchFlagNames 一个名字映射
 4. isText 文本节点类型(插值和 text)
 
@@ -598,7 +692,7 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
 :END: 
 
 调用的函数：
-1. [[#transform_createtransformcontext][createTransformContext(root, options)]] 创建 transform 转换器类型的上下文对象
+1. [[#transform-createtransformcontext][createTransformContext(root, options)]] 创建 transform 转换器类型的上下文对象
 2. [[#transform-traversenode][traverseNode(root, context)]] 遍历所有节点
 3. ssr 服务端渲染处理
 4. 初始化 root 根节点上的一些属性
