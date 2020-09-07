@@ -335,7 +335,20 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 须是以 return 形式返回，因此这里还有个遗漏的地方: [[#codegen-genfunctionpreamble][genFunctionPreamble]] 需要去实
 现，这里面最后会 push 一个 return 到 code 开头。
 
-在上线 genFunctionPreamble 之后，至此完成了一个得到 render 函数的完整过程。
+更新后输出：
+#+begin_src js
+  ƒ anonymous(
+  ) {
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        return "simple text"
+      }
+    }
+  }
+#+end_src
+
+在实现 genFunctionPreamble 之后，至此完成了一个得到 render 函数的完整过程。
 
 下面将使用流程图方式进行回顾，分析整个过程。
 * 函数列表
