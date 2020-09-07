@@ -11,7 +11,7 @@ $(function () {
     var html = node.html();
     if (/^TODO/.test(html)) {
       node.html(html.replace(/^TODO/, `<span class="todo">TODO</span>`));
-    } else if (/^TODO/.test(html)) {
+    } else if (/^DONE/.test(html)) {
       node.html(html.replace(/^DONE/, `<span class="done">DONE</span>`));
     }
   });

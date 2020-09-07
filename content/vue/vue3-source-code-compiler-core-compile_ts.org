@@ -258,11 +258,13 @@ compile.spec.ts 中的用例进行拆分之后右简入难式去通过该用例�
   `.trim()
 #+end_src
 
-** 02- ~{{ world.burn() }}~ 第一个孩子节点
+** 02-pure interpolation 第一个孩子节点
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-02-worldburn
 :END: 
+
+~{{ world.burn() }}~
 
 测试：
 #+begin_src js
@@ -305,18 +307,15 @@ vue.global 结果：
    [[#transform-transform][transform]] -> [[#codegen-generate][generate]]
 
   1. baseParse -> ast
-  2. [[#compile-getbasetransformpreset][getBaseTransformPreset]] -> [[#transform-transforminterpolation][transformInerpolation]]
-
-     @@html:<font color='red'>@@TODO@@html:</font>@@  需要增加
-     transformInterpolation 函数。
-
+  2. [[#compile-getbasetransformpreset][getBaseTransformPreset]] -> 这里并没有什么 transformInterpolation，插值并没有
+     对应的 transform 函数。
   3. [[#transform-transform][transform]] -> [[#transform-createtransformcontext][createTransformContext]] -> [[#transform-traversenode][traverseNode]] -> [[#transform-createrootcodegen][createRootCodegen]] -> ...
 
      这一步需要处理的应该只有 [[#transform-traversenode][traverseNode]] 需要修改，在 switch 里增加
      INTERPOLATION 分支，因为 createRootCodegen 里面 root 如果只有一个孩子的情况
      下会和用例 01 一样直接赋值 ~context.codegenNode = root.children[0]~
      
-  4. generate -> createCodegenContext -> genFunctionPreamble 默认是 function 模
+  4. [[#codegen-generate][generate]] -> [[#codegen-createcodegencontext][createCodegenContext]] -> [[#codegen-genfunctionpreamble][genFunctionPreamble]] 默认是 function 模
      式 -> push ~function render(_ctx, _cache) {~ -> push ~with (_ctx)~ -> ...
      -> [[#codegen-gennode][genNode(ast.codegenNode, context)]] 
      
@@ -326,11 +325,11 @@ vue.global 结果：
      
 有了上面的初步分析，这里可以比较明确的知道需要修改的点：
 
-1. TODO 增加 *transformInterpolation()* 函数函数
-2. TODO  *traverseNode* 中增加 INTERPOLATION 分支
-3. TODO  *genNode* 中增加 INTERPOLATION 分支
+1. DONE  *traverseNode* 中增加 INTERPOLATION 分支
+2. TODO  *genNode* 中增加 INTERPOLATION 分支
 
-
+   
++修正：事实上并没有 transformInterpolation+ :facepalm::facepalm::facepalm::facepalm:
 ** 01-simple text
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -729,6 +728,10 @@ stage-1: [[#test-text-01][01 simple text]]
 
 单纯的构建和初始化 transform 转换器上下文对象。
 
+**** stage-1: [[#test-text-01][01 simple text]]
+
+一些初始化的工作，并不需要具体实现什么，纯文本并没有用到。
+
 #+begin_src js
   export function createTransformContext(
     root,
@@ -799,6 +802,37 @@ stage-1: [[#test-text-01][01 simple text]]
     return context;
   }
 #+end_src
+
+**** stage-2: [[#test-02-worldburn][02 pure interpolation]] 插值节点的编译
+
+#+begin_src js
+
+  export function createTransformContext(
+    root,
+    { ... }
+  ) {
+    const context = {
+      // ... 
+      helpers: new Set(),
+
+       // ...
+
+      // 新增 helper 实现
+      helper(name) {
+        context.helpers.add(name);
+        return name;
+      },
+
+      // ...
+    };
+
+    function addId(id) {}
+
+    function removeId(id) {}
+
+    return context;
+  }
+#+end_src
 *** createRootCodegen(root, context)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -841,6 +875,11 @@ stage-1: [[#test-text-01][01 simple text]]
 :END: 
 
 **** stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode-stage1
+:END: 
+
 #+begin_src js
 
   export function traverseNode(node, context) {
@@ -878,6 +917,35 @@ stage-1: [[#test-text-01][01 simple text]]
     while (i--) {
       exitFns[i]();
     }
+  }
+#+end_src
+**** stage-2: [[#test-02-worldburn][02 pure interpolation]] 插值节点的编译
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode-stage2
+:END: 
+
+增加 INTERPOLATION 类型节点分支处理。
+
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    // ... 
+
+    switch (node.type) {
+        // ... 
+
+        // 新增：对插值类型节点处理
+      case NodeTypes.INTERPOLATION:
+        if (!context.ssr) {
+          // 这个函数来自上下文处理中的 helper(name)
+          context.helper(TO_DISPLAY_STRING);
+        }
+
+        // ... 
+    }
+
+    // ...
   }
 #+end_src
 *** traverseChildren(parent, context)
@@ -1114,6 +1182,48 @@ codgenNode 的操作。
 
 那么只能用最笨拙的方法了，直接搜索 ~codegen*~ 然后又发现新大陆(transform 里面有
 个 [[#transform-createrootcodegen][createRootCodgen(...)]] 并没有实现)， :runner: go ->
+
+**** stage-2: [[#test-02-worldburn][02 pure interpolation]]
+
+这里新增了 ~push ast.helpers.map(...)~ 处理，比如 traverseNode stage-2 中新增的
+INTERPOLATION 分支中的处理是 ~context.helper(TO_DISPLAY_STRING)~ 就是给上下文的
+helpers 增加了 ~Symbol('toDisplayString')~ 。
+
+#+begin_src js
+
+  export function generate(ast, options = {}) {
+   // ...
+
+    const hasHelpers = ast.helpers.length > 0;
+
+    // ...
+
+    if (useWithBlock) {
+      // use with(_ctx) { ...}
+      push(`with (_ctx) {`);
+      indent();
+
+      // 新增： hasHelpers
+      if (hasHelpers) {
+        // 比如：插值处理时用到 TO_DISPLAY_STRING helper
+        // 为了避免命名冲突，这里都需要将他们重命名
+
+        push(
+          `const { ${ast.helpers
+            .map((s) => `${helperNameMap[s]} : _${helperNameMap[s]}`)
+            .join(", ")} } = _Vue`
+        );
+
+        push("\n");
+        newline();
+      }
+    }
+
+    // ...
+  }
+#+end_src
+
+正好在这里会检测 ~context.helpers~ 进行相应的处理。
 
 *** genNode(node, context)
 :PROPERTIES:
