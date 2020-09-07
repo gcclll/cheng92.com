@@ -290,6 +290,54 @@ parse 之后的 ast:
 在完成 [[#transform-transformtext][transformText]] 之后，发现 result.code 是空的，还以为是这里面实现问题的，其
 实是 [[#codegen-generate][generate]] 函数还没实现的原因。
 
+所有需要支持的函数都完成之后：
+
+#+begin_example
+{ast: {…}, code: "function render(_ctx, _cache) {↵ with (_ctx) {↵  return "simple text"}}", map: ""}
+  ast: {type: 0, children: Array(1), loc: {…}, helpers: Array(0), components: Array(0), …}
+    code: "function render(_ctx, _cache) {↵ with (_ctx) {↵  return "simple text"}}"
+    map: ""
+#+end_example
+
+会发现最终的 code 即我们想要的 render 函数，和用 vue.global.js 生成的一致。
+
+如果需要将转成函数，这个需要用到 compileToFunction 这个不在我们这个讨论范围，其
+实里面也很简单，直接调用 ~new Function(code)~ 就行了，来看下：
+
+#+begin_src js
+  import { baseCompile as compile } from "../compile.js";
+
+  const source = `simple text`.trim();
+
+  const result = compile(source, {
+    sourceMap: true,
+    filename: `foo.vue`,
+  });
+  const render = new Function(result.code);
+  console.log(render, "compiled");
+#+end_src
+
+输出：
+#+begin_example
+ƒ anonymous(
+) {
+function render(_ctx, _cache) {
+ with (_ctx) {
+  return "simple text"}}
+} "compiled"
+#+end_example
+
+然后会发现结果好像不太对，首先 render 会被一个匿名函数包起来，这个是没问题的，但
+是貌似匿名函数没有结束的 *}* 这个我想问题肯定处在了 [[#codegen-generate][generate]] 里面。
+
+其实是因为 [[#codegen-createcodgencontext][createCodgenContext]] 里面的 函数没有实现，另外这样是不对的，因为 ~new
+Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要得到 render 函数，必
+须是以 return 形式返回，因此这里还有个遗漏的地方: [[#codegen-genfunctionpreamble][genFunctionPreamble]] 需要去实
+现，这里面最后会 push 一个 return 到 code 开头。
+
+在上线 genFunctionPreamble 之后，至此完成了一个得到 render 函数的完整过程。
+
+下面将使用流程图方式进行回顾，分析整个过程。
 * 函数列表
 ** compile.ts
 *** baseCompile(template, options)
@@ -644,19 +692,55 @@ stage-1: [[#test-text-01][01 simple text]]
     return context;
   }
 #+end_src
+*** createRootCodegen(root, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createrootcodegen
+:END: 
+
+创建 root 节点上的 codegenNode 值，这也是将来用来编译成 render 函数的源码字符串。
+
+**** stage-1: [[#test-text-01][01 simple text]]
+#+begin_src js
+
+  function createRootCodegen(root, context) {
+    // TODO  helper
+    const { children } = root;
+    const child = children[0];
+
+    if (children.length === 1) {
+      // 只有一个孩子节点
+
+      // 且孩子节点是一个元素 element 类型，将它放在一个代码块钟返回
+      // 如： { code }
+      if (isSingleElementRoot(root, child) && child.codegenNode) {
+        // TODO
+      } else {
+        root.codegenNode = child;
+      }
+    } else if (children.length > 1) {
+    } else {
+      // 没有孩子节点， codegen 返回 null，看到没
+      // 01 simple text 返回 null 问题找到根源了
+    }
+  }
+#+end_src
+
+实现完这个之后发现，generate 里面的 [[#codegen-gennode][genNode]] 还没实现，真实丢三落四~~~~。
 *** traverseNode(node, context)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversenode
 :END: 
 
-stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
+**** stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
 #+begin_src js
 
   export function traverseNode(node, context) {
     context.currentNode = node;
 
     const { nodeTransforms } = context;
+    const exitFns = [];
 
     for (let i = 0; i < nodeTransforms.length; i++) {
       // 调用诸如  transformText 的函数
@@ -675,16 +759,122 @@ stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因�
       }
     }
 
-    // ... 省略 switch
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.ROOT:
+        traverseChildren(node, context);
+        break;
+    }
 
     let i = exitFns.length;
     // 执行所有转换
-    while (--i) {
+    while (i--) {
       exitFns[i]();
     }
   }
 #+end_src
+*** traverseChildren(parent, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversechildren
+:END: 
+
+处理 node.children 孩子节点。
+
+#+begin_src js
+
+  export function traverseChildren(parent, context) {
+    let i = 0;
+    const nodeRemoved = () => {
+      i--;
+    };
+
+    for (; i < parent.children.length; i++) {
+      const child = parent.children[i];
+      // 过略掉字符串，只处理 ast child
+      if (typeof child === "string") continue;
+
+      context.parent = parent;
+      context.childIndex = i;
+      context.onNodeRemoved = nodeRemoved;
+      traverseNode(child, context);
+    }
+  }
+#+end_src
 ** codegen.ts
+*** createCodgenContext(ast, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-createcodegencontext
+:END: 
+
+**** stage-1: [[#test-text-01][01 simple text]]
+
+#+begin_src js
+
+  // 构建 condegen 上下文对象
+  function createCodegenContext(
+    ast,
+    {
+      mode = "function",
+      prefixIdentifiers = mode === "module",
+      sourceMap = false,
+      filename = `template.vue.html`,
+      scopeId = null,
+      optimizeBindings = false,
+      runtimeGlobalName = `Vue`,
+      runtimeModuleName = `vue`,
+      ssr = false,
+    }
+  ) {
+    const context = {
+      mode,
+      prefixIdentifiers,
+      sourceMap,
+      filename,
+      scopeId,
+      optimizeBindings,
+      runtimeGlobalName,
+      runtimeModuleName,
+      ssr,
+      source: ast.loc.source,
+      code: ``,
+      column: 1,
+      line: 1,
+      offset: 0,
+      indentLevel: 0,
+      pure: false,
+      map: undefined,
+      helper(key) {},
+      push(code, node) {
+        context.code += code;
+        // TODO 非浏览器环境处理，node 环境
+      },
+      indent() {
+        // 新行缩进
+        newline(++context.indentLevel);
+      },
+      deindent(withoutNewLine = false) {
+        if (withoutNewLine) {
+          --context.indentLevel;
+        } else {
+          newline(--context.indentLevel);
+        }
+      },
+      newline() {
+        newline(context.indentLevel);
+      },
+    };
+
+    function newline(n) {
+      context.push("\n" + ` `.repeat(n));
+    }
+
+    function addMapping(loc, name) {}
+
+    return context;
+  }
+#+end_src
 *** generate()
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -706,6 +896,184 @@ generate 函数雏形：
 
 函数的目的是：通过 ast 来生成 code，这个 code 将来会被 compileToFunction 调用 ~new
 Function(code)~ 生成 render 函数的。
+
+**** stage-1: [[#test-text-01][01 simple text]]
+#+begin_src js
+
+  export function generate(ast, options = {}) {
+    const context = createCodegenContext(ast, options);
+    const {
+      mode,
+      push,
+      prefixIdentifiers,
+      indent,
+      deindent,
+      newline,
+      scopeId,
+      ssr,
+    } = context;
+
+    const hasHelpers = ast.helpers.length > 0;
+    const useWithBlock = !prefixIdentifiers && mode !== "module";
+    const genScopeId = !__BROWSER__ && scopeId != null && mode === "module";
+
+    // TODO preambles
+    if (!__BROWSER__ && mode === "module") {
+      // TODO genModulePreamble(ast, context, genScopeId)
+    } else {
+      genFunctionPreamble(ast, context);
+    }
+
+    if (genScopeId && !ssr) {
+      push(`const render = ${PURE_ANNOTATION}_withId(`);
+    }
+
+    if (!ssr) {
+      // 函数声明
+      push(`function render(_ctx, _cache) {`);
+    } else {
+      // TODO ssr render
+    }
+
+    indent();
+
+    if (useWithBlock) {
+      // use with(_ctx) { ...}
+      push(`with (_ctx) {`);
+      indent();
+
+      // TODO hasHelpers
+    }
+
+    // TODO ast.components 组件处理
+
+    // TODO ast.directives 指令处理
+
+    // TODO ast.temps 临时变量处理
+
+    // TODO 换行
+
+    if (!ssr) {
+      push(`return `);
+    }
+
+    // 生成代码片段
+    if (ast.codegenNode) {
+      genNode(ast.codegenNode, context);
+    } else {
+      push(`null`);
+    }
+
+    if (useWithBlock) {
+      deindent();
+      push(`}`);
+    }
+
+    deindent();
+    push(`}`);
+
+    if (genScopeId && !ssr) {
+      push(`)`);
+    }
+
+    return {
+      ast,
+      code: context.code,
+      map: "",
+    };
+  }
+#+end_src
+
+代码中只包含文本解析需要的内容。但是结果显示：
+
+#+begin_example
+ast: {type: 0, children: Array(1), loc: {…}, helpers: Array(0), components: Array(0), …}
+  code: "function render(_ctx, _cache) {↵ with (_ctx) {↵  return null}}"
+  map: ""
+#+end_example
+
+即： ~ast.codegenNode~ 是空值，最后并没有 执行 ~genNode(ast.codgenNode, context)~
+。
+
+因此问题还在 [[#transform-transformtext][transformText]] 里面，但是纯文本会直接在第一个 for 后的 if 判断中直接
+~return~ 了，那么问题出在哪？？？
+
+进过往上追溯，发现在 traverseNode 实现中有一部分 switch 代码被我们省略，而里面就
+有个 case 是文本节点会走到的，即： ~NodeTypes.ROOT~ 因为这个用例文本是直接挂在根
+节点下面的，那么就得实现 [[#transform-traversechildren][traverseChildren]] 了。
+
+然后，实现完 traverseChildren 之后并没解决问题，因为这里面根本没有处理赋值
+codgenNode 的操作。
+
+那么只能用最笨拙的方法了，直接搜索 ~codegen*~ 然后又发现新大陆(transform 里面有
+个 [[#transform-createrootcodegen][createRootCodgen(...)]] 并没有实现)， :runner: go ->
+
+*** genNode(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode
+:END: 
+
+**** stage-1: [[#test-text-01][01 simple text]]
+
+这里我们只处理文本节点的情况：
+#+begin_src js
+
+  function genNode(node, context) {
+    if (typeof node === "string") {
+      context.push(node);
+      return;
+    }
+
+    // TODO is symbol
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.TEXT:
+        genText(node, context);
+        break;
+    }
+  }
+#+end_src
+
+然后就是实现 case 的 [[#codegen-gentext][genText(node, context)]]
+
+*** genText(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gentext
+:END: 
+
+这里没什么阶段性的，就是一句很简单的字符串化文本节点内容。
+
+#+begin_src js
+  function genText(node, context) {
+    // 文本直接字符串化
+    context.push(JSON.stringify(node.content), node);
+  }
+
+#+end_src
+
+*** genFunctionPreamble(ast, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genfunctionpreamble
+:END: 
+
+**** stage-1: [[#test-text-01][01 simple text]]
+对于纯文本这里不需要更多的处理，只需要最后的 ~`return `~ 
+
+#+begin_src js
+
+  function genFunctionPreamble(ast, context) {
+    const { push, newline } = context;
+
+    // TODO ...
+
+    newline()
+    push(`return `);
+  }
+#+end_src
 ** 虚拟节点创建函数
 
 | name              | transform     | desc             |
