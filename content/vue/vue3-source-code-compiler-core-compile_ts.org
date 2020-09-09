@@ -13,7 +13,7 @@
 
 @@html:<kbd>@@
 *由于 compile 和 transform 关联性比较强这里将放在一起去完成。*
-@@html:</kbd>@@ 
+@@html:</kbd>@@
 
 * 准备工作
 要完成这一部分，首先要了解它的作用是什么？
@@ -260,9 +260,9 @@ compile.spec.ts 中的用例进行拆分之后右简入难式去通过该用例�
 
 ** 02-pure interpolation 第一个孩子节点
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-02-worldburn
-:END: 
+:END:
 
 ~{{ world.burn() }}~
 
@@ -295,7 +295,7 @@ vue.global 结果：
     with (_ctx) {
       return  // 这里没任何东西
     }
-  } 
+  }
 #+end_src
 
 通过[[#test-text-01][用例 01]] 大概的完成了一个比较完整的编译过程，要通过该用例应该只需要在这过程中增
@@ -304,32 +304,32 @@ vue.global 结果：
 处理步骤(通过用例 01 总结出的步骤)：
 
 [[#compile-basecompile][baseCompile]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse]] -> [[#compile-getbasetransformpreset][getBaseTransformPreset]] 得到 transform 函数 ->
-   [[#transform-transform][transform]] -> [[#codegen-generate][generate]]
+[[#transform-transform][transform]] -> [[#codegen-generate][generate]]
 
-  1. [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse]] -> ast
-  2. [[#compile-getbasetransformpreset][getBaseTransformPreset]] -> 这里并没有什么 transformInterpolation，插值并没有
-     对应的 transform 函数，而是直接在 generate 中结合 ~ast.helpers~ 处理。
-  3. [[#transform-transform][transform]] -> [[#transform-createtransformcontext][createTransformContext]] -> [[#transform-traversenode][traverseNode]] -> [[#transform-createrootcodegen][createRootCodegen]] -> ...
+1. [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse]] -> ast
+2. [[#compile-getbasetransformpreset][getBaseTransformPreset]] -> 这里并没有什么 transformInterpolation，插值并没有
+   对应的 transform 函数，而是直接在 generate 中结合 ~ast.helpers~ 处理。
+3. [[#transform-transform][transform]] -> [[#transform-createtransformcontext][createTransformContext]] -> [[#transform-traversenode][traverseNode]] -> [[#transform-createrootcodegen][createRootCodegen]] -> ...
 
-     这一步需要处理的应该只有 [[#transform-traversenode][traverseNode]] 需要修改，在 switch 里增加
-     INTERPOLATION 分支，因为 [[#codegen-createrootcodegen][createRootCodegen]] 里面 root 如果只有一个孩子的情况
-     下会和[[#test-text-01][用例 01]] 一样直接赋值 ~context.codegenNode = root.children[0]~
-     
-  4. [[#codegen-generate][generate]] -> [[#codegen-createcodegencontext][createCodegenContext]] -> [[#codegen-genfunctionpreamble][genFunctionPreamble]] 默认是 function 模
-     式 -> push ~function render(_ctx, _cache) {~ -> push ~with (_ctx)~ -> ...
-     -> [[#codegen-gennode][genNode(ast.codegenNode, context)]] 
-     
-     这里需要修改的点应该只有 genNode 里面，也是增加 INTERPOLATION switch 分支，
-     处理插值部分的代码。
-     
-     
+   这一步需要处理的应该只有 [[#transform-traversenode][traverseNode]] 需要修改，在 switch 里增加
+   INTERPOLATION 分支，因为 [[#codegen-createrootcodegen][createRootCodegen]] 里面 root 如果只有一个孩子的情况
+   下会和[[#test-text-01][用例 01]] 一样直接赋值 ~context.codegenNode = root.children[0]~
+
+4. [[#codegen-generate][generate]] -> [[#codegen-createcodegencontext][createCodegenContext]] -> [[#codegen-genfunctionpreamble][genFunctionPreamble]] 默认是 function 模
+   式 -> push ~function render(_ctx, _cache) {~ -> push ~with (_ctx)~ -> ...
+   -> [[#codegen-gennode][genNode(ast.codegenNode, context)]]
+
+   这里需要修改的点应该只有 genNode 里面，也是增加 INTERPOLATION switch 分支，
+   处理插值部分的代码。
+
+
 有了上面的初步分析，这里可以比较明确的知道需要修改的点：
 
 1. DONE  *traverseNode* 中增加 INTERPOLATION 分支
 2. DONE  *genNode* 中增加 INTERPOLATION 分支
 3. DONE  *genNode* 中增加 SIMPLE_EXPRESSION 分支处理插值内的表达式
 
-   
+
 +修正：事实上并没有 transformInterpolation+ :facepalm::facepalm::facepalm::facepalm:
 
 修改完之后报错：
@@ -355,7 +355,7 @@ parent.children 值为 undefined。
     with (_ctx) {
       const { toDisplayString : _toDisplayString } = _Vue
 
-      return 
+      return
     }
   } "compiled"
 #+end_src
@@ -391,18 +391,18 @@ parent.children 值为 undefined。
 
    - 执行 [[#codegen-gennode][genNode(ast.codgenNode, context)]] 处理缺少的部分
 
-      #+begin_src js
-        {type: 5, content: {…}, loc: {…}}
-          content:
-            content: "world.burn()"
-            isConstant: false
-            isStatic: false
-            loc: {start: {…}, end: {…}, source: "world.burn()"}
-            type: 4 // SIMPLE_EXPRESSION，第二步
-          loc: {start: {…}, end: {…}, source: "{{ world.burn() }}"}
-          type: 5 // INTERPOLATION，第一步
-      #+end_src
-      
+     #+begin_src js
+       {type: 5, content: {…}, loc: {…}}
+       content:
+       content: "world.burn()"
+       isConstant: false
+       isStatic: false
+       loc: {start: {…}, end: {…}, source: "world.burn()"}
+       type: 4 // SIMPLE_EXPRESSION，第二步
+       loc: {start: {…}, end: {…}, source: "{{ world.burn() }}"}
+       type: 5 // INTERPOLATION，第一步
+     #+end_src
+
      1) node 类型首先是 INTERPOLATION ，进入 [[#codegen-geniinterpolation][genInterpolation(node, context)]]
 
         #+begin_src js
@@ -419,31 +419,34 @@ parent.children 值为 undefined。
             push(`)`);
           }
         #+end_src
-        
+
      2) 取 node.content 调用 [[#codegen-gennode][genNode(node.content, context)]] 生成 `world.burn()`
-        表达式。   
-        
+        表达式。
+
         进入 ~switch node.type === NodeTypes.SIMPLE_EXPRESSION~ 分支，调用
         [[#codegen-genexpression][genExpression(node, context)]]
-        
+
 :sunflower: Perfect: 最后结果：
 
- #+begin_src js
-   ƒ render(_ctx, _cache) { // generate
-     with (_ctx) { // useWithBlock
-       const { toDisplayString : _toDisplayString } = _Vue // ast.helpers
+#+begin_src js
+  ƒ render(_ctx, _cache) { // generate
+    with (_ctx) { // useWithBlock
+      const { toDisplayString : _toDisplayString } = _Vue // ast.helpers
 
-       return _toDisplayString(world.burn()) // genNode -> genInterpolation -> genExpression
-     }
-   } // "compiled"
- #+end_src
+      return _toDisplayString(world.burn()) // genNode -> genInterpolation -> genExpression
+    }
+  } // "compiled"
+#+end_src
 
+完整流程图([[http://qiniu.ii6g.com/img/compiler-pure-interpolation.png][七牛链接]])：
+
+[[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
 
 ** 01-simple text
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-text-01
-:END: 
+:END:
 
 compiled：
 #+begin_src js
@@ -466,22 +469,22 @@ compiled：
 parse 之后的 ast:
 #+begin_src js
   {type: 0, children: Array(1), loc: {…}, helpers: Array(0), components: Array(0), …}
-    cached: 0
-    children: Array(1)
-      0:
-      content: "simple text"
-      loc: {start: {…}, end: {…}, source: "simple text"}
-      type: 2
-    length: 1
-    codegenNode: undefined
-    components: []
-    directives: []
-    helpers: []
-    hoists: []
-    imports: []
-    loc: {start: {…}, end: {…}, source: "simple text"}
-    temps: 0
-    type: 0
+  cached: 0
+  children: Array(1)
+  0:
+  content: "simple text"
+  loc: {start: {…}, end: {…}, source: "simple text"}
+  type: 2
+  length: 1
+  codegenNode: undefined
+  components: []
+  directives: []
+  helpers: []
+  hoists: []
+  imports: []
+  loc: {start: {…}, end: {…}, source: "simple text"}
+  temps: 0
+  type: 0
 #+end_src
 
 
@@ -573,11 +576,11 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 
     // ... 略去错误❎处理
     const prefixIdentifiers =
-      !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode);
+          !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode);
 
     // 1. baseParse 得到 AST 对象，两种情况：1. 未解析的模板，2. 以解析之后的 ast 对象
     const ast =
-      typeof template === "string" ? baseParse(template, options) : template;
+          typeof template === "string" ? baseParse(template, options) : template;
 
     // 2. 取出所有 node 和 directive 的 transforms
     const [nodeTransforms, directiveTransforms] = getBaseTransformPreset(
@@ -610,9 +613,9 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 这也是除了错误处理之后的完整的 baseCompile 函数实现。
 *** getBaseTransformPreset(prefixIdentifiers: boolean)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compile_getbasetransformpreset
-:END: 
+:END:
 
 合并所有 transform，返回一个 ~TransformPreset~ 类型的数组
 
@@ -635,14 +638,14 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
 ** tranform.ts
 *** transformExpression(node, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-transformexpression
-:END: 
+:END:
 *** transformText(node, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-transformtext
-:END: 
+:END:
 
 该函数会返回一个用来转换文本节点类型(~NodeTransform~)的函数。
 
@@ -650,10 +653,10 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
 
 1. 第一个 for 嵌套第二个 for 构成双重循环，用来合并 node.children 里面相邻的文本
    节点
-   
+
    第一个 For 里面使用的是 children.length 动态获取当前数组的长度，结合代码中的
    splice 和 j--。从而完成合并操作。
-   
+
    #+begin_src js
      // 1. 原来的 child 被重写
      // 2. child, ` + `, next 合并到了新 child.children 里面
@@ -662,10 +665,10 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
      children.splice(j, 1);
      j--; // -1 是因为上面删除了当前元素，for 循环过程中长度是动态获取的
    #+end_src
-   
+
 2. 第三个 for 遍历第一步之后的 children，对每个 child 进行重定义，类型改变成
    ~NodeTyeps.TEXT_CALL~ 类型，增加 codegenNode 属性。
-   
+
 
 代码完整版：
 #+begin_src js
@@ -736,10 +739,10 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
           //   2.1 组件根节点
           //   2.2 <element> 元素节点
           !hasText ||
-          (children.length === 1 &&
-            (node.type === NodeTypes.ROOT ||
+            (children.length === 1 &&
+             (node.type === NodeTypes.ROOT ||
               (node.type === NodeTypes.ELEMENT &&
-                node.tagType === ElementTypes.ELEMENT)))
+               node.tagType === ElementTypes.ELEMENT)))
         ) {
           return;
         }
@@ -796,13 +799,13 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
      }
    #+end_src
 
-   
+
 *对应的虚拟节点创建函数： createTextVNode*
 *** transform(root, options)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-transform
-:END: 
+:END:
 
 调用的函数：
 1. [[#transform-createtransformcontext][createTransformContext(root, options)]] 创建 transform 转换器类型的上下文对象
@@ -836,9 +839,9 @@ stage-1: [[#test-text-01][01 simple text]]
 #+end_src
 *** createTransformContext(root, options)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-createtransformcontext
-:END: 
+:END:
 
 单纯的构建和初始化 transform 转换器上下文对象。
 
@@ -926,10 +929,10 @@ stage-1: [[#test-text-01][01 simple text]]
     { ... }
   ) {
     const context = {
-      // ... 
+      // ...
       helpers: new Set(),
 
-       // ...
+      // ...
 
       // 新增 helper 实现
       helper(name) {
@@ -949,9 +952,9 @@ stage-1: [[#test-text-01][01 simple text]]
 #+end_src
 *** createRootCodegen(root, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-createrootcodegen
-:END: 
+:END:
 
 创建 root 节点上的 codegenNode 值，这也是将来用来编译成 render 函数的源码字符串。
 
@@ -984,15 +987,15 @@ stage-1: [[#test-text-01][01 simple text]]
 实现完这个之后发现，generate 里面的 [[#codegen-gennode][genNode]] 还没实现，真实丢三落四~~~~。
 *** traverseNode(node, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversenode
-:END: 
+:END:
 
 **** stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversenode-stage1
-:END: 
+:END:
 
 #+begin_src js
 
@@ -1035,19 +1038,19 @@ stage-1: [[#test-text-01][01 simple text]]
 #+end_src
 **** stage-2: [[#test-02-worldburn][02 pure interpolation]] 插值节点的编译
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversenode-stage2
-:END: 
+:END:
 
 增加 INTERPOLATION 类型节点分支处理。
 
 #+begin_src js
 
   export function traverseNode(node, context) {
-    // ... 
+    // ...
 
     switch (node.type) {
-        // ... 
+        // ...
 
         // 新增：对插值类型节点处理
       case NodeTypes.INTERPOLATION:
@@ -1055,18 +1058,67 @@ stage-1: [[#test-text-01][01 simple text]]
           // 这个函数来自上下文处理中的 helper(name)
           context.helper(TO_DISPLAY_STRING);
         }
+        break
 
-        // ... 
+        // ...
     }
 
     // ...
   }
 #+end_src
+
+修改之后代码：
+
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    context.currentNode = node;
+
+    const { nodeTransforms } = context;
+    const exitFns = [];
+
+    for (let i = 0; i < nodeTransforms.length; i++) {
+      // 调用诸如  transformText 的函数
+      const onExit = nodeTransforms[i](node, context);
+      if (onExit) {
+        const fns = Array.isArray(onExit) ? onExit : [onExit];
+        exitFns.push(...fns);
+      }
+
+      if (!context.currentNode) {
+        // 可能被移除了
+        return;
+      } else {
+        // 节点可能被替换过，重新建立引用
+        node = context.currentNode;
+      }
+    }
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.INTERPOLATION:
+        if (!context.ssr) {
+          // 这个函数来自上下文处理中的 helper(name)
+          context.helper(TO_DISPLAY_STRING);
+        }
+        break;
+      case NodeTypes.ROOT:
+        traverseChildren(node, context);
+        break;
+    }
+
+    let i = exitFns.length;
+    // 执行所有转换
+    while (i--) {
+      exitFns[i]();
+    }
+  }
+#+end_src
 *** traverseChildren(parent, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversechildren
-:END: 
+:END:
 
 处理 node.children 孩子节点。
 
@@ -1093,9 +1145,9 @@ stage-1: [[#test-text-01][01 simple text]]
 ** codegen.ts
 *** createCodgenContext(ast, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-createcodegencontext
-:END: 
+:END:
 
 **** stage-1: [[#test-text-01][01 simple text]]
 
@@ -1166,9 +1218,9 @@ stage-1: [[#test-text-01][01 simple text]]
 #+end_src
 *** generate()
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen_generate
-:END: 
+:END:
 
 generate 函数雏形：
 
@@ -1187,6 +1239,11 @@ generate 函数雏形：
 Function(code)~ 生成 render 函数的。
 
 **** stage-1: [[#test-text-01][01 simple text]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-generate-stage1
+:END:
+
 #+begin_src js
 
   export function generate(ast, options = {}) {
@@ -1298,6 +1355,10 @@ codgenNode 的操作。
 个 [[#transform-createrootcodegen][createRootCodgen(...)]] 并没有实现)， :runner: go ->
 
 **** stage-2: [[#test-02-worldburn][02 pure interpolation]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-generate-stage2
+:END:
 
 这里新增了 ~push ast.helpers.map(...)~ 处理，比如 traverseNode stage-2 中新增的
 INTERPOLATION 分支中的处理是 ~context.helper(TO_DISPLAY_STRING)~ 就是给上下文的
@@ -1306,7 +1367,7 @@ helpers 增加了 ~Symbol('toDisplayString')~ 。
 #+begin_src js
 
   export function generate(ast, options = {}) {
-   // ...
+    // ...
 
     const hasHelpers = ast.helpers.length > 0;
 
@@ -1339,13 +1400,22 @@ helpers 增加了 ~Symbol('toDisplayString')~ 。
 
 正好在这里会检测 ~context.helpers~ 进行相应的处理。
 
+[[#transform-traversenode][traverseNode]] 的 switch 中插值 INTERPOLATION 分支处理中增加了一个
+TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就是个 ~_Vue~
+实例中的一个函数名称，在这里会遍历 ~context.helpers~ 将需要用到的函数从实例中解
+构出来。
+
 *** genNode(node, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-gennode
-:END: 
+:END:
 
 **** stage-1: [[#test-text-01][01 simple text]]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode-stage1
+:END: 
 
 这里我们只处理文本节点的情况：
 #+begin_src js
@@ -1369,11 +1439,71 @@ helpers 增加了 ~Symbol('toDisplayString')~ 。
 
 然后就是实现 case 的 [[#codegen-gentext][genText(node, context)]]
 
-*** genText(node, context)
+**** stage-2: [[#test-02-worldburn][02 pure interpolation]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: codegen-gentext
+:CUSTOM_ID: codegen-gennode-stage2
 :END: 
+
+这个阶段需要支持插值的解析，而插值在 ast 中数据结构为：
+
+#+begin_src json
+  {
+    "type":5, // INTERPOLATION
+    "content":{
+      "type":4, // SIMPLE_EXPRESSION
+      "isStatic":false,
+      "isConstant":false,
+      "content":"world.burn()",
+      "loc":{
+        // ... ,
+        "source":"world.burn()"
+      }
+    },
+    "loc":{
+      // ...,
+      "source":"{{ world.burn() }}"
+    }
+  }
+#+end_src
+
+这里需要经过两次递归调用 genNode 分别去解析 ~type=5 // INTERPOLATION~ 和 ~type=4
+// SIMPLE_EXPRESSION~ 两种类型，且前后形同父子关系。
+
+那么就有：
+
+#+begin_src js
+  function genNode(node, context) {
+    if (typeof node === "string") {
+      context.push(node);
+      return;
+    }
+
+    // TODO is symbol
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.TEXT:
+        genText(node, context);
+        break;
+      case NodeTypes.SIMPLE_EXPRESSION:
+        // 如：插值内容，属性值
+        genExpression(node, context);
+        break;
+      case NodeTypes.INTERPOLATION:
+        console.log(node, "interpolation");
+        genInterpolation(node, context);
+        break;
+    }
+  }
+#+end_src
+
+1. 先经过 INTERPOLATION 分支调用 [[#codegen-geninterpolation][genInterpolation(node, context)]] 去解析插值节点
+*** genText(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gentext
+:END:
 
 这里没什么阶段性的，就是一句很简单的字符串化文本节点内容。
 
@@ -1387,12 +1517,12 @@ helpers 增加了 ~Symbol('toDisplayString')~ 。
 
 *** genFunctionPreamble(ast, context)
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-genfunctionpreamble
-:END: 
+:END:
 
 **** stage-1: [[#test-text-01][01 simple text]]
-对于纯文本这里不需要更多的处理，只需要最后的 ~`return `~ 
+对于纯文本这里不需要更多的处理，只需要最后的 ~`return `~
 
 #+begin_src js
 
@@ -1405,6 +1535,58 @@ helpers 增加了 ~Symbol('toDisplayString')~ 。
     push(`return `);
   }
 #+end_src
+*** genInterpolation(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-geninterpolation
+:END: 
+
+#+begin_src js
+  function genInterpolation(node, context) {
+    const { push, helper, pure } = context;
+
+    if (pure) push(PURE_ANNOTATION);
+
+    push(`${helper(TO_DISPLAY_STRING)}(`);
+    // 调用 genNode 解析插值的内容，表达式节点类型，NodeTypes.SIMPLE_EXPRESSION
+    genNode(node.content, context);
+    push(`)`);
+  }
+#+end_src
+
+~context.helper(TO_DISPLAY_STRING)~ 是从 helpersMap 中取出 TO_DISPLAY_STRING 对
+应的函数名称(下划线重命名之后的名称)，看 ~context.helper~ 实现:
+#+begin_src js
+  helper(key) {
+    return `_${helperNameMap[key]}`;
+  }
+#+end_src
+
+别名操作在 [[#codegen-generate][generate]] 的 useWithBlock 判断中生成。
+
+*** genExpression(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genexpression
+:END: 
+
+#+begin_src js
+  function genExpression(node, context) {
+    const { content, isStatic } = node;
+    context.push(isStatic ? JSON.stringify(content) : content, node);
+  }
+#+end_src
+
+表达式的值可以是静态的，也可以是动态的，
+
+1. TODO 如果是静态直接字符串化？？？
+
+2. DONE 如果是动态的直接 push content 变成变量直接从上下文去取变量值
+
+   如 [[test-02-worldburn][02 pure interpolation]] 中的 ~world.burn()~ 会直接被塞到 ~context.code~ 结合
+   成 ~return _toDisplayString(world.burn());~ 生成函数之后相当于这样调
+   用： ~_ctx.world.burn()~  。
+   
 ** 虚拟节点创建函数
 
 | name              | transform     | desc             |

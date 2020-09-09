@@ -259,17 +259,22 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
    Function(code)~ 生成 render 函数。
 
 
-编译器流程图：
-
-[[http://qiniu.ii6g.com/img/compiler.png][七牛图片链接]]
+流程图([[http://qiniu.ii6g.com/img/compiler.png][七牛链接]])：
 
 [[https://img.cheng92.com/vue3/compiler-core/compiler.png]]
+
+** pure interpolation 编译过程
+
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-02-worldburn][02-pure-interpolation 测试用例地址]]
+
+流程图([[http://qiniu.ii6g.com/img/compiler-pure-interpolation.png][七牛链接]])：
+
+[[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
 
 ** simple text 编译过程
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
 
-
-流程图：
+流程图([[http://qiniu.ii6g.com/img/compiler-simple-text.png][七牛链接]])：
 
 [[https://img.cheng92.com/vue3/compiler-core/compiler/compiler-simple-text.png]] 
