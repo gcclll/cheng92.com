@@ -298,7 +298,7 @@ vue.global 结果：
   } 
 #+end_src
 
-通过用例 01 大概的完成了一个比较完整的编译过程，要通过该用例应该只需要在这过程中增
+通过[[#test-text-01][用例 01]] 大概的完成了一个比较完整的编译过程，要通过该用例应该只需要在这过程中增
 加对插值的处理即可。
 
 处理步骤(通过用例 01 总结出的步骤)：
@@ -306,14 +306,14 @@ vue.global 结果：
 [[#compile-basecompile][baseCompile]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse]] -> [[#compile-getbasetransformpreset][getBaseTransformPreset]] 得到 transform 函数 ->
    [[#transform-transform][transform]] -> [[#codegen-generate][generate]]
 
-  1. baseParse -> ast
+  1. [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse]] -> ast
   2. [[#compile-getbasetransformpreset][getBaseTransformPreset]] -> 这里并没有什么 transformInterpolation，插值并没有
-     对应的 transform 函数。
+     对应的 transform 函数，而是直接在 generate 中结合 ~ast.helpers~ 处理。
   3. [[#transform-transform][transform]] -> [[#transform-createtransformcontext][createTransformContext]] -> [[#transform-traversenode][traverseNode]] -> [[#transform-createrootcodegen][createRootCodegen]] -> ...
 
      这一步需要处理的应该只有 [[#transform-traversenode][traverseNode]] 需要修改，在 switch 里增加
-     INTERPOLATION 分支，因为 createRootCodegen 里面 root 如果只有一个孩子的情况
-     下会和用例 01 一样直接赋值 ~context.codegenNode = root.children[0]~
+     INTERPOLATION 分支，因为 [[#codegen-createrootcodegen][createRootCodegen]] 里面 root 如果只有一个孩子的情况
+     下会和[[#test-text-01][用例 01]] 一样直接赋值 ~context.codegenNode = root.children[0]~
      
   4. [[#codegen-generate][generate]] -> [[#codegen-createcodegencontext][createCodegenContext]] -> [[#codegen-genfunctionpreamble][genFunctionPreamble]] 默认是 function 模
      式 -> push ~function render(_ctx, _cache) {~ -> push ~with (_ctx)~ -> ...
@@ -326,10 +326,119 @@ vue.global 结果：
 有了上面的初步分析，这里可以比较明确的知道需要修改的点：
 
 1. DONE  *traverseNode* 中增加 INTERPOLATION 分支
-2. TODO  *genNode* 中增加 INTERPOLATION 分支
+2. DONE  *genNode* 中增加 INTERPOLATION 分支
+3. DONE  *genNode* 中增加 SIMPLE_EXPRESSION 分支处理插值内的表达式
 
    
 +修正：事实上并没有 transformInterpolation+ :facepalm::facepalm::facepalm::facepalm:
+
+修改完之后报错：
+#+begin_example
+transform.js:184 Uncaught TypeError: Cannot read property 'length' of undefined
+    at traverseChildren (transform.js:184)
+    at traverseNode (transform.js:119)
+    at traverseChildren (transform.js:192)
+    at traverseNode (transform.js:119)
+    at transform (transform.js:133)
+    at baseCompile (compile.js:37)
+    at compile.html:12
+#+end_example
+
+根据报错定位到，在解析 root.children[0] 的时候经过 [[#transform-traversechildren][traverseChildren]] 里面时候的
+parent.children 值为 undefined。
+
+原因是 traverseNode 里面的 NodeTypes.INTERPOLATION 分支没有加 break 导致的，加上
+之后：
+
+#+begin_src js
+  ƒ render(_ctx, _cache) {
+    with (_ctx) {
+      const { toDisplayString : _toDisplayString } = _Vue
+
+      return 
+    }
+  } "compiled"
+#+end_src
+
+和正确结果相比少了点东西 ~return _toDisplayString(world.burn())~
+
+1. with 内的解构来源：
+
+   #+begin_src js
+     function generate() {
+       // ...
+       if (hasHelpers) {
+         // 比如：插值处理时用到 TO_DISPLAY_STRING helper
+         // 为了避免命名冲突，这里都需要将他们重命名
+
+         // traverseNode 里面 context.help(helper)
+         push(
+           `const { ${ast.helpers
+               .map((s) => `${helperNameMap[s]} : _${helperNameMap[s]}`)
+               .join(", ")} } = _Vue`
+         );
+
+         push("\n");
+         newline();
+       }
+       // ...
+     }
+   #+end_src
+
+2. 缺少的 ~return _toDisplayString(world.burn())~
+
+   - [[#codegen-generate][generate]] 中最后 push `return `
+
+   - 执行 [[#codegen-gennode][genNode(ast.codgenNode, context)]] 处理缺少的部分
+
+      #+begin_src js
+        {type: 5, content: {…}, loc: {…}}
+          content:
+            content: "world.burn()"
+            isConstant: false
+            isStatic: false
+            loc: {start: {…}, end: {…}, source: "world.burn()"}
+            type: 4 // SIMPLE_EXPRESSION，第二步
+          loc: {start: {…}, end: {…}, source: "{{ world.burn() }}"}
+          type: 5 // INTERPOLATION，第一步
+      #+end_src
+      
+     1) node 类型首先是 INTERPOLATION ，进入 [[#codegen-geniinterpolation][genInterpolation(node, context)]]
+
+        #+begin_src js
+          function genInterpolation(node, context) {
+            const { push, helper, pure } = context;
+
+            if (pure) push(PURE_ANNOTATION);
+
+            // 这里从 helpers 里面取出 toDisplayString
+            push(`${helper(TO_DISPLAY_STRING)}(`);
+
+            // 这里生成 `world.burn()` SIMPLE_EXPRESSION 类型
+            genNode(node.content, context);
+            push(`)`);
+          }
+        #+end_src
+        
+     2) 取 node.content 调用 [[#codegen-gennode][genNode(node.content, context)]] 生成 `world.burn()`
+        表达式。   
+        
+        进入 ~switch node.type === NodeTypes.SIMPLE_EXPRESSION~ 分支，调用
+        [[#codegen-genexpression][genExpression(node, context)]]
+        
+:sunflower: Perfect: 最后结果：
+
+ #+begin_src js
+   ƒ render(_ctx, _cache) { // generate
+     with (_ctx) { // useWithBlock
+       const { toDisplayString : _toDisplayString } = _Vue // ast.helpers
+
+       return _toDisplayString(world.burn()) // genNode -> genInterpolation -> genExpression
+     }
+   } // "compiled"
+ #+end_src
+
+
 ** 01-simple text
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -524,6 +633,11 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
 #+end_src
 
 ** tranform.ts
+*** transformExpression(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformexpression
+:END: 
 *** transformText(node, context)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
