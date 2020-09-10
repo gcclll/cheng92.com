@@ -394,11 +394,11 @@ parent.children 值为 undefined。
      #+begin_src js
        {type: 5, content: {…}, loc: {…}}
        content:
-       content: "world.burn()"
-       isConstant: false
-       isStatic: false
-       loc: {start: {…}, end: {…}, source: "world.burn()"}
-       type: 4 // SIMPLE_EXPRESSION，第二步
+         content: "world.burn()"
+         isConstant: false
+         isStatic: false
+         loc: {start: {…}, end: {…}, source: "world.burn()"}
+         type: 4 // SIMPLE_EXPRESSION，第二步
        loc: {start: {…}, end: {…}, source: "{{ world.burn() }}"}
        type: 5 // INTERPOLATION，第一步
      #+end_src
@@ -440,7 +440,9 @@ parent.children 值为 undefined。
 
 完整流程图([[http://qiniu.ii6g.com/img/compiler-pure-interpolation.png][七牛链接]])：
 
-[[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
+[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
+
+# [[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
 
 ** 01-simple text
 :PROPERTIES:
@@ -553,9 +555,11 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 
 下面将使用流程图方式进行回顾，分析整个过程。
 
-[[http://qiniu.ii6g.com/img/compiler-simple-text.png][七牛图片链接]]
+# [[http://qiniu.ii6g.com/img/compiler-simple-text.png][七牛图片链接]]
 
-[[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-simple-text.png]]
+[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-simple-text.png]]
+
+# [[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-simple-text.png]]
 * 函数列表
 ** compile.ts
 *** baseCompile(template, options)
