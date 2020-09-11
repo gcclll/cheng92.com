@@ -28,7 +28,7 @@
 
 上图：几个重要函数和几个简单的用例
 
-[[/img/vue3/compiler-core/tests/parse_ts-brief-summary.png]]
+[[/img/vue3/compiler-core/parse_ts-brief-summary.png]]
 
 每个函数的重要实现解说：
 
@@ -1157,13 +1157,8 @@ props: Array(1)
 :CUSTOM_ID: test-element-01
 :END:
 
-解析结果流程图(xmind 画流程图真实 low 的不行，😅)：
-
-[[http://qiniu.ii6g.com/parse-test-element--01.png]]
-
-drawer.io 流程图：
-
-[[http://qiniu.ii6g.com/test-parse-simple-tag.png]]
+流程图：
+[[/img/vue3/compiler-core/parser-test-simple-tag-div.png]]
 
 因为 [[#parse-parseelement][parseElement]] 已经实现，因此这个顺利通过，~parseElement~ 解析先检测 ~</div>~
 结束标签位置，如果没有则为非法无结束标签触发 ~ErrorCodes.EOF_IN_TAG~ 异常。
@@ -1705,7 +1700,7 @@ test:
 
 如控制台输出：
 
-[[/img/1596638044.png]]
+[[/img/tmp/1596638044.png]]
 
 错误上面的输出其实是 }} 和 {{ 的解析位置信息，并且 =<div>= 并没有解析是因为我们
 还没实现 [[#parse-parseelement][parseElement]] 分支逻辑，所以直接过滤掉当成文本处理了。
@@ -1975,7 +1970,7 @@ parseTag 实现到这里就可以满足通过测试用例的条件了，这里�
 其过滤掉(通过 advanceBy 和 advanceSpaces 来改变 context 里面的 offset 和 line 值)，
 输出结果(log1 和 log2 位置 context 的输出)：
 
-[[/img/1595444610.png]]
+[[/img/tmp/1595444610.png]]
 
 *** 01-simple text
 :PROPERTIES:
@@ -2200,7 +2195,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 :CUSTOM_ID: pic-baseparse
 :END:
 
-[[/img/parse-ts-baseparse-0.png]]
+[[/img/vue3/compiler-core/functions/parse-ts-baseparse-0.png]]
 
 ** createParseContext(context, options)
 :PROPERTIES:
@@ -2390,7 +2385,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
 
 图示：文本解析
 
-[[http://qiniu.ii6g.com/parse-ts-parsechildren-text-part.png][parseChildren-支持纯文本解析]]
+[[/img/vue3/compiler-core/functions/parse-ts-parsechildren-text-part.png]]
 
 *** 阶段二([[#test-element-12][<div ...></div>\n<div ...></div>]])
 
@@ -2924,7 +2919,7 @@ baseParse 内部实现基本就是调用其他方法，所以接下来我们得�
   }
 #+end_src
 
-[[/img/1595570127.png]]
+[[/img/tmp/1595570127.png]]
 
 图中我们看到在经过解析之后 innerStart 和 innerEnd 都数据都正确定位到了相应位置，
 innerStart 是解析后插值字符串的开始位置(第一个 ={= offset = 8(@@html:<font
@@ -2932,7 +2927,7 @@ color='red'>@@'some {{ '的长度</font>))，innerEnd 是解析后插值字符�
 (最后一个 =}= offset = 17(<font color="purple">'some {{ foo + bar '的长
 度))@@html:</font>@@。
 
-[[/img/parse-ts-parseinterpolation.png]]
+[[/img/vue3/compiler-core/functions/parse-ts-parseinterpolation.png]]
 
 解析之后得到的 =ast.children= 将会有三个节点：
 
@@ -3412,7 +3407,7 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
 
 导图：
 
-[[/img/parse-ts-parsetext.png]]
+[[/img/vue3/compiler-core/functions/parse-ts-parsetext.png]]
 
 ** parseTextData(context, length, mode)
 :PROPERTIES:
@@ -3470,7 +3465,7 @@ parseTag 中返回的时候 =isSelfClosing= 写死成了 =false= ，要支持这
 #+end_src
 
 导图：
-[[/img/parse-ts-parsetextdata.png]]
+[[/img/vue3/compiler-core/functions/parse-ts-parsetextdata.png]]
 
 ** parseAttributes(context, type)
 :PROPERTIES:

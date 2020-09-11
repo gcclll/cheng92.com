@@ -176,7 +176,6 @@
     }
   #+end_src
 
-
 * 标签(组件)种类(element, component, slot, template)
   :PROPERTIES:
   :COLUMNS:  %CUSTOM_ID[(Custom Id)]

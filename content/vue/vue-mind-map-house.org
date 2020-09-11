@@ -18,7 +18,7 @@
    
 2. <2020-09-10 Thu>  图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 自动同步自 [[https://github.com/gcclll/mind-maps.git][github]]。
 
-3. <2020-09-11 Fri>  更新图片到博客目录 ~/assets/imgs/...~ ，文内访问路径：
+3. <2020-09-11 Fri>  更新图片到博客目录 ~/static/imgs/...~ ，文内访问路径：
    ~/img/vue3/...~ ，单独访问加上域名就行： ~https://www.cheng92.com/img/vue3/...~
 #+end_quote
 
@@ -275,4 +275,4 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
 
 流程图：
-[[/img/vue3/compiler-core/test-compiler-simple-text.png]]
+[[/img/vue3/compiler-core/compiler-test-simple-text.png]]

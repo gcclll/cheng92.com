@@ -299,7 +299,7 @@ vue.global:
   } "compiled"
 #+end_src
 
-[[/img/vue3/compiler-core/compiler/compiler-interpolation-in-div.svg]] 
+[[/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg]] 
 
 ** 02-pure interpolation 第一个孩子节点
 :PROPERTIES:
@@ -481,11 +481,9 @@ parent.children 值为 undefined。
   } // "compiled"
 #+end_src
 
-完整流程图([[http://qiniu.ii6g.com/img/compiler-pure-interpolation.png][七牛链接]])：
+完整流程图：
 
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
-
-# [[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
+[[/img/vue3/compiler-core/compiler-test-pure-interpolation.png]]
 
 ** 01-simple text
 :PROPERTIES:
@@ -598,11 +596,8 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 
 下面将使用流程图方式进行回顾，分析整个过程。
 
-# [[http://qiniu.ii6g.com/img/compiler-simple-text.png][七牛图片链接]]
+[[/img/vue3/compiler-core/compiler-test-simple-text.png]]
 
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-simple-text.png]]
-
-# [[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-simple-text.png]]
 * 函数列表
 ** compile.ts
 *** baseCompile(template, options)
