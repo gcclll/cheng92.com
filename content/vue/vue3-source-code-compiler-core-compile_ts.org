@@ -258,10 +258,55 @@ compile.spec.ts 中的用例进行拆分之后右简入难式去通过该用例�
   `.trim()
 #+end_src
 
+** 03-inerpolation in pure div
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-cc-03
+:END: 
+
+test:
+#+begin_src js
+  const source = `<div>{{ world.burn() }}</div>`.trim();
+
+  const result = compile(source, {
+    sourceMap: true,
+    filename: `foo.vue`,
+  });
+#+end_src
+
+vue.global:
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString: _toDisplayString, createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", null, _toDisplayString(world.burn()), 1 /* TEXT */))
+      }
+    }
+  })
+#+end_src
+
+先阶段的结果：
+#+begin_src js
+  ƒ render(_ctx, _cache) {
+    with (_ctx) {
+      return 
+    }
+  } "compiled"
+#+end_src
+
+[[https://img.cheng92.com/vue3/compiler-core/compiler/compiler-interpolation-in-div.svg]] 
+
+# [[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-interpolation-in-div.svg]]
+
 ** 02-pure interpolation 第一个孩子节点
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: test-02-worldburn
+:CUSTOM_ID: test-cc-02
 :END:
 
 ~{{ world.burn() }}~
@@ -288,7 +333,7 @@ vue.global 结果：
   }
 #+end_src
 
-[[#test-text-01][01-simple text]] 阶段代码返回的结果:
+[[#test-cc-01][01-simple text]] 阶段代码返回的结果:
 
 #+begin_src js
   ƒ render(_ctx, _cache) {
@@ -298,7 +343,7 @@ vue.global 结果：
   }
 #+end_src
 
-通过[[#test-text-01][用例 01]] 大概的完成了一个比较完整的编译过程，要通过该用例应该只需要在这过程中增
+通过[[#test-cc-01][用例 01]] 大概的完成了一个比较完整的编译过程，要通过该用例应该只需要在这过程中增
 加对插值的处理即可。
 
 处理步骤(通过用例 01 总结出的步骤)：
@@ -313,7 +358,7 @@ vue.global 结果：
 
    这一步需要处理的应该只有 [[#transform-traversenode][traverseNode]] 需要修改，在 switch 里增加
    INTERPOLATION 分支，因为 [[#codegen-createrootcodegen][createRootCodegen]] 里面 root 如果只有一个孩子的情况
-   下会和[[#test-text-01][用例 01]] 一样直接赋值 ~context.codegenNode = root.children[0]~
+   下会和[[#test-cc-01][用例 01]] 一样直接赋值 ~context.codegenNode = root.children[0]~
 
 4. [[#codegen-generate][generate]] -> [[#codegen-createcodegencontext][createCodegenContext]] -> [[#codegen-genfunctionpreamble][genFunctionPreamble]] 默认是 function 模
    式 -> push ~function render(_ctx, _cache) {~ -> push ~with (_ctx)~ -> ...
@@ -447,7 +492,7 @@ parent.children 值为 undefined。
 ** 01-simple text
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: test-text-01
+:CUSTOM_ID: test-cc-01
 :END:
 
 compiled：
@@ -623,7 +668,7 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 
 合并所有 transform，返回一个 ~TransformPreset~ 类型的数组
 
-stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用例一]] 即可，所以这里就只保留
+stage-1: 第一阶段我们只需要文本转换，通过 [[#test-cc-01][用例一]] 即可，所以这里就只保留
 [[transform-transformtext][transformText]] 就可以了，剩下的就是去实现它。
 #+begin_src js
   export function getBaseTransformPreset(prefixIdentifiers) {
@@ -817,7 +862,7 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-text-01][用�
 3. ssr 服务端渲染处理
 4. 初始化 root 根节点上的一些属性
 
-stage-1: [[#test-text-01][01 simple text]]
+stage-1: [[#test-cc-01][01 simple text]]
 #+begin_src js
 
   export function transform(root, options) {
@@ -849,7 +894,7 @@ stage-1: [[#test-text-01][01 simple text]]
 
 单纯的构建和初始化 transform 转换器上下文对象。
 
-**** stage-1: [[#test-text-01][01 simple text]]
+**** stage-1: [[#test-cc-01][01 simple text]]
 
 一些初始化的工作，并不需要具体实现什么，纯文本并没有用到。
 
@@ -924,7 +969,7 @@ stage-1: [[#test-text-01][01 simple text]]
   }
 #+end_src
 
-**** stage-2: [[#test-02-worldburn][02 pure interpolation]] 插值节点的编译
+**** stage-2: [[#test-cc-02][02 pure interpolation]] 插值节点的编译
 
 #+begin_src js
 
@@ -962,7 +1007,7 @@ stage-1: [[#test-text-01][01 simple text]]
 
 创建 root 节点上的 codegenNode 值，这也是将来用来编译成 render 函数的源码字符串。
 
-**** stage-1: [[#test-text-01][01 simple text]]
+**** stage-1: [[#test-cc-01][01 simple text]]
 #+begin_src js
 
   function createRootCodegen(root, context) {
@@ -995,7 +1040,7 @@ stage-1: [[#test-text-01][01 simple text]]
 :CUSTOM_ID: transform-traversenode
 :END:
 
-**** stage-1: [[#test-text-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
+**** stage-1: [[#test-cc-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversenode-stage1
@@ -1040,7 +1085,7 @@ stage-1: [[#test-text-01][01 simple text]]
     }
   }
 #+end_src
-**** stage-2: [[#test-02-worldburn][02 pure interpolation]] 插值节点的编译
+**** stage-2: [[#test-cc-02][02 pure interpolation]] 插值节点的编译
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-traversenode-stage2
@@ -1146,14 +1191,134 @@ stage-1: [[#test-text-01][01 simple text]]
     }
   }
 #+end_src
+
+1. 遍历所有 ast ，让每个节点持有自父级引用。
+2. 遍历所有节点，进行 [[#transform-traversenode][traverseNode]]，解析出 codegenNode 值
+
+*** transformElement(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformelement
+:END: 
+**** stage-1 [[#test-cc-03][03-inerpolation in pure div]]
+
+#+begin_src js
+
+  export const transformElement = (node, context) => {
+    if (
+      !(
+        // 首先必须是 ELEMENT 类型
+        (
+          node.type === NodeTypes.ELEMENT &&
+          // 然后是标签类型为 element 或者是 component 组件
+          (node.tagType === ElementTypes.ELEMENT ||
+            node.tagType === ElementTypes.COMPONENT)
+        )
+      )
+    ) {
+      return;
+    }
+
+    return function postTransformElement() {
+      const { tag, props } = node;
+      const isComponent = node.tagType === ElementTypes.COMPONENT;
+
+      // 虚拟节点的 tag 类型，test-03 直接返回 `div`
+      const vnodeTag = isComponent
+        ? resolveComponentType(node, context)
+        : `"${tag}"`;
+
+      // 是不是动态组件
+      const isDynamicComponent =
+        typeof vnodeTag === "object" &&
+        vnodeTag.callee === RESOLVE_DYNAMIC_COMPONENT;
+
+      // TODO ... 声明一些变量
+      let vnodeProps;
+      let vnodeChildren;
+      let vnodePatchFlag;
+      let patchFlag = 0;
+      let vnodeDynamicProps;
+      let dynamicPropNames;
+      let vnodeDirectives;
+
+      // TODO shouldUseBlock
+      let shouldUseBlock = false;
+
+      if (props.length > 0) {
+        // TODO
+      }
+
+      if (node.children.length > 0) {
+        if (vnodeTag === KEEP_ALIVE) {
+          // TODO KeepAlive
+        }
+
+        const shouldBuildAsSlots =
+          isComponent &&
+          // Teleport 并非真实的组件，且专用于运行时处理
+          vnodeTag !== TELEPORT &&
+          vnodeTag !== KEEP_ALIVE;
+
+        // 这段 if...else if ...else 目的是得到 vnodeChildren
+        if (shouldBuildAsSlots) {
+          // TODO
+        } else if (node.children.length === 1 && vnodeTag !== TELEPORT) {
+          const child = node.children[0];
+          const type = child.type;
+
+          // 动态文本孩子节点检测
+          const hasDynamicTextChild =
+            type === NodeTypes.INTERPOLATION ||
+            type === NodeTypes.COMPOUND_EXPRESSION;
+
+          if (hasDynamicTextChild && !getStaticType(child)) {
+            patchFlag |= PatchFlags.TEXT;
+          }
+
+          if (hasDynamicTextChild || type === NodeTypes.TEXT) {
+            vnodeChildren = child;
+          } else {
+            vnodeChildren = node.children;
+          }
+        } else {
+          vnodeChildren = node.children;
+        }
+      }
+
+      // TODO patchFlag & dynamicPropNames
+
+      node.codegenNode = createVNodeCall(
+        context,
+        vnodeTag,
+        vnodeProps,
+        vnodeChildren,
+        vnodePatchFlag,
+        vnodeDynamicProps,
+        vnodeDirectives,
+        !!shouldUseBlock,
+        false /* isForBlack */,
+        node.loc
+      );
+    };
+  }
+#+end_src
+
+进入 [[/vue/vue3-source-code-compiler-core-ast_ts/#ast-createvnodecall][createVNodeCall]] 时的参数值：
+
+[[http://qiniu.ii6g.com/img/20200911152142.png]]
+
+这里会将一些需要用到的函数添加到 ~context.helpers:Set~ 中等待解构：
+
+该用例中会有 ~CREATE_VNODE~ 被解构出来。
+
 ** codegen.ts
 *** createCodgenContext(ast, context)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-createcodegencontext
 :END:
-
-**** stage-1: [[#test-text-01][01 simple text]]
+**** stage-1: [[#test-cc-01][01 simple text]]
 
 #+begin_src js
 
@@ -1242,7 +1407,7 @@ generate 函数雏形：
 函数的目的是：通过 ast 来生成 code，这个 code 将来会被 compileToFunction 调用 ~new
 Function(code)~ 生成 render 函数的。
 
-**** stage-1: [[#test-text-01][01 simple text]]
+**** stage-1: [[#test-cc-01][01 simple text]]
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-generate-stage1
@@ -1358,7 +1523,7 @@ codgenNode 的操作。
 那么只能用最笨拙的方法了，直接搜索 ~codegen*~ 然后又发现新大陆(transform 里面有
 个 [[#transform-createrootcodegen][createRootCodgen(...)]] 并没有实现)， :runner: go ->
 
-**** stage-2: [[#test-02-worldburn][02 pure interpolation]]
+**** stage-2: [[#test-cc-02][02 pure interpolation]]
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-generate-stage2
@@ -1415,7 +1580,7 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 :CUSTOM_ID: codegen-gennode
 :END:
 
-**** stage-1: [[#test-text-01][01 simple text]]
+**** stage-1: [[#test-cc-01][01 simple text]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-gennode-stage1
@@ -1443,7 +1608,7 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 
 然后就是实现 case 的 [[#codegen-gentext][genText(node, context)]]
 
-**** stage-2: [[#test-02-worldburn][02 pure interpolation]]
+**** stage-2: [[#test-cc-02][02 pure interpolation]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-gennode-stage2
@@ -1525,7 +1690,7 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 :CUSTOM_ID: codegen-genfunctionpreamble
 :END:
 
-**** stage-1: [[#test-text-01][01 simple text]]
+**** stage-1: [[#test-cc-01][01 simple text]]
 对于纯文本这里不需要更多的处理，只需要最后的 ~`return `~
 
 #+begin_src js
@@ -1587,10 +1752,50 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 
 2. DONE 如果是动态的直接 push content 变成变量直接从上下文去取变量值
 
-   如 [[test-02-worldburn][02 pure interpolation]] 中的 ~world.burn()~ 会直接被塞到 ~context.code~ 结合
+   如 [[test-cc-02][02 pure interpolation]] 中的 ~world.burn()~ 会直接被塞到 ~context.code~ 结合
    成 ~return _toDisplayString(world.burn());~ 生成函数之后相当于这样调
    用： ~_ctx.world.burn()~  。
    
+*** genVNodeCall(node, context)
+
+**** stage-1 [[#test-cc-03][03-inerpolation in pure div]]
+
+增加 ~createVNode~ helper
+#+begin_src js
+
+  function genVNodeCall(node, context) {
+    const { push, helper, pure } = context;
+
+    const {
+      tag,
+      props,
+      children,
+      patchFlag,
+      dynamicProps,
+      directives,
+      isBlock,
+      isForBlock,
+    } = node;
+
+    // TODO directives start
+
+    // TODO isblock start
+
+    if (pure) {
+      push(PURE_ANNOTATION);
+    }
+
+    push(helper(isBlock ? CREATE_BLOCK : CREATE_VNODE) + `(`, node);
+
+    // TODO genNodeList
+
+    push(`)`);
+
+    // TODO isblock end
+
+    // TODO directives end
+  }
+#+end_src
 ** 虚拟节点创建函数
 
 | name              | transform     | desc             |

@@ -9,43 +9,95 @@
 杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，:smile::smile:。
 #+end_quote
 
-* Hugo
-1. 设置文章列表以 year-month 分类，如图：
-   [[http://qiniu.ii6g.com/img/20200901233906.png]]
-
-   修改：[[/theme/even/layouts/_default/section.html]]
-
-   其中的 "2006" 修改成 "2006-01" 即可。
-   #+begin_src html
-     {{- range $index, $element := $paginator.Pages -}}
-     {{- $thisYear := $element.Date.Format "2006-01" }}
-     {{- $lastElement := $index | add -1 | index $paginator.Pages }}
-     {{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
-     <div class="collection-title">
-       <h2 class="archive-year">{{ $thisYear }}</h2>
-     </div>
-     {{- end }}
-
-     <div class="archive-post">
-       <span class="archive-post-time">
-         {{ $element.Date.Format "01-02" }}
-       </span>
-       <span class="archive-post-title">
-         <a href="{{ $element.RelPermalink }}" class="archive-post-link">
-           {{ .Title }}
-         </a>
-       </span>
-     </div>
-     {{- end -}}
-   #+end_src
-* api
-
-| 名称          | 简介         | 其他               |
-|---------------+--------------+--------------------|
-| [[https://github.com/iptv-org/iptv][IPTV channels]] | IPTV 频道接口 | [[https://iptv-org.github.io/iptv/channels.json][所有数据 json 文件]] |
-|               |              |                    |
-
 * 前端开发
+不错的前端学习路线网站：https://objtube.github.io/front-end-roadmap/#/ 脑图方式
+展示。
+** 插件列表
+*** jsmind 一款 js 脑图工具。
+#+begin_export html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BFW NEW PAGE</title>
+    <script id="bfwone" type="text/javascript" src="http://repo.bfw.wiki/bfwrepo/js/bfwone.js"></script>
+    <script type="text/javascript">
+        bready(function() {
+            use(["jsmind", "jsmind"], function() {
+                function load_jsmind() {
+                    var mind = {
+                        "meta": {
+                            "name": "demo",
+                            "author": "hizzgdev@163.com",
+                            "version": "0.2",
+                        },
+                        "format": "node_array",
+                        "data": [{
+                            "id": "root", "isroot": true, "topic": "jsMind"
+                        },
+
+                            {
+                                "id": "sub1", "parentid": "root", "topic": "sub1", "background-color": "#0000ff"
+                            },
+                            {
+                                "id": "sub11", "parentid": "sub1", "topic": "sub11"
+                            },
+                            {
+                                "id": "sub12", "parentid": "sub1", "topic": "sub12"
+                            },
+                            {
+                                "id": "sub13", "parentid": "sub1", "topic": "sub13"
+                            },
+
+                            {
+                                "id": "sub2", "parentid": "root", "topic": "sub2"
+                            },
+                            {
+                                "id": "sub21", "parentid": "sub2", "topic": "sub21"
+                            },
+                            {
+                                "id": "sub22", "parentid": "sub2", "topic": "sub22", "foreground-color": "#33ff33"
+                            },
+
+                            {
+                                "id": "sub3", "parentid": "root", "topic": "sub3"
+                            },
+                        ]
+                    };
+                    var options = {
+                        container: 'jsmind_container',
+                        editable: true,
+                        theme: 'primary'
+                    }
+                    var jm = jsMind.show(options, mind);
+                    // jm.set_readonly(true);
+                    // var mind_data = jm.get_data();
+                    // alert(mind_data);
+                    jm.add_node("sub2", "sub23", "new node", {
+                        "background-color": "red"
+                    });
+                    jm.set_node_color('sub21', 'green', '#ccc');
+                }
+
+                load_jsmind();
+            });
+        });
+    </script>
+    <style type="text/css">
+        #jsmind_container {
+            width: 800px;
+            height: 500px;
+            border: solid 1px #ccc;
+            /*background:#f4f4f4;*/
+            background: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <div id="jsmind_container"></div>
+</body>
+</html>
+#+end_export
 ** vue
 [[https://github.com/vitejs/vite][vite(vue-cli)]]
 
@@ -87,6 +139,42 @@
        '/@assets/': path.resolve(__dirname, 'src/assets')
      }
    #+end_src
+
+* Hugo
+1. 设置文章列表以 year-month 分类，如图：
+   [[http://qiniu.ii6g.com/img/20200901233906.png]]
+
+   修改：[[/theme/even/layouts/_default/section.html]]
+
+   其中的 "2006" 修改成 "2006-01" 即可。
+   #+begin_src html
+     {{- range $index, $element := $paginator.Pages -}}
+     {{- $thisYear := $element.Date.Format "2006-01" }}
+     {{- $lastElement := $index | add -1 | index $paginator.Pages }}
+     {{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
+     <div class="collection-title">
+       <h2 class="archive-year">{{ $thisYear }}</h2>
+     </div>
+     {{- end }}
+
+     <div class="archive-post">
+       <span class="archive-post-time">
+         {{ $element.Date.Format "01-02" }}
+       </span>
+       <span class="archive-post-title">
+         <a href="{{ $element.RelPermalink }}" class="archive-post-link">
+           {{ .Title }}
+         </a>
+       </span>
+     </div>
+     {{- end -}}
+   #+end_src
+* api
+
+| 名称          | 简介         | 其他               |
+|---------------+--------------+--------------------|
+| [[https://github.com/iptv-org/iptv][IPTV channels]] | IPTV 频道接口 | [[https://iptv-org.github.io/iptv/channels.json][所有数据 json 文件]] |
+|               |              |                    |
 
 * 软件&命令
 ** qshell 批量下载七牛
@@ -153,7 +241,19 @@ https://github.com/PicGo
 12. [[http://music.runker.net/][行客VIP音乐下载网]]
 13. [[http://www.xieqian.vip/music/][Master.Xie]]
 * 问题列表
-
+** 前端
+1. 怎么在 html 中使用 ~.svg~ 文件
+   
+   #+begin_src html
+     <img src="your.svg"/>
+     <object data="your.svg"/>
+      <iframe src="your.svg"/>
+      <embed src="your.svg"/>
+      <div style="background:url(your.svg)">...</div>
+   #+end_src
+   
+   1) https://vecta.io/blog/best-way-to-embed-svg
+** 其他
 1. 怎么更新项目中所有的 ~npm~ 包?
 
    [[https://flaviocopes.com/update-npm-dependencies/][  参考链接。]]

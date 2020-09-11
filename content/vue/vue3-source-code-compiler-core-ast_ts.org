@@ -9,6 +9,52 @@
 抽象语法树代码源文件。
 #+end_quote
 
+* createVNodeCall
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ast-createvnodecall
+:END: 
+
+#+begin_src js
+
+  export function createVNodeCall(
+    context: TransformContext | null,
+    tag: VNodeCall['tag'],
+    props?: VNodeCall['props'],
+    children?: VNodeCall['children'],
+    patchFlag?: VNodeCall['patchFlag'],
+    dynamicProps?: VNodeCall['dynamicProps'],
+    directives?: VNodeCall['directives'],
+    isBlock: VNodeCall['isBlock'] = false,
+    isForBlock: VNodeCall['isForBlock'] = false,
+    loc = locStub
+  ): VNodeCall {
+    if (context) {
+      if (isBlock) {
+        context.helper(OPEN_BLOCK)
+        context.helper(CREATE_BLOCK)
+      } else {
+        context.helper(CREATE_VNODE)
+      }
+      if (directives) {
+        context.helper(WITH_DIRECTIVES)
+      }
+    }
+
+    return {
+      type: NodeTypes.VNODE_CALL,
+      tag,
+      props,
+      children,
+      patchFlag,
+      dynamicProps,
+      directives,
+      isBlock,
+      isForBlock,
+      loc
+    }
+  }
+#+end_src
 * createRoot(children, loc = locStub)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

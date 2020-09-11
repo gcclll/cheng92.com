@@ -14,7 +14,7 @@
 1. <2020-09-07 Mon>  所有图片修改为 github 地址，后续修改图片可以直接使用，而不
    需要上传到七牛。
    
-2. <2020-09-10 Thu>  图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 。
+2. <2020-09-10 Thu>  图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 自动同步自 [[https://github.com/gcclll/mind-maps.git][github]]。
 #+end_quote
 
 * compiler-core: parser

@@ -1,0 +1,16 @@
+#+TITLE: 前端知识点
+#+DATE: <2020-09-11 16:43:30>
+#+TAGS[]: front-end, javascript, html, css
+#+CATEGORIES[]: front-end
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* html
+** svg
+
+*** 使用方式
+    
+    阮一峰教程：https://www.ruanyifeng.com/blog/2018/08/svg.html
+
+     
+    将 .svg 文件转换成 ~<svg>~ 标签。
