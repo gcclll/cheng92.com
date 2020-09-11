@@ -299,9 +299,7 @@ vue.global:
   } "compiled"
 #+end_src
 
-[[https://img.cheng92.com/vue3/compiler-core/compiler/compiler-interpolation-in-div.svg]] 
-
-# [[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-interpolation-in-div.svg]]
+[[/img/vue3/compiler-core/compiler/compiler-interpolation-in-div.svg]] 
 
 ** 02-pure interpolation 第一个孩子节点
 :PROPERTIES:

@@ -10,11 +10,16 @@
 
 :star: :star: 快 1M) 加载挺慢的，每张图片都有对应的七牛(但不一定是最新的)链接，可能会快一点。
 
+:star: :star: 图片已全部更新到 ~https://www.cheng92.com/img/...~ 下
+
 :smile: 更新日志
 1. <2020-09-07 Mon>  所有图片修改为 github 地址，后续修改图片可以直接使用，而不
    需要上传到七牛。
    
 2. <2020-09-10 Thu>  图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 自动同步自 [[https://github.com/gcclll/mind-maps.git][github]]。
+
+3. <2020-09-11 Fri>  更新图片到博客目录 ~/assets/imgs/...~ ，文内访问路径：
+   ~/img/vue3/...~ ，单独访问加上域名就行： ~https://www.cheng92.com/img/vue3/...~
 #+end_quote
 
 * compiler-core: parser
@@ -43,12 +48,8 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
    3) exp: 表示表达式的值
 
 
-# [[http://qiniu.ii6g.com/img/tag-with-directive-v-bind.png][七牛图片链接]]
-
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/tests/tag-with-directive-v-bind.png]]
-
-# [[https://img.cheng92.com/vue3/compiler-core/tests/tag-with-directive-v-bind.png]]
+[[/img/vue3/compiler-core/parser-test-tag-with-directive-v-bind.png]]
 
 ** 标签解析(~<div>hello world</div>~)
 :PROPERTIES:
@@ -65,13 +66,9 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
    ~</div>~ 匹配的 ~<div>~ 节点，最后完成匹配。
 
 
-# [[http://qiniu.ii6g.com/img/simple-tag-div.png][七牛图片链接]]
-
 流程图：
 
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/tests/simple-tag-div.png]]
-
-# [[https://img.cheng92.com/vue3/compiler-core/tests/simple-tag-div.png]]
+[[/img/vue3/compiler-core/parser-test-simple-tag-div.png]]
 
 *** 自闭合标签(=<img/>=)的解析，也在 [[/vue/vue3-source-code-compiler-core/#parsetagcontext-type-parent][parseTag]] 里面，有一个针对这个的处理：
 :PROPERTIES:
@@ -206,12 +203,8 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 3. 回到 parseChildren while 循环解析 ~</div>~ 报错
 
 
-# [[http://qiniu.ii6g.com/img/invalid-end-tag.png][七牛图片链接]]
-
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/tests/invalid-end-tag.png]]
-
-# [[https://img.cheng92.com/vue3/compiler-core/tests/invalid-end-tag.png]]
+[[/img/vue3/compiler-core/parser-test-invalid-end-tag.png]]
 
 ** 插值解析 ~some {{ foo + bar }} text~
 :PROPERTIES:
@@ -233,12 +226,8 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 2. ~`some`~ 和  ~`text`~ 不会合并到一个 node 中，因为不是相邻的，请注意合并文
    本 ndoe 的前提条件：前一个节点也必须是文本节点类型。
 
-
-# [[http://qiniu.ii6g.com/img/text-with-interpolation.png][七牛图片链接]]
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/tests/text-with-interpolation.png]]
-
-# [[https://img.cheng92.com/vue3/compiler-core/tests/text-with-interpolation.png]]
+[[/img/vue3/compiler-core/parser-test-text-with-interpolation.png]]
 
 ** 解析 ~simple text~
 :PROPERTIES:
@@ -254,12 +243,8 @@ html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返
 
 退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
 
-
-# [[http://qiniu.ii6g.com/img/simple-text.png][七牛图片链接]]
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/tests/simple-text.png]]
-
-# [[https://img.cheng92.com/vue3/compiler-core/tests/simple-text.png]]
+[[/img/vue3/compiler-core/parser-test-simple-text.png]]
 
 * compiler-core: compiler
 
@@ -274,31 +259,20 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
    Function(code)~ 生成 render 函数。
 
 
-# 流程图([[http://qiniu.ii6g.com/img/compiler.png][七牛链接]])：
-
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler.png]] 
-
-# [[https://img.cheng92.com/vue3/compiler-core/compiler.png]]
+[[/img/vue3/compiler-core/compiler.png]] 
 
 ** pure interpolation 编译过程
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-02-worldburn][02-pure-interpolation 测试用例地址]]
 
-# 流程图([[http://qiniu.ii6g.com/img/compiler-pure-interpolation.png][七牛链接]])：
-
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
 
-# [[http://img.cheng92.com/vue3/compiler-core/compiler/compiler-pure-interpolation.png]]
+[[/img/vue3/compiler-core/compiler-test-pure-interpolation.png]]
 
 ** simple text 编译过程
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
 
-# 流程图([[http://qiniu.ii6g.com/img/compiler-simple-text.png][七牛链接]])：
-
 流程图：
-[[https://gcclll.gitee.io/mind-maps/vue3/compiler-core/compiler/compiler-simple-text.png]]
-
-# [[https://img.cheng92.com/vue3/compiler-core/compiler/compiler-simple-text.png]] 
+[[/img/vue3/compiler-core/test-compiler-simple-text.png]]

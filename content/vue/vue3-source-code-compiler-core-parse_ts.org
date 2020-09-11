@@ -28,7 +28,7 @@
 
 上图：几个重要函数和几个简单的用例
 
-[[http://qiniu.ii6g.com/img/parse_ts-brief-summary.png]]
+[[/img/vue3/compiler-core/tests/parse_ts-brief-summary.png]]
 
 每个函数的重要实现解说：
 
