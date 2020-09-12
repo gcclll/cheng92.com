@@ -262,7 +262,23 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 流程图：
 [[/img/vue3/compiler-core/compiler.png]] 
 
-** pure interpolation 编译过程
+** 03-inerpolation in pure div 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compiler-03
+:END: 
+
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][用例地址]]
+
+流程图：
+
+[[/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg]]
+
+** 02-pure interpolation 编译过程
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compiler-02
+:END: 
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-02-worldburn][02-pure-interpolation 测试用例地址]]
 
@@ -270,7 +286,11 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 
 [[/img/vue3/compiler-core/compiler-test-pure-interpolation.png]]
 
-** simple text 编译过程
+** 01-simple text 编译过程
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compiler-01
+:END: 
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
 
