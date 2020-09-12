@@ -16,17 +16,24 @@ $(function () {
     }
   });
 
+  function onHoverRotate($node) {
+    $node.hover(
+      function () {
+        $(this).addClass("hover-rotate");
+      },
+      function () {
+        $(this).removeClass("hover-rotate");
+      }
+    );
+  }
+
+  var $header = $("#header");
+
+  onHoverRotate($header.find("a.logo"));
+
   $(".post-content")
     .find("h2, h3, h4")
     .each(function () {
-      var $node = $(this);
-      $node.hover(
-        function () {
-          $(this).addClass("hover-rotate");
-        },
-        function () {
-          $(this).removeClass("hover-rotate");
-        }
-      );
+      onHoverRotate($(this));
     });
 });
