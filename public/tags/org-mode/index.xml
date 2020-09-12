@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>org-mode on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/org-mode/</link>
+    <description>Recent content in org-mode on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 28 Aug 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://www.cheng92.com/tags/org-mode/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>My Emacs Org-Mode Document</title>
+      <link>https://www.cheng92.com/emacs/emacs-org-mode/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/emacs/emacs-org-mode/</guid>
+      <description>org-mode Hyperlinks(超链接) Internal Links(内部链接) org file link target: &amp;lt;&amp;lt;target&amp;gt;&amp;gt; link source: target 这种方式</description>
+    </item>
+    
+  </channel>
+</rss>

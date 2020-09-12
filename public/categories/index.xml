@@ -6,9 +6,91 @@
     <description>Recent content in Categories on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
+    <lastBuildDate>Sat, 12 Sep 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://www.cheng92.com/categories/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>css3</title>
+      <link>https://www.cheng92.com/categories/css3/</link>
+      <pubDate>Sat, 12 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/css3/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>javascript</title>
+      <link>https://www.cheng92.com/categories/javascript/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/javascript/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>vue</title>
+      <link>https://www.cheng92.com/categories/vue/</link>
+      <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/vue/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>algorithm,</title>
+      <link>https://www.cheng92.com/categories/algorithm/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/algorithm/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>emacs</title>
+      <link>https://www.cheng92.com/categories/emacs/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/emacs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>string</title>
+      <link>https://www.cheng92.com/categories/string/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/string/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>tools</title>
+      <link>https://www.cheng92.com/categories/tools/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/tools/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>array</title>
+      <link>https://www.cheng92.com/categories/array/</link>
+      <pubDate>Thu, 27 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/array/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>collection</title>
+      <link>https://www.cheng92.com/categories/collection/</link>
+      <pubDate>Wed, 26 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/collection/</guid>
+      <description></description>
+    </item>
     
   </channel>
 </rss>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on 若叶知秋</title>
+    <link>https://www.cheng92.com/post/</link>
+    <description>Recent content in Posts on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sat, 12 Sep 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://www.cheng92.com/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>CSS3 黑森林</title>
+      <link>https://www.cheng92.com/post/css/css3/</link>
+      <pubDate>Sat, 12 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/css/css3/</guid>
+      <description>测试</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Api</title>
+      <link>https://www.cheng92.com/post/javascript-apis/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/javascript-apis/</guid>
+      <description> Document  Document.execCommand()     </description>
+    </item>
+    
+    <item>
+      <title>My First Post</title>
+      <link>https://www.cheng92.com/post/my-first-post/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/my-first-post/</guid>
+      <description>hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，在这个页面里面进行搜索，不是很</description>
+    </item>
+    
+    <item>
+      <title>Javascript ECMA 6 Plus</title>
+      <link>https://www.cheng92.com/post/javascript-ecma-6-plus/</link>
+      <pubDate>Fri, 28 Aug 2020 15:42:38 +0800</pubDate>
+      
+      <guid>https://www.cheng92.com/post/javascript-ecma-6-plus/</guid>
+      <description>参考链接：https://leanpub.com/understandinges</description>
+    </item>
+    
+    <item>
+      <title>我的私人空间</title>
+      <link>https://www.cheng92.com/post/cheng/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/cheng/</guid>
+      <description>杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，😄😄。</description>
+    </item>
+    
+    <item>
+      <title>My Emacs(Spacemacs) Configuration</title>
+      <link>https://www.cheng92.com/post/my-emacs-configuration/</link>
+      <pubDate>Thu, 27 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/my-emacs-configuration/</guid>
+      <description>我的 Spacemacs 配置文件，参考配置来源于 子龙山人 的配置方案(进行了部分删减)，我的完整配置</description>
+    </item>
+    
+    <item>
+      <title>My Api Collection</title>
+      <link>https://www.cheng92.com/post/my-api-collection/</link>
+      <pubDate>Wed, 26 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/my-api-collection/</guid>
+      <description>简介：所有 API 收集，包含测试代码，通过 Emacs =restclient= 直接在 Org 文档中即可测试，有趣的东西 。。。</description>
+    </item>
+    
+  </channel>
+</rss>

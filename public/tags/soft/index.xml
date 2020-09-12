@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>soft, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/soft/</link>
+    <description>Recent content in soft, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 28 Aug 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://www.cheng92.com/tags/soft/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>我的私人空间</title>
+      <link>https://www.cheng92.com/post/cheng/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/cheng/</guid>
+      <description>杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，😄😄。</description>
+    </item>
+    
+  </channel>
+</rss>

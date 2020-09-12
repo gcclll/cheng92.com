@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>vue on 若叶知秋</title>
+    <link>https://www.cheng92.com/categories/vue/</link>
+    <description>Recent content in vue on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Tue, 01 Sep 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://www.cheng92.com/categories/vue/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Vue3.0源码系列 -- 重要知识点捡漏</title>
+      <link>https://www.cheng92.com/vue/vue3-source-picking-shell/</link>
+      <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-picking-shell/</guid>
+      <description>packages(模块列表): 所有模块以“ *包* ”的形式存在。 compiler-core/src ast.ts -&amp;gt; 抽象语法树处</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</link>
+      <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</guid>
+      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 2: ast.ts</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-ast_ts/</link>
+      <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-ast_ts/</guid>
+      <description>抽象语法树代码源文件。 createVNodeCall 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 3: compile.ts</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/</link>
+      <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/</guid>
+      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0源码系列（一）响应式原理 - Reactivity</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-reactivity/</link>
+      <pubDate>Fri, 28 Aug 2020 15:48:02 +0800</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-reactivity/</guid>
+      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码的头脑风暴(脑图仓库)</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-house/</link>
+      <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-house/</guid>
+      <description>⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能 ⭐ ⭐ 快 1M) 加载挺慢</description>
+    </item>
+    
+  </channel>
+</rss>

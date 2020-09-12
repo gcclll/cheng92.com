@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>org on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/org/</link>
+    <description>Recent content in org on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Wed, 26 Aug 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://www.cheng92.com/tags/org/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>My Api Collection</title>
+      <link>https://www.cheng92.com/post/my-api-collection/</link>
+      <pubDate>Wed, 26 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/my-api-collection/</guid>
+      <description>简介：所有 API 收集，包含测试代码，通过 Emacs =restclient= 直接在 Org 文档中即可测试，有趣的东西 。。。</description>
+    </item>
+    
+  </channel>
+</rss>

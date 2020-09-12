@@ -1,0 +1,23 @@
+{
+  "name": "cheng92.com",
+  "version": "1.0.0",
+  "description": "[[https://app.netlify.com/sites/hardcore-northcutt-b697b8/deploys][https://api.netlify.com/api/v1/badges/8da2a02e-79cc-4aac-a93e-cc6b90d04b0e/deploy-status.png]]",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "algolia": "atomic-algolia"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gcclll/cheng92.com.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gcclll/cheng92.com/issues"
+  },
+  "homepage": "https://github.com/gcclll/cheng92.com#readme",
+  "dependencies": {
+    "atomic-algolia": "^0.3.19"
+  }
+}

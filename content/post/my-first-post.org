@@ -8,6 +8,22 @@
 * hugo-test
 [[https://hugo-theme-even.netlify.app/post/even-preview/][使用教程]]
 
+** 增加搜索功能
+
+1. [[https://blog.humblepg.com/post/2019/06/hugo-search.html][方案一]]
+
+  [[http://qiniu.ii6g.com/img/20200912174456.png]]
+
+  这个是增加了一个页面，在这个页面里面进行搜索，不是很友好，我希望的是在当前页面组
+  好是弹框+下拉列表形式进行搜索。
+  
+  搜索结果：
+  [[http://qiniu.ii6g.com/img/20200912174626.png]]
+2. [[https://edward852.github.io/post/hugo%E6%B7%BB%E5%8A%A0algolia%E6%90%9C%E7%B4%A2%E6%94%AF%E6%8C%81/][方案二]]
+
+   这个貌似还不错，值得一试。
+
+   - https://www.algolia.com/
 ** 网易云音乐
 #+begin_export html
 {{% music "28196554" %}}

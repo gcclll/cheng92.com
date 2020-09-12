@@ -251,8 +251,19 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
 #  isHTML = false
 #
 [outputs]
- home = ["HTML", "RSS", "JSON"]
+ home = ["HTML", "RSS", "Algolia"]
 #  page = ["HTML", "MarkDown"]
 #  section = ["HTML", "RSS"]
 #  taxonomy = ["HTML", "RSS"]
 #  taxonomyTerm = ["HTML"]
+
+[outputFormats.Algolia]
+  baseName = "algolia"
+  isPlainText = true
+  mediaType = "application/json"
+  notAlternative = true
+  
+[params.algolia]
+  appId = "EDIKM3W4HV"
+  indexName = "cheng92.com"
+  searchOnlyKey = "ac1e64640788e5697016a58be1ec7232"

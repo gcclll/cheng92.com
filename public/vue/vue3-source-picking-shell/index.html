@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3.0源码系列 -- 重要知识点捡漏 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="packages(模块列表): 所有模块以“ *包* ”的形式存在。 compiler-core/src ast.ts -&amp;gt; 抽象语法树处" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.74.3 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue3-source-picking-shell/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3.0源码系列 -- 重要知识点捡漏" />
+<meta property="og:description" content="packages(模块列表): 所有模块以“ *包* ”的形式存在。 compiler-core/src ast.ts -&gt; 抽象语法树处" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue3-source-picking-shell/" />
+<meta property="article:published_time" content="2020-09-01T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-09-01T00:00:00+00:00" />
+<meta itemprop="name" content="Vue3.0源码系列 -- 重要知识点捡漏">
+<meta itemprop="description" content="packages(模块列表): 所有模块以“ *包* ”的形式存在。 compiler-core/src ast.ts -&gt; 抽象语法树处">
+<meta itemprop="datePublished" content="2020-09-01T00:00:00+00:00" />
+<meta itemprop="dateModified" content="2020-09-01T00:00:00+00:00" />
+<meta itemprop="wordCount" content="1924">
+
+
+
+<meta itemprop="keywords" content="vue,,vue3,,vuenext," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3.0源码系列 -- 重要知识点捡漏"/>
+<meta name="twitter:description" content="packages(模块列表): 所有模块以“ *包* ”的形式存在。 compiler-core/src ast.ts -&gt; 抽象语法树处"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3.0源码系列 -- 重要知识点捡漏</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-09-01 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 1924 字 </span>
+          <span class="more-meta"> 预计阅读 4 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#headline-1">packages(模块列表):</a>
+</li>
+<li><a href="#headline-2">一个较完整的 AST 结构：</a>
+</li>
+<li><a href="#shell_tag_types">标签(组件)种类(element, component, slot, template)</a>
+</li>
+<li><a href="#headline-4">指令解析过程</a>
+</li>
+<li><a href="#headline-5">RCDATA/CDATA 类型解析</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+packages(模块列表):
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+  所有模块以“ *包* ”的形式存在。</p>
+<ul>
+<li>
+<p>compiler-core/src</p>
+<ul>
+<li>
+<p>ast.ts -&gt; <a href="/vue/vue3-source-code-compiler-core-ast_ts/">抽象语法树处理文件</a></p>
+</li>
+<li>
+<p>codegen.ts</p>
+</li>
+<li>
+<p>compiler.ts -&gt; <a href="/vue/vue3-source-code-compiler-core-parse_ts/">模板编译器，将标签模板解析成 ast 对象</a>。</p>
+</li>
+<li>
+<p>errors.ts</p>
+</li>
+<li>
+<p>index.ts</p>
+</li>
+<li>
+<p>options.ts</p>
+</li>
+<li>
+<p>parse.ts</p>
+</li>
+<li>
+<p>runtimeHelpers.ts</p>
+</li>
+<li>
+<p>transform.ts</p>
+</li>
+<li>
+<p>transforms/</p>
+<ul>
+<li>
+<p>hoistStatic.ts</p>
+</li>
+<li>
+<p>noopDirectiveTransform.ts</p>
+</li>
+<li>
+<p>transformElement.ts</p>
+</li>
+<li>
+<p>transformExpression.ts</p>
+</li>
+<li>
+<p>transformSlotOutlet.ts</p>
+</li>
+<li>
+<p>transformText.ts</p>
+</li>
+<li>
+<p>vBind.ts</p>
+</li>
+<li>
+<p>vFor.ts</p>
+</li>
+<li>
+<p>vIf.ts</p>
+</li>
+<li>
+<p>vModel.ts</p>
+</li>
+<li>
+<p>vOn.ts</p>
+</li>
+<li>
+<p>vOnce.ts</p>
+</li>
+<li>
+<p>vSlot.ts</p>
+</li>
+</ul>
+</li>
+<li>
+<p>utils.ts</p>
+</li>
+</ul>
+</li>
+<li>
+<p>compiler-dom</p>
+</li>
+<li>
+<p>compiler-sfc</p>
+</li>
+<li>
+<p>compiler-ssr</p>
+</li>
+<li>
+<p>global.d.ts</p>
+</li>
+<li>
+<p>reactivity</p>
+</li>
+<li>
+<p>runtime-core</p>
+</li>
+<li>
+<p>runtime-dom</p>
+</li>
+<li>
+<p>runtime-test</p>
+</li>
+<li>
+<p>server-renderer</p>
+</li>
+<li>
+<p>shared</p>
+</li>
+<li>
+<p>size-check</p>
+</li>
+<li>
+<p>template-explorer</p>
+</li>
+<li>
+<p>vue</p>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+一个较完整的 AST 结构：
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span><span class="lnt">116
+</span><span class="lnt">117
+</span><span class="lnt">118
+</span><span class="lnt">119
+</span><span class="lnt">120
+</span><span class="lnt">121
+</span><span class="lnt">122
+</span><span class="lnt">123
+</span><span class="lnt">124
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">{</span>
+    <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span> <span class="c1">// root 节点
+</span><span class="c1"></span>    <span class="s2">&#34;children&#34;</span><span class="o">:</span><span class="p">[</span> <span class="c1">// 节点的子组件列表
+</span><span class="c1"></span>      <span class="p">{</span>
+        <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span> <span class="c1">// 标签 div
+</span><span class="c1"></span>        <span class="s2">&#34;ns&#34;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span> <span class="c1">// html
+</span><span class="c1"></span>        <span class="s2">&#34;tag&#34;</span><span class="o">:</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="c1">// 标签名
+</span><span class="c1"></span>        <span class="s2">&#34;tagType&#34;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span> <span class="c1">// 标签类型：start-0, end-1
+</span><span class="c1"></span>        <span class="s2">&#34;props&#34;</span><span class="o">:</span><span class="p">[</span> <span class="c1">// 标签的属性列表，如： v-bind:keyup.prevent.enter
+</span><span class="c1"></span>          <span class="p">{</span> <span class="c1">// 属性有几个重要的属性：
+</span><span class="c1"></span>            <span class="c1">// 1. name, 指令名称，v- 及缩写(#, @, :) 会转换成属性名称，如：bind
+</span><span class="c1"></span>            <span class="c1">// 2. exp 表达式即=号后边的值，
+</span><span class="c1"></span>            <span class="c1">// 3. arg 参数名，绑定的变量名，可能是动态的
+</span><span class="c1"></span>            <span class="c1">// 4. 修饰符，modifiers
+</span><span class="c1"></span>
+            <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">7</span><span class="p">,</span>
+            <span class="s2">&#34;name&#34;</span><span class="o">:</span><span class="s2">&#34;bind&#34;</span><span class="p">,</span>
+            <span class="s2">&#34;exp&#34;</span><span class="o">:</span><span class="p">{</span>
+              <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+              <span class="s2">&#34;content&#34;</span><span class="o">:</span><span class="s2">&#34;ok&#34;</span><span class="p">,</span> <span class="c1">// 表达式内容，
+</span><span class="c1"></span>              <span class="s2">&#34;isStatic&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+              <span class="s2">&#34;isConstant&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+              <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+                <span class="s2">&#34;start&#34;</span><span class="o">:</span><span class="p">{</span>
+                  <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">34</span><span class="p">,</span>
+                  <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+                  <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">33</span>
+                <span class="p">},</span>
+                <span class="s2">&#34;end&#34;</span><span class="o">:</span><span class="p">{</span>
+                  <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">36</span><span class="p">,</span>
+                  <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+                  <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">35</span>
+                <span class="p">},</span>
+                <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;ok&#34;</span>
+              <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&#34;arg&#34;</span><span class="o">:</span><span class="p">{</span> <span class="c1">// 参数，绑定的事件或变量
+</span><span class="c1"></span>              <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+              <span class="s2">&#34;content&#34;</span><span class="o">:</span><span class="s2">&#34;keyup&#34;</span><span class="p">,</span>
+              <span class="s2">&#34;isStatic&#34;</span><span class="o">:</span><span class="kc">true</span><span class="p">,</span> <span class="c1">// 支持 v-bind:[varname] 动态属性
+</span><span class="c1"></span>              <span class="s2">&#34;isConstant&#34;</span><span class="o">:</span><span class="kc">true</span><span class="p">,</span>
+              <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+                <span class="s2">&#34;start&#34;</span><span class="o">:</span><span class="p">{</span>
+                  <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">13</span><span class="p">,</span>
+                  <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+                  <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">12</span>
+                <span class="p">},</span>
+                <span class="s2">&#34;end&#34;</span><span class="o">:</span><span class="p">{</span>
+                  <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">18</span><span class="p">,</span>
+                  <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+                  <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">17</span>
+                <span class="p">},</span>
+                <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;keyup&#34;</span>
+              <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&#34;modifiers&#34;</span><span class="o">:</span><span class="p">[</span>
+              <span class="s2">&#34;prevent&#34;</span><span class="p">,</span>
+              <span class="s2">&#34;enter&#34;</span>
+            <span class="p">],</span>
+            <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+              <span class="s2">&#34;start&#34;</span><span class="o">:</span><span class="p">{</span>
+                <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">6</span><span class="p">,</span>
+                <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">5</span>
+              <span class="p">},</span>
+              <span class="s2">&#34;end&#34;</span><span class="o">:</span><span class="p">{</span>
+                <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">37</span><span class="p">,</span>
+                <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">36</span>
+              <span class="p">},</span>
+              <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;v-bind:keyup.prevent.enter=&#34;</span><span class="nx">ok</span><span class="s2">&#34;&#34;</span>
+            <span class="p">}</span>
+          <span class="p">}</span>
+        <span class="p">],</span>
+        <span class="s2">&#34;isSelfClosing&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+        <span class="s2">&#34;children&#34;</span><span class="o">:</span><span class="p">[</span>
+          <span class="c1">// 如果 &lt;div&gt;...&lt;/div&gt; 还有内容这里会递归解析出子节点 ast
+</span><span class="c1"></span>        <span class="p">],</span>
+        <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+          <span class="s2">&#34;start&#34;</span><span class="o">:</span><span class="p">{</span>
+            <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">0</span>
+          <span class="p">},</span>
+          <span class="s2">&#34;end&#34;</span><span class="o">:</span><span class="p">{</span>
+            <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">44</span><span class="p">,</span>
+            <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">43</span>
+          <span class="p">},</span>
+          <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;&lt;div v-bind:keyup.prevent.enter=&#34;</span><span class="nx">ok</span><span class="s2">&#34;&gt;&lt;/div&gt;&#34;</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+      <span class="s2">&#34;start&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">0</span>
+      <span class="p">},</span>
+      <span class="s2">&#34;end&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="s2">&#34;column&#34;</span><span class="o">:</span><span class="mi">44</span><span class="p">,</span>
+        <span class="s2">&#34;line&#34;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&#34;offset&#34;</span><span class="o">:</span><span class="mi">43</span>
+      <span class="p">},</span>
+      <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;&lt;div v-bind:keyup.prevent.enter=&#34;</span><span class="nx">ok</span><span class="s2">&#34;&gt;&lt;/div&gt;&#34;</span>
+    <span class="p">},</span>
+    <span class="s2">&#34;helpers&#34;</span><span class="o">:</span><span class="p">[</span>
+
+    <span class="p">],</span>
+    <span class="s2">&#34;components&#34;</span><span class="o">:</span><span class="p">[</span>
+
+    <span class="p">],</span>
+    <span class="s2">&#34;directives&#34;</span><span class="o">:</span><span class="p">[</span>
+
+    <span class="p">],</span>
+    <span class="s2">&#34;hoists&#34;</span><span class="o">:</span><span class="p">[</span>
+
+    <span class="p">],</span>
+    <span class="s2">&#34;imports&#34;</span><span class="o">:</span><span class="p">[</span>
+
+    <span class="p">],</span>
+    <span class="s2">&#34;cached&#34;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&#34;temps&#34;</span><span class="o">:</span><span class="mi">0</span>
+  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-shell_tag_types" class="outline-2">
+<h2 id="shell_tag_types">
+标签(组件)种类(element, component, slot, template)
+</h2>
+<div id="outline-text-shell_tag_types" class="outline-text-2">
+<p>
+  <kbd>标签解析时的 TagType 检测</kbd></p>
+<ol>
+<li>
+<p>element，原生标签类型，默认值(如： <code class="verbatim">div</code> ，结合 <code>options.isNativeTag()</code>)</p>
+</li>
+<li>
+<p>component 类型</p>
+<ul>
+<li>
+<p><code>!options.isNativeTag()</code> 类型</p>
+</li>
+<li>
+<p>有 <code>v-is</code> 指令的</p>
+</li>
+<li>
+<p>core component 类型的(<code>[Teleport, Suspense, KeepAlive BaseTransition]</code>)</p>
+</li>
+<li>
+<p><code>options.isBuiltInComponent()</code> 指定的类型</p>
+</li>
+<li>
+<p>大写字母开头的标签(如： <code>&lt;Comp&gt;&lt;/Comp&gt;</code>)</p>
+</li>
+<li>
+<p>标签名直接是 <strong>component</strong> 的(<code>&lt;component&gt;&lt;/component&gt;</code>)</p>
+</li>
+</ul>
+</li>
+<li>
+<p>slot 类型</p>
+</li>
+<li>
+<p>template 类型</p>
+</li>
+</ol>
+<p>这些类型的定义和解析均在 <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag">parseTag(context, type, parent)</a> 函数中完成</p>
+<p>
+  源码：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript">
+  <span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
+      <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
+      <span class="nx">type</span>: <span class="kt">TagType</span><span class="p">,</span>
+      <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span>
+  <span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="p">{</span>
+
+      <span class="c1">// ...省略，这里我们之关系 tagType
+</span><span class="c1"></span>
+      <span class="kd">let</span> <span class="nx">tagType</span> <span class="o">=</span> <span class="nx">ElementTypes</span><span class="p">.</span><span class="nx">ELEMENT</span>
+      <span class="kr">const</span> <span class="nx">options</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span>
+      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">context</span><span class="p">.</span><span class="nx">inVPre</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">options</span><span class="p">.</span><span class="nx">isCustomElement</span><span class="p">(</span><span class="nx">tag</span><span class="p">))</span> <span class="p">{</span>
+
+          <span class="kr">const</span> <span class="nx">hasVIs</span> <span class="o">=</span> <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span>
+              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
+          <span class="p">)</span>
+          <span class="k">if</span> <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">isNativeTag</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">hasVIs</span><span class="p">)</span> <span class="p">{</span>
+              <span class="c1">// 1. 如果非原生(isNativeTag 范畴内的)，视为组件类型，优先级最高
+</span><span class="c1"></span>              <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">options</span><span class="p">.</span><span class="nx">isNativeTag</span><span class="p">(</span><span class="nx">tag</span><span class="p">))</span> <span class="nx">tagType</span> <span class="o">=</span> <span class="nx">ElementTypes</span><span class="p">.</span><span class="nx">COMPONENT</span>
+          <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span>
+              <span class="c1">// 2. 有 v-is 指令的直接视为组件类型
+</span><span class="c1"></span>              <span class="nx">hasVIs</span> <span class="o">||</span>
+                  <span class="c1">// 3. vue 内置的核心组件&lt;Teleport, Suspense, KeepAlive BaseTransition&gt;
+</span><span class="c1"></span>                  <span class="nx">isCoreComponent</span><span class="p">(</span><span class="nx">tag</span><span class="p">)</span> <span class="o">||</span>
+                  <span class="c1">// 4. 内置组件，由开发者定义的内置类型？
+</span><span class="c1"></span>                  <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">isBuiltInComponent</span> <span class="o">&amp;&amp;</span> <span class="nx">options</span><span class="p">.</span><span class="nx">isBuiltInComponent</span><span class="p">(</span><span class="nx">tag</span><span class="p">))</span> <span class="o">||</span>
+                  <span class="c1">// 5. 标签名以大写字母开头的视为 组件类型
+</span><span class="c1"></span>                  <span class="sr">/^[A-Z]/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">tag</span><span class="p">)</span> <span class="o">||</span>
+                  <span class="c1">// 6. 标签名直接是 component 的
+</span><span class="c1"></span>                  <span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;component&#39;</span>
+          <span class="p">)</span> <span class="p">{</span>
+              <span class="nx">tagType</span> <span class="o">=</span> <span class="nx">ElementTypes</span><span class="p">.</span><span class="nx">COMPONENT</span>
+          <span class="p">}</span>
+
+          <span class="k">if</span> <span class="p">(</span><span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;slot&#39;</span><span class="p">)</span> <span class="p">{</span>
+              <span class="nx">tagType</span> <span class="o">=</span> <span class="nx">ElementTypes</span><span class="p">.</span><span class="nx">SLOT</span>
+          <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span>
+              <span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;template&#39;</span> <span class="o">&amp;&amp;</span>
+                  <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="nx">p</span> <span class="o">=&gt;</span> <span class="p">{</span>
+                      <span class="k">return</span> <span class="p">(</span>
+                          <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">isSpecialTemplateDirective</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span>
+                      <span class="p">)</span>
+                  <span class="p">})</span>
+          <span class="p">)</span> <span class="p">{</span>
+              <span class="nx">tagType</span> <span class="o">=</span> <span class="nx">ElementTypes</span><span class="p">.</span><span class="nx">TEMPLATE</span>
+          <span class="p">}</span>
+      <span class="p">}</span>
+
+      <span class="k">return</span> <span class="p">{</span>
+          <span class="nx">type</span>: <span class="kt">NodeTypes.ELEMENT</span><span class="p">,</span>
+          <span class="nx">ns</span><span class="p">,</span>
+          <span class="nx">tag</span><span class="p">,</span>
+          <span class="nx">tagType</span><span class="p">,</span>
+          <span class="nx">props</span><span class="p">,</span>
+          <span class="nx">isSelfClosing</span><span class="p">,</span>
+          <span class="nx">children</span><span class="o">:</span> <span class="p">[],</span>
+          <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">),</span>
+          <span class="nx">codegenNode</span>: <span class="kt">undefined</span> <span class="c1">// to be created during transform phase
+</span><span class="c1"></span>      <span class="p">}</span>
+  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+指令解析过程
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+  <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsechildren">parseChildren(context, mode, ancestors)</a> -&gt;
+  <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement">parseElement(context, mode)</a> -&gt; 解析出整个 element
+  <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag">parseTag(context, type, parent)</a> -&gt; 解析出标签
+  <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattributes">parseAttributes(context, type)</a> -&gt; 解析所有属性
+  <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattribute">parseAttribute(context, nameSet)</a> -&gt; 解析单个属性，结果返回到 props 中</p>
+<p>
+  解析的时候会根据映射关系，将缩写转换成名称。</p>
+<p>
+  如：</p>
+<table>
+<thead>
+<tr>
+<th>abbrev</th>
+<th>name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:</code></td>
+<td><code>bind</code></td>
+</tr>
+<tr>
+<td><code>@</code></td>
+<td><code>on</code></td>
+</tr>
+<tr>
+<td><code>#</code></td>
+<td><code>slot</code></td>
+</tr>
+</tbody>
+</table>
+<p>
+  处理代码：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="c1">// function: parseAttribute(...)
+</span><span class="c1"></span>  <span class="c1">// v-dir 或 缩写
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">context</span><span class="p">.</span><span class="nx">inVPre</span> <span class="o">&amp;&amp;</span> <span class="sr">/^(v-|:|@|#)/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">name</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// ?: 非捕获组
+</span><span class="c1"></span>    <span class="c1">// 1. (?:^v-([a-z0-9]+))? -&gt; 匹配 v-dir 指令，非贪婪匹配，捕获指令名
+</span><span class="c1"></span>    <span class="c1">//   称([a-z0=9]+)
+</span><span class="c1"></span>    <span class="c1">// 2. (?:(?::|^@|^#)([^\.]+))? -&gt; 匹配 :,@,#
+</span><span class="c1"></span>    <span class="c1">// 3. (.+)?$ 匹配任意字符
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">match</span> <span class="o">=</span> <span class="sr">/(?:^v-([a-z0-9]+))?(?:(?::|^@|^#)([^\.]+))?(.+)?$/i</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span>
+      <span class="nx">name</span>
+    <span class="p">)</span>
+
+    <span class="kd">let</span> <span class="nx">arg</span>
+
+    <span class="c1">// ([a-z0-9]+), ([^\.]+)
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">match</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">startOffset</span> <span class="o">=</span> <span class="nx">name</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">match</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+      <span class="kr">const</span> <span class="nx">loc</span> <span class="o">=</span> <span class="nx">getSelection</span><span class="p">(</span>
+        <span class="nx">context</span><span class="p">,</span>
+        <span class="nx">getNewPosition</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">,</span> <span class="nx">startOffset</span><span class="p">),</span>
+        <span class="nx">getNewPosition</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">,</span> <span class="nx">startOffset</span> <span class="o">+</span> <span class="nx">match</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="nx">length</span><span class="p">)</span>
+      <span class="p">)</span>
+
+      <span class="kd">let</span> <span class="nx">content</span> <span class="o">=</span> <span class="nx">match</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+      <span class="kd">let</span> <span class="nx">isStatic</span> <span class="o">=</span> <span class="kc">true</span> <span class="c1">// 静态属性名
+</span><span class="c1"></span>
+      <span class="c1">// 动态属性名解析
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="nx">content</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">))</span> <span class="p">{</span>
+        <span class="nx">isStatic</span> <span class="o">=</span> <span class="kc">false</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">content</span><span class="p">.</span><span class="nx">endsWith</span><span class="p">(</span><span class="s1">&#39;]&#39;</span><span class="p">))</span> <span class="p">{</span>
+          <span class="c1">// 如果是动态属性名，必须是 [varName] 形式
+</span><span class="c1"></span>          <span class="nx">emitError</span><span class="p">(</span>
+            <span class="nx">context</span><span class="p">,</span>
+            <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END</span>
+          <span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="nx">content</span> <span class="o">=</span> <span class="nx">content</span><span class="p">.</span><span class="nx">substr</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nx">content</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
+      <span class="p">}</span>
+
+      <span class="nx">arg</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="nx">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">SIMPLE_EXPRESSION</span><span class="p">,</span>
+        <span class="nx">content</span><span class="p">,</span>
+        <span class="nx">isStatic</span><span class="p">,</span>
+        <span class="nx">isConstant</span><span class="o">:</span> <span class="nx">isStatic</span><span class="p">,</span>
+        <span class="nx">loc</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// 属性是否被引号包起来
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">&amp;&amp;</span> <span class="nx">value</span><span class="p">.</span><span class="nx">isQuoted</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">valueLoc</span> <span class="o">=</span> <span class="nx">value</span><span class="p">.</span><span class="nx">loc</span>
+      <span class="nx">valueLoc</span><span class="p">.</span><span class="nx">start</span><span class="p">.</span><span class="nx">offset</span><span class="o">++</span>
+      <span class="nx">valueLoc</span><span class="p">.</span><span class="nx">start</span><span class="p">.</span><span class="nx">column</span><span class="o">++</span>
+      <span class="nx">valueLoc</span><span class="p">.</span><span class="nx">end</span> <span class="o">=</span> <span class="nx">advancePositionWithClone</span><span class="p">(</span><span class="nx">valueLoc</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="nx">value</span><span class="p">.</span><span class="nx">content</span><span class="p">)</span>
+      <span class="c1">// 取引号内的所有内容
+</span><span class="c1"></span>      <span class="nx">valueLoc</span><span class="p">.</span><span class="nx">source</span> <span class="o">=</span> <span class="nx">valueLoc</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+      <span class="nx">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span><span class="p">,</span>
+      <span class="c1">// : -&gt; v-bind, @ -&gt; v-on, # -&gt; v-slot 的缩写
+</span><span class="c1"></span>      <span class="nx">name</span><span class="o">:</span>
+      <span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">||</span>
+        <span class="p">(</span><span class="nx">name</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span> <span class="o">?</span> <span class="s1">&#39;bind&#39;</span> <span class="o">:</span> <span class="nx">name</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s1">&#39;@&#39;</span><span class="p">)</span> <span class="o">?</span> <span class="s1">&#39;on&#39;</span> <span class="o">:</span> <span class="s1">&#39;slot&#39;</span><span class="p">),</span>
+      <span class="nx">exp</span><span class="o">:</span> <span class="nx">value</span> <span class="o">&amp;&amp;</span> <span class="p">{</span>
+        <span class="nx">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">SIMPLE_EXPRESSION</span><span class="p">,</span>
+        <span class="nx">content</span><span class="o">:</span> <span class="nx">value</span><span class="p">.</span><span class="nx">content</span><span class="p">,</span>
+        <span class="nx">isStatic</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span>
+        <span class="nx">isConstant</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span>
+        <span class="nx">loc</span><span class="o">:</span> <span class="nx">value</span><span class="p">.</span><span class="nx">loc</span>
+      <span class="p">},</span>
+      <span class="nx">arg</span><span class="p">,</span>
+      <span class="c1">// 修饰符处理, v-bind.m1.m2 -&gt; .m1.m2 -&gt; [&#39;m1&#39;, &#39;m2&#39;]
+</span><span class="c1"></span>      <span class="nx">modifiers</span><span class="o">:</span> <span class="nx">match</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">?</span> <span class="nx">match</span><span class="p">[</span><span class="mi">3</span><span class="p">].</span><span class="nx">substr</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span> <span class="o">:</span> <span class="p">[],</span>
+      <span class="nx">loc</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+  属性解析的顺序是，先解析属性值，然后解析指令名称(<code>name</code>)，参数(<code>arg</code>)，修饰符(<code>modifiers</code>)。</p>
+<p>
+  <a href="/vue/vue-mind-map-house/#map-parse-with-directive">这里有完整的解析流程图，可以清晰完整的知道属性，指令解析整个过程。</a></p>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+RCDATA/CDATA 类型解析
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
+<p>
+  示例：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="kr">const</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="nx">code</span><span class="p">,</span> <span class="p">{</span>
+    <span class="nx">getNamespace</span><span class="o">:</span> <span class="p">(</span><span class="nx">tag</span><span class="p">,</span> <span class="nx">parent</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">ns</span> <span class="o">=</span> <span class="nx">parent</span> <span class="o">?</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">ns</span> <span class="o">:</span> <span class="nx">Namespaces</span><span class="p">.</span><span class="nx">HTML</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">ns</span> <span class="o">===</span> <span class="nx">Namespaces</span><span class="p">.</span><span class="nx">HTML</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 在 parseChildren while 中将进入 
+</span><span class="c1"></span>        <span class="c1">// if (ns !== Namespaces.HTML) {
+</span><span class="c1"></span>        <span class="c1">//    node = parseCDATA(context, ancestors);
+</span><span class="c1"></span>        <span class="c1">//  }
+</span><span class="c1"></span>        <span class="k">if</span> <span class="p">(</span><span class="nx">tag</span> <span class="o">===</span> <span class="s2">&#34;svg&#34;</span><span class="p">)</span> <span class="p">{</span>
+          <span class="k">return</span> <span class="nx">Namespaces</span><span class="p">.</span><span class="nx">HTML</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+      <span class="k">return</span> <span class="nx">ns</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="nx">getTextMode</span><span class="o">:</span> <span class="p">({</span> <span class="nx">tag</span> <span class="p">})</span> <span class="p">=&gt;</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">tag</span> <span class="o">===</span> <span class="s2">&#34;textarea&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// RCDATA 标签内的内容会直接进入 parsText 当做文本解析 
+</span><span class="c1"></span>        <span class="k">return</span> <span class="nx">TextModes</span><span class="p">.</span><span class="nx">RCDATA</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">tag</span> <span class="o">===</span> <span class="s2">&#34;script&#34;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">TextModes</span><span class="p">.</span><span class="nx">RAWTEXT</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">return</span> <span class="nx">TextModes</span><span class="p">.</span><span class="nx">DATA</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">...</span><span class="nx">options</span><span class="p">,</span>
+    <span class="nx">onError</span><span class="o">:</span> <span class="nx">spy</span><span class="p">,</span>
+  <span class="p">});</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+  这两种类型数据的解析关键有几点(<a href="/vue/vue3-source-code-compiler-core-parse_ts/#test-parse-errors">详情请移步  🛬🛬🛬</a>  )：</p>
+<ol>
+<li>
+<p>重写 getTextMode 在里面对有需要的 tag 类型指定其是什么 mode</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="kd">function</span> <span class="nx">parseElement</span><span class="p">(...)</span> <span class="p">{</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>
+    <span class="kr">const</span> <span class="nx">mode</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">getTextMode</span><span class="p">(</span><span class="nx">element</span><span class="p">,</span> <span class="nx">parent</span><span class="p">);</span>
+    <span class="c1">// RCDATA 模式，它的内容都会被当做文本来处理
+</span><span class="c1"></span>    <span class="c1">// 如：&lt;textarea&gt;&lt;/div&gt;&lt;/textarea&gt; 中的 `&lt;/div&gt;` 只是个文本内容
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">children</span> <span class="o">=</span> <span class="nx">parseChildren</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">mode</span><span class="p">,</span> <span class="nx">ancestors</span><span class="p">);</span>
+
+    <span class="c1">// ...
+</span><span class="c1"></span>  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>重写 getNamespace 告知 parseChildren 走哪个分支</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s2">&#34;&lt;![CDATA[&#34;</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">ns</span> <span class="o">!==</span> <span class="nx">Namespaces</span><span class="p">.</span><span class="nx">HTML</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">node</span> <span class="o">=</span> <span class="nx">parseCDATA</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ancestors</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">CDATA_IN_HTML_CONTENT</span><span class="p">);</span>
+      <span class="nx">node</span> <span class="o">=</span> <span class="nx">parseBogusComment</span><span class="p">(</span><span class="nx">context</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-09-01
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue/">vue,</a>
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vuenext/">vuenext</a>
+          </div>
+      <nav class="post-nav">
+        
+        <a class="next" href="/vue/vue3-source-code-compiler-core-parse_ts/">
+            <span class="next-text nav-default">Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Zhicheng Lee</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+
+
+
+<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>
