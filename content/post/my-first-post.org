@@ -6,6 +6,17 @@
 #+STARTUP: indent
 
 * hugo-test
+[[https://hugo-theme-even.netlify.app/post/even-preview/][使用教程]]
+
+** 网易云音乐
+#+begin_export html
+{{% music "28196554" %}}
+#+end_export
+** YouTuBe
+
+#+begin_export html
+{{% youtube "wC5pJm8RAu4" %}}
+#+end_export
 ** 增加代码区复制按钮
    1. 修改 *themes/even/assets/js/main.js* 增加 addCopyButton 原理就是，将
       ~pre.chroma>code~ 里面的文本全拷贝到一个临时创建的 textarea 标签里面，然后
