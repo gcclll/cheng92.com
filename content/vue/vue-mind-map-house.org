@@ -1,6 +1,6 @@
 #+TITLE: Vue3 源码的头脑风暴(脑图仓库)
 #+DATE: <2020-08-28 16:35:34>
-#+TAGS[]: vue, vue3, xmind
+#+TAGS[]: vue, vue3, compiler-core, parser, compiler
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
@@ -32,7 +32,7 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 :CUSTOM_ID: map-parse-with-directive
 :END:
 
-~<div v-bind:keyup.enter.prevent="ok"></div>~
+代码： ~baseParse(`<div v-bind:keyup.enter.prevent="ok"></div>`)~
 
 1. parseChildren :arrow_right: while
 2. parseElement :arrow_left: ~<div ....></div>~
@@ -56,6 +56,8 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: map-parse-simple-div
 :END:
+
+代码： ~baseParse(`<div>hello world</div>`)~
 
 1. parseChildren while 开始解析
 2. 遇到 ~<d~ 满足 ~/^[z-a]/i~ 进入 parseElement 解析标签
@@ -194,7 +196,8 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: map-parse-invalid-div
 :END:
-~some text</div>~
+
+代码： ~baseParse(`</div>`)~
 
 经过的函数：
 
@@ -212,13 +215,14 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 :CUSTOM_ID: map-parse-interpolation
 :END:
 
+代码： ~baseParse(`some {{ foo + bar }} text`)~
+
 1. parseChildren :arrow_right: while: ~some {{ foo + bar }} text~
 2. parseText :arrow_right: node[0]: ~`some`~
 3. ~{{ foo + bar }} text~  :arrow_right:  parseInterpolation  :arrow_right:
    node[1]: ~foor + bar~
 4. ~` text`~ :arrow_right: parseText :arrow_right: node[2]: ~`text`~
 5. nodes -> root.children
-
 
 解析过程中需要注意的几点：
 1. 插值解析，首先是匹配 `{{` 然后去的 *}}* 的索引，最后通过 ~slice(startIdx,
@@ -242,6 +246,8 @@ vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返回。
 
 退出 while 循环，将 node 塞到 ~root.children[]~ 里面，作为根节点的孩子节点。
+
+代码： ~baseParse(`simple text`)~
 
 流程图：
 [[/img/vue3/compiler-core/parser-test-simple-text.png]]
@@ -268,6 +274,13 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 :CUSTOM_ID: compiler-03
 :END: 
 
+代码：
+#+begin_src js
+  compile(`<div>{{ world.burn() }}</div>`, {
+    filename: `foo.vue`,
+  })
+#+end_src
+
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][用例地址]]
 
 流程图：
@@ -281,6 +294,13 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 :CUSTOM_ID: compiler-02
 :END: 
 
+代码：
+#+begin_src js
+  compile(`{{ world.burn() }}`, {
+    filename: `foo.vue`,
+  })
+#+end_src
+
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-02-worldburn][02-pure-interpolation 测试用例地址]]
 
 流程图：
@@ -293,6 +313,13 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compiler-01
 :END: 
+
+代码：
+#+begin_src js
+  compile(`simple text`, {
+    filename: `foo.vue`
+  })
+#+end_src
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
 

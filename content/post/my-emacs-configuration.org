@@ -112,15 +112,18 @@
 
 * Modes
 ** emms, play music
-(spacemacs/set-leader-keys "ama" 'emms-add-directory-tree)
-(spacemacs/set-leader-keys "ame" 'emms-smart-browse)
-(spacemacs/set-leader-keys "aml" 'emms-play-playlist)
-(spacemacs/set-leader-keys "amn" 'emms-next)
-(spacemacs/set-leader-keys "amp" 'emms-previous)
-(spacemacs/set-leader-keys "amP" 'emms-pause)
-(spacemacs/set-leader-keys "ams" 'emms-start)
-(spacemacs/set-leader-keys "amS" 'emms-stop)
-(spacemacs/set-leader-keys "amt" 'emms-toggle-repeat-playlist)
+#+begin_src elisp
+  (spacemacs/set-leader-keys "ama" 'emms-add-directory-tree)
+  (spacemacs/set-leader-keys "ame" 'emms-smart-browse)
+  (spacemacs/set-leader-keys "aml" 'emms-play-playlist)
+  (spacemacs/set-leader-keys "amn" 'emms-next)
+  (spacemacs/set-leader-keys "amp" 'emms-previous)
+  (spacemacs/set-leader-keys "amP" 'emms-pause)
+  (spacemacs/set-leader-keys "ams" 'emms-start)
+  (spacemacs/set-leader-keys "amS" 'emms-stop)
+  (spacemacs/set-leader-keys "amt" 'emms-toggle-repeat-playlist)
+#+end_src
+
 | key         | function                     |
 |-------------+------------------------------|
 | ~SPC a m a~ | 'emms-add-directory-tree     |
