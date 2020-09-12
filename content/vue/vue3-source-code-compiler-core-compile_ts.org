@@ -299,8 +299,152 @@ vue.global:
   } "compiled"
 #+end_src
 
+流程图：
 [[/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg]] 
 
+流程分析：
+
+1. [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-baseparse][baseParse(template, options)]] 解析出 ast
+2. [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform][transform(ast, ...)]] 递归遍历处理 root.children 生成各节点的 codegenNode
+
+   1) [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode(root, context)]] 核心函数，结合 traverseChildren 通过遍历+递归
+      处理所有节点，收集对应的 transform* 函数，在结束递归之后回溯过程中执行这些
+      transform* 来收集节点对应的 codegenNode
+      
+      - 遍历所有的 ~nodeTrasforms[]~ 来收集当前节点满足条件的 transform* 函数
+        到 ~exitFns[]~ 中，比如： 这里的 ELEMENT 类型(~<div></div>~)会收集到
+        [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transformelement][transformElement]] 和 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transformtext][transformText]] 。
+      - ~NodeTypes.ROOT~ 进入 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren][traverseChildren(node, context)]] 继续处理
+        ~root.children~ ，这里同时会记录每个节点的 *parent* 值，ROOT 类型收集 *transformText* 。
+      - ~NodeTypes.ELEMENT~ 也会进入到 ~traverseChildren(node, context)~ 处理
+        ~node.children~ ，赋值 *parent*, 收集 ~transformText~ 和 ~transformElement~ 。
+      - ~NodeTypes.INTERPOLATION~ 对于插值节点，不会进入 ~traverseChildren~ 而是在
+        switch 分支中调用 ~context.helper()~ 去更新 ~context.helpers~ 用来从 ~Vue~ 中
+        解构出需要的函数。
+   2) TODO hoistStatic(root, context) 静态提升用的，针对静态节点提升到函数外面(这里暂
+      时未深入，没用到)
+   3) [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-createrootcodegen][createRootCodegen(root, context)]] 生成 root.codegenNode ，有可能是来自第一
+      个且唯一一个孩子节点，分为两个分支具体细节点击函数链接。
+
+   经过 *transform* 处理之后的 ~ast~ 对象
+    #+begin_src js
+      { // 去掉不重要的部分
+        "type":0, // ROOT 类型
+        "children":[
+          {
+            "type":1, // ELEMENT 类型
+            "tag":"div",
+            "tagType":0, // Start
+            "children":[
+              {
+                "type":5, // INTERPOLATION
+                "content":{
+                  "type":4, // SIMPLE_EXPRESSION
+                  "isStatic":false,
+                  "isConstant":false,
+                  "content":"world.burn()",
+                },
+              }
+            ],
+            "codegenNode":{
+              // 这里实际上是 root.children[0] 经过 transformElement 之后的结果
+              // 变成了VNODE_CALL 在 codegen-generate 处理部分会用到
+              "type":13, // VNODE_CALL
+              "tag":""div"",
+              "children":{
+                "type":5, // INTERPOLATION
+                "content":{
+                  "type":4, // SIMPLE_EXPRESSION
+                  "isStatic":false,
+                  "isConstant":false,
+                  "content":"world.burn()",
+                },
+              },
+              "patchFlag":"1 /* TEXT */", // 这个目前不知道干啥的
+              "isBlock":true, // 决定使用 openBlock/createBlock, 还是 createVNode
+              "isForBlock":false,
+            }
+          }
+        ],
+        "codegenNode":{ // root 根节点的
+          // 在 createRootCodegen 中有个处理是，如果root.children 有且只有一个
+          // ELEMENT 类型的节点的时候，root.codegenNode 会被这个节点的 codegenNode
+          // 覆盖，即root 使用它唯一的孩子节点的 codegenNode
+          "type":13, // VNODE_CALL
+          "tag":""div"",
+          "children":{
+            "type":5,
+            "content":{
+              "type":4,
+              "isStatic":false,
+              "isConstant":false,
+              "content":"world.burn()",
+            },
+          },
+          "patchFlag":"1 /* TEXT */",
+          "isBlock":true,
+          "isForBlock":false,
+        },
+      }
+    #+end_src
+
+3. [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen_generate][generate(ast, ...)]] 生成代码片段 -> ~new Function(context.code)~
+
+   1) [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genfunctionpreamble][genFunctionPreamble(ast, context)]] 主要使用来检测环境从而导入 Vue 实例
+      (如：~const _Vue = Vue~)，最后 render 函数的 ~`return `~ 也是这里生成的。
+   2) [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-gennode][genNode(ast.codegenNode, context)]] 对每个 ast 节点结构进行处理，生成对应的
+      Render 函数相关部件。
+   3) [[eww:/vue/vue3-source-code-compiler-core-compile_ts/#headline-39][genVNodeCall(node, context)]] 生成节点的参数，调用函数之类的，如：
+      ~openBlock()~ , ~createBlock(...)~ 及参数列表 ~createBlock(tag, props,
+      children, patchFlag, ...)~ ，指令等部件。
+   4) patchFlag 是在 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transformelement][transformElement]] 里面处理值的。
+   
+    经过 *generate* 之后生成的 ~render~ 函数： 
+
+    #+begin_src js
+      (function anonymous(
+      ) {
+        const _Vue = Vue
+
+        return function render(_ctx, _cache) {
+          with (_ctx) {
+            const { toDisplayString: _toDisplayString, createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+            return (_openBlock(), _createBlock("div", null, _toDisplayString(world.burn()), 1 /* TEXT */))
+          }
+        }
+      })
+    #+end_src
+
+    ~render({ world: { burn() { return `burn the world !` }}})~ 执行之后得到的
+    VNode 节点：
+
+    #+begin_src js
+    {
+      "_isVNode":true,
+      "type":"div",
+      "props":null,
+      "key":null,
+      "ref":null,
+      "scopeId":null,
+      "children":"burn the world !",
+      "component":null,
+      "suspense":null,
+      "dirs":null,
+      "transition":null,
+      "el":null,
+      "anchor":null,
+      "target":null,
+      "targetAnchor":null,
+      "shapeFlag":9,
+      "patchFlag":1,
+      "dynamicProps":null,
+      "dynamicChildren":[
+
+      ],
+      "appContext":null
+    }
+  #+end_src
 ** 02-pure interpolation 第一个孩子节点
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]

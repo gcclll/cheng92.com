@@ -177,6 +177,22 @@
 |               |              |                    |
 
 * 软件&命令
+** Alfred
+1. [[https://github.com/rtoshiro/alfred-workflows-textshortcut][Text Shourtcut]]
+   
+   如果用的是 Alfred 3 需要修改下 [[/Users/simon/Library/Application Support/Alfred 3/Alfred.alfredpreferences/workflows/user.workflow.ACE8BAEC-3702-436D-959C-4DBC14DBAFAB/workflows.php]]
+   
+   将里面的 ~Alfred-2~ 改成 ~Alfred-3~ 就可以用了，不然会报找不到路径。
+   
+   增加和删除都是针对增加的 abbrev 文件操作。
+
+   1) 先复制内容到剪贴板
+
+   2) ts add [shortcut name] 增加
+
+   3) ts del [shortcut name] 删除
+
+   4) ts [shortcut name] 取出对应的内容，复制到当前活跃应用
 ** qshell 批量下载七牛
 https://github.com/qiniu/qshell
 
