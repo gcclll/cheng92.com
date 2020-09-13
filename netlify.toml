@@ -1,6 +1,6 @@
 [build]
 publish = "public"
-command = "hugo --gc --minify && ./generate-index.sh"
+command = "hugo --gc --minify && ./generate.sh"
 
 [context.production.environment]
 HUGO_VERSION = "0.74.3"
