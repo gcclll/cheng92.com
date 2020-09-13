@@ -1,5 +1,5 @@
 #!/bin/bash
 
-npm install # install
+npm install
 
-npm run algolia # generate index
+npm run algolia
