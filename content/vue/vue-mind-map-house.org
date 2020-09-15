@@ -268,6 +268,24 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 流程图：
 [[/img/vue3/compiler-core/compiler.png]] 
 
+** 04-interpolation in div with props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compiler-04
+:END: 
+
+代码：
+#+begin_src js
+  compile(`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`, {
+    filename: `foo.vue`,
+  })
+#+end_src
+
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-04][用例地址]]
+
+流程图：
+[[/img/vue3/compiler-core/compiler-test-interpolation-in-div-with-props.svg]]
+
 ** 03-inerpolation in pure div 
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -327,3 +345,6 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 [[/img/vue3/compiler-core/compiler-test-simple-text.png]]
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-01][详细过程分析请点击链接。]]
+
+* 关键点
+** TODO buildProps(node, context) 构建 props

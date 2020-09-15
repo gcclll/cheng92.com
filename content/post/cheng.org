@@ -254,12 +254,13 @@ https://github.com/PicGo
 5. [[http://www.gequdaquan.net/gqss/][音乐聚合搜索引擎 可以下载，但是只能免费下两首，后面要付费。]]
 6. 全网音乐免费下载工具
 7. 墨灵音乐
-8. bin music
-9. [[https://www.sq688.com/][超高无损音乐漫音社，百度网盘方式，试了下了5-6首，应该没限制，真正免费？]]
-10. [[http://hwkxk.cn/][Hwk 小站]]
-11. [[https://link.zhihu.com/?target=http%3A//tool.liumingye.cn/music/][MyFreeMP3]]
-12. [[http://music.runker.net/][行客VIP音乐下载网]]
-13. [[http://www.xieqian.vip/music/][Master.Xie]]
+8. [[http://www.wsyyb.com/flac/][无损音乐吧]]
+9. bin music
+10. [[https://www.sq688.com/][超高无损音乐漫音社，百度网盘方式，试了下了5-6首，应该没限制，真正免费？]]
+11. [[http://hwkxk.cn/][Hwk 小站]]
+12. [[https://link.zhihu.com/?target=http%3A//tool.liumingye.cn/music/][MyFreeMP3]]
+13. [[http://music.runker.net/][行客VIP音乐下载网]]
+14. [[http://www.xieqian.vip/music/][Master.Xie]]
 * 问题列表
 ** 前端
 1. 怎么在 html 中使用 ~.svg~ 文件
