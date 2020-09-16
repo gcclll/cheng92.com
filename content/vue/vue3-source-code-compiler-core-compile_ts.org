@@ -475,7 +475,7 @@ code: ~`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`~
   })
 #+end_src
 
-*** 扩展：增加 ~camel~ 修饰符
+*** 扩展 1：增加 ~camel~ 修饰符
 
 code: ~`<div id="foo" :class="bar.baz" :test-prop.camel="bar.bax">{{ world.burn() }}</div>`~
 
@@ -500,6 +500,38 @@ code: ~`<div id="foo" :class="bar.baz" :test-prop.camel="bar.bax">{{ world.burn(
 
 因为 transformBind 中有检测修饰符中是否包含 ~camel~ ，如果有则会进行驼峰转换，否
 则不会转而是将 *test-prop* 用引号包起来： ~"test-prop"~ 。
+*** 扩展 2：动态属性且有 ~camel~ 修饰符
+
+code: ~`<div id="foo" :class="bar.baz" :[prop_name].camel="bar.bax">{{ world.burn() }}</div>`~
+
+这个时候需要实现 transform.js 中 [[#transform-createtransformcontext][createTransformContext]] 中 ~context.helperString~
+
+#+begin_src js
+  helperString(name) {
+    return `_${helperNameMap[context.helper(name)]}`;
+  }
+#+end_src
+
+结果：
+#+begin_src js
+  (function anonymous(
+  ) {
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString : _toDisplayString, camelize : _camelize, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", {
+          id: "foo",
+          class: bar.baz,
+          [_camelize(prop_name)]: bar.bax
+        }, _toDisplayString(world.burn()), 1 /* TEXT */))
+      }
+    }
+  })
+#+end_src
+
+会发现这里多解构了个 ~_camelize~ 函数出来，通过函数调用方式去处理动态属性名。
 ** 03-inerpolation in pure div
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
