@@ -5,6 +5,12 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_export html
+<script>
+window.g_need_fold = 1
+</script>
+#+end_export 
+
 #+begin_quote
 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。
 #+end_quote
