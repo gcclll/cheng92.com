@@ -270,6 +270,24 @@ code: ~`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`~
 解析和编译即可，所有流程和流程图可参考 03 来实现。
 
 还是老方法，根据跟踪 vue.global debugger 过程来分析整个过程。
+期待结果：
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString: _toDisplayString, createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", {
+          id: "foo",
+          class: bar.baz
+        }, _toDisplayString(world.burn()), 3 /* TEXT, CLASS */))
+      }
+    }
+  })
+#+end_src
 
 [[#transform-createstructuraldirectivetransform][createStructuralDirectiveTransform(name, fn)]] 如果存在属性，都会经过这个函数是因
 为 ~if,else-if,else,for~ 的 transform 都是通过这个创建的，所以在经过
@@ -396,10 +414,10 @@ code: ~`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`~
    #+begin_src js
      loc: {source: "<div id="foo" :class="bar.baz">{{ world.burn() }}</div>"}
      properties: (2) [{…}, {…}] // 这里是 id, class 两个属性
-     type: 15 // JS_PROPERTY
+     type: 15 // JS_OBJECT_EXPRESSION
    #+end_src
    
-   类型为 *JS_PROPERTY<15>* 在 ~genNode~ 里面会进入 [[#ast-genobjectexpression][genObjectExpression(node,
+   类型为 *JS_OBJECT_EXPRESSION<15>* 在 ~genNode~ 里面会进入 [[#ast-genobjectexpression][genObjectExpression(node,
    context)]] 分支将属性解析成对象，如： ~{id: "foo", class: bar.baz}~ 。
    
    ~genObjectExpression~ 里面对属性的处理主要分两步，先调用
@@ -408,6 +426,80 @@ code: ~`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`~
    context)]], 因为类型为 *SIMPLE_EXPRESSION<4>*)。
    
    最后得到 ~{id: "foo", class: bar.baz}~ 作为 ~createBlock('div', ...)~ 的第二个参数。
+   
+修改完之后运行结果：
+#+begin_src js
+  (function anonymous(
+  ) {
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", { id: "foo" }, _toDisplayString(world.burn()), 1 /* TEXT */))
+      }
+    }
+  })
+#+end_src
+
+结果与正确结果又两点缺陷：
+1. 属性漏掉了 ~class~
+2. patchFlag 那里不对，正确应该是 ~3 /* TEXT, CLASS */~
+
+没有报错能走通说明至少逻辑是通的出现上面两个问题原因，溯源起来也很清晰，因为我们
+知道 props 在 transform 阶段是 [[#transform-transformelement][transformElement]] 里面，generate 阶段是在
+[[#codegen-genobjectexpression][genObjectExpression()]] 中, 而 patchFlag 也是在 ~transformElement~ 处理的。
+
+通过在 genObjectExpression() for 循环中增加打印，显示 properties 中只有一个 id
+属性，那么属性解析最后是在 [[#transform-buildprops][buildProps]] 里面的， bingo!!! 没有实现 [[#transform-transformbind][transformBind]] 。
+
+那么修改点有二：
+1. 在 compile.ts 的 [[#compile-getbasetransformpreset][getBaseTransformPreset]] 增加指令 transform 函数 [[#transform-transformbind][transformBind]]
+2. 实现 ~transformBind~
+
+修改之后：
+#+begin_src js
+  (function anonymous(
+  ) {
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", {
+          id: "foo",
+          class: bar.baz
+        }, _toDisplayString(world.burn()), 3 /* TEXT, CLASS */))
+      }
+    }
+  })
+#+end_src
+
+*** 扩展：增加 ~camel~ 修饰符
+
+code: ~`<div id="foo" :class="bar.baz" :test-prop.camel="bar.bax">{{ world.burn() }}</div>`~
+
+结果：
+#+begin_src js
+  (function anonymous(
+  ) {
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", {
+          id: "foo",
+          class: bar.baz,
+          testName: bar.bax
+        }, _toDisplayString(world.burn()), 3 /* TEXT, CLASS */))
+      }
+    }
+  })
+#+end_src
+
+因为 transformBind 中有检测修饰符中是否包含 ~camel~ ，如果有则会进行驼峰转换，否
+则不会转而是将 *test-prop* 用引号包起来： ~"test-prop"~ 。
 ** 03-inerpolation in pure div
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -950,13 +1042,44 @@ Function(code)~ 会将 code 用一个匿名函数来包裹起来，因此想要�
 *** getBaseTransformPreset(prefixIdentifiers: boolean)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: compile_getbasetransformpreset
+:CUSTOM_ID: compile-getbasetransformpreset
 :END:
 
 合并所有 transform，返回一个 ~TransformPreset~ 类型的数组
 
-stage-1: 第一阶段我们只需要文本转换，通过 [[#test-cc-01][用例一]] 即可，所以这里就只保留
+**** stage-2:
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-getbasetransformpreset-stage-2
+:END: 
+
+增加 transformBind 指令处理，处理 ~:class = "bar.baz"~ 的时候需要用到
+#+begin_src js
+
+  export function getBaseTransformPreset(prefixIdentifiers) {
+    return [
+      [
+        // ... 省略其他，第一阶段我们应该只需要文本转换
+        transformText,
+        ...(!__BROWSER__ && prefixIdentifiers ? [transformExpression] : []),
+        transformElement,
+      ],
+      {
+        // ...省略指令
+        bind: transformBind,
+      },
+    ];
+  }
+#+end_src
+**** stage-1: [[#test-cc-01][01-simple text]]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-getbasetransformpreset-stage-1
+:END: 
+
+第一阶段我们只需要文本转换，通过 [[#test-cc-01][用例一]] 即可，所以这里就只保留
 [[transform-transformtext][transformText]] 就可以了，剩下的就是去实现它。
+
 #+begin_src js
   export function getBaseTransformPreset(prefixIdentifiers) {
     return [
@@ -1149,7 +1272,6 @@ stage-1: 第一阶段我们只需要文本转换，通过 [[#test-cc-01][用例�
 3. ssr 服务端渲染处理
 4. 初始化 root 根节点上的一些属性
 
-stage-1: [[#test-cc-01][01 simple text]]
 #+begin_src js
 
   export function transform(root, options) {
@@ -1178,6 +1300,8 @@ stage-1: [[#test-cc-01][01 simple text]]
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-transformelement
 :END: 
+
+**** stage-2 
 **** stage-1 [[#test-cc-03][03-inerpolation in pure div]]
 
 #+begin_src js
@@ -1295,6 +1419,41 @@ stage-1: [[#test-cc-01][01 simple text]]
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-transformbind
 :END: 
+
+指令也属于属性一种，所以它的处理源头是在 [[#transform-transformelement][transformElement]] 里面。
+
+这里只不过是提供了 v-bind 处理方式。
+
+#+begin_src js
+  export const transformBind = (dir, node, context) => {
+    const { exp, modifiers, loc } = dir;
+
+    const arg = dir.arg;
+
+    // TODO 错误处理
+
+    if (modifiers.includes("camel")) {
+      if (arg.type === NodeTypes.SIMPLE_EXPRESSION) {
+        if (arg.isStatic) {
+          // 横线 转驼峰式
+          arg.content = camelize(arg.content);
+        } else {
+          arg.content = `${context.helperString(CAMELIZE)}(${arg.content})`;
+        }
+      } else {
+        arg.children.unshift(`${context.helperString(CAMELIZE)}(`);
+        arg.children.push(`)`);
+      }
+    }
+
+    return {
+      props: [
+        createObjectProperty(arg, exp || createSimpleExpression("", true, loc)),
+      ],
+    };
+  };
+
+#+end_src
 *** createTransformContext(root, options)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -1912,13 +2071,32 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 :CUSTOM_ID: codegen-gennode
 :END:
 
-**** stage-1: [[#test-cc-01][01 simple text]]
+**** stage-3: [[#test-cc-04][04-interpolation in div with props]]
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: codegen-gennode-stage1
+:CUSTOM_ID: codegen-gennode-stage3
 :END: 
 
-这里我们只处理文本节点的情况：
+这个用例中需要解析 ~props[{ id }, { class }]~ 这两个属性经过 buildProps 处理之后
+会变成一个对象结构： 
+
+~{ type: 15 /* JS_OBJECT_EXPRESSION */, properties: [{id}, {class}], ...}~
+
+#+begin_src js
+  0:
+    key: {type: 4 /*SIMPLE_EXPRESSION*/, loc: {…}, isConstant: false, content: "id", isStatic: true}
+    type: 16 // JS_PROPERTY
+    value: {type: 4, loc: {…}, isConstant: false, content: "foo", isStatic: true}
+  1:
+    key: {type: 4, content: "class", isStatic: true, isConstant: true, loc: {…}}
+    type: 16 // JS_PROPERTY
+    value: {type: 4, content: "bar.baz", isStatic: false, isConstant: false, loc: {…}}
+#+end_src
+
+所以这里首先需要增加一个 ~JS_OBJECT_EXPRESSION~ 分支处理这两个属性，解析成属性对
+象传递给 ~_createBlock('div', props, ...)~
+
+
 #+begin_src js
 
   function genNode(node, context) {
@@ -1931,14 +2109,28 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 
     switch (node.type) {
         // ... 省略
+      case NodeTypes.ELEMENT:
+        genNode(node.codegenNode, context);
+        break;
       case NodeTypes.TEXT:
         genText(node, context);
         break;
+      case NodeTypes.SIMPLE_EXPRESSION:
+        // 如：插值内容，属性值
+        genExpression(node, context);
+        break;
+      case NodeTypes.INTERPOLATION:
+        console.log(node, "interpolation");
+        genInterpolation(node, context);
+        break;
+      case NodeTypes.VNODE_CALL:
+        genVNodeCall(node, context);
+        break;
+      case NodeTypes.JS_OBJECT_EXPRESSION: // 新增属性 properties处理
+        genObjectExpression(node, context);
+        break;
     }
-  }
 #+end_src
-
-然后就是实现 case 的 [[#codegen-gentext][genText(node, context)]]
 
 **** stage-2: [[#test-cc-02][02 pure interpolation]]
 :PROPERTIES:
@@ -2000,6 +2192,212 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 #+end_src
 
 1. 先经过 INTERPOLATION 分支调用 [[#codegen-geninterpolation][genInterpolation(node, context)]] 去解析插值节点
+**** stage-1: [[#test-cc-01][01 simple text]]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode-stage1
+:END: 
+
+这里我们只处理文本节点的情况：
+#+begin_src js
+
+  function genNode(node, context) {
+    if (typeof node === "string") {
+      context.push(node);
+      return;
+    }
+
+    // TODO is symbol
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.TEXT:
+        genText(node, context);
+        break;
+    }
+  }
+#+end_src
+
+然后就是实现 case 的 [[#codegen-gentext][genText(node, context)]]
+
+*** genNodeList(nodes, context, multilines=false, comma=true)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennodelist
+:END: 
+
+生成 _createBlock(tag, props, children, ...) 函数的参数列表。
+
+#+begin_src js
+
+  function genNodeList(nodes, context, multilines = false, comma = true) {
+    const { push, newline } = context;
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (typeof node === "string") {
+        push(node);
+      } else if (Array.isArray(node)) {
+        genNodeListAsArray(node, context);
+      } else {
+        // nodes[1], props 进入这里处理
+        genNode(node, context);
+      }
+
+      if (i < nodes.length - 1) {
+        if (multilines) {
+          comma && push(",");
+          newline();
+        } else {
+          comma && push(", ");
+        }
+      }
+    }
+  }
+#+end_src
+*** genNodeListAsArray(nodes, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennodelistasarray
+:END: 
+
+将参数列表转成数组， ~nodes: [tag, props, chldren, ...]~ -> ~['div', {}, ...}]~
+
+#+begin_src js
+
+  // 将参数们变成数组
+  function genNodeListAsArray(nodes, context) {
+    const multilines =
+          nodes.length > 3 ||
+          ((!__BROWSER__ || __DEV__) &&
+           nodes.some((n) => Array.isArray(n) || !isText(n)));
+
+    context.push(`[`);
+    multilines && context.indent();
+    genNodeList(nodes, context, multilines);
+    multilines && context.deindent();
+    context.push(`]`);
+  }
+#+end_src
+
+*** genNullableArgs(args)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennullableargs
+:END: 
+
+过滤掉参数列表尾部值为 *假值* 的参数。
+
+#+begin_src js
+
+  // 过滤尾部 nullable 的值
+  function genNullableArgs(args) {
+    let i = args.length;
+    while (i--) {
+      if (args[i] != null) break;
+    }
+
+    // 中间的 nullable 值 转成 null
+    return args.slice(0, i + 1).map((arg) => arg || `null`);
+  }
+#+end_src
+
+*** genObjectExpression(node, context) 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genobjectexpression(node, context)
+:END: 
+
+1. 空属性列表，返回 ~{}~
+2. 先 [[#codegen-genexpressionaspropertykey][genExpressionAsPropertyKey(node, context)]] 解析属性名
+
+#+begin_src js
+  // 生成对象表达式，用来处理 properties
+  function genObjectExpression(node, context) {
+    const { push, indent, deindent, newline } = context;
+    const { properties } = node;
+    if (!properties.length) {
+      push(`{}`, node);
+      return;
+    }
+
+    const multilines =
+          properties.length > 1 ||
+          ((!__BROWSER__ || __DEV__) &&
+           properties.some((p) => p.value.type !== NodeTypes.SIMPLE_EXPRESSION));
+
+    push(multilines ? `{` : `{ `);
+    multilines && indent();
+    for (let i = 0; i < properties.length; i++) {
+      const { key, value } = properties[i];
+      // key 处理，属性名
+      genExpressionAsPropertyKey(key, context);
+      push(`: `);
+      // value 处理，属性值，如果是静态的字符串化，如果是动态的直接变量方式
+      // 如： id="foo" -> id: "foo"
+      // 如： :class="bar.baz" -> class: bar.baz
+      // 这里 bar 是对象，baz 是 bar对象的属性
+      genNode(value, context);
+      if (i < properties.length - 1) {
+        push(`,`);
+        newline();
+      }
+    }
+    multilines && deindent();
+    push(multilines ? `}` : ` }`);
+  }
+#+end_src
+*** genExpressionAsPropertyKey(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genexpressionaspropertykey
+:END: 
+
+生成对象属性名：
+
+1. 属性名由组合表达式动态生成，如： ~{ [prefix + '_' + name]: 'value' }~
+2. 静态属性，又分标准标识符和非标准的(需要用引号包起来的)，如： ~{ foo: 'value'
+   }~ 或 ~{ '23adf34': 'value' }~
+3. 简单的动态属性，如： ~{ [foo]: 'value' }~
+
+#+begin_src js
+
+  function genExpressionAsPropertyKey(node, context) {
+    const { push } = context;
+    if (node.type === NodeTypes.COMPOUND_EXPRESSION) {
+      push(`[`);
+      genCompoundExpression(node, context);
+      push(`]`);
+    } else if (node.isStatic) {
+      // 静态属性
+      const text = isSimpleIdentifier(node.content)
+            ? node.content
+            : JSON.stringify(node.content);
+
+      push(text, node);
+    } else {
+      // 动态属性
+      push(`[${node.content}]`, node);
+    }
+  }
+#+end_src
+*** genCompoundExpression(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gencompoundexpression
+:END: 
+
+#+begin_src js
+  function genCompoundExpression(node, context) {
+    for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+      if (typeof child === "string") {
+        context.push(child);
+      } else {
+        genNode(child, context);
+      }
+    }
+  }
+#+end_src
 *** genText(node, context)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
