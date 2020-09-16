@@ -5,6 +5,13 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+
+#+begin_export html
+<script>
+window.g_need_fold = 1
+</script>
+#+end_export
+
 #+begin_quote
 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。
 #+end_quote
@@ -258,6 +265,201 @@ compile.spec.ts 中的用例进行拆分之后右简入难式去通过该用例�
   `.trim()
 #+end_src
 
+** 05-interpolation, v-if, props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-cc-05
+:END: 
+
+#+begin_src js
+  code = `
+  <div id="foo" :class="bar.baz">
+  {{ world.burn() }}
+  <div v-if="ok">yes</div>
+  </div>`
+#+end_src
+
+增加了 ~<div v-if="ok"></div>~
+
+ast: 在经过 parse.ts 之后应该具备看到模板能够分析出 ast 结构能力。
+#+begin_src js
+  {
+    type: 0, // ROOT
+    children: [
+      { // div#foo
+        type: 1, // ELEMENT
+        tag: 'div',
+        tagType: 0, // Start
+        props: [
+          { // id
+            type: 6, // ATTRIBUTE
+            name: 'id',
+            value: {
+              type: 2, // TEXT
+              content: 'foo'
+            }
+          },
+          { // :class
+            type: 7, // DIRECTIVE
+            name: 'bind',
+            arg: {
+              type: 4, // SIMPLE_EXPRESSION
+              content: 'class',
+              isStatic: true, // 静态参数名
+              isConstant: true
+            }, // 参数名 class
+            exp: {
+              type: 4, // SIMPLE_EXPRESSION
+              content: "bar.baz",
+              isStatic: false,
+              isConstant: false
+            }, // 表达式 bar.baz
+            modifiers: [], // 修饰符
+          }
+        ],
+        children: [
+          { // world.burn
+            type: 5, // INTERPOLATION
+            content: {
+              content: "world.burn()",
+              isStatic: false,
+              isConstant: false,
+              type: 4, // SIMPLE_EXPRESSION
+            },
+          },
+          { // " " 空
+            type: 2, // TEXT
+            content: ' '
+          },
+          { // div v-if
+            type: 1, // ELEMENT
+            tag: 'div',
+            tagType: 0, // Start
+            children: [
+              { // yes
+                type: 2, // TEXT
+                content: "yes"
+              }
+            ],
+            props: [
+              {
+                type: 7, // DIRECTIVE
+                name: 'if',
+                exp: {
+                  type: 4,
+                  content: "ok",
+                  isStatic: false,
+                  isConstant: false
+                },
+                modifiers: []
+              }
+            ]
+          }
+        ]
+      }, // div#foo
+    ],
+    codegenNode: undefined
+  }
+#+end_src
+
+vue.global 结果：
+#+begin_src js
+  (function anonymous() {
+    const _Vue = Vue;
+    const {
+      createVNode: _createVNode,
+      createCommentVNode: _createCommentVNode,
+      createTextVNode: _createTextVNode,
+    } = _Vue;
+
+    const _hoisted_1 = { key: 0 };
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const {
+          toDisplayString: _toDisplayString,
+          createVNode: _createVNode,
+          openBlock: _openBlock,
+          createBlock: _createBlock,
+          createCommentVNode: _createCommentVNode,
+          createTextVNode: _createTextVNode,
+        } = _Vue;
+
+        return (
+          _openBlock(),
+          _createBlock(
+            "div",
+            {
+              id: "foo",
+              class: bar.baz,
+            },
+            [
+              _createTextVNode(
+                _toDisplayString(world.burn()) + " ",
+                1 /* TEXT */
+              ),
+              ok
+                ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+                : _createCommentVNode("v-if", true),
+            ],
+            2 /* CLASS */
+          )
+        );
+      }
+    };
+  });
+#+end_src
+
+这里有几个不同点：
+
+1. _createBlock 第三个参数 children 变成了数组，且使用了 _createTextVNode() 创建
+   虚拟节点
+2. 就是多了个新增的那个 ~div v-if~ 节点
+3. patchFlag 的变化
+
+   
+先看下修改之前的结果：
+
+#+begin_src js
+  (function anonymous() {
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const {
+          toDisplayString: _toDisplayString,
+          createVNode: _createVNode,
+          camelize: _camelize,
+          createTextVNode: _createTextVNode,
+          openBlock: _openBlock,
+          createBlock: _createBlock,
+        } = _Vue;
+
+        return (
+          _openBlock(),
+          _createBlock(
+            "div",
+            {
+              id: "foo",
+              class: bar.baz,
+              [_camelize(prop_name)]: bar.bax,
+            },
+            [, _createVNode("div", null, "yes")]
+          )
+        );
+      }
+    };
+  });
+#+end_src
+
+差异点：
+
+1. 没有 render 函数外的解构
+2. 没有 render 函数外的 ~const _hoisted_1 = { key: 0 };~
+3. 没有 ~_createCommentVNode~
+4. children 里面的差值节点丢失了
+5. div v-if 节点处理错误
+
+先解决差值问题(第 4 点)，这里插值节点为什么会丢失？
+
 ** 04-interpolation in div with props
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -450,7 +652,7 @@ code: ~`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`~
 知道 props 在 transform 阶段是 [[#transform-transformelement][transformElement]] 里面，generate 阶段是在
 [[#codegen-genobjectexpression][genObjectExpression()]] 中, 而 patchFlag 也是在 ~transformElement~ 处理的。
 
-通过在 genObjectExpression() for 循环中增加打印，显示 properties 中只有一个 id
+通过在 [[#codegen-genobjectexpression][genObjectExpression()]] for 循环中增加打印，显示 properties 中只有一个 id
 属性，那么属性解析最后是在 [[#transform-buildprops][buildProps]] 里面的， bingo!!! 没有实现 [[#transform-transformbind][transformBind]] 。
 
 那么修改点有二：
@@ -2336,7 +2538,7 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 *** genObjectExpression(node, context) 
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: codegen-genobjectexpression(node, context)
+:CUSTOM_ID: codegen-genobjectexpression
 :END: 
 
 1. 空属性列表，返回 ~{}~

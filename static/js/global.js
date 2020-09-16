@@ -1,3 +1,7 @@
+window._config = {
+  fold: 0, // 代码折叠，默认不折叠
+};
+
 $(function () {
   $("span.todo").each(function () {
     var node = $(this);
@@ -37,17 +41,17 @@ $(function () {
       onHoverRotate($(this));
     });
 
-    // search input
-    var $search = $('#search'),
-    $searchInput = $search.find(".docsearch-input")
+  // search input
+  var $search = $("#search"),
+    $searchInput = $search.find(".docsearch-input");
 
-    var inputShowed = false
-    $search.find(">img.icon").on('click', function() {
-      if (inputShowed) {
-        $searchInput.hide()
-      } else {
-        $searchInput.show() 
-      }
-      inputShowed = !inputShowed;
-    })
+  var inputShowed = false;
+  $search.find(">img.icon").on("click", function () {
+    if (inputShowed) {
+      $searchInput.hide();
+    } else {
+      $searchInput.show();
+    }
+    inputShowed = !inputShowed;
+  });
 });

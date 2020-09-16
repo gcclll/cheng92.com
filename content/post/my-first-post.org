@@ -5,6 +5,11 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_export html
+<script>
+window.g_need_fold = 1
+</script>
+#+end_export
 * hugo-test
 [[https://hugo-theme-even.netlify.app/post/even-preview/][使用教程]]
 
