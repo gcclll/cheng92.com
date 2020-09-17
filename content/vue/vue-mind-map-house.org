@@ -268,44 +268,26 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 流程图：
 [[/img/vue3/compiler-core/compiler.png]] 
 
-** 04-interpolation in div with props
+** 01-simple text 编译过程
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: compiler-04
+:CUSTOM_ID: compiler-01
 :END: 
 
 代码：
 #+begin_src js
-  compile(`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`, {
-    filename: `foo.vue`,
+  compile(`simple text`, {
+    filename: `foo.vue`
   })
 #+end_src
 
-[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-04][用例地址]]
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
 
 流程图：
-[[/img/vue3/compiler-core/compiler-test-interpolation-in-div-with-props.svg]]
+[[/img/vue3/compiler-core/compiler-test-simple-text.png]]
 
-** 03-inerpolation in pure div 
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: compiler-03
-:END: 
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-01][详细过程分析请点击链接。]]
 
-代码：
-#+begin_src js
-  compile(`<div>{{ world.burn() }}</div>`, {
-    filename: `foo.vue`,
-  })
-#+end_src
-
-[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][用例地址]]
-
-流程图：
-
-[[/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg]]
-
-[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][详细过程分析请点击链接。]]
 ** 02-pure interpolation 编译过程
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -326,25 +308,66 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 [[/img/vue3/compiler-core/compiler-test-pure-interpolation.png]]
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-02][详细过程分析请点击链接。]]
-** 01-simple text 编译过程
+** 03-inerpolation in pure div 
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: compiler-01
+:CUSTOM_ID: compiler-03
 :END: 
 
 代码：
 #+begin_src js
-  compile(`simple text`, {
-    filename: `foo.vue`
+  compile(`<div>{{ world.burn() }}</div>`, {
+    filename: `foo.vue`,
   })
 #+end_src
 
-[[/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01][01-simple-text 测试用例地址]]
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][用例地址]]
 
 流程图：
-[[/img/vue3/compiler-core/compiler-test-simple-text.png]]
 
-[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-01][详细过程分析请点击链接。]]
+[[/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg]]
+
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][详细过程分析请点击链接。]]
+** 04-interpolation in div with props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compiler-04
+:END: 
+
+代码：
+#+begin_src js
+  compile(`<div id="foo" :class="bar.baz">{{ world.burn() }}</div>`, {
+    filename: `foo.vue`,
+  })
+#+end_src
+
+[[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-04][用例地址]]
+
+流程图：
+[[/img/vue3/compiler-core/compiler-test-interpolation-in-div-with-props.svg]]
+
+** 05-interpolation, v-if, props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compiler-05
+:END:  
+
+#+begin_src js
+  code = `
+  <div id="foo" :class="bar.baz">
+  {{ world.burn() }}
+  <div v-if="ok">yes</div>
+  </div>`
+#+end_src
+
+如果放到一张图里面，实在太繁琐了，如下(还是只完成了部分 transform 流程)：
+
+[[/img/vue3/compiler-core/compiler-test-05-div-with-vif.svg]]
+
+1. 整体流程及导致结果
+2. parse ast 流程
+3. transform ast 流程，这部分会比较繁琐
+4. codegen generate 流程
 
 * 关键点
 ** TODO buildProps(node, context) 构建 props

@@ -192,7 +192,7 @@ window.g_need_fold = 1
 
 传递一些参数调用之后结果：
 
-#+begin_example
+#+begin_src js
   {_isVNode: true, type: "div", props: {…}, key: null, ref: null, …}
     anchor: null
     appContext: null
@@ -227,7 +227,8 @@ window.g_need_fold = 1
     type: "div"
     // 标识为虚拟节点
     _isVNode: true
-#+end_example
+
+#+end_src
 
 * compile.spec.ts
 由于 compile.spec.ts 原来只有一个用例，相对是比较复杂的，不利于学习。
