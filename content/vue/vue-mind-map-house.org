@@ -369,5 +369,98 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 3. transform ast 流程，这部分会比较繁琐
 4. codegen generate 流程
 
-* 关键点
-** TODO buildProps(node, context) 构建 props
+* 关键功能收集
+** DONE buildProps(node, context) 如何构建 props ?
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-01-build-props
+:END: 
+
+CLOSED: [2020-09-18 Fri 16:07]
+
+- State "DONE"       from "TODO"       [2020-09-18 Fri 16:07]
+
+
+props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例04]]) 
+
+[[http://qiniu.ii6g.com/img/20200918160246.png]]
+
+变成下面这样的：
+
+[[http://qiniu.ii6g.com/img/20200918160311.png]]
+
+完整流程：
+[[/img/vue3/compiler-core/lib/compiler-lib-01-build-props.svg]]
+
+** DONE transformIf() 是如何返回 v-if 指令的 transform 的？
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-02-transform-if
+:END: 
+
+
+参考[[#compiler-05][用例 05]]
+
+v-if 指令是如何转换的？？？
+
+这个转换函数又是怎么来的？？？
+
+得到这个转换函数过程中做了什么 ？？？
+
+#+begin_quote
+通过在 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] 中， switch node 阶段之前，收集 transform 函数到 ~exitFns[]~
+中的时候，如果遇到了 v-if 指令的元素，会执行 ~transformIf~ ，这个时候会遍历解析
+~node.props~ 拿到这个 v-if 指令属性，调用 processIf 将该节点转换成 
+
+#+begin_src js
+  {
+    branches: [branch],
+    type: 9 // IF
+  }
+#+end_src
+
+并且用这个新生成的节点结构去替换原来的 div v-if 节点结构。
+
+即：在拿到 transform if 函数之前 div v-if 节点结构已经发生了变化，成为了
+
+~type = 9~ 的结构，最后原来的节点成为了 branches 的元素。
+
+并且原节点的 props 会被清空(避免回溯的时候重复处理)。
+#+end_quote
+
+
+transformIf:
+
+#+begin_src js
+  const transformIf = createStructuralDirectiveTransform(
+    /^(if|else|else-if)$/,
+    (node, dir, context) => {
+      return processIf(node, dir, context, (ifNode, branch, isRoot) => {
+        // Exit callback. Complete the codegenNode when all children have been
+        // transformed.
+        return () => { // 这个才是真正在回溯过程中调用的 transform if 函数
+          if (isRoot) {
+            ifNode.codegenNode = createCodegenNodeForBranch(branch, 0, context);
+          } else {
+            // attach this branch's codegen node to the v-if root.
+            let parentCondition = ifNode.codegenNode;
+            while (
+              parentCondition.alternate.type ===
+                19 /* JS_CONDITIONAL_EXPRESSION */
+            ) {
+              parentCondition = parentCondition.alternate;
+            }
+            parentCondition.alternate = createCodegenNodeForBranch(
+              branch,
+              ifNode.branches.length - 1,
+              context
+            );
+          }
+        };
+      });
+    }
+  );
+#+end_src
+
+流程图：
+[[/img/vue3/compiler-core/lib/compiler-lib-02-transformIf-function.svg]]
