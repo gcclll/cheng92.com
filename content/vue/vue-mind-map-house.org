@@ -398,7 +398,6 @@ props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例
 :CUSTOM_ID: key-02-transform-if
 :END: 
 
-
 参考[[#compiler-05][用例 05]]
 
 v-if 指令是如何转换的？？？
