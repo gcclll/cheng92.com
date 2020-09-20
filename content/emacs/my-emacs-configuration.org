@@ -7,6 +7,17 @@
 
 我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
 
+* Awesome/有趣/实用
+
+| key       | function   | description                       |
+|-----------+------------+-----------------------------------|
+| ~SPC i s~ | ivy-yas    | 插入 snippet 实时显示要插入的内容 |
+| ~C-c i m~ | helm-imenu | 函数，变量列表                    |
+|           |            |                                   |
+
+~SPC i s~
+
+  [[http://qiniu.ii6g.com/img/20200919230430.png]]
 * Key bindings
 
   我的自定义按键：

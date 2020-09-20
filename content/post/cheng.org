@@ -181,6 +181,21 @@ https://github.com/algolia/autocomplete.js
 |               |              |                    |
 
 * 软件&命令
+** MacOs 工具
+*** 系统性工具
+1. [[https://setapp.sjv.io/c/1249877/344537/5114][setapp]]
+*** 软件网站
+1. [[https://xclient.info/][xclient.info]]
+*** 分屏
+1. [[https://highlyopinionated.co/swish/][Swish 手势分屏，付费]]
+   
+   使用中文教程： https://sspai.com/post/55285
+2. [[https://melisandre.nswebfrog.com/#/][Melisandre，付费]]
+3. [[https://manytricks.com/moom/][Moom，付费]]
+4. [[https://www.lightpillar.com/mosaic.html][Mosaic，付费]]
+5. [[https://apps.apple.com/cn/app/magnet/id441258766][Magnet，付费]]
+6. [[https://folivora.ai/][BetterTouchTool，付费]]
+7. Hammerspoon
 ** Alfred
 1. [[https://github.com/rtoshiro/alfred-workflows-textshortcut][Text Shourtcut]]
    
