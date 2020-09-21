@@ -5,4 +5,19 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-* RFCs
+#+begin_export html
+<script src="https://unpkg.com/vue@next"></script>
+#+end_export
+
+#+begin_export html
+<div id="v-counter">
+Counter: {{ counter }}
+<button type="button" class="btn btn-primary btn-sm" @click="counter++">+</button>
+&nbsp;<button type="button" class="btn btn-primary btn-sm" @click="counter--">-</button>
+</div>
+<script src="/vue/test.js"></script>
+#+end_export
+
+* TODO RFCs
+
+  https://github.com/vuejs/rfcs/blob/sfc-improvements/active-rfcs/0000-sfc-script-setup.md
