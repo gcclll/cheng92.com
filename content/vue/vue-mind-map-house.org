@@ -369,6 +369,12 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 3. transform ast 流程，这部分会比较繁琐
 4. codegen generate 流程
 
+transform 阶段流程图：
+[[/img/vue3/compiler-core/lib/compiler-lib-04-transform.svg]]
+
+generate 阶段流程图：
+[[/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg]]
+
 * 关键功能收集
 ** DONE buildProps(node, context) 如何构建 props ?
 :PROPERTIES:

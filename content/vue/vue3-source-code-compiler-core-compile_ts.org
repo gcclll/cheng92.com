@@ -499,6 +499,37 @@ vue.global 结果：
 
 3. 实现 [[#codegen-generate][generate]] 阶段的 if 节点处理
 
+   修改 [[#codegen-gennode][genNode]] 增加 ~IF, IF_BRANCH, JS_CALL_EXPRESSION, JS_CONDITIONAL_EXPRESSION~ 分支。
+   
+   增加 [[#codegen-gencallexpression][genCallExpression]] 函数生成参数。
+   
+   增加 [[#codegen-genconditionalexpression][genConditionalExpression]] 函数生成 if 分支(如： ~ok ? ... : ...~)
+   
+
+在完成上述三个步骤之后输出结果：
+
+#+begin_src js
+    (function anonymous(
+    ) {
+
+      return function render(_ctx, _cache) {
+        with (_ctx) {
+          const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, 
+                  createCommentVNode : _createCommentVNode, createTextVNode : _createTextVNode } = _Vue
+
+          return (_openBlock(), _createBlock("div", {
+            id: "foo",
+            class: bar.baz
+          }, [
+            _createTextVNode(_toDisplayString(world.burn()), 1 /* TEXT */),
+            ok
+              ? (_openBlock(), _createBlock("div", { key: 0 }, "yes"))
+              : _createCommentVNode("v-if", true)
+          ], 2 /* CLASS */))
+        }
+      }
+    })
+#+end_src
 ** 04-interpolation in div with props
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -2962,6 +2993,30 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
     // TODO directives end
   }
 #+end_src
+*** genCallExpression(node, context) 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gencallexpression
+:END: 
+
+#+begin_src js
+  function genCallExpression(node, context) {
+    const { push, helper, pure } = context;
+    const callee =
+          typeof node.callee === "string" ? node.callee : helper(node.callee);
+    if (pure) {
+      push(PURE_ANNOTATION);
+    }
+    push(callee + `(`, node);
+    genNodeList(node.arguments, context);
+    push(`)`);
+  }
+#+end_src
+*** genConditionalExpression(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genconditionalexpression
+:END: 
 ** 虚拟节点创建函数
 
 | name              | transform     | desc             |
