@@ -22,6 +22,8 @@
    ~/img/vue3/...~ ，单独访问加上域名就行： ~https://www.cheng92.com/img/vue3/...~
 #+end_quote
 
+@@html:<kbd>@@ *这里会尽量避免文字描述，但会保留基本的一些介绍信息。* @@html:</kbd>@@ 
+
 * compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
@@ -360,7 +362,7 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
   </div>`
 #+end_src
 
-如果放到一张图里面，实在太繁琐了，如下(还是只完成了部分 transform 流程)：
+如果放到一张图里面，实在太繁琐了，简化，拆分如下：
 
 [[/img/vue3/compiler-core/compiler-test-05-div-with-vif.svg]]
 
@@ -374,6 +376,66 @@ transform 阶段流程图：
 
 generate 阶段流程图：
 [[/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg]]
+
+* 功能性拆分(parser-compiler-generate-...)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg
+:END: 
+
+从 [[#compiler-01][compiler-01]] 开始都是针对某个示例做的分析，但是随时示例的模板复杂度增加，脑图
+的大小将越来越大，不堪重负，阅读回顾起来也很费劲，在完成了 [[#compiler-01][compiler-01]] -
+[[#compiler-05][compiler-05]] 之后对整个分析过程也有了大概的了解，另起这一章节的目的就是为了能单纯
+的针对某一特定功能绘制对应的流程图，比如：
+
+属性是如何解析的，最后在 render 函数中又是什么？
+
+插值？ ~v-if, v-else, v-for~ 等指令？
+
+又是如何解析的，了解了这些之后剩下的就是将所有需要的过程拼凑起来而已，后面也会看
+情况增加几个复杂或全的模板解析流程图。
+
+所以这一章节就很有必要了:dog::dog::dog::dog::dog: !!!
+
+#+begin_quote
+这一章节的所有脑图，绘制分为以下阶段，如果流程简单多个阶段可能会在同一张脑图上
+1. *parser* 阶段得到完整的 ast
+2. *compiler* 阶段解析 ast 生成节点 ~codegenNode~
+3. *generate* 阶段利用 ~codegenNode~ 组装成 render 函数
+4. 待续......
+#+end_quote
+** 纯标签 ~<div></div>~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-01
+:END: 
+
+结果：
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div"))
+      }
+    }
+  })
+#+end_src
+
+[[/img/vue3/compiler-core/pcg/pcg-01-pure-div.svg]]
+
+1. parser 阶段， [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement][parseElement]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]]
+2. compiler 阶段， [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform][transform]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren][traverseChildren]] ，只有 ~0,ROOT~
+   和 ~1,ELEMENT~ 两个类型分支处理。
+3. codegen 阶段，只有 div 的 block 处理(~_openBlock(), _createBlock("div")~)
+** 静态属性 ~<div id="foo"></div>~
+** v-bind 指令 ~<div :class="bar.baz"></div>~,
+** 插值 ~<div>{{ world.burn() }}</div>~
+** v-if 指令 ~<div><div v-if="ok">yes</div></div>~
 
 * 关键功能收集
 ** DONE buildProps(node, context) 如何构建 props ?
