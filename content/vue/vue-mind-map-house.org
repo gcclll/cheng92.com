@@ -22,8 +22,183 @@
    ~/img/vue3/...~ ，单独访问加上域名就行： ~https://www.cheng92.com/img/vue3/...~
 #+end_quote
 
-@@html:<kbd>@@ *这里会尽量避免文字描述，但会保留基本的一些介绍信息。* @@html:</kbd>@@ 
+#+begin_export html
+<kbd><font color="purple" size="3">
+1. 这里会尽量避免过多的文字描述，但会保留基本的一些介绍信息。<br>
+2. 这里所有的图片都是 svg 格式的，可直接通过链接打开(推荐新tab 中打开)，有些节点省略了过程但包含该过程的脑图链接</font></kbd>
+#+end_export
 
+* 功能性拆分(parser-compiler-generate-...)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg
+:END: 
+
+从 [[#compiler-01][compiler-01]] 开始都是针对某个示例做的分析，但是随时示例的模板复杂度增加，脑图
+的大小将越来越大，不堪重负，阅读回顾起来也很费劲，在完成了 [[#compiler-01][compiler-01]] -
+[[#compiler-05][compiler-05]] 之后对整个分析过程也有了大概的了解，另起这一章节的目的就是为了能单纯
+的针对某一特定功能绘制对应的流程图，比如：
+
+属性是如何解析的，最后在 render 函数中又是什么？
+
+插值？ ~v-if, v-else, v-for~ 等指令？
+
+又是如何解析的，了解了这些之后剩下的就是将所有需要的过程拼凑起来而已，后面也会看
+情况增加几个复杂或全的模板解析流程图。
+
+所以这一章节就很有必要了:dog::dog::dog::dog::dog: !!!
+
+#+begin_quote
+这一章节的所有脑图，绘制分为以下阶段，如果流程简单多个阶段可能会在同一张脑图上
+1. *parser* 阶段得到完整的 ast
+2. *compiler* 阶段解析 ast 生成节点 ~codegenNode~
+3. *generate* 阶段利用 ~codegenNode~ 组装成 render 函数
+4. 待续......
+#+end_quote
+** 纯标签 ~<div></div>~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-01
+:END: 
+
+结果：
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div"))
+      }
+    }
+  })
+#+end_src
+
+[[/img/vue3/compiler-core/pcg/pcg-01-pure-div.svg]]
+
+1. parser 阶段， [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement][parseElement]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]]
+
+   [[/img/vue3/compiler-core/pcg/pcg-01-1-parser-pure-div.svg]]
+   
+2. compiler 阶段， [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform][transform]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren][traverseChildren]] ，只有 ~0,ROOT~
+   和 ~1,ELEMENT~ 两个类型分支处理。
+
+   [[/img/vue3/compiler-core/pcg/pcg-01-2-compiler-pure-div.svg]]
+3. codegen 阶段，只有 div 的 block 处理(~_openBlock(), _createBlock("div")~)
+
+   [[/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg]]
+** 静态属性 ~<div id="foo"></div>~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-02
+:END: 
+
+1. *parser 阶段* ：
+
+   与 [[#pcg-01][pcg-01]] 相比较，多了左边 [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattributes][parseAttributes]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattribute][parseAttribute]] 解析属
+   性 ~id="foo"~ 的处理。
+   
+   [[/img/vue3/compiler-core/pcg/pcg-02-1-parser-div-with-id.svg]]
+2. *compiler 阶段：*
+   
+   与 [[#pcg-01][pcg-01]] 相比较，多了 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transformelement][transformElement]] 中 props 属性的处理，因为这个时候
+   props.length = 1 里面有一个 ~id="foo"~ 属性，需要去调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-buildprops][buildProps]] 解析，成下面
+   的解构:
+   
+    #+begin_src js
+    {
+      properties: [
+        {
+          key: { type:4, content: "id", ...}, // SIMPLE_EXPRESSION
+          value: {type: 4, content: "foo", ...},
+          type: 16 // JS_PROPERTY
+        }
+      ]
+        type: 15, // JS_OBJECT_EXPRESSION
+    }
+  #+end_src
+  
+   [[/img/vue3/compiler-core/pcg/pcg-02-2-compiler-div-with-id.svg]]
+3. *codegen 阶段：*
+
+   在 [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-gennodelist][genNodeList([tag, props, children, ...], ctx)]] 解析的时候，这里 props 不再是
+   null，因此会进入 Props 解析过程：
+
+   [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-gennode][genNode(props, ctx)]] -> *15,JS_OBJECT_EXPRESSION* -> [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genobjectexpression][genObjectExpression(node,
+   ctx)]] -> 遍历 *node.properties*  -> [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpressionaspropertykey][genExpressionPropertyKey(key,ctx)]] 生成属性
+   名 ~{ id: ~ -> ~genNode(value, ctx)~ 生成属性值 -> *4, SIMPLE_EXPRESSION* ->
+   [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpression][genExpression(value, ctx)]] 生成属性值 ~{ id: "foo"~
+   
+   [[/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg]]
+** v-bind 指令 ~<div :class="bar.baz"></div>~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-03
+:END: 
+
+结果预览：
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", { class: bar.baz }, null, 2 /* CLASS */))
+      }
+    }
+  })
+#+end_src
+
+1. *parser 阶段：*
+
+   [[/img/vue3/compiler-core/pcg/pcg-03-1-parser-div-with-bind.svg]]
+   
+2. *compiler 阶段：*
+
+   [[/img/vue3/compiler-core/pcg/pcg-03-2-compiler-div-with-bind.svg]]
+   
+3. *codegen 阶段：*
+
+   [[/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg]]
+** 插值 ~<div>{{ world.burn() }}</div>~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-04
+:END: 
+
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", null, _toDisplayString(world.burn()), 1 /* TEXT */))
+      }
+    }
+  })
+#+end_src
+
+1. *parser 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-04-1-parser-div-with-interpolation.svg]]
+   
+2. *compiler 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-04-2-compiler-div-with-interpolation.svg]]
+   
+3. *codegen 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg]]
+** v-if 指令 ~<div><div v-if="ok">yes</div></div>~
 * compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
@@ -377,67 +552,7 @@ transform 阶段流程图：
 generate 阶段流程图：
 [[/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg]]
 
-* 功能性拆分(parser-compiler-generate-...)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg
-:END: 
-
-从 [[#compiler-01][compiler-01]] 开始都是针对某个示例做的分析，但是随时示例的模板复杂度增加，脑图
-的大小将越来越大，不堪重负，阅读回顾起来也很费劲，在完成了 [[#compiler-01][compiler-01]] -
-[[#compiler-05][compiler-05]] 之后对整个分析过程也有了大概的了解，另起这一章节的目的就是为了能单纯
-的针对某一特定功能绘制对应的流程图，比如：
-
-属性是如何解析的，最后在 render 函数中又是什么？
-
-插值？ ~v-if, v-else, v-for~ 等指令？
-
-又是如何解析的，了解了这些之后剩下的就是将所有需要的过程拼凑起来而已，后面也会看
-情况增加几个复杂或全的模板解析流程图。
-
-所以这一章节就很有必要了:dog::dog::dog::dog::dog: !!!
-
-#+begin_quote
-这一章节的所有脑图，绘制分为以下阶段，如果流程简单多个阶段可能会在同一张脑图上
-1. *parser* 阶段得到完整的 ast
-2. *compiler* 阶段解析 ast 生成节点 ~codegenNode~
-3. *generate* 阶段利用 ~codegenNode~ 组装成 render 函数
-4. 待续......
-#+end_quote
-** 纯标签 ~<div></div>~
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-01
-:END: 
-
-结果：
-#+begin_src js
-  (function anonymous(
-  ) {
-    const _Vue = Vue
-
-    return function render(_ctx, _cache) {
-      with (_ctx) {
-        const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
-
-        return (_openBlock(), _createBlock("div"))
-      }
-    }
-  })
-#+end_src
-
-[[/img/vue3/compiler-core/pcg/pcg-01-pure-div.svg]]
-
-1. parser 阶段， [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement][parseElement]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]]
-2. compiler 阶段， [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform][transform]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren][traverseChildren]] ，只有 ~0,ROOT~
-   和 ~1,ELEMENT~ 两个类型分支处理。
-3. codegen 阶段，只有 div 的 block 处理(~_openBlock(), _createBlock("div")~)
-** 静态属性 ~<div id="foo"></div>~
-** v-bind 指令 ~<div :class="bar.baz"></div>~,
-** 插值 ~<div>{{ world.burn() }}</div>~
-** v-if 指令 ~<div><div v-if="ok">yes</div></div>~
-
-* 关键功能收集
+* 关键功能
 ** DONE buildProps(node, context) 如何构建 props ?
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -531,3 +646,16 @@ transformIf:
 
 流程图：
 [[/img/vue3/compiler-core/lib/compiler-lib-02-transformIf-function.svg]]
+** TODO codegen 如何生成属性(_createBLock(tag, props, ...))第二个参数？
+
+如：
+#+begin_src js
+  // ...
+
+  return (_openBlock(), _createBlock('div', {
+    id: "foo",
+    class: bar.baz
+  }))
+#+end_src
+
+id 和 class 是如何生成对象的。
