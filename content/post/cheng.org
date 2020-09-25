@@ -13,6 +13,43 @@
 ** TODO use algolia autocomplete.js
 
 https://github.com/algolia/autocomplete.js
+* 猿世界
+- [[https://www.w3schools.com/][w3schools]] 初学 
+- GeeksforGeeks，全英文不止有算法
+
+  [[http://qiniu.ii6g.com/img/20200925182624.png]]
+
+** 杂而全教学网站
+
+- [[https://www.tutorialspoint.com/index.htm][tutorialspoint]] 很多需要付费
+
+  [[http://qiniu.ii6g.com/img/20200925183016.png]]
+* 娱乐世界(play the world :game_die:)
+** app 门户
+- [[https://creatorsdaily.com/][创造者日报]] 各种类型的 app
+
+  [[http://qiniu.ii6g.com/img/20200925181809.png]]
+** 新闻娱乐
+- [[https://ef.zhiweidata.com/][知微事见]] - 最全的互联网社会热点聚合平台
+
+  [[http://qiniu.ii6g.com/img/20200925181419.png]]
+- 
+** 音乐世界
+1. [[https://www.jamendo.com/][Jamendo]], English Music Free Download
+2. [[https://www.westonemusic.com/][West One Music]]
+3. [[http://music.ifkdy.com/][疯狂音乐搜索]], 网易云，QQ 音乐，虾米音乐免费下载，搜了一两个点下载弹出 denied
+   拒绝下载。
+4. [[https://music.lkxin.cn/][清酒踏月在线音乐]]
+5. [[http://www.gequdaquan.net/gqss/][音乐聚合搜索引擎 可以下载，但是只能免费下两首，后面要付费。]]
+6. 全网音乐免费下载工具
+7. 墨灵音乐
+8. [[http://www.wsyyb.com/flac/][无损音乐吧]]
+9. bin music
+10. [[https://www.sq688.com/][超高无损音乐漫音社，百度网盘方式，试了下了5-6首，应该没限制，真正免费？]]
+11. [[http://hwkxk.cn/][Hwk 小站]]
+12. [[https://link.zhihu.com/?target=http%3A//tool.liumingye.cn/music/][MyFreeMP3]]
+13. [[http://music.runker.net/][行客VIP音乐下载网]]
+14. [[http://www.xieqian.vip/music/][Master.Xie]]
 * 前端开发
 不错的前端学习路线网站：https://objtube.github.io/front-end-roadmap/#/ 脑图方式
 展示。
@@ -260,22 +297,6 @@ https://github.com/qiniu/qshell
 ** PicGo
 
 https://github.com/PicGo
-* 娱乐世界(play the world :game_die:)
-1. [[https://www.jamendo.com/][Jamendo]], English Music Free Download
-2. [[https://www.westonemusic.com/][West One Music]]
-3. [[http://music.ifkdy.com/][疯狂音乐搜索]], 网易云，QQ 音乐，虾米音乐免费下载，搜了一两个点下载弹出 denied
-   拒绝下载。
-4. [[https://music.lkxin.cn/][清酒踏月在线音乐]]
-5. [[http://www.gequdaquan.net/gqss/][音乐聚合搜索引擎 可以下载，但是只能免费下两首，后面要付费。]]
-6. 全网音乐免费下载工具
-7. 墨灵音乐
-8. [[http://www.wsyyb.com/flac/][无损音乐吧]]
-9. bin music
-10. [[https://www.sq688.com/][超高无损音乐漫音社，百度网盘方式，试了下了5-6首，应该没限制，真正免费？]]
-11. [[http://hwkxk.cn/][Hwk 小站]]
-12. [[https://link.zhihu.com/?target=http%3A//tool.liumingye.cn/music/][MyFreeMP3]]
-13. [[http://music.runker.net/][行客VIP音乐下载网]]
-14. [[http://www.xieqian.vip/music/][Master.Xie]]
 * 问题列表
 ** 前端
 1. 怎么在 html 中使用 ~.svg~ 文件
