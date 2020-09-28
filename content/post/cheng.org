@@ -310,6 +310,17 @@ https://github.com/PicGo
    #+end_src
    
    1) https://vecta.io/blog/best-way-to-embed-svg
+2. google fonts 加速
+  
+   @@html:<kbd>@@直连更快...@@html:</kbd>@@ 
+   
+   | site                         | name          | ping    |
+   |------------------------------+---------------+---------|
+   | http://fonts.useso.com       | 360           | unknown |
+   | http://fonts.lug.ustc.edu.cn | 中科大        | 66ms    |
+   | http://fonts.css.network     | 捷速网络 香港 | 160ms   |
+   | http://fonts.gmirror.org     | 七牛          | timeout |
+
 ** 其他
 1. 怎么更新项目中所有的 ~npm~ 包?
 

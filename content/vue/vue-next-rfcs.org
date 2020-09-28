@@ -1,0 +1,248 @@
+#+TITLE: Vue3.0 RFCs 过眼云烟(古陵逝烟)
+#+DATE: <2020-09-19 20:56:48>
+#+TAGS[]: vue, vue3, vuenext
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vue@next"></script>
+#+end_export
+
+#+begin_export html
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：冷灯看剑，剑上几番功名？炉香无须计苍生，纵一川烟逝，万丈云埋，孤阳还照古陵。 
+</font>
+</kbd><br><br>
+#+end_export
+
+[[http://qiniu.ii6g.com/img/glsl-4.jpg]]
+  
+* 万能的 Counter
+#+begin_src js
+  {
+    // test
+    const Counter = {
+      data() {
+        return {
+          counter: 0,
+        };
+      },
+    };
+    Vue.createApp(Counter).mount("#v-test-counter");
+  }
+#+end_src
+
+#+begin_export html
+<div id="v-test-counter">
+Counter: {{ counter }}
+<button type="button" class="btn btn-primary btn-sm" @click="counter++">+</button>
+&nbsp;<button type="button" class="btn btn-primary btn-sm" @click="counter--">-</button>
+</div>
+#+end_export
+
+* 0001_0002-new-slot-syntax
+
+新 slot 语法。
+
+- 新 ~v-slot~ 指令将 ~slot~ 和 ~slot-scope~ 语法合并到一起了
+- ~v-slot~ 的缩写(*#*) 合并了 scoped 和 normal slots
+- ~slot-scope~ 3.0 中会被移除
+
+
+-----
+*result*:
+#+begin_export html
+<div id="v-test-slot">
+  <!-- 1. 默认 slot -->
+  <Foo v-slot="{ msg }" :style="{color: 'red'}"> {{ msg }}</Foo>
+  <!-- 2. 无属性的具名插槽 -->
+  <Foo v-slot:zero :style="{color: 'purple'}">2. 我是没有属性的具名插槽</Foo>
+  <!-- 也可以使用缩写 <Foo #="{ msg }">{{ msg }}</Foo> -->
+  <!-- 3. 具名插槽 -->
+  <Foo :style="{color: 'blue'}">
+    <!-- 具名 slot -->
+    <template v-slot:one="{ msg }">
+      {{ msg }}
+    </template>
+  </Foo>
+  <!-- 4. 具名插槽，指令缩写： v-bind -> # -->
+  <Foo :style="{color: 'green'}">
+    <template #two="{ msg }">
+      {{ msg }}
+    </template>
+  </Foo>
+  
+  <!-- 5. 嵌套插槽 -->
+  <Foo2 v-slot="foo" :style="{ color: 'darkorchid' }">
+    <bar v-slot="bar">
+      <baz v-slot="baz">
+      5. 插槽嵌套：{{ foo }} {{ bar }} {{ baz }}
+      </baz>
+    </bar>
+  </Foo2>
+  
+  <!-- 6. 插槽别名 -->
+  <Bax style="color:slateblue;">
+    <template #default>
+      6. 插槽别名：
+    </template>
+    <template #pending>
+    <p>Loading...</p>
+    </template>
+    
+    <template #resolved="{ users }">
+    <ul><li v-for="user in users">{{ user.name }}</li></ul>
+    </template>
+    
+    <template #rejected="{ error }">
+    <p>Error: {{ error.message }}</p>
+    </template>
+  </Bax>
+</div>
+
+#+end_export
+-----
+
+*template*:
+#+begin_src html
+  <div id="v-test-slot">
+    <!-- 1. 默认 slot -->
+    <Foo v-slot="{ msg }" :style="{color: 'red'}"> {{ msg }}</Foo>
+    <!-- 2. 无属性的具名插槽 -->
+    <Foo v-slot:zero :style="{color: 'purple'}">2. 我是没有属性的具名插槽</Foo>
+    <!-- 也可以使用缩写 <Foo #="{ msg }">{{ msg }}</Foo> -->
+    <!-- 3. 具名插槽 -->
+    <Foo :style="{color: 'blue'}">
+      <!-- 具名 slot -->
+      <template v-slot:one="{ msg }">
+        {{ msg }}
+      </template>
+    </Foo>
+    <!-- 4. 具名插槽，指令缩写： v-bind -> # -->
+    <Foo :style="{color: 'green'}">
+      <template #two="{ msg }">
+        {{ msg }}
+      </template>
+    </Foo>
+  
+    <!-- 5. 嵌套插槽 -->
+    <Foo2 v-slot="foo" :style="{ color: 'darkorchid' }">
+      <bar v-slot="bar">
+        <baz v-slot="baz">
+        5. 插槽嵌套：{{ foo }} {{ bar }} {{ baz }}
+        </baz>
+      </bar>
+    </Foo2>
+  
+    <!-- 6. 插槽别名 -->
+    <Bax style="color:slateblue;">
+      <template #default>
+        6. 插槽别名：
+      </template>
+      <template #pending>
+      <p>Loading...</p>
+      </template>
+    
+      <template #resolved="{ users }">
+      <ul><li v-for="user in users">{{ user.name }}</li></ul>
+      </template>
+    
+      <template #rejected="{ error }">
+      <p>Error: {{ error.message }}</p>
+      </template>
+    </Bax>
+  </div>
+
+#+end_src
+
+*javascript*:
+#+begin_src js
+  {
+    // slot 语法
+    const app = Vue.createApp({
+      data() {
+        return {
+          msg: "hello slot !",
+        };
+      },
+    });
+
+    app.component("foo", {
+      data() {
+        return {
+          defaultSlotMsg:
+            "1. 我是默认插槽 default，直接应用在 Foo 上 <Foo v-slot>",
+          namedSlotMsg: "3. 我是具名插槽",
+          shortSlotMsg: "4. 我是插槽指令缩写 shorthand",
+        };
+      },
+      template: `
+        <div>
+          <slot :msg="defaultSlotMsg"></slot>
+          <slot name="zero"></slot>
+          <slot name="one" :msg="namedSlotMsg"></slot>
+          <slot name="two" :msg="shortSlotMsg"></slot>
+        </div>`,
+    });
+
+    app.component("foo2", {
+      data() {
+        return { foo: "foo" };
+      },
+      template: `<div><slot :foo="foo"></slot></div>`,
+    });
+
+    app.component("bar", {
+      data() {
+        return { bar: "bar" };
+      },
+      template: `<div><slot :bar="bar"></slot></div>`,
+    });
+
+    app.component("baz", {
+      data() {
+        return { baz: "baz" };
+      },
+      template: `<div><slot :baz="baz"></slot></div>`,
+    });
+
+    app.component("bax", {
+      data() {
+        return {
+          users: [{ name: "foo" }, { name: "bar" }, { name: "baz" }],
+          error: {
+            message: "接口返回 500, 后端接锅。",
+          },
+        };
+      },
+      template: `
+        <div>
+          <slot></slot>
+          <div :style="{ 'text-indent': '1rem' }">
+            <slot name="pending"></slot>
+            <slot name="resolved" :users="users"></slot>
+            <slot name="rejected" :error="error"></slot>
+          </div>
+        </div>`,
+    });
+
+    app.mount("#v-test-slot");
+  }
+#+end_src
+
+*注意点* ：
+#+begin_quote
+This is why I now believe allowing using =slot-scope= without a template was a
+mistake.
+
+言外之意：请结合 ~<template>~ 去使用 ~slot~
+#+end_quote
+
+* TODO 0003-dynamic-directive-arguments
+* import js
+#+begin_export html
+<script src="/vue/test.js"></script>
+#+end_export

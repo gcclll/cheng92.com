@@ -1,0 +1,29 @@
+#+TITLE: si道友免si贫道
+#+DATE: <2020-09-28 14:44:55>
+#+TAGS[]: life, interesting, funny
+#+CATEGORIES[]: life
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+#+end_export
+
+* 古陵逝烟
+
+  #+begin_quote
+  烟都众人崇仰的大宗师，乃创立烟都基业与传统之人。为人高深莫测，冷峻绝艳，武学造诣有“一式留神”之美称，天地人三剑更是震慑当世。性格冷言疏淡，看似退居幕后，却凡事尽在其眼中，素以商人重利施恩卖义自居，游走各方坐收渔利，运筹帷幄掌控烟都行事方针。心机深沉难以臆测，关系着冰楼血案与巨魔神失落之谜 [1]  。
+  #+end_quote
+  
+  #+begin_export html
+  <kbd>
+  <font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：冷灯看剑，剑上几番功名？炉香无须计苍生，纵一川烟逝，万丈云埋，孤阳还照古陵。 
+  </font>
+  </kbd><br><br>
+  #+end_export
+  
+  [[http://qiniu.ii6g.com/img/glsl-1.png]]
+  
+  [[http://qiniu.ii6g.com/img/glsl-2.jpeg
+]]
