@@ -399,7 +399,7 @@ CLOSED: [2020-09-28 Mon 10:55]
 
 [[/img/vue3/compiler-core/key/key-04-how-hoist-props.svg]]
 
-transform 阶段是在 执行完 [[vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode()]] 之后调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-hoiststatic][hoistStatic(root,context)]] 通过 walk() 递归遍历
+*transform* 阶段是在 执行完 [[vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode()]] 之后调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-hoiststatic][hoistStatic(root,context)]] 通过 walk() 递归遍历
 所有的孩子节点来检测满足条件的 hoist 属性或节点。
 
 #+begin_quote
@@ -407,8 +407,20 @@ transform 阶段是在 执行完 [[vue/vue3-source-code-compiler-core-compile_ts
 ~options.hoistStatic = true~)。
 #+end_quote
 
-codegen 阶段是在 [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genfunctionpreamble][genFunctionPreamable(ast, context)]] 检测 ast.hoists 数组将需要用
+*codegen* 阶段是在 [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genfunctionpreamble][genFunctionPreamable(ast, context)]] 检测 ast.hoists 数组将需要用
 到的函数提升到 render 之外，然后调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genhoists][genHoists(ast.hoists)]] 生成需要提升的属性。
+
+最后根据：
+
+#+begin_src js
+  node:
+    content: "_hoisted_1"
+    isConstant: true
+    isStatic: false
+    type: 4 // SIMPLE_EXPRESSION
+#+end_src
+
+最后用 ~_hoisted_1~ 来替代 ~{ key: 0 }~ 这个惊天属性。
 * compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
