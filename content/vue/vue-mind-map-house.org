@@ -35,7 +35,7 @@
 4. <2020-09-28 Mon> 所有脑图修改为 svg 格式，建议通过新 tab 打开，有些节点可能包含链
    接。
 
-* 功能性拆分(parser-compiler-generate-...)
+* 🌩 功能性拆分(parser-compiler-generate-...)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg
@@ -249,7 +249,7 @@ vue.global:
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg]]
-* 关键功能
+* ☀ 关键功能
 这一章节是针对整个 vue3 源码解构过程中遇到的问题或一些重要或关键的一些功能，进
 行提取解读。
 ** DONE buildProps(node, context) 如何构建 props ?
@@ -428,7 +428,7 @@ CLOSED: [2020-09-28 Mon 10:55]
 #+end_src
 
 最后用 ~_hoisted_1~ 来替代 ~{ key: 0 }~ 这个惊天属性。
-* compiler-core: parser
+* ☁ compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 
@@ -658,7 +658,7 @@ html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返
 流程图：
 [[/img/vue3/compiler-core/parser-test-simple-text.png]]
 
-* compiler-core: compiler
+* 🌙 compiler-core: compiler
 
 vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 render 函数。
 
