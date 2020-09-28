@@ -626,7 +626,7 @@ vue.global:
       - ~NodeTypes.INTERPOLATION~ 对于插值节点，不会进入 ~traverseChildren~ 而是在
         switch 分支中调用 ~context.helper()~ 去更新 ~context.helpers~ 用来从 ~Vue~ 中
         解构出需要的函数。
-   2) TODO hoistStatic(root, context) 静态提升用的，针对静态节点提升到函数外面(这里暂
+   2) TODO [[#transform-hoiststatic][hoistStatic(root, context)]] 静态提升用的，针对静态节点提升到函数外面(这里暂
       时未深入，没用到)
    3) [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-createrootcodegen][createRootCodegen(root, context)]] 生成 root.codegenNode ，有可能是来自第一
       个且唯一一个孩子节点，分为两个分支具体细节点击函数链接。
@@ -1288,6 +1288,16 @@ vue.global 结果：
       }
     })
 #+end_src
+
+*** hoisted 支持
+
+1. [[#codegen-genfunctionpreamble][genFunctionPreamble(ast, context)]] 中增加 [[#codegen-genhoists][genHoists(ast.hoists, context)]]
+2. transform 阶段对 ~hoisted~ 处理([[https://github.com/vuejs/vue-next/blob/master/packages/compiler-core/src/transforms/hoistStatic.ts][transforms/hoistStatic.ts]] 的 ~walk()~ 函数，遍
+   历所有孩子节点，找出节点 props 中所有属性名为 *key* 或 *ref* 的属性)
+3. transform.js 的 context.hoist() 实现，修改 props 属性
+
+   这里 vue.global.js 和 实际 vue transform.ts 中的代码有细微差别，但不影响整体
+   流程，不知道为何？
 * 函数列表
 ** compile.ts
 *** baseCompile(template, options)
@@ -2410,6 +2420,111 @@ fragment 将这些 children 包起来的。
     };
   }
 #+end_src
+*** hoistStatic(root, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-hoiststatic
+:END: 
+
+#+begin_src js
+  // 静态提升，将静态文本节点提升吗？？？
+  export function hoistStatic(root, context) {
+    walk(
+      root.children,
+      context,
+      new Map(),
+      isSingleElementRoot(root, root.children[0])
+    );
+  }
+#+end_src
+*** walk(children, context, resultCache, doNotHoistNode = false)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-walk
+:END: 
+
+#+begin_src js
+
+  function walk(children, context, resultCache, doNotHoistNode = false) {
+    let hasHoistedNode = false;
+
+    let hasRuntimeConstant = false;
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+
+      if (
+        child.type === NodeTypes.ELEMENT &&
+        child.tagType === ElementTypes.ELEMENT
+      ) {
+        let staticType;
+
+        if (
+          !doNotHoistNode &&
+          (staticType === getStaticType(child, resultCache)) > 0
+        ) {
+          if (staticType === StaticType.HAS_RUNTIME_CONSTANT) {
+            hasRuntimeConstant = true;
+          }
+
+          // 整个树都是静态的
+          child.codegenNode.patchFlag =
+            PatchFlags.HOISTED + (__DEV__ ? ` /* HOISTED */` : ``);
+
+          child.codegenNode = context.hoist(child.codegenNode);
+          hasHoistedNode = true;
+          continue;
+        } else {
+          // 节点包含动态孩子节点，但是它的属性可能符合 hoisting 条件
+          const codegenNode = child.codegenNode;
+          if (codegenNode.type === NodeTypes.VNODE_CALL) {
+            const flag = getPatchFlag(codegenNode);
+            if (
+              (!flag ||
+                flag === PatchFlags.NEED_PATCH ||
+                flag === PatchFlags.TEXT) &&
+              !hasDynamicKeyOrRef(child) &&
+              !hasCachedProps(child)
+            ) {
+              const props = getNodeProps(child);
+              if (props) {
+                codegenNode.props = context.hoist(props);
+              }
+            }
+          }
+        }
+      } else if (child.type === NodeTypes.TEXT_CALL) {
+        const staticType = getStaticType(child.content, resultCache);
+        if (staticType > 0) {
+          if (staticType === StaticType.HAS_RUNTIME_CONSTANT) {
+            hasRuntimeConstant = true;
+          }
+
+          child.codegenNode = context.hoist(child.codegenNode);
+          hasHoistedNode = true;
+        }
+      }
+
+      // 递归孩子节点
+      if (child.type === NodeTypes.ELEMENT) {
+        walk(child.children, context, resultCache);
+      } else if (child.type === NodeTypes.FOR) {
+        // 不提升 v-for 单孩子节点因为它会变成一个 block
+        walk(child.children, context, resultCache, child.children.length === 1);
+      } else if (child.type === NodeTypes.IF) {
+        for (let i = 0; i < child.branches.length; i++) {
+          const branchChildren = child.branches[i].children;
+          // 不提升 v-if 单孩子节点因为它会变成一个 block
+          walk(branchChildren, context, resultCache, branchChildren.length === 1);
+        }
+      }
+    }
+
+    if (!hasRuntimeConstant && hasHoistedNode && context.transformHoist) {
+      context.transformHoist(children, context);
+    }
+  }
+#+end_src
 ** codegen.ts
 *** createCodgenContext(ast, context)
 :PROPERTIES:
@@ -3027,17 +3142,58 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 :CUSTOM_ID: codegen-genfunctionpreamble
 :END:
 
-**** stage-1: [[#test-cc-01][01 simple text]]
-对于纯文本这里不需要更多的处理，只需要最后的 ~`return `~
+1. 生成 ~const _Vue = Vue~
+2. 一些函数的全局提升解构，如： ~const { createVNode: _createVnode } = _Vue~
+3. 一些静态属性提升，如： ~const _hoisted_1 = {key: 0}~
 
 #+begin_src js
 
   function genFunctionPreamble(ast, context) {
-    const { push, newline } = context;
+    const {
+      push,
+      newline,
+      ssr,
+      runtimeGlobalName,
+      runtimeModuleName,
+      prefixIdentifiers,
+    } = context;
 
     // TODO ...
+    const VueBinding =
+      !__BROWSER__ && ssr
+        ? `require(${JSON.striingify(runtimeModuleName)})`
+        : runtimeGlobalName;
 
-    newline()
+    const aliasHelper = (s) => `${helperNameMap[s]}: _${helperNameMap[s]}`;
+
+    if (ast.helpers.length > 0) {
+      if (!__BROWSER__ && prefixIdentifiers) {
+        push(
+          `const { ${ast.helpers.map(aliasHelper).join(", ")} } = ${VueBinding}\n`
+        );
+      } else {
+        // with 模式，重命名 Vue 避免冲突
+        push(`const _Vue = ${VueBinding}\n`);
+
+        if (ast.hoists.length) {
+          const staticHelpers = [
+            CREATE_VNODE,
+            CREATE_COMMENT,
+            CREATE_TEXT,
+            CREATE_STATIC,
+          ]
+            .filter((helper) => ast.helpers.includes(helper))
+            .map(aliasHelper)
+            .join(", ");
+
+          push(`const { ${staticHelpers} } = _Vue\n`);
+        }
+      }
+    }
+
+    // TODO 生成 ssr helpers 变量
+    genHoists(ast.hoists, context);
+    newline();
     push(`return `);
   }
 #+end_src
@@ -3157,6 +3313,47 @@ TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就�
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: codegen-genconditionalexpression
 :END: 
+*** genHoists(ast.hoists, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genhoists
+:END: 
+
+1. scope id 处理
+2. 静态提升 ~const _hoisted_i = xxx~
+
+#+begin_src js
+
+  function genHoists(hoists, context) {
+    if (!hoists.length) {
+      return;
+    }
+    context.pure = true;
+    const { push, newline, helper, scopeId, mode } = context;
+    const genScopeId = !__BROWSER__ && scopeId != null && mode !== "function";
+    newline();
+
+    // 先 push scope id 在初始化 hoisted vnodes 之前，从而这些节点能获取到适当的 scopeId
+    if (genScopeId) {
+      push(`${helper(PUSH_SCOPE_ID)}("${scopeId}")`);
+      newline();
+    }
+
+    hoists.forEach((exp, i) => {
+      if (exp) {
+        push(`const _hoisted_${i + 1} = `);
+        genNode(exp, context);
+        newline();
+      }
+    });
+
+    if (genScopeId) {
+      push(`${helper(POP_SCOPE_ID)}()`);
+      newline();
+    }
+    context.pure = false;
+  }
+#+end_src
 ** 虚拟节点创建函数
 
 | name              | transform     | desc             |

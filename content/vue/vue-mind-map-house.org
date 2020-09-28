@@ -13,10 +13,10 @@
 :star: :star: 图片已全部更新到 ~https://www.cheng92.com/img/...~ 下
 
 :smile: 更新日志
-1. <2020-09-07 Mon>  所有图片修改为 github 地址，后续修改图片可以直接使用，而不
-   需要上传到七牛。
+1. <2020-09-07 Mon>  +所有图片修改为 github 地址，后续修改图片可以直接使用，而不
+   需要上传到七牛。+
    
-2. <2020-09-10 Thu>  图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 自动同步自 [[https://github.com/gcclll/mind-maps.git][github]]。
+2. <2020-09-10 Thu>  +图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 自动同步自 [[https://github.com/gcclll/mind-maps.git][github]]。+
 
 3. <2020-09-11 Fri>  更新图片到博客目录 ~/static/imgs/...~ ，文内访问路径：
    ~/img/vue3/...~ ，单独访问加上域名就行： ~https://www.cheng92.com/img/vue3/...~
@@ -199,6 +199,216 @@
 
    [[/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg]]
 ** v-if 指令 ~<div><div v-if="ok">yes</div></div>~
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-05
+:END: 
+
+vue.global:
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+    const { createVNode: _createVNode, createCommentVNode: _createCommentVNode } = _Vue
+
+    const _hoisted_1 = { key: 0 }
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode } = _Vue
+
+        return (_openBlock(), _createBlock("div", null, [
+          ok
+            ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+            : _createCommentVNode("v-if", true)
+        ]))
+      }
+    }
+  })
+#+end_src
+
+差异点：
+
+- 少了全局作用域下的 ~_Vue~ 解构
+- key 没有 hoisted
+  
+脑图列表： 
+1. *parser 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-1-parser-div-with-if.svg]]
+2. *compiler 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-2-compiler-div-with-if.svg]]
+3. *codegen 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg]]
+* 关键功能
+这一章节是针对整个 vue3 源码解构过程中遇到的问题或一些重要或关键的一些功能，进
+行提取解读。
+** DONE buildProps(node, context) 如何构建 props ?
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-01-build-props
+:END: 
+
+CLOSED: [2020-09-18 Fri 16:07]
+
+- State "DONE"       from "TODO"       [2020-09-18 Fri 16:07]
+
+
+props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例04]]) 
+
+[[http://qiniu.ii6g.com/img/20200918160246.png]]
+
+变成下面这样的：
+
+[[http://qiniu.ii6g.com/img/20200918160311.png]]
+
+完整流程：
+[[/img/vue3/compiler-core/lib/compiler-lib-01-build-props.svg]]
+
+** DONE transformIf() 是如何返回 v-if 指令的 transform 的？
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-02-transform-if
+:END: 
+
+参考[[#compiler-05][用例 05]]
+
+v-if 指令是如何转换的？？？
+
+这个转换函数又是怎么来的？？？
+
+得到这个转换函数过程中做了什么 ？？？
+
+#+begin_quote
+通过在 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] 中， switch node 阶段之前，收集 transform 函数到 ~exitFns[]~
+中的时候，如果遇到了 v-if 指令的元素，会执行 ~transformIf~ ，这个时候会遍历解析
+~node.props~ 拿到这个 v-if 指令属性，调用 processIf 将该节点转换成 
+
+#+begin_src js
+  {
+    branches: [branch],
+    type: 9 // IF
+  }
+#+end_src
+
+并且用这个新生成的节点结构去替换原来的 div v-if 节点结构。
+
+即：在拿到 transform if 函数之前 div v-if 节点结构已经发生了变化，成为了
+
+~type = 9~ 的结构，最后原来的节点成为了 branches 的元素。
+
+并且原节点的 props 会被清空(避免回溯的时候重复处理)。
+#+end_quote
+
+
+transformIf:
+
+#+begin_src js
+  const transformIf = createStructuralDirectiveTransform(
+    /^(if|else|else-if)$/,
+    (node, dir, context) => {
+      return processIf(node, dir, context, (ifNode, branch, isRoot) => {
+        // Exit callback. Complete the codegenNode when all children have been
+        // transformed.
+        return () => { // 这个才是真正在回溯过程中调用的 transform if 函数
+          if (isRoot) {
+            ifNode.codegenNode = createCodegenNodeForBranch(branch, 0, context);
+          } else {
+            // attach this branch's codegen node to the v-if root.
+            let parentCondition = ifNode.codegenNode;
+            while (
+              parentCondition.alternate.type ===
+                19 /* JS_CONDITIONAL_EXPRESSION */
+            ) {
+              parentCondition = parentCondition.alternate;
+            }
+            parentCondition.alternate = createCodegenNodeForBranch(
+              branch,
+              ifNode.branches.length - 1,
+              context
+            );
+          }
+        };
+      });
+    }
+  );
+#+end_src
+
+流程图：
+[[/img/vue3/compiler-core/lib/compiler-lib-02-transformIf-function.svg]]
+** TODO codegen 如何生成属性(_createBLock(tag, props, ...))第二个参数？
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-03-how-gen-props
+:END: 
+
+如：
+#+begin_src js
+  // ...
+
+  return (_openBlock(), _createBlock('div', {
+    id: "foo",
+    class: bar.baz
+  }))
+#+end_src
+
+id 和 class 是如何生成对象的。
+
+** DONE transform 阶段如何对属性静态提升？ 
+CLOSED: [2020-09-28 Mon 10:55]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-04-how-hoist
+:END: 
+
+- State "DONE"       from "TODO"       [2020-09-28 Mon 10:55]
+没有 hoist 之前：
+
+#+begin_src js
+  return (_openBlock(), _createBlock("div", null, [
+    ok
+      ? (_openBlock(), _createBlock("div", { key: 0 }, "yes"))
+      : _createCommentVNode("v-if", true)
+  ]))
+#+end_src
+
+有 hoist 之后：
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+    // ... 省略
+
+    // 提升到 render 函数之后
+    const _hoisted_1 = { key: 0 }
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        // ... 省略
+        return (_openBlock(), _createBlock("div", null, [
+          ok
+            ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+            : _createCommentVNode("v-if", true)
+        ]))
+      }
+    }
+  })
+#+end_src
+
+[[/img/vue3/compiler-core/key/key-04-how-hoist-props.svg]]
+
+transform 阶段是在 执行完 [[vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode()]] 之后调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-hoiststatic][hoistStatic(root,context)]] 通过 walk() 递归遍历
+所有的孩子节点来检测满足条件的 hoist 属性或节点。
+
+#+begin_quote
+即：静态提升动作发生在所有节点的 codegenNode 解析完毕之后(且满足：
+~options.hoistStatic = true~)。
+#+end_quote
+
+codegen 阶段是在 [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genfunctionpreamble][genFunctionPreamable(ast, context)]] 检测 ast.hoists 数组将需要用
+到的函数提升到 render 之外，然后调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genhoists][genHoists(ast.hoists)]] 生成需要提升的属性。
 * compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
@@ -552,110 +762,3 @@ transform 阶段流程图：
 generate 阶段流程图：
 [[/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg]]
 
-* 关键功能
-** DONE buildProps(node, context) 如何构建 props ?
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: key-01-build-props
-:END: 
-
-CLOSED: [2020-09-18 Fri 16:07]
-
-- State "DONE"       from "TODO"       [2020-09-18 Fri 16:07]
-
-
-props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例04]]) 
-
-[[http://qiniu.ii6g.com/img/20200918160246.png]]
-
-变成下面这样的：
-
-[[http://qiniu.ii6g.com/img/20200918160311.png]]
-
-完整流程：
-[[/img/vue3/compiler-core/lib/compiler-lib-01-build-props.svg]]
-
-** DONE transformIf() 是如何返回 v-if 指令的 transform 的？
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: key-02-transform-if
-:END: 
-
-参考[[#compiler-05][用例 05]]
-
-v-if 指令是如何转换的？？？
-
-这个转换函数又是怎么来的？？？
-
-得到这个转换函数过程中做了什么 ？？？
-
-#+begin_quote
-通过在 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] 中， switch node 阶段之前，收集 transform 函数到 ~exitFns[]~
-中的时候，如果遇到了 v-if 指令的元素，会执行 ~transformIf~ ，这个时候会遍历解析
-~node.props~ 拿到这个 v-if 指令属性，调用 processIf 将该节点转换成 
-
-#+begin_src js
-  {
-    branches: [branch],
-    type: 9 // IF
-  }
-#+end_src
-
-并且用这个新生成的节点结构去替换原来的 div v-if 节点结构。
-
-即：在拿到 transform if 函数之前 div v-if 节点结构已经发生了变化，成为了
-
-~type = 9~ 的结构，最后原来的节点成为了 branches 的元素。
-
-并且原节点的 props 会被清空(避免回溯的时候重复处理)。
-#+end_quote
-
-
-transformIf:
-
-#+begin_src js
-  const transformIf = createStructuralDirectiveTransform(
-    /^(if|else|else-if)$/,
-    (node, dir, context) => {
-      return processIf(node, dir, context, (ifNode, branch, isRoot) => {
-        // Exit callback. Complete the codegenNode when all children have been
-        // transformed.
-        return () => { // 这个才是真正在回溯过程中调用的 transform if 函数
-          if (isRoot) {
-            ifNode.codegenNode = createCodegenNodeForBranch(branch, 0, context);
-          } else {
-            // attach this branch's codegen node to the v-if root.
-            let parentCondition = ifNode.codegenNode;
-            while (
-              parentCondition.alternate.type ===
-                19 /* JS_CONDITIONAL_EXPRESSION */
-            ) {
-              parentCondition = parentCondition.alternate;
-            }
-            parentCondition.alternate = createCodegenNodeForBranch(
-              branch,
-              ifNode.branches.length - 1,
-              context
-            );
-          }
-        };
-      });
-    }
-  );
-#+end_src
-
-流程图：
-[[/img/vue3/compiler-core/lib/compiler-lib-02-transformIf-function.svg]]
-** TODO codegen 如何生成属性(_createBLock(tag, props, ...))第二个参数？
-
-如：
-#+begin_src js
-  // ...
-
-  return (_openBlock(), _createBlock('div', {
-    id: "foo",
-    class: bar.baz
-  }))
-#+end_src
-
-id 和 class 是如何生成对象的。
