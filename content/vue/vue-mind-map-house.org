@@ -249,6 +249,68 @@ vue.global:
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg]]
+*** 拓展 1：v-if-else 指令 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-05-01
+:END: 
+
+~<div><div v-if="ok">yes</div><div v-else>no</div></div>~
+
+vue.global:
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+    const { createVNode: _createVNode, createCommentVNode: _createCommentVNode } = _Vue
+
+    const _hoisted_1 = { key: 0 }
+    const _hoisted_2 = { key: 1 }
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode } = _Vue
+
+        return (_openBlock(), _createBlock("div", null, [
+          ok
+            ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+            : (_openBlock(), _createBlock("div", _hoisted_2, "no"))
+        ]))
+      }
+    }
+  })
+#+end_src
+
+与 [[#pcg-05][pcg-05]] 差异：
+
+#+begin_src js
+  ok
+    ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+    : _createCommentVNode("v-if", true) // 这里没有 elseif, else 分支会创建一个注释节点
+#+end_src
+
+和
+
+#+begin_src js
+  ok
+    ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+    : (_openBlock(), _createBlock("div", _hoisted_2, "no")) // 分支节点
+#+end_src
+
+造成这差一点是在哪处理的呢？？？
+
+v-if 指令的 codegen 过程有三个重要因素：
+1. test 生成条件表达式
+2. consequent 生成成立条件(~ok=true~)表达式的
+3. alternate 生成失败条件(~ok=false~)表达式的
+
+因此该扩展重点在 alternate 处理 🛬...
+*** 拓展 2：v-if-elseif-else 指令 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-05-02
+:END: 
+
 * ☀ 关键功能
 这一章节是针对整个 vue3 源码解构过程中遇到的问题或一些重要或关键的一些功能，进
 行提取解读。
