@@ -305,6 +305,43 @@ v-if 指令的 codegen 过程有三个重要因素：
 3. alternate 生成失败条件(~ok=false~)表达式的
 
 因此该扩展重点在 alternate 处理 🛬...
+
+在 transform 阶段针对 ~v-else~ 的处理逻辑：
+
+#+begin_quote
+traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函数过程中，有
+以下几个重要步骤：
+
+1. 遍历当前 ~v-else~ 节点的所有兄弟节点(~siblings=parent.children~)
+2. 找到当前节点 node 在 ~siblings~ 中的位置 i
+3. ~while i--~ 依次往前找兄弟节点(如果是 *COMMENT* 节点，删除保存待恢复，如果是
+   *9,IF* 节点即找到的目标节点 sibling)
+4. 删除当前的 node 同时调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-createifbranch][createIfBranch]] 创建 ~10,IF_BRANCH~ 类型的分支节点结
+   构，合并到 ~sibling.branches~ 中
+   
+5. 调用 processCodegen 函数即 transformIf 时候执行会得到生成 codegenNode 的那个
+   函数，执行它获取 tranform 函数 exitFn。
+6. 手动执行 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode(node, ...)]] 进行递归遍历该 v-else 节点树(*因为在 4 中节点
+   被删除了，因此主递归线上不会出现这个节点，因此需要手动执行一次 traverse*)
+7. 最后执行 exitFn 生成该 v-else 节点树的 ~codegenNode~ 。
+
+   *注意点* ：这一步 v-else 替换 alternate 过程中有个 while 循环用来递归查找非
+   *19,JS_CONDITIONAL_EXPRESSION* 类型的节点的 alternate 再进行替换，这么做的原
+   因是 v-if-else 指令的在 render 函数中是通过三目运算符(~?:~)实现的，一般情况下
+   ~:~ 后面的是一个 comment vnode 类型占位用，当实际有 else 分支的时候会进行替换，
+   此时替换需要考虑到表达式嵌套的情况，所以需要找到最后那个 comment vnode ，详细
+   步骤直接看脑图吧。
+
+#+end_quote
+
+1. *parser 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-01-1-parser-div-with-if-else.svg]]
+2. *transform 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-01-2-compiler-div-with-if-else.svg]]
+   
+3. *codegen 阶段*
 *** 拓展 2：v-if-elseif-else 指令 
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -334,7 +371,7 @@ props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例
 [[http://qiniu.ii6g.com/img/20200918160311.png]]
 
 完整流程：
-[[/img/vue3/compiler-core/lib/compiler-lib-01-build-props.svg]]
+[[/img/vue3/compiler-core/key/key-01-how-build-props.svg]]
 
 ** DONE transformIf() 是如何返回 v-if 指令的 transform 的？
 :PROPERTIES:
@@ -371,7 +408,6 @@ v-if 指令是如何转换的？？？
 并且原节点的 props 会被清空(避免回溯的时候重复处理)。
 #+end_quote
 
-
 transformIf:
 
 #+begin_src js
@@ -406,7 +442,7 @@ transformIf:
 #+end_src
 
 流程图：
-[[/img/vue3/compiler-core/lib/compiler-lib-02-transformIf-function.svg]]
+[[/img/vue3/compiler-core/key/key-02-transform-if.svg]]
 ** TODO codegen 如何生成属性(_createBLock(tag, props, ...))第二个参数？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -490,6 +526,88 @@ CLOSED: [2020-09-28 Mon 10:55]
 #+end_src
 
 最后用 ~_hoisted_1~ 来替代 ~{ key: 0 }~ 这个惊天属性。
+** DONE codegen 如何生成 if-elseif-else 分支节点 ?
+CLOSED: [2020-10-04 Sun 12:47]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-05-gen-branch
+:END: 
+
+- State "DONE"       from "TODO"       [2020-10-04 Sun 12:47]
+[[#key-02-transform-if][生成分支入口函数产生过程]]：[[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] 中收集 ~exitFns~ 过程中执行 ~transformIf~
+经过一些列操作之后得到一个函数，该函数会在当前节点树递归结束后调用，生成
+~codegenNode~
+
+返回的分支节点 codegenNode 结构：
+
+#+begin_src js
+  {
+      "type":19,
+      "test":{ // ok ? ... : ...
+          "type":4,
+          "content":"ok",
+          "isStatic":false,
+          "isConstant":false,
+          "loc":{
+              // ...
+              "source":"ok"
+          }
+      },
+      "consequent":{ // cond ? 这里的代码 : ...
+          "type":13,
+          "tag":""div"",
+          "props":{
+              "type":15,
+              "loc":{ /* ... */ },
+              "properties":[
+                  {
+                      "type":16,
+                      "key":{
+                          "type":4,
+                          "isConstant":false,
+                          "content":"key",
+                          "isStatic":true
+                      },
+                      "value":{
+                          "type":4,
+                          "isConstant":false,
+                          "content":"0",
+                          "isStatic":false
+                      }
+                  }
+              ]
+          },
+          "children":{
+              "type":2,
+              "content":"yes",
+              "loc":{
+                  "source":"yes"
+              }
+          },
+          "isBlock":true,
+          "isForBlock":false,
+          "loc":{
+              "source":"<div v-if="ok">yes</div>"
+          }
+      },
+      "alternate":{ // cond ? ... : 这里的代码
+          "type":14,
+          "loc":{
+              "source":"",
+          },
+          "arguments":[
+              ""v-if"",
+              "true"
+          ]
+      },
+      "newline":true,
+  }
+#+end_src
+
+处理流程图：
+
+[[/img/vue3/compiler-core/key/key-05-how-gen-if-branches.svg]]
+
 * ☁ compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
