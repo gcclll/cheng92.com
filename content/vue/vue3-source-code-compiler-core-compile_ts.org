@@ -1256,7 +1256,7 @@ vue.global 结果：
 2. 实现 [[#transform-traversenode-stage3][traverseNode]] 中的 ~IF(9)~ 和 ~IF_BRANCH(10)~ 分支
 
 3. 实现 [[#codegen-generate][generate]] 阶段的 if 节点处理
-
+   
    修改 [[#codegen-gennode][genNode]] 增加 ~IF, IF_BRANCH, JS_CALL_EXPRESSION, JS_CONDITIONAL_EXPRESSION~ 分支。
    
    增加 [[#codegen-gencallexpression][genCallExpression]] 函数生成参数。
@@ -1289,7 +1289,11 @@ vue.global 结果：
     })
 #+end_src
 
-*** hoisted 支持
+*** 扩展一：hoisted 支持
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-cc-05-01
+:END: 
 
 1. [[#codegen-genfunctionpreamble][genFunctionPreamble(ast, context)]] 中增加 [[#codegen-genhoists][genHoists(ast.hoists, context)]]
 2. transform 阶段对 ~hoisted~ 处理([[https://github.com/vuejs/vue-next/blob/master/packages/compiler-core/src/transforms/hoistStatic.ts][transforms/hoistStatic.ts]] 的 ~walk()~ 函数，遍
@@ -1298,6 +1302,168 @@ vue.global 结果：
 
    这里 vue.global.js 和 实际 vue transform.ts 中的代码有细微差别，但不影响整体
    流程，不知道为何？
+   
+   
+实现之后会发现在返回 render 函数之前多了 ~const _hoisted_1 = { key: 0 }~ 和一些
+函数的解构。
+
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+    const { createVNode: _createVNode, createCommentVNode: _createCommentVNode } = _Vue
+
+    const _hoisted_1 = { key: 0 }
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode } = _Vue
+
+        return (_openBlock(), _createBlock("div", null, [
+          ok
+            ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+            : _createCommentVNode("v-if", true)
+        ]))
+      }
+    }
+  })
+#+end_src
+
+*** 扩展二：v-else 支持
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-cc-05-02
+:END: 
+
+[[/vue/vue-mind-map-house/#pcg-05-01][相关脑图链接 -->]]
+
+#+begin_src js
+  code = `
+  <div id="foo" :class="bar.baz">
+  {{ world.burn() }}
+  <div v-if="ok">yes</div>
+  <div v-else>no</div>
+  </div>`
+#+end_src
+
+v-if 和 v-else 的 ast:
+#+begin_src js
+  [
+      { // v-if
+          "type":1, // ELEMENT
+          "ns":0,
+          "tag":"div",
+          "tagType":0,
+          "props":[
+              {
+                  "type":7, // DIRECTIVE
+                  "name":"if",
+                  "exp":{
+                      "type":4,
+                      "content":"ok",
+                      "isStatic":false,
+                      "isConstant":false,
+                  },
+              }
+          ],
+        "children":[{...}],
+      },
+      { // v-else
+          "type":1, // ELEMENT
+          "ns":0,
+          "tag":"div",
+          "tagType":0,
+          "props":[
+              {
+                  "type":7, // else, DIRECTIVE
+                  "name":"else",
+              }
+          ],
+        "children":[{...}],
+      }
+  ]
+#+end_src
+
+从之前的实现结果可知， 单个 ~v-if~ 的处理是在后面追加一个注释节点，因为在 Render
+函数中这些节点是以三目运算符(~?:~)链接起来组成表达式的，如：
+
+#+begin_src js
+  ok
+    ? (_openBlock(), _createBlock("div", { key: 0 }, "yes"))
+    : _createCommentVNode("v-if", true)
+#+end_src
+
+按照理解，如果增加了 ~v-else~ 分支，那么应该需要将 ~:~ 后的注释节点替换成真正的
+节点？
+
+#+begin_quote
+*猜想* ：
+
+从代码语法角度思考， ~if/else/else-if~ 肯定必须是连续的，那么这里的 else 如果想要正
+ 确解析那前提必须要有 if 才行。这一步是如何实现呢？
+
+根据上面 ast 解析结果显示，在 parser 阶段，无论是 if 还是 else 都是同等对待的，即它
+们都是个指令(*9,DIRECTIVE*)，然后根据之前 v-if 的 transform 可知，v-else 也是在
+这个阶段并且是在同一个 [[/vue/vue-mind-map-house/#pcg-05-01][transformIf]] 中处理的，即下面 else TODO 部分。
+
+#+begin_src js
+  export const transformIf = createStructuralDirectiveTransform(
+    /^(if|else|else-if)$/,
+    (node, dir, context) => {
+      return processIf(node, dir, context, (ifNode, branch, isRoot) => {
+        // 能到这里说明 v-if 下所有的 child 都已经处理完毕，可以返回处理
+        // codegenNode 的函数了
+        return () => {
+          console.log({ dir, isRoot });
+          if (isRoot) {
+            ifNode.codegenNode = createCodegenNodeForBranch(branch, 0, context);
+          } else {
+            // TODO
+          }
+        };
+      });
+    }
+  )
+#+end_src
+#+end_quote
+
+所以实现步骤如下
+
+1. 实现 [[#transform-transformif][transformIf]] 返回的 transform 函数的 else 部分，这部分承担
+   了 ~v-else/v-else-if~ 指令节点的 codegenNode 生成工作。
+   
+2. 实现 [[#transform-processif][processIf()]] 的分支部分
+
+3. [[transform-createcodegennodeforbranch][createCodegenNodeForBranch(branch, index, context)]] 返回新的 alternate 替换掉
+   占位的注释分支。
+
+4. 因为都是在 v-if 的 branches 里面，在 codegen 阶段和 v-if 的处理是一样的，不需
+   要修改什么。
+
+修改完之后：
+#+begin_src js
+  (function anonymous(
+  ) {
+    const _Vue = Vue
+    const { createVNode: _createVNode, createCommentVNode: _createCommentVNode } = _Vue
+
+    const _hoisted_1 = { key: 0 }
+    const _hoisted_2 = { key: 1 }
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode } = _Vue
+
+        return (_openBlock(), _createBlock("div", null, [
+          ok
+            ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+            : (_openBlock(), _createBlock("div", _hoisted_2, "no"))
+        ]))
+      }
+    }
+  })
+#+end_src   
+   
 * 函数列表
 ** compile.ts
 *** baseCompile(template, options)
@@ -1778,6 +1944,7 @@ vue.global 结果：
 指令，生成对应分支节点的  ~codegenNode~ 。
 
 #+begin_src js
+
   export const transformIf = createStructuralDirectiveTransform(
     /^(if|else|else-if)$/,
     (node, dir, context) => {
@@ -1789,12 +1956,31 @@ vue.global 结果：
           if (isRoot) {
             ifNode.codegenNode = createCodegenNodeForBranch(branch, 0, context);
           } else {
-            // TODO
+            // 将当前分支的codegenNode挂载到 v-if 根节点上
+            let parentCondition = ifNode.codegenNode;
+            while (
+              parentCondition.alternate.type ===
+              NodeTypes.JS_CONDITIONAL_EXPRESSION
+            ) {
+              // 这个循环的目的是为了找到最后那个需要被替换的 alternate 节点
+              // 因为有可能会有 `?:` 嵌套的可能
+              // 如： ok ? expr1 : expr2 情况找到的是 expr2 需要被替换
+              // 如： ok ? expr1 : (ok2 ? expr2 : expr3) 那么找到的就是 expr3
+              // ...
+              // 因为最后一个 `:` 后面的表达式如果没有 else 应该会是个
+              // comment vnode类型的占位节点
+              parentCondition = parentCondition.alternate;
+            }
+            parentCondition.alternate = createCodegenNodeForBranch(
+              branch,
+              ifNode.branches.length - 1,
+              context
+            );
           }
         };
       });
     }
-  );
+  )
 #+end_src
 
 *** createCodegenNodeForBranch(branch, index, context)
@@ -1802,8 +1988,6 @@ vue.global 结果：
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: transform-createcodegennodeforbranch
 :END: 
-
-**** stage-1 [[#test-cc-05][05-interpolation, v-if, props]]
 
 #+begin_src js
 
@@ -1813,12 +1997,12 @@ vue.global 结果：
         branch.condition,
         createChildrenCodegenNode(branch, index, context),
         createCallExpression(context.helper(CREATE_COMMENT), [
-          __DEV__ ? "v-if" : '""',
+          __DEV__ ? '"v-if"' : '""',
           "true",
         ])
       );
     } else {
-      // TODO no condition
+      return createChildrenCodegenNode(branch, index, context);
     }
   }
 #+end_src
@@ -2527,6 +2711,81 @@ fragment 将这些 children 包起来的。
 
     if (!hasRuntimeConstant && hasHoistedNode && context.transformHoist) {
       context.transformHoist(children, context);
+    }
+  }
+#+end_src
+*** processIf(node, dir, context, processCodegen)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-processif
+:END: 
+
+处理 v-if/v-else/v-else-if 指令的函数。
+
+#+begin_src js
+
+  export function processIf(node, dir, context, processCodegen) {
+    // TODO no exp error handle
+
+    // TODO prefixIdentifiers && dir.exp
+
+    if (dir.name === "if") {
+      const branch = createIfBranch(node, dir);
+      const ifNode = {
+        type: NodeTypes.IF,
+        loc: node.loc,
+        branches: [branch],
+      };
+      context.replaceNode(ifNode);
+      if (processCodegen) {
+        return processCodegen(ifNode, branch, true);
+      }
+    } else {
+      // 找到对应的兄弟节点(v-if)
+      const siblings = context.parent.children;
+      const comments = [];
+      // 当前分支节点在其父节点的 children 中的位置
+      // 方便后面找到前面最近的那个兄弟
+      let i = siblings.indexOf(node);
+
+      while (i-- >= -1) {
+        const sibling = siblings[i];
+        if (__DEV__ && sibling && sibling.type === NodeTypes.COMMENT) {
+          context.removeNode(sibling);
+          // 将来要合并回去的
+          comments.unshift(sibling);
+          continue;
+        }
+
+        if (sibling && sibling.type === NodeTypes.IF) {
+          // 1. 将当前节点删除同时将移动到 if 分支的 branches[] 中去
+          context.removeNode();
+          if (__DEV__ && comments.length) {
+            branch.children = [...comments, ...branch.children];
+          }
+
+          sibling.branches.push(branch);
+          // 这个 onExit 就是用来 transform 分支得到codegenNode的那个函数
+          const onExit = processCodegen && processCodegen(sibling, branch, false);
+
+          // 2. 因为 1 中已经将节点从主干递归树种删除了，因此这里需要手动执行一次
+          // traverse 确保该分支节点的树能正确解析出 codgenNode
+          traverseNode(branch, context);
+
+          // 3. 执行 transform 函数，解析当前节点的 codegenNode
+          if (onExit) onExit();
+
+          // 4. 重置 currentNode，表明该节点已经被删除了
+          // 还记得 traverseNode 里面收集 exitFns 循环找那个有个检测吧
+          context.currentNode = null;
+        } else {
+          // 非法的使用，v-if/v-else/v-else-if 必须紧靠着
+          context.onError(
+            createCompilerError(ErrorCodes.X_V_ELSE_NO_ADJACENT_IF, node.loc)
+          );
+          break;
+        }
+      }
     }
   }
 #+end_src
