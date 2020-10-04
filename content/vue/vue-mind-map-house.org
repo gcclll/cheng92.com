@@ -14,7 +14,7 @@
 </kbd><br><br>
 #+end_export
 
-[[http://qiniu.ii6g.com/img/yiyeshu-001.jpg]]
+[[/img/bdx/yiyeshu-001.jpg]]
 
 * 🌧 序
 :star: :star: 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能

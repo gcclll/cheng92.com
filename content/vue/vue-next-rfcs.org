@@ -18,7 +18,7 @@
 </kbd><br><br>
 #+end_export
 
-[[http://qiniu.ii6g.com/img/glsl-4.jpg]]
+[[/img/bdx/glsl-4.jpg]]
   
 * 万能的 Counter
 #+begin_src js
