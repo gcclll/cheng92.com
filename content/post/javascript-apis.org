@@ -5,5 +5,502 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_quote
+1. *regenerator*: ~npm install -g renerator~ 将 es6+ 语法编译成 es5 语法
+#+end_quote
+* 社区链接
+| name          | link           |
+|---------------+----------------|
+| [[https://esdiscuss.org/][esdiscuss.org]] | es 标准讨论社区 |
+* 内容简要
+1. [[#i-IsPropertyKey][对象属性名只能是字符串或符号类型]]。
 * Document
 ** Document.execCommand()
+* Array
+*** [[#es2016-includes][Array.prototype.includes]]
+* TODO es2017
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2017
+:END: 
+| Proposal                     | Stage | -        |
+|------------------------------+-------+----------|
+| [[https://github.com/tc39/proposal-object-values-entries][Object.values/Object.entries]] |     3 | 对象操作 |
+|                              |       |          |
+|                              |       |          |
+
+** Object.keys ( O )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2017-object-keys
+:END: 
+
+[[#e-EnumerableOwnPropertyNames][EnumerableOwnPropertyNames]], [[#c-CreateArrayFromList][CreateArrayFromList]]
+
+#+begin_src js
+  function keys(O) {
+    let obj = Object(O)
+
+    // 遍历对象的键
+    let nameList = EnumerableOwnPropertyNames(obj, key)
+
+    // 创建数组
+    return CreateArrayFromList(nameList)
+  }
+#+end_src
+
+** Object.values ( O )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2017-object-values
+:END: 
+
+[[#e-EnumerableOwnPropertyNames][EnumerableOwnPropertyNames]], [[#c-CreateArrayFromList][CreateArrayFromList]]
+
+#+begin_src js
+  function keys(O) {
+    let obj = Object(O)
+
+    // 遍历对象的键
+    let nameList = EnumerableOwnPropertyNames(obj, value)
+
+    // 创建数组
+    return CreateArrayFromList(nameList)
+  }
+
+#+end_src
+** Object.entries( O )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2017-object-entries
+:END: 
+
+#+begin_src js
+  function keys(O) {
+    let obj = Object(O)
+
+    // 遍历对象的键
+    let nameList = EnumerableOwnPropertyNames(obj, key+value)
+
+    // 创建数组
+    return CreateArrayFromList(nameList)
+  }
+#+end_src
+* TODO es2016
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2016
+:END: 
+
+| Proposal                                              | Stage | -                              |
+|-------------------------------------------------------+-------+--------------------------------|
+| [[#es2016-includes][Array.prototype.includes]]                              |     4 | 原定用 =contains= 但是[[https://esdiscuss.org/topic/having-a-non-enumerable-array-prototype-contains-may-not-be-web-compatible][不兼容]]。 |
+| [[es2106-expo-operator][Exponentiation Operator]]                               |     4 |                                |
+| [[https://docs.google.com/presentation/d/1MY9NHrHmL7ma7C8dyNXvmYNNGgVmmxXk8ZIiQtPlfH4/edit#slide=id.g7785d4375_0_13][SIMD.JS - SIMD APIs]] + [[https://tc39.es/ecmascript_simd/][polyfill]]                        |     3 | 一种类似向量的数据类型         |
+| [[https://github.com/tc39/ecmascript-asyncawait][Async Functions]]                                       |     3 | ~async...await~ 语法，[[https://tc39.es/ecmascript-asyncawait/][实现规范]] |
+| String padding                                        |     3 |                                |
+| Trailing commas in function parameter lists and calls |     3 |                                |
+| Object.getOwnPropertyDescriptors                      |     3 |                                |
+| function.sent metaproperty                            |     2 |                                |
+| Rest/Spread Properties                                |     2 |                                |
+| Shared memory and atomics                             |     2 |                                |
+| Function.prototype.toString revision                  |     2 |                                |
+| ArrayBuffer.transfer                                  |     1 |                                |
+| Additional export-from Statements                     |     1 |                                |
+| Class and Property Decorators                         |     1 |                                |
+| Observable                                            |     1 |                                |
+| String.prototype.{trimLeft,trimRight}                 |     1 |                                |
+| Class Property Declarations                           |     1 |                                |
+| String#matchAll                                       |     1 |                                |
+| Callable class constructors                           |     1 |                                |
+| System.global                                         |     1 |                                |
+| Asynchronous Iterators                                |     1 |                                |
+
+接口相关：
+1. Array.prototype.includes
+2. Object.getOwnPropertyDescriptors
+3. Function.prototype.toString
+4. String.prototype.{trimLeft,trimRight}
+5. String#matchAll
+6. System.global
+
+** Array.prototype.includes ( searchElement [ , fromIndex ] )@@html:<font color='red'>@@^{s4}@@html:</font>@@ 
+
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2016-includes
+:END:
+
+与 =indexOf= 比较：
+
+1. 语义明确。
+2. 支持 ~NaN~ 检测，因为 indexOf 是使用恒等([[#s-StrictEqualityComparison][Strict Equality Comparison]])进行比较
+   的， ~includes~ 使用的是 [[#s-SameValueZero][SameValueZero]] 进行比较。
+3. 遍历的时候不会忽略 missing array 元素(俗称：hole 元素，比如 map 的时候就会跳
+   过这些元素)，而是将他们视为 ~undefined~ 。
+
+#+begin_src js
+  console.log('[1, NaN 2] index of `NaN`: ' + [1, NaN, 2].indexOf(NaN)) // -1
+  console.log('[1, NaN 2] includes `NaN`: ' + [1, NaN, 2].includes(NaN)) // true
+#+end_src
+
+result:
+#+begin_example
+  [1, NaN 2] index of `NaN`: -1
+  [1, NaN 2] includes `NaN`: true
+#+end_example
+
+伪码：
+
+#+begin_src js
+  function includes(searchElement[, fromIndex]) {
+    let O = Object(this)
+    let len = LengthOfArrayLike(O)
+    if (len === 0) {
+      return false
+    }
+
+    // 默认是 0
+    let n = int(fromIndex) || 0
+
+    let k
+    if (n >= 0) {
+      k = n
+
+    } else {
+      // 小于零从右开始数
+      k = len + n
+      if (k < 0) k = 0
+    }
+
+    while (k < len) {
+      let elementK = get(O, String(k))
+      // 这里使用的是类 0 值，而非恒等比较
+      if (SameValueZero(searchElement, elementK)) {
+        return true
+
+      }
+      k++
+    }
+
+    return false
+  }
+#+end_src
+
+:warning: ~includes~ 并不强烈要求调用者是个数组对象，如上伪码实现中使用的是
+~LengthOfArrayLike(O)~ 即类数组的对象都可以使用它。
+
+#+begin_src js
+  var obj = {
+    length: 2,
+    0: 'foo',
+    1: 'bar'
+
+  }
+
+  // 这里借用一下数组的函数
+  console.log([].includes.call(obj, 'foo'))
+#+end_src
+
++RESULTS:
+: true
+
+#+begin_quote
+为什么不用 ~has~ ？
+
+~has~ 常用来检测键 "keys"， ~includes~ 用来检测值 "values"，如：
+
+1. ~Map~ 类型
+   
+   ~Map.prototype.has(key)~
+   ~Reflect.has(target, propertyKey)~
+   
+2. ~Set~ 集合类型(集合类型 value 既是 key 也是 value)
+
+   ~Set.prototype.has(value)~
+   
+3. ~String~ 类型，索引 + 字符
+
+   ~String.prototype.includes(searchString, position)~
+#+end_quote
+
+官方实例：
+#+begin_src js
+  assert([1, 2, 3].includes(2) === true);
+  assert([1, 2, 3].includes(4) === false);
+
+  assert([1, 2, NaN].includes(NaN) === true);
+
+  assert([1, 2, -0].includes(+0) === true);
+  assert([1, 2, +0].includes(-0) === true);
+
+  assert(["a", "b", "c"].includes("a") === true);
+  assert(["a", "b", "c"].includes("a", 1) === false);
+#+end_src
+
+[[https://github.com/tc39/Array.prototype.includes/][more...]]
+** Exponentiation Operator(幂运算符)@@html:<font color='red'>@@^{s3}@@html:</font>@@ 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: es2106-expo-operator
+:END: 
+
+#+begin_src js
+  let squared = 2 ** 2
+
+  let cubed = 2 ** 3
+
+  let a = 2
+  a **= 2
+
+  let b = 3
+  b **= 3
+  console.log({ squared, cubed, a, b })
+#+end_src
+
+#+RESULTS:
+: { squared: 4, cubed: 8, a: 4, b: 27 }
+
+[[https://github.com/tc39/proposal-exponentiation-operator][more...]]
+* 伪码
+** C
+*** CreateArrayFromList ( elements )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: c-CreateArrayFromList 
+:END: 
+
+[[#c-CreateDataPropertyOrThrow][CreateDataPropertyOrThrow]]
+
+用 List 创建数组类型。
+
+#+begin_src js
+  function CreateArrayFromList( elements ) {
+    assert(elements is List)
+
+    // 创建一个空数组
+    let array = ArrayCreate(0)
+
+    let n = 0
+
+    for (let e of elements) {
+      CreateDataPropertyOrThrow(array, ToString(n), e)
+      n++
+    }
+
+    return array
+  }
+#+end_src
+*** CreateDataPropertyOrThrow ( O, P, V )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: c-CreateDataPropertyOrThrow
+:END: 
+
+[[#c-CreateDataProperty][CreateDataProperty]], [[#i-IsPropertyKey][IsPropertyKey]]
+
+抽象操作：为对象创建一个新的属性和对应的值，如果失败抛出异常。
+
+#+begin_src js
+  function CreateDataPropertyOrThrow ( O, P, V ) {
+    assert(Types(O) is Object)
+
+    // 是不是合法的对象属性名
+    assert(IsPropertyKey(P) === true)
+
+    let success = CreateDataProperty(O, P, V)
+
+    if (!success) throw new TypeError()
+
+    return success
+  }
+#+end_src
+*** CreateDataProperty ( O, P, V )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: c-CreateDataProperty
+:END: 
+
+抽象操作：创建对象属性。
+
+#+begin_src js
+  function CreateDataProperty ( O, P, V ) {
+    assert(Type(O) === Object)
+
+    assert(IsPropertyKey(P) === true)
+
+    // 对象属性描述符对象
+    let newDesc = PropertyDescriptor{
+      [[Value]]: V,
+      [[Writable]]: true,
+      [[Enumerable]]: true,
+      [[Configurable]]: true
+    }
+
+    return O.[[DefineOwnProperty]](P, newDesc)
+  }
+#+end_src
+
+失败情况(返回 ~false~)：
+1. 属性不可配置(~Configurable: false~)
+2. ~O~ 是不可扩展类型
+** E
+*** EnumerableOwnPropertyNames ( O, kind )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: e-EnumerableOwnPropertyNames
+:END: 
+
+[[#c-CreateArrayFromList][CreateArrayFromList]]
+
+抽象操作：取出对象 ~O~ 的属性或值(*key*, *value*, 或 *key+value*)。
+
+#+begin_src js
+  function EnumerableOwnPropertyNames(O, kind) {
+    // kind -> key, value or key+value
+
+    // 必须是个引用类型
+    assert(Type(O) === Object)
+
+    // 自身的所有属性
+    let ownKeys = O.[[OwnPropertyKeys]]()
+
+    let properties = new List()
+
+    for (let key of ownKeys) {
+      let desc
+      if (Type(key) === String) {
+        // 取出值来
+        desc = O.[[GetOwnProperty]](key)
+        // 有效值且是可枚举的
+        if (desc !== undefined && desc.[[Enumerable]]) {
+          if (kind === 'key') {
+            // 保存属性名
+            properties.append(key)
+          } else {
+            let value = Get(O, key)
+            if (kind === 'value') {
+              // 保存属性值
+              properties.append(value)
+            } else {
+              assert(kind === 'key+value')
+
+              let entry = CreateArrayFromList(<key, value>)
+              properties.append(entry)
+            }
+          }
+        }
+      }
+    }
+
+    return properties
+  }
+#+end_src
+** I
+*** IsPropertyKey ( argument )
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: i-IsPropertyKey
+:END: 
+
+#+begin_src js
+  function IsPropertyKey ( argument ) {
+    // 只有字符串和符号是合法属性名
+    if (Type(argument) === String || Type(argument) === Symbol) return true
+
+    return false
+  
+  }
+#+end_src
+** L
+*** ~LengthOfArrayLike ( obj )~
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: l-LengthOfArrayLike
+:END:
+
+#+begin_src js
+  function LengthOfArrayLike ( obj ) {
+    // 必须是个对象类型
+    assert(Type(obj) === 'object')
+
+    // 获取对象的 length 属性，如： { 0: 'foo', 1: 'bar', length: 2 }
+    return ToLength(Get(obj, 'length'))
+  }
+#+end_src
+** S
+*** ~SameValueZero(x, y)~
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: s-SameValueZero
+:END:
+
+#+begin_src js
+  function SameValueZero(x, y) {
+
+    // 不同类型
+    if (Type(x) !== Type(y)) return false
+
+    if (Type(x) === 'number' || Type(x) === 'bigint') {
+      // 数字处理
+      return Type(x)::sameValueZero(x, y)
+    }
+
+    // 非数字处理
+    return SameValueNonNumeric(x, y)
+  }
+#+end_src
+*** ~SameValueNonNumeric ( x, y )~
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: s-SameValueNonNumeric
+:END:
+
+#+begin_src js
+  function SameValueNonNumeric ( x, y ) {
+    // 因为这里只处理非数字情况
+    assert(x, !Number && !BigInt)
+    assert(Type(x) === Type(y))
+
+    if (Type(x) === 'undefined') return true
+
+    if (Type(x) === 'null') return true
+
+    if (Type(x) === 'string') {
+      // 这里比较程度，逐个字符比较，相同返回 true，否则 false
+      return x === y
+    }
+
+    if (Type(x) === 'boolean') {
+      if (x === true && y === true) return true
+      return false
+    }
+
+    if (Type(x) === 'symbol') {
+      // 比较两个符号类型的值
+      return x.value === y.value
+    }
+
+    return x === y
+  }
+#+end_src
+*** ~StrictEqualityComparison~ 严格比较
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: s-StrictEqualityComparison
+:END:
+
+#+begin_src js
+  function StrictEqualityComparison() {
+    if(Type(x) !== Type(y)) return false
+
+    if (Type(x) === 'number' || Type(x) === 'bigint') {
+      // 直接 equal 比较
+      return Type(x)::equal(x, y)
+
+    }
+
+    // 非数字和 SameValueZero 处理一样
+    return SameValueNonNumeric(x,y)
+  }
+#+end_src
