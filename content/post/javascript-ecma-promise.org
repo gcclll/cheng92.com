@@ -9,6 +9,10 @@
 <script src="/js/promise.js"></script>
 #+end_export
 
+#+begin_quote
+源码参考链接：https://github.com/stefanpenner/es6-promise
+#+end_quote
+
 * 构造函数 Promise
   1. 三个状态: ~PENDING~, ~FULFILL~, ~REJECT~ 。
   2. PID 记录 promise id 属性
@@ -112,8 +116,10 @@ then 功能：
     }
   #+end_src
   
-- [-] ~publish(promise)~ ，任务完成之后 flush 掉所有回调(then pending 阶段收集的 =_subs[]=)
-
+- [-] ~publish(promise)~ 
+  
+  任务完成之后 flush 掉所有回调(then pending 阶段收集的 =_subs[]=)
+  
   #+begin_src js
 
     function publish(promise) {
@@ -139,6 +145,9 @@ then 功能：
   
 - [-] ~subscribe(parent, child, onFulfillment, onRejection)~
 
+  如果任务是个异步任务就不会立即执行，要等到任务结束才能执行回调，所以就必须要有
+  个地方能将这些回调收集到当前的 *promise* 实例中，等待调用。
+  
   #+begin_src js
 
     function subscribe(parent, child, onFulfillment, onRejection) {
@@ -152,6 +161,12 @@ then 功能：
 
 - [-] ~then(onFulfillment, onRejection)~  
  
+  这里要区分两种情况，一种是 pending 状态和非 pending 状态的处理，pending 说明可
+  能是异步任务还没结束，不能立即 settled，调用 subscribe() 去收集回调。
+
+  一种是非 pending 状态，在调用 then 之后只有一种情况会使得 promise 状态改变了，
+  那就是任务立即执行，调用了 *resolve* 或 *reject* 设置了 ~promise._state~ 改变
+  了状态，因为只有这两个函数才会改变 promise 状态值。
   #+begin_src js
 
     function then(onFulfillment, onRejection) {
@@ -173,3 +188,95 @@ then 功能：
       return child;
     }
   #+end_src
+
+  
+测试：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p = new MyPromise((resolve, reject) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    Util.log(val, 'then 1 resolve')
+  })
+#+end_src
+
++RESULTS 实现 invokeCallback 之前:
+: undefined
+
+这里没任何输出，因为还没实现 ~invokeCallback(settled, promise, callback,
+detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应的处理。
+
+
+- [-] ~invokeCallback(settled, promise, callback, detail)~
+
+  #+begin_src js
+
+    function invokeCallback(settled, promise, callback, detail) {
+      var value; // 记录 callback 执行的结果
+      var hasCallback = typeof callback === "function";
+      var succeeded = true; // callback 可能执行失败
+      var error;
+
+      if (hasCallback) {
+        // 开始执行 callback, 即 then(resolve, reject) 的 Resolve/Reject
+        try {
+          // 将上一个 promise 结果作为参数传递到 then 回调
+          value = callback(detail);
+        } catch (e) {
+          // 回调执行失败，有错误或者异常
+          error = e;
+          succeeded = false;
+        }
+
+        if (promise === value) {
+          reject(promise, Util.error.returnSelfPromise());
+          return;
+        }
+      } else {
+        // 没有回调的时候 then() ???
+        value = detail;
+      }
+
+      if (settled !== PENDING) {
+        // noop 状态完成了的 promise
+      } else if (hasCallback && succeeded) {
+        // 执行成功， resolve
+        resolve(promise, value);
+      } else if (succeeded === false) {
+        // then 中的回调执行失败了
+        reject(promise, error);
+      } else if (settled === FULFILL) {
+        fulfill(promise, value);
+      } else if (settled === REJECT) {
+        reject(promise, value);
+      }
+    }
+  #+end_src
+
+  
+实现关键点： 
+1. callback 实际上是 ~then(resolve, reject)~ 中的 resolve/reject ，根据上一个
+   promise 状态 ~settled~ 决定的。
+   
+2. 使用 try...catch 捕获 callback 执行异常，确保 then 回调也能受 Promise 规则约
+   束。
+   
+3. 几种情况决定调用 resolve 还是 reject 进入下一个链式回调(*then*)。
+
++RESULTS 实现 invokeCallback 之后:
+: 100 then 1 resolve
+
+此时的 promise._subs 如下：
+#+begin_example
+[
+  MyPromise {
+    '8st4da5md17': 1,
+    _state: 0,
+    _result: undefined,
+    _subs: [] // 这是那个 child promise
+  },
+  [Function (anonymous)], // 这里是 then resolver
+  undefined // 这里是 then rejection 因为没传所以是 undefined
+]
+#+end_example

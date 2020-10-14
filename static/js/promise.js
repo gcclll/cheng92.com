@@ -4,6 +4,7 @@ var FULFILL = 1;
 var REJECT = 2;
 var i = 0;
 var proto = MyPromise.prototype;
+var noop = function () {};
 
 function MyPromise(resolver) {
   this[PID] = i++;
@@ -42,7 +43,14 @@ function resolve(promise, value) {
 }
 
 function reject(promise, reason) {
-  Util.log(reason, "reject");
+  if (promise._state !== PENDING) {
+    return;
+  }
+
+  promise._state = REJECT;
+  promise._result = reason;
+
+  publish(promise);
 }
 
 function fulfill(promise, result) {
@@ -64,19 +72,62 @@ function publish(promise) {
 
   var child,
     callback,
-    result = promise.result;
+    result = promise._result;
+  console.log(promise._subs);
   for (var i = 0; i < subs.length; i += 3) {
     child = subs[i];
     callback = subs[i + promise._state];
 
     if (child) {
-      // TODO 异步任务
+      // 异步任务通过 child promise 来衔接下一个 thenable
+      invokeCallback(promise._state, child, callback, result);
     } else {
       callback(result);
     }
   }
 
   subs.length = 0;
+}
+
+function invokeCallback(settled, promise, callback, detail) {
+  var value; // 记录 callback 执行的结果
+  var hasCallback = typeof callback === "function";
+  var succeeded = true; // callback 可能执行失败
+  var error;
+
+  if (hasCallback) {
+    // 开始执行 callback, 即 then(resolve, reject) 的 Resolve/Reject
+    try {
+      // 将上一个 promise 结果作为参数传递到 then 回调
+      value = callback(detail);
+    } catch (e) {
+      // 回调执行失败，有错误或者异常
+      error = e;
+      succeeded = false;
+    }
+
+    if (promise === value) {
+      reject(promise, Util.error.returnSelfPromise());
+      return;
+    }
+  } else {
+    // 没有回调的时候 then() ???
+    value = detail;
+  }
+
+  if (settled !== PENDING) {
+    // noop 状态完成了的 promise
+  } else if (hasCallback && succeeded) {
+    // 执行成功， resolve
+    resolve(promise, value);
+  } else if (succeeded === false) {
+    // then 中的回调执行失败了
+    reject(promise, error);
+  } else if (settled === FULFILL) {
+    fulfill(promise, value);
+  } else if (settled === REJECT) {
+    reject(promise, value);
+  }
 }
 
 function then(onFulfillment, onRejection) {
@@ -89,7 +140,7 @@ function then(onFulfillment, onRejection) {
 
   if (_state) {
     // 状态已经改变，任务已经完成了，直接执行回调
-    // invokeCallback(_state, child, callback, parent._result);
+    invokeCallback(_state, child, callback, parent._result);
   } else {
     // 订阅所有回调
     subscribe(parent, child, onFulfillment, onRejection);
@@ -99,7 +150,8 @@ function then(onFulfillment, onRejection) {
 }
 
 function subscribe(parent, child, onFulfillment, onRejection) {
-  var len = parent._subs.length;
+  var subs = parent._subs;
+  var len = subs.length;
   // PENDING
   subs[len] = child;
   subs[len + FULFILL] = onFulfillment;
@@ -118,6 +170,9 @@ Util.error = {
   returnSelfPromise: function () {
     return new TypeError("不能返回自身。");
   },
+};
+Util.isObjectOrFunction = function (val) {
+  return typeof val === "object" || typeof val === "function";
 };
 
 try {
