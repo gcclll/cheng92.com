@@ -1,12 +1,27 @@
 #+TITLE: JavaScript - Promise 实现(0-1)
-#+DATE: <2020-10-13 00:26:38>
+#+DATE: <2020-10-12 23:26:38>
 #+TAGS[]: javascript, es6, promise
 #+CATEGORIES[]: javascript
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-#+begin_quote
-从 0 到 1 完整实现一个 Promise，练练手，参考项目：https://github.com/taylorhakes/promise-polyfill
-#+end_quote
+#+begin_export html
+<script src="/js/promise.js"><script>
+#+end_export
 
-TODO
+* 构造函数 Promise
+  
+  #+begin_src js
+    var PID = Math.random().toString(36).substring(2);
+    var PENDING = 0;
+    var FULFILL = 1;
+    var REJECT = 2;
+    var i = 0;
+    function Promise(resolver) {
+      this[PID] = i++;
+      this._state = PENDING;
+      this._result = undefined;
+      this._subs = [];
+    }
+
+  #+end_src
