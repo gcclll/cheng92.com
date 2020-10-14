@@ -6,10 +6,17 @@
 #+STARTUP: indent
 
 #+begin_export html
-<script src="/js/promise.js"><script>
+<script src="/js/promise.js"></script>
 #+end_export
 
 * 构造函数 Promise
+  1. 三个状态: ~PENDING~, ~FULFILL~, ~REJECT~ 。
+  2. PID 记录 promise id 属性
+  3. ~_state~ 当前 promise 的状态(pending/fulfill/reject)
+  4. ~_result~ 当前 promise 任务执行的结果值
+  5. ~_subs~ 当前 promise 的订阅者(then 时注册的 resolver/rejection)
+  6. 构造函数中立即执行 resolver 根据任务执行情况由使用者决定是调用
+     resolvePromise 还是 rejectPromise
   
   #+begin_src js
     var PID = Math.random().toString(36).substring(2);
@@ -17,11 +24,152 @@
     var FULFILL = 1;
     var REJECT = 2;
     var i = 0;
-    function Promise(resolver) {
+    var proto = MyPromise.prototype;
+
+    function MyPromise(resolver) {
       this[PID] = i++;
       this._state = PENDING;
       this._result = undefined;
       this._subs = [];
+
+      if (!this instanceof Promise) {
+        throw new TypeError("只能通过new 构造 Promise 实例。");
+      }
+
+      var _this = this;
+      try {
+        resolver(
+          function resolvePromise(value) {
+            resolve(_this, value);
+          },
+          function rejectPromise(reason) {
+            reject(_this, reason);
+          }
+        );
+      } catch (e) {
+        reject(this, e);
+      }
     }
 
+    function resolve(promise, value) {
+      console.log(value, "resolve");
+    }
+
+    function reject(promise, reject) {
+      console.log(value, "reject");
+    }
+  #+end_src
+
+  测试：
+
+  #+begin_src js
+    const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+    const p = new MyPromise(function (resolve, reject) {
+      Util.delay(() => resolve(100), 1000)
+    })
+  #+end_src
+
+  #+RESULTS:
+  : 100 resolve
+
+* then 函数实现
+
+then 功能：
+
+1. 收集 pending 状态 promise 的 callback(存放到 =_subs= 中)
+
+   因为 promise 任务如果异步的，调用 ~then(resolve,reject)~ 的时候，resolve 和
+   reject 是不应该立即执行的，必须等异步任务结束之后再执行，否则就不符合了 promise
+   原则(异步任务同步化)。
+   
+   所以当 promise 任务是异步情况下，then 函数的功能应该是用来收集 resolve/reject
+   的，等待任务结束后调用。
+   
+2. 作为 then 链式调用的桥梁，即这个桥梁必须是在这个函数里面去完成的。
+
+
+既然有了收集，那必然就有触发动作，触发也必须等待任务执行完成才会触发，也就是说这
+个动作必须是在 ~resolve()~ 里面完成，因为 Promise 使用者会根据自己任务情况去在适
+当的位置调用 resolve 和 reject。
+
+需要完成的函数： 
+
+- [-] ~fulfill(promise, value)~ ，任务成功完成
+
+  #+begin_src js
+    function fulfill(promise, result) {
+      if (promise._state !== PENDING) {
+        // 状态已经完成不能再改变状态
+        return;
+      }
+
+      promise._state = FULFILL;
+      promise._result = result;
+
+      if (promise._subs.length > 0) {
+        publish(promise);
+      }
+    }
+  #+end_src
+  
+- [-] ~publish(promise)~ ，任务完成之后 flush 掉所有回调(then pending 阶段收集的 =_subs[]=)
+
+  #+begin_src js
+
+    function publish(promise) {
+      var subs = promise._subs;
+
+      var child,
+          callback,
+          result = promise.result;
+      for (var i = 0; i < subs.length; i += 3) {
+        child = subs[i];
+        callback = subs[i + promise._state];
+
+        if (child) {
+          // TODO 异步任务
+        } else {
+          callback(result);
+        }
+      }
+
+      subs.length = 0;
+    }
+  #+end_src
+  
+- [-] ~subscribe(parent, child, onFulfillment, onRejection)~
+
+  #+begin_src js
+
+    function subscribe(parent, child, onFulfillment, onRejection) {
+      var len = parent._subs.length;
+      // PENDING
+      subs[len] = child;
+      subs[len + FULFILL] = onFulfillment;
+      subs[len + REJECT] = onRejection;
+    }
+  #+end_src
+
+- [-] ~then(onFulfillment, onRejection)~  
+ 
+  #+begin_src js
+
+    function then(onFulfillment, onRejection) {
+      var parent = this;
+      // 创建一个新的 promise，用来衔接后面的 then
+      var child = new this.constructor(noop);
+      var _state = this._state;
+      // 根据状态决定执行哪个回调
+      var callback = arguments[_state - 1];
+
+      if (_state) {
+        // 状态已经改变，任务已经完成了，直接执行回调
+        invokeCallback(_state, child, callback, parent._result);
+      } else {
+        // 订阅所有回调
+        subscribe(parent, child, onFulfillment, onRejection);
+      }
+
+      return child;
+    }
   #+end_src
