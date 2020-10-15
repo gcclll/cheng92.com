@@ -50,7 +50,9 @@ function reject(promise, reason) {
   promise._state = REJECT;
   promise._result = reason;
 
-  publish(promise);
+  asap(function () {
+    publish(promise);
+  });
 }
 
 function fulfill(promise, result) {
@@ -63,7 +65,9 @@ function fulfill(promise, result) {
   promise._result = result;
 
   if (promise._subs.length > 0) {
-    publish(promise);
+    asap(function () {
+      publish(promise);
+    });
   }
 }
 
@@ -73,7 +77,6 @@ function publish(promise) {
   var child,
     callback,
     result = promise._result;
-  console.log(promise._subs);
   for (var i = 0; i < subs.length; i += 3) {
     child = subs[i];
     callback = subs[i + promise._state];
@@ -115,7 +118,10 @@ function invokeCallback(settled, promise, callback, detail) {
     value = detail;
   }
 
-  if (settled !== PENDING) {
+  // 这里要检测下一个新 new 的 promise 状态
+  // 下面的动作都是为了下一个 then 做准备的，这里的promise
+  // 是在上一个 then 里面的new 出来的 promise 衔接下一个 then 用
+  if (promise._state !== PENDING) {
     // noop 状态完成了的 promise
   } else if (hasCallback && succeeded) {
     // 执行成功， resolve
@@ -156,6 +162,14 @@ function subscribe(parent, child, onFulfillment, onRejection) {
   subs[len] = child;
   subs[len + FULFILL] = onFulfillment;
   subs[len + REJECT] = onRejection;
+
+  // parent promise 状态如果完成了，立即触发当前 child 的 promise
+  // 可能执行到这里的时候任务刚好完成了???
+  if (len === 0 && parent._state) {
+    asap(function () {
+      publish(parent);
+    });
+  }
 }
 
 function Util() {}
@@ -174,6 +188,36 @@ Util.error = {
 Util.isObjectOrFunction = function (val) {
   return typeof val === "object" || typeof val === "function";
 };
+
+// 将所有任务添加到一个队列，根据平台决定调用那个异步函数
+var queue = new Array(1000);
+var qlen = 0;
+function asap(callback) {
+  queue[qlen] = callback;
+
+  qlen++;
+
+  if (qlen === 1) {
+    // 这里是通过第一次入列操作来触发 flush 队列操作
+    // 因为 flush 是异步执行，所以在它还没之前之前有可能有新的任务入列
+    // 这个时候 qlen > 1 ，直到 flush 执行，通过 qlen 遍 queue 确保在执行的时刻
+    // 可以将这之前的所有入列的任务都得到执行
+    setTimeout(flush());
+  }
+}
+
+function flush() {
+  for (var i = 0; i < qlen; i++) {
+    var callback = queue[i];
+    if (callback) callback();
+
+    // 清空已执行的任务
+    queue[i] = undefined;
+  }
+
+  // 在此刻至 Flush之前入列的任务都得到了执行，重置重新接受新的任务
+  qlen = 0;
+}
 
 try {
   // org src block 环境使用

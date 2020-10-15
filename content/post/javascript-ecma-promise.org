@@ -13,6 +13,16 @@
 源码参考链接：https://github.com/stefanpenner/es6-promise
 #+end_quote
 
+@@html:<kbd>@@
+[[/js/promise.js][完整的 promise.js 链接]]
+@@html:</kbd>@@ 
+
+* 完整脑图
+
+持续更新至完成...
+
+[[/img/es/es6-promise.svg]]
+
 * 构造函数 Promise
   1. 三个状态: ~PENDING~, ~FULFILL~, ~REJECT~ 。
   2. PID 记录 promise id 属性
@@ -29,6 +39,7 @@
     var REJECT = 2;
     var i = 0;
     var proto = MyPromise.prototype;
+    var noop = function () {};
 
     function MyPromise(resolver) {
       this[PID] = i++;
@@ -54,14 +65,12 @@
         reject(this, e);
       }
     }
+    MyPromise.prototype.then = then;
 
-    function resolve(promise, value) {
-      console.log(value, "resolve");
+    function resolve(val) {
+      console.log(val, 'resolve')
     }
-
-    function reject(promise, reject) {
-      console.log(value, "reject");
-    }
+    function reject() {}
   #+end_src
 
   测试：
@@ -76,9 +85,113 @@
   #+RESULTS:
   : 100 resolve
 
-* then 函数实现
+* resolve 和 reject 函数
+  
+这两个函数至关重要，他们负责改变 promise 的状态值，也是整个 Promise 实现过程中唯
+一能改变状态值的地方。
 
-then 功能：
+他们的执行会触发所有回调的执行(~promise._subs~)。
+
+#+begin_src js
+  function resolve(promise, value) {
+    if (promise === value) {
+      reject(promise, Util.error.returnSelfPromise());
+    } else if (Util.isObjectOrFunction(value)) {
+      // TODO
+    } else {
+      fulfill(promise, value);
+    }
+  }
+
+  function reject(promise, reason) {
+    if (promise._state !== PENDING) {
+      return;
+    }
+
+    promise._state = REJECT;
+    promise._result = reason;
+
+    asap(function () {
+      publish(promise);
+    });
+  }
+#+end_src
+
+* asap 函数
+
+#+begin_src js
+  // 将所有任务添加到一个队列，根据平台决定调用那个异步函数
+  var queue = new Array(1000);
+  var qlen = 0;
+  function asap(callback) {
+    queue[qlen] = callback;
+
+    qlen++;
+
+    if (qlen === 1) {
+      // 这里是通过第一次入列操作来触发 flush 队列操作
+      // 因为 flush 是异步执行，所以在它还没之前之前有可能有新的任务入列
+      // 这个时候 qlen > 1 ，直到 flush 执行，通过 qlen 遍 queue 确保在执行的时刻
+      // 可以将这之前的所有入列的任务都得到执行
+      setTimeout(flush());
+    }
+  }
+
+  function flush() {
+    for (var i = 0; i < qlen; i++) {
+      var callback = queue[i];
+      if (callback) callback();
+
+      // 清空已执行的任务
+      queue[i] = undefined;
+    }
+
+    // 在此刻至 Flush之前入列的任务都得到了执行，重置重新接受新的任务
+    qlen = 0;
+  }
+#+end_src
+
+按照 Promise 的定义，被 Promise 定义的任务不论代码是异步的还是同步的，都会被当做
+异步任务来执行，比如：
+
+#+begin_src js
+  new Promise((resolve)=> {
+    resolve(100)
+  }).then(val => console.log(100))
+  console.log(200)
+#+end_src
+
+#+RESULTS:
+: 200
+: 100
+
+结果显示 200 先输出，后输出 100，但是其实我们在 ~new Promise()~ 的时候传入的函数
+里面其实都是同步代码，经过 Promise 封装置后都成了异步的了。
+
+因此这里的 asap 就是这个作用，当任务就算是同步代码的时候，依然将其变成异步任务去
+执行。
+
+并且这里使用了一个队列 ~queue~ 来管理这些任务，针对原作者的代码做了一些改动，去
+掉了平台有关的代码，并将任务直接二次封装成了一个函数，所以这里是 ~qlen++~ 而不是
+~qlen +=2~ 。
+
+这里如果不仔细思考可能还不太好理解原作者为什么这么做？？？
+
+1. 为什么 ~qlen === 1~ 的时候触发 ~flush~ ?
+
+   #+begin_quote
+   *答* ：其实想明白了也简单，就是为了只要队列是空的时候一旦有新的任务进来就立即触发任务
+    出列 flush 掉队列中所有的任务，并且是顺序执行，顺序执行，顺序执行，重要的事
+    情说三遍嘛，想象下如果没有这个机制，一旦有 promise settled 了，就调用一个
+    setTimeout ? 
+    
+    有了这个机制之后，在 当前的 setTimeout flush 之前，会尽可能的让当前队列承载
+    更多的 promise 任务，直到 flush 结束，重启另一个 setTimeout。
+   #+end_quote
+2. 为什么不直接使用 queue 数组的长度来控制 ?
+
+* then 函数实现
+*** then 功能说明：
 
 1. 收集 pending 状态 promise 的 callback(存放到 =_subs= 中)
 
@@ -96,11 +209,12 @@ then 功能：
 个动作必须是在 ~resolve()~ 里面完成，因为 Promise 使用者会根据自己任务情况去在适
 当的位置调用 resolve 和 reject。
 
-需要完成的函数： 
+*** 需要完成的函数： 
 
 - [-] ~fulfill(promise, value)~ ，任务成功完成
 
   #+begin_src js
+
     function fulfill(promise, result) {
       if (promise._state !== PENDING) {
         // 状态已经完成不能再改变状态
@@ -111,7 +225,9 @@ then 功能：
       promise._result = result;
 
       if (promise._subs.length > 0) {
-        publish(promise);
+        asap(function () {
+          publish(promise);
+        });
       }
     }
   #+end_src
@@ -151,11 +267,20 @@ then 功能：
   #+begin_src js
 
     function subscribe(parent, child, onFulfillment, onRejection) {
-      var len = parent._subs.length;
+      var subs = parent._subs;
+      var len = subs.length;
       // PENDING
       subs[len] = child;
       subs[len + FULFILL] = onFulfillment;
       subs[len + REJECT] = onRejection;
+
+      // parent promise 状态如果完成了，立即触发当前 child 的 promise
+      // 可能执行到这里的时候任务刚好完成了???
+      if (len === 0 && parent._state) {
+        asap(function () {
+          publish(parent);
+        });
+      }
     }
   #+end_src
 
@@ -189,27 +314,11 @@ then 功能：
     }
   #+end_src
 
-  
-测试：
-#+begin_src js
-  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
-
-  const p = new MyPromise((resolve, reject) => {
-    Util.delay(() => resolve(100))
-  }).then(val => {
-    Util.log(val, 'then 1 resolve')
-  })
-#+end_src
-
-+RESULTS 实现 invokeCallback 之前:
-: undefined
-
-这里没任何输出，因为还没实现 ~invokeCallback(settled, promise, callback,
-detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应的处理。
-
-
 - [-] ~invokeCallback(settled, promise, callback, detail)~
 
+  这个函数承载了当前 then promise1 的回调执行并解析结果(异常处理)，然后将值传递
+  给下一个 then promise2(then 里面 ~new this.constructor(noop)~ 出来的)，调用
+  ~resolve(child)~或 ~reject(child)~ 去触发 promise2 的回调。
   #+begin_src js
 
     function invokeCallback(settled, promise, callback, detail) {
@@ -238,7 +347,10 @@ detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应
         value = detail;
       }
 
-      if (settled !== PENDING) {
+      // 这里要检测下一个新 new 的 promise 状态
+      // 下面的动作都是为了下一个 then 做准备的，这里的promise
+      // 是在上一个 then 里面的new 出来的 promise 衔接下一个 then 用
+      if (promise._state !== PENDING) {
         // noop 状态完成了的 promise
       } else if (hasCallback && succeeded) {
         // 执行成功， resolve
@@ -253,8 +365,25 @@ detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应
       }
     }
   #+end_src
-
   
+测试：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p = new MyPromise((resolve, reject) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    Util.log(val, 'then 1 resolve')
+  })
+#+end_src
+
+
++RESULTS 实现 invokeCallback 之前:
+: undefined
+
+这里没任何输出，因为还没实现 ~invokeCallback(settled, promise, callback,
+detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应的处理。
+
 实现关键点： 
 1. callback 实际上是 ~then(resolve, reject)~ 中的 resolve/reject ，根据上一个
    promise 状态 ~settled~ 决定的。
@@ -280,3 +409,23 @@ detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应
   undefined // 这里是 then rejection 因为没传所以是 undefined
 ]
 #+end_example
+
+*** then 链式调用：
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p = new MyPromise((resolve, reject) => {
+    Util.delay(() => resolve(100))
+  }).then(val => { /* p1 */
+    Util.log(val, 'then 1 resolve')
+    return 200
+  }, /* p2 */).then(val => {/* p3 */
+    Util.log(val, 'then 2 resolve')
+    return 300
+  }, /* p4 */)
+#+end_src
+
+#+RESULTS:
+: 100 then 1 resolve
+: 200 then 2 resolve

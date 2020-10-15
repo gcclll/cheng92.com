@@ -144,6 +144,8 @@ https://github.com/algolia/autocomplete.js
 </body>
 </html>
 #+end_export
+*** [[https://www.npmjs.com/package/xlsx-to-json][xlsx-to-json]]
+xlsx 文件转成 json 数据。
 ** vue
 [[https://github.com/vitejs/vite][vite(vue-cli)]]
 
