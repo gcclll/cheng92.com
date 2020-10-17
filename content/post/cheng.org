@@ -188,6 +188,8 @@ xlsx 文件转成 json 数据。
      }
    #+end_src
 
+** 工具
+1. ~.gitignore~ 生成网站： https://www.toptal.com/developers/gitignore
 * Hugo
 1. 设置文章列表以 year-month 分类，如图：
    [[http://qiniu.ii6g.com/img/20200901233906.png]]

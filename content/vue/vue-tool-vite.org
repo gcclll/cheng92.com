@@ -1,0 +1,10 @@
+#+TITLE: Vue 脚手架 Vite
+#+DATE: <2020-10-17 10:56:48>
+#+TAGS[]: 
+#+CATEGORIES[]: 
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* 相关文章
+
+1. [[https://codechips.me/svelte-with-vitejs-typescript-tailwind/][svelte-with-vite-vue3-typescript-tailwind]]

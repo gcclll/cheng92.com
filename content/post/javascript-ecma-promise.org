@@ -188,8 +188,74 @@
     有了这个机制之后，在 当前的 setTimeout flush 之前，会尽可能的让当前队列承载
     更多的 promise 任务，直到 flush 结束，重启另一个 setTimeout。
    #+end_quote
+   
 2. 为什么不直接使用 queue 数组的长度来控制 ?
 
+   #+begin_quote
+   TODO
+   #+end_quote
+
+   
+情景测试：在 flush 之前 qlen 值发生变化了，需要做点修改让效果更直观。
+
+#+begin_src js
+
+  function asap(callback) {
+    queue[qlen] = callback;
+
+    qlen++;
+
+    if (qlen === 1) {
+      // 这里加大 flush 的时间点，让 asap 有足够的时间来响应更多的异步任务
+      setTimeout(flush, 3000);
+    }
+  }
+#+end_src
+
+测试代码：
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p1 = new MyPromise((resolve) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    console.log(val, 'p1 then 1')
+  })
+
+   new MyPromise((resolve) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    console.log(val, 'p2 then 1')
+  })
+
+  new MyPromise((resolve) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    console.log(val, 'p3 then 1')
+  })
+
+  new MyPromise((resolve) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    console.log(val, 'p4 then 1')
+  })
+
+
+#+end_src
+
+#+RESULTS:
+: { qlen: 1 }
+: { qlen: 2 }
+: { qlen: 3 }
+: { qlen: 4 }
+: 100 p1 then 1
+: 100 p2 then 1
+: 100 p3 then 1
+: 100 p4 then 1
+
+看到没， ~qlen=4~ 了，因为我们在 asap 中调用 flush 的时候加了 3 秒的延时，所以能
+很直观的看得到在一个 settimeout 回调之前会接受到多个 promise 任务。
 * then 函数实现
 *** then 功能说明：
 
@@ -429,3 +495,611 @@ detail)~ 这里面会针对 then 的 resolve 或 reject 执行结果做出相应
 #+RESULTS:
 : 100 then 1 resolve
 : 200 then 2 resolve
+
+* then callback 返回对象或函数
+
+针对返回对象的情况，其实也可以跟普通类型处理一样：
+
+首先要把 Resolve 里面对对象和函数的检测去掉，或者也让它执行 ~fulfill(promise,
+value)~ :
+
+#+begin_src js
+  function resolve(promise, value) {
+    if (promise === value) {
+      reject(promise, Util.error.returnSelfPromise());
+    } else if (Util.isObjectOrFunction(value)) {
+      // TODO
+      fulfill(promise, value);
+    } else {
+      fulfill(promise, value);
+    }
+  }
+#+end_src
+
+实例：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p = new MyPromise((resolve) => {
+    Util.delay(() => resolve(100))
+  }).then(val => {
+    console.log(val, ', then 1')
+    return { name: 'then 1 return' }
+  }).then(val => {
+    console.log(val, ', then 2')
+  })
+#+end_src
+
+#+RESULTS:
+: 100 , then 1
+: { name: 'then 1 return' } , then 2
+
+但是如果有多个 then 链式调用的情况，一般都会返回一个对象，并且常见情况会是一个异
+步的 promise ，这样统一当成普通类型处理就显得不太合理了，这也是为何[[https://github.com/stefanpenner/es6-promise][原作者]]将返回
+值是 *函数或对象* 的时候分开处理了。
+
+因为在实际使用中，有以下几种场景：
+
+- 返回纯对象类型(非 promise 或 带有 then 的对象)
+- 返回一个新的 promise 实例
+- 返回一个带有 then 的对象或函数
+
+所以需要做一些特殊处理。
+
+
+*** value 可能是 ~null~
+
+   捕获这种情况异常执行 reject。
+   
+   #+begin_src js
+
+     function resolve(promise, value) {
+       if (promise === value) {
+         reject(promise, Util.error.returnSelfPromise());
+       } else if (Util.isObjectOrFunction(value)) {
+         let then;
+
+         try {
+           then = value.then;
+         } catch (e) {
+           // value 可能是 undefined 或 null，或其他非法类型(如：数字)
+           reject(promise, e);
+           return;
+         }
+         // handleMaybeThenable(promise, value, then);
+       } else {
+         fulfill(promise, value);
+       }
+     }
+   #+end_src 
+   
+   测试：
+
+   #+begin_src js
+     const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+     const p = new MyPromise(resolve => {
+       Util.delay(resolve(null))
+     }).then(val => {
+       console.log(val, 'p then resolve 1')
+     }, reason => {
+       console.log(reason.message, ', p then reject 1')
+     })
+   #+end_src
+
+   #+RESULTS:
+   : Cannot read property 'then' of null , p then reject 1
+
+*** value 返回的是一个 ~Promise~ 实例
+
+   即使用者在 then 回调里面 new 了一个 Promise 实例返回出来，这也是常见的使用场
+   景之一，经常会有多个有依赖前后结果的异步请求的时候，通过 promise then 来链
+   式同步执行。
+
+   #+begin_src js
+
+     function resolve(promise, value) {
+       if (promise === value) {
+         reject(promise, Util.error.returnSelfPromise());
+       } else if (Util.isObjectOrFunction(value)) {
+         let then;
+
+         try {
+           then = value.then;
+         } catch (e) {
+           // value 可能是 undefined 或 null，或其他非法类型(如：数字)
+           reject(promise, e);
+           return;
+         }
+         handleMaybeThenable(promise, value, then);
+       } else {
+         fulfill(promise, value);
+       }
+     }
+   #+end_src
+   
+   增加 ~handleMaybeThenable(promise, value, then);~ 函数处理其他情况。
+
+   #+begin_src js
+     function handleMaybeThenable(promise, thenable, then) {
+
+       // originalThen 实现的 then 函数，即 MyPromise.prototype.then
+       // 这能确保 thenable 的确是我们的 MyPromise 实例
+       if (thenable.constructor === promise.constructor && thenable.resolve === originalResolve && thenable.then === originalThen) {
+         // 这里要做的处理是直接针对 thenable 状态做出判断
+         if (thenable._state === FULFILL) {
+           fulfill(promise, thenable._result)
+         } else if (thenable._state === REJECT) {
+           reject(promise, thenable._result)
+         } else {
+           // 直接构造 resolver 和 rejection
+           subscribe(thenable, undefined, val => resolve(promise, val), reason => reject(promise, reason))
+         }
+       } else {
+         // TODO
+       }
+     }
+   #+end_src
+   
+   这样，我们就可以处理 then 回调中返回一个 Promise 实例的情况了。
+   
+   测试：
+
+   #+begin_src js
+     const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+     const p = new MyPromise(resolve => {
+       Util.delay(resolve(100))
+     }).then(val => {
+       console.log(val, ', p then 1 resolve')
+       return new MyPromise(resolve => {
+         Util.delay(resolve(200))
+       })
+     }).then(val => {
+       console.log(val, ', p then 2 resolve')
+     })
+   #+end_src
+
+   #+RESULTS:
+   : 100 , p then 1 resolve
+   : 200 , p then 2 resolve
+   : undefined
+   
+   所以很顺利的就看到了正确的结果，因为返回的本身就是 MyPromise ，所以只需要根据
+   其状态做相应的处理即可(~fulfill~ / ~reject~ / ~subscribe~)。
+
+*** value 有可能有自己的 ~then~ 函数呢？
+
+   #+begin_src js
+     function handleForeignThenable(promise, thenable, then) {
+       asap(() => () => {
+         let sealed = false; // 保证只会执行一次
+         try {
+           then.call(
+             thenable,
+             (value) => {
+               if (sealed) return;
+               sealed = true;
+
+               if (value !== thenable) {
+                 resolve(promise, value);
+               } else {
+                 fulfill(promise, value);
+               }
+             },
+             (reason) => {
+               if (sealed) return;
+               sealed = true;
+
+               reject(promise, reason);
+             }
+           );
+         } catch (e) {
+           sealed = true;
+           reject(promise, e);
+         }
+       });
+     }
+   #+end_src
+   
+   测试：
+
+   #+begin_src js
+     const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+     const p = new MyPromise(resolve => {
+       Util.delay(resolve(100))
+     }).then(val => {
+       console.log(val, ', p then 1 resolve')
+
+       return {
+         name: 1,
+         then(resolve, reject) {
+           console.log(resolve, reject, 'object then')
+           resolve(200)
+         }
+       }
+     }).then(val => {
+       console.log(val, ', p then 2 resolve')
+     })
+   #+end_src
+
+   #+RESULTS:
+   : 100 , p then 1 resolve
+   : [Function (anonymous)] [Function (anonymous)] object then
+   : 200 , p then 2 resolve
+
+   如果返回的对象类型属性有一个 then 函数的话，则 MyPromise 的处理是将 resolve 和
+   reject 封装一层传递给外部的 then ，由它决定何时使用？。
+   
+   注释 ~resolve(200)~ 之后：
+
+   #+RESULTS:
+   : 100 , p then 1 resolve
+   : [Function (anonymous)] [Function (anonymous)] object then
+
+   #+begin_quote
+   对比下原生的 Promise 呢，将 MyPromise 换成 Promise 
+
+   #+begin_src js
+     const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+     const p = new Promise(resolve => {
+       Util.delay(resolve(100))
+     }).then(val => {
+       console.log(val, ', p then 1 resolve')
+
+       return {
+         name: 1,
+         then(resolve, reject) {
+           console.log(resolve, reject, 'object then')
+           resolve(200)
+         }
+       }
+     }).then(val => {
+       console.log(val, ', p then 2 resolve')
+     })
+
+   #+end_src
+
+   #+RESULTS:
+   : 100 , p then 1 resolve
+   : [Function (anonymous)] [Function (anonymous)] object then
+   : 200 , p then 2 resolve
+   
+   结果和 MyPromise 一样，如果在 object then 中不调用 resolve 或 reject 结果，
+   那么 then 链也会断开：
+   
+   #+RESULTS:
+   : 100 , p then 1 resolve
+   : [Function (anonymous)] [Function (anonymous)] object then
+
+   #+end_quote
+
+   _*疑问 1： foreign then 的 resolve 为什么要判断返回值是不是等于该对象自身？*_
+
+   #+begin_src js
+     if (value !== thenable) {
+       resolve(promise, value);
+     } else {
+       fulfill(promise, value);
+     }
+   #+end_src
+   
+   *答* ：如果 ~value === thenable~ ，直接调用 ~resolve(promise, value)~ 会造成死循
+   环 resolve -> value.then is function -> handleMaybeThenable ->
+   handleForeignThenable -> resolve -> ...
+
+   验证方法，将 asap 延迟时间加大，并且给 asap 套一层，加上延时时间，如下：
+
+   #+begin_src js
+     function asap(callback) {
+       queue[qlen] = callback;
+
+       qlen++;
+
+       if (qlen === 1) {
+         // 这里是通过第一次入列操作来触发 flush 队列操作
+         // 因为 flush 是异步执行，所以在它还没之前之前有可能有新的任务入列
+         // 这个时候 qlen > 1 ，直到 flush 执行，通过 qlen 遍 queue 确保在执行的时刻
+         // 可以将这之前的所有入列的任务都得到执行
+         setTimeout(flush, 3000);
+       }
+     }
+
+     let bakAsap = asap
+     asap = cb => setTimeout(bakAsap(cb), 500)
+   #+end_src
+   
+   这样可以避免卡死，每隔 500ms 会执行一次 asap，3000ms 之后 flush queue。
+   
+   修改如下，直接 resolve：
+
+   #+begin_src js
+     (value) => {
+       if (sealed) return;
+       sealed = true;
+
+       resolve(promise, value);
+
+       // if (value !== thenable) {
+       //   resolve(promise, value);
+       // } else {
+       //   fulfill(promise, value);
+       // }
+     }
+   #+end_src
+   
+   修改用例：
+   
+   #+begin_src js
+     let i = 0
+     new MyPromise(resolve => {
+       Util.delay(resolve(100))
+     }).then(val => {
+       console.log(val, ', p then 1 resolve')
+
+       const obj = {
+         name: 1,
+         then(resolve, reject) {
+           console.log(i++, ', object then')
+           resolve(obj)
+         }
+       }
+       return obj
+     }).then(val => {
+       console.log(val, ', p then 2 resolve')
+     })
+   #+end_src
+   
+   执行结果：
+   #+begin_example
+    ➜  js git:(master) ✗ node promise.js
+    100 , p then 1 resolve
+    0 , object then
+    1 , object then
+    2 , object then
+    3 , object then
+    4 , object then
+    5 , object then
+    6 , object then
+    // 如果不停止会一直执行下去，因为死循环了
+   #+end_example
+
+
+* Promise Api 实现
+
+在 [[https://tc39.es/ecma262/#sec-promise-objects][ecma262 文档]]中我们知道 Promise 有如下 APIs：
+
+|                   | 名称                            | 简介                                 |
+|-------------------+---------------------------------+--------------------------------------|
+| Promise           | ~all(iterable)~                 | 满足条件：所有 promises 都 fulfilled |
+|                   | ~allSettled(iterable)~          |                                      |
+|                   | ~any(iterable)~                 |                                      |
+|                   | ~race(iterable)~                |                                      |
+|                   | ~reject(rejectHandler)~         |                                      |
+|                   | ~resolve(fulfillHandler)~       |                                      |
+|-------------------+---------------------------------+--------------------------------------|
+| Promise.prototype | ~catch(onRejected)~             |                                      |
+|                   | ~finally(onFinally)~            |                                      |
+|                   | ~then(onFulfilled, onRejected)~ |                                      |
+
+当目前表中的函数只实现了 ~then~ 和 ~resolve~ 下面将一一实现它们。
+
+*** Promise.reject(rejectHandler)
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  Promise.reject('test reject result').then(null, reason => {
+    console.log(reason, ', p reject then')
+  })
+#+end_src
+
+#+RESULTS:
+: test reject result , p reject then
+
+这个跟 Promise.resolve 一样，直接创建一个 Promise 实例 ins，调用 ~reject(ins,
+reason)~ 
+
+#+begin_src js
+
+  function originalReject(reason) {
+    const ctor = this;
+
+    if (typeof value === "object" && value.constructor === ctor) {
+      return value;
+    }
+
+    const ins = new ctor(noop);
+    reject(promise, reason);
+    return ins;
+  }
+#+end_src
+
+*** Promise.race(entries)
+
+race 竞争机制，只要有一个 fulfilled 了就立即结束。
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p1 = new MyPromise(resolve => {
+    Util.delay(() => resolve(100), 100)
+  })
+  const p2 = new MyPromise((resolve, reject) => {
+    Util.delay(() => reject(200), 80)
+  })
+
+  MyPromise.race([p1, p2]).then(val => {
+    console.log(val, ', race then resolve')
+  }, reason => {
+    console.log(reason, ', race then reject')
+  })
+#+end_src
+
+#+RESULTS:
+: 200 , race then reject
+
+只要有一个状态改变了就里面结束 race ，它不在乎结束的时候那个 promise 是
+*fulfilled* 还是 *rejected* 。
+*** Promise.all(entries)
+
+all 函数的实现关键：要等到所有的 promise 状态都 settled 了，才能 fulfill
+
+然后任务有异步也可能有同步任务(即 promise 状态是否立即改变)，不管如何都要等到他
+们状态发生改变了之后才能让 all 结束，所以两种处理情况
+
+1. 状态立即发生改变了的，直接记录
+2. 状态是 PENDING 的注册记录回调直到所有任务都完成
+
+*** Promise.prototype.finally(onFinally)
+
+这个函数目的就是不管 promise 任务最重是 fulfilled 还是 rejected 都会被执行。
+
+实现如下：
+#+begin_src js
+  function originalFinally(callback) {
+    const promise = this;
+    const ctor = promise.constructor;
+    // 1. 保证 callback 总是执行，即相当于在最后又挂了个 then，
+    //   这样就能保证之前有多少 then 且这些 then 结果是 fulfilled 还是 rejected
+    //   这个都会被执行
+    // 2. 回调 callback 要被执行且要保证 callback 的执行结果
+    //   也能符合 promise then 链规则
+    if (typeof callback === "function") {
+      return promise.then(
+        (value) => ctor.resolve(callback()).then(() => value),
+        (reason) =>
+        ctor.resolve(callback()).then(() => {
+          throw reason;
+        })
+      );
+    }
+
+    return promise.then(callback, callback);
+  }
+#+end_src
+
+测试：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  new MyPromise(resolve => {
+    Util.delay(resolve(100))
+  }).then(val => {
+    console.log(val, 'then 1')
+  }).finally(() => {
+    console.log('finally 1')
+  }).then((val) => {
+    console.log(val, 'then 2')
+    // 这里引用未声明类型，会报错
+    return a + b
+  }, reason => {
+    console.log(reason.message, 'reject 2')
+  }).finally(() => {
+    console.log('finally 2')
+  }).finally(100).then(val => {
+    console.log(val, 'then 3')
+  }, reason => {
+    console.log(reason.message, 'reject 3')
+  })
+
+#+end_src
+
+原生 Promise 执行结果
+#+RESULTS:
+: 100 then 1
+: finally 1
+: undefined then 2
+: finally 2
+: a is not defined reject 3
+
+注意这里有几点功能需要完成：
+1. finally 总是要被执行
+2. finally 的参数可以是普通类型的值
+3. finally 调用之后后面还可以继续链式调用，即它执行完也要返回一个 Promise 实例
+
+   
+换成 MyPromise:
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  new MyPromise(resolve => {
+    Util.delay(resolve(100))
+  }).then(val => {
+    console.log(val, 'then 1')
+  }).finally(() => {
+    console.log('finally 1')
+  }).then((val) => {
+    console.log(val, 'then 2')
+    // 这里引用未声明类型，会报错
+    return a + b
+  }, reason => {
+    console.log(reason.message, 'reject 2')
+  }).finally(() => {
+    console.log('finally 2')
+  }).finally(100).then(val => {
+    console.log(val, 'then 3')
+  }, reason => {
+    console.log(reason.message, 'reject 3')
+  })
+
+#+end_src
+
+#+RESULTS:
+: 100 then 1
+: finally 1
+: undefined then 2
+: finally 2
+: a is not defined reject 3
+
+使用 MyPromise 之后又两个异常，被后面两个 then rejection 捕获到了： *promise is
+not defined* ，这说明 finally
+
+*** Promise.prototype.catch(onRejection)
+
+[[https://tc39.es/ecma262/#sec-promise.prototype.catch][ECMA262标准流程]]：
+
+#+begin_example
+26.6.5.1 Promise.prototype.catch ( onRejected )
+When the catch method is called with argument onRejected, the following steps are taken:
+
+  1. Let promise be the this value.
+  2. Return ? Invoke(promise, "then", « undefined, onRejected »).
+#+end_example
+
+实现：
+#+begin_src js
+  MyPromise.prototype.catch = function (onRejection) {
+    // 因为如果有异常，异常会随着链式调用链中一直往后流，知道被处理掉
+    // 所以这里只要挂一个 then 去接受错误并处理就可以了
+    return this.then(null, onRejection);
+  }
+#+end_src
+
+测试：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  new MyPromise(resolve => {
+    Util.delay(resolve(100))
+  }).then(val => {
+    console.log(val, ', then 1')
+    return a + b
+  }).catch(err => {
+    console.log(err.message)
+    return 200
+  }).then(val => {
+    console.log(val, ', then 2')
+  })
+#+end_src
+
+#+RESULTS:
+: 100 , then 1
+: a is not defined
+: 200 , then 2
+
+*then 2* 能够输出是因为 *then 1* 的错误被 catch 处理掉了，所以 *then 2* 可以正常 resolve。
+
