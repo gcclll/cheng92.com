@@ -4,8 +4,9 @@ var FULFILL = 1;
 var REJECT = 2;
 var i = 0;
 var noop = function () {};
+var Ctor = MyPromise;
 
-let originalThen = then;
+var originalThen = then;
 function MyPromise(resolver) {
   this[PID] = i++;
   this._state = PENDING;
@@ -31,32 +32,36 @@ function MyPromise(resolver) {
   }
 }
 function originalResolve(value) {
-  const ctor = this;
+  var ctor = this;
 
   // resolve 结果就是一个 Promise 实例
   if (typeof value === "object" && value.constructor === ctor) {
     return value;
   }
 
-  const ins = new ctor(noop);
+  var ins = new ctor(noop);
   resolve(ins, value);
 
   return ins;
 }
 function originalReject(reason) {
-  const ctor = this;
+  var ctor = this;
 
   if (typeof value === "object" && value.constructor === ctor) {
     return value;
   }
 
-  const ins = new ctor(noop);
+  var ins = new ctor(noop);
   reject(promise, reason);
   return ins;
 }
 function originalFinally(callback) {
-  const promise = this;
-  const ctor = promise.constructor;
+  var promise = this;
+  var ctor = promise.constructor;
+  var result = this._result;
+  var fn = function () {
+    return callback(result);
+  };
   // 1. 保证 callback 总是执行，即相当于在最后又挂了个 then，
   //   这样就能保证之前有多少 then 且这些 then 结果是 fulfilled 还是 rejected
   //   这个都会被执行
@@ -64,15 +69,15 @@ function originalFinally(callback) {
   //   也能符合 promise then 链规则
   if (typeof callback === "function") {
     return promise.then(
-      (value) => ctor.resolve(callback()).then(() => value),
+      (value) => ctor.resolve(callback(value)).then(() => value),
       (reason) =>
-        ctor.resolve(callback()).then(() => {
+        ctor.resolve(callback(reason)).then(() => {
           throw reason;
         })
     );
   }
 
-  return promise.then(callback, callback);
+  return promise.then(fn, fn);
 }
 
 MyPromise.prototype.then = then;
@@ -85,7 +90,7 @@ MyPromise.prototype.catch = function (onRejection) {
 MyPromise.resolve = originalResolve;
 MyPromise.reject = originalReject;
 MyPromise.race = function (entries) {
-  const ctor = this;
+  var ctor = this;
 
   if (!Array.isArray(entries)) {
     return new ctor((_, reject) =>
@@ -94,8 +99,8 @@ MyPromise.race = function (entries) {
   } else {
     return new ctor((resolve, reject) => {
       // 遍历所有任务
-      const len = entries.length;
-      for (let i = 0; i < len; i++) {
+      var len = entries.length;
+      for (var i = 0; i < len; i++) {
         // 直接调用 resolve 去执行任务，然后挂一个 then
         // 因为 resolve 和 reject 只会被执行一次，所以一旦只要有个 entry
         // 结束了就会执行后面的 then 去调用 resolve 或 reject，
@@ -105,12 +110,21 @@ MyPromise.race = function (entries) {
     });
   }
 };
+MyPromise.all = function (entries) {
+  return new Enumerator(entries).promise;
+};
+MyPromise.allSettled = function (entries) {
+  return new Enumerator(entries, { isAllSettledFlag: true }).promise;
+};
+MyPromise.any = function (entries) {
+  return new Enumerator(entries, { isPromiseAnyFlag: true }).promise;
+};
 
 function resolve(promise, value) {
   if (promise === value) {
     reject(promise, Util.error.returnSelfPromise());
   } else if (Util.isObjectOrFunction(value)) {
-    let then;
+    var then;
 
     try {
       then = value.then;
@@ -128,7 +142,7 @@ function resolve(promise, value) {
 function handleForeignThenable(promise, thenable, then) {
   asap(() =>
     ((promise) => {
-      let sealed = false; // 保证只会执行一次
+      var sealed = false; // 保证只会执行一次
       try {
         then.call(
           thenable,
@@ -370,6 +384,143 @@ function flush() {
   // 在此刻至 Flush之前入列的任务都得到了执行，重置重新接受新的任务
   qlen = 0;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+//                                 Enumerator                                //
+///////////////////////////////////////////////////////////////////////////////
+function Enumerator(entries, option) {
+  var p = (this.promise = new Ctor(noop));
+  this.option = option || {};
+
+  this.$settle = this.option.isPromiseAnyFlag ? reject : fulfill;
+  if (Array.isArray(entries)) {
+    // 循环遍历所有的任务，如果是 PENDING 就订阅，如果是非 PENDING 就立即完成
+    this._length = entries.length; // 所有任务个数
+    this._remaining = this._length; // PENDING 的任务数
+    this._result = new Array(this._length); // 保存所有任务结果
+
+    if (this._length === 0) {
+      // 结束了
+      this.$settle(p, this._result);
+    } else {
+      this._enumerate(entries);
+      if (this._remaining === 0) {
+        // 所有任务状态改变了
+        this.$settle(p, this._result);
+      }
+    }
+  } else {
+    // 必须是数组类型
+    reject(p, new TypeError("必须提供数组类型"));
+  }
+}
+
+// 简化版本，只处理：
+// 1. entry 是 promise 类型，
+// 2. entry 是普通类型(非 promise，then 不是函数)
+Enumerator.prototype._enumerateSimple = function (entries) {
+  var p = this.promise;
+  for (var i = 0; p._state === PENDING && i < entries.length; i++) {
+    var entry = entries[i];
+
+    if (entry.constructor === Ctor) {
+      // 是个 promise 任务
+      if (entry._state !== PENDING) {
+        this._settle(entry._state, i, entry._result);
+      } else {
+        this._willSettle(entry, i);
+      }
+    } else {
+      // 非 promise 类型处理
+      this._remaining--;
+      this._result[i] = entry;
+    }
+  }
+};
+
+Enumerator.prototype._enumerate = function (entries) {
+  var p = this.promise;
+  // 当前 promise 状态处于 PENDING 状态下进行遍历
+  for (var i = 0; p._state === PENDING && i < entries.length; i++) {
+    var entry = entries[i];
+    var then, error;
+
+    try {
+      then = entry.then;
+    } catch (e) {
+      error = e;
+    }
+
+    if (then === originalThen && entry._state !== PENDING) {
+      // entry 不一定是 Promise 但有 then 函数，且状态改变了的
+      this._settle(entry._state, i, entry._result);
+    } else if (typeof then !== "function") {
+      // 普通类型值
+      this._remaining--;
+      this._result[i] = entry;
+    } else if (p.constructor === Ctor) {
+      // 到这里前提条件：
+      // 1. then 不是 originalThen 或 entry._state = PENDING
+      // 2. then 是个函数
+      // 3. this.promise 是我们定义的 MyPromise
+      // 那么将 entry 用 MyPromise 封装
+      var promise = new Ctor(noop);
+      if (error) {
+        if (this.option.isPromiseAnyFlag) {
+          this._result[i] = error;
+          this._remaining--;
+        } else {
+          reject(entry, error);
+        }
+      } else {
+        handleMaybeThenable(promise, entry, then);
+      }
+
+      this._willSettle(promise, i);
+    } else {
+      this._willSettle(new Ctor((resolve) => resolve(entry)), i);
+    }
+  }
+};
+
+Enumerator.prototype._settle = function (state, i, result) {
+  var p = this.promise;
+  var opt = this.option;
+
+  if (p._state === PENDING) {
+    this._remaining--;
+
+    // for Promise.any
+    if (opt.isPromiseAnyFlag) {
+      if (state === REJECT) {
+        this._result[i] = result;
+      } else {
+        resolve(p, result);
+      }
+    } else {
+      // for Promise.allSettled
+      if (state === REJECT && !opt.isAllSettledFlag) {
+        reject(p, result);
+      } else {
+        this._result[i] = result;
+      }
+    }
+  }
+
+  if (this._remaining === 0) {
+    // Promise.any 应该 reject
+    this.$settle(p, this._result);
+  }
+};
+Enumerator.prototype._willSettle = function (promise, i) {
+  // 订阅结果
+  subscribe(
+    promise,
+    undefined,
+    (value) => this._settle(FULFILL, i, value),
+    (reason) => this._settle(REJECT, i, reason)
+  );
+};
 
 try {
   // org src block 环境使用

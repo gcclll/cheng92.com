@@ -17,12 +17,6 @@
 [[/js/promise.js][完整的 promise.js 链接]]
 @@html:</kbd>@@ 
 
-* 完整脑图
-
-持续更新至完成...
-
-[[/img/es/es6-promise.svg]]
-
 * 构造函数 Promise
   1. 三个状态: ~PENDING~, ~FULFILL~, ~REJECT~ 。
   2. PID 记录 promise id 属性
@@ -871,18 +865,18 @@ value)~ :
 
 在 [[https://tc39.es/ecma262/#sec-promise-objects][ecma262 文档]]中我们知道 Promise 有如下 APIs：
 
-|                   | 名称                            | 简介                                 |
-|-------------------+---------------------------------+--------------------------------------|
-| Promise           | ~all(iterable)~                 | 满足条件：所有 promises 都 fulfilled |
-|                   | ~allSettled(iterable)~          |                                      |
-|                   | ~any(iterable)~                 |                                      |
-|                   | ~race(iterable)~                |                                      |
-|                   | ~reject(rejectHandler)~         |                                      |
-|                   | ~resolve(fulfillHandler)~       |                                      |
-|-------------------+---------------------------------+--------------------------------------|
-| Promise.prototype | ~catch(onRejected)~             |                                      |
-|                   | ~finally(onFinally)~            |                                      |
-|                   | ~then(onFulfilled, onRejected)~ |                                      |
+|                   | 名称                            | 简介                                                                                                   |
+|-------------------+---------------------------------+--------------------------------------------------------------------------------------------------------|
+| Promise           | ~all(iterable)~                 | 满足条件：所有 promises 都 fulfilled                                                                   |
+|                   | ~allSettled(iterable)~          | 不在乎结果是 FULFILL 还是 REJECT，只要所有的任务状态都改变了就 FULFILL 否则 REJECT                     |
+|                   | ~any(iterable)~                 | 只要有一个任务 FULFILL 结果就是 FULFILL 否则 REJECT                                                    |
+|                   | ~race(iterable)~                | 竞争关系，第一个状态改变发生改变 race 状态就跟着改变，是啥就是啥，FULFILL -> FULFILL, REJECT -> REJECT |
+|                   | ~reject(rejectHandler)~         | 返回一个必定 REJECT 的 promise                                                                         |
+|                   | ~resolve(fulfillHandler)~       | 返回一个必定 FULFILL 的 promise                                                                        |
+|-------------------+---------------------------------+--------------------------------------------------------------------------------------------------------|
+| Promise.prototype | ~catch(onRejected)~             |                                                                                                        |
+|                   | ~finally(onFinally)~            |                                                                                                        |
+|                   | ~then(onFulfilled, onRejected)~ |                                                                                                        |
 
 当目前表中的函数只实现了 ~then~ 和 ~resolve~ 下面将一一实现它们。
 
@@ -943,15 +937,431 @@ race 竞争机制，只要有一个 fulfilled 了就立即结束。
 
 只要有一个状态改变了就里面结束 race ，它不在乎结束的时候那个 promise 是
 *fulfilled* 还是 *rejected* 。
+
+实现：
+#+begin_src js
+  MyPromise.race = function (entries) {
+    const ctor = this;
+
+    if (!Array.isArray(entries)) {
+      return new ctor((_, reject) =>
+        reject(new TypeError("race 参数必须是一个数组"))
+      );
+    } else {
+      return new ctor((resolve, reject) => {
+        // 遍历所有任务
+        const len = entries.length;
+        for (let i = 0; i < len; i++) {
+          // 直接调用 resolve 去执行任务，然后挂一个 then
+          // 因为 resolve 和 reject 只会被执行一次，所以一旦只要有个 entry
+          // 结束了就会执行后面的 then 去调用 resolve 或 reject，
+          // 后面的就算执行到了也 settled 了，也不会重复执行 resolve 和 reject
+          ctor.resolve(entries[i]).then(resolve, reject);
+        }
+      });
+    }
+  }
+#+end_src
+*** Promise.any(entries)
+只要有个 promise fulfilled 了，返回的 promise 状态就会变成 fulfilled，否则是
+rejected，并且 rejected then 的回调接受的参数 reason 会是 entries 中所有
+rejected promise 结果值数组.
+
+修改点：将应该 ~fulfill()~ 地方换成 ~reject()~ 。
+#+begin_src js
+  function Enumerator(entries, option) {
+    var p = (this.promise = new Ctor(noop));
+    this.option = option || {};
+
+    // 保存结束的函数，所有任务都 settled 之后调用的函数
+    // Promise.any 所有的 REJECT 会调用 reject
+    // Promise.all 所有的都 FULFILL 会调用 fulfill
+    // 所以要区分开
+    this.$settle = opt.isPromiseAnyFlag ? reject : fulfill;
+    if (Array.isArray(entries)) {
+
+      // ... 省略
+      if (this._length === 0) {
+        // 结束了
+        this.$settle(p, this._result);
+      } else {
+        this._enumerate(entries);
+        if (this._remaining === 0) {
+          // 所有任务状态改变了
+          this.$settle(p, this._result);
+        }
+      }
+    } else {
+      // 必须是数组类型
+      reject(p, new TypeError("必须提供数组类型"));
+    }
+  }
+
+  Enumerator.prototype._enumerate = function (entries) {
+    var p = this.promise;
+    // 当前 promise 状态处于 PENDING 状态下进行遍历
+    for (var i = 0; p._state === PENDING && i < entries.length; i++) {
+      var entry = entries[i];
+      var then, error;
+
+      try {
+        then = entry.then;
+      } catch (e) {
+        error = e;
+      }
+
+      if (then === originalThen && entry._state !== PENDING) {
+        // ... 省略
+      } else if (typeof then !== "function") {
+        // ... 省略
+      } else if (p.constructor === Ctor) {
+        var promise = new Ctor(noop);
+        if (error) {
+          // 这里如果执行错误要区分下是 Promise.any 还是 Promise.all
+          if (this.option.isPromiseAnyFlag) {
+            this._result[i] = error;
+            this._remaining--;
+          } else {
+            reject(entry, error);
+          }
+        } else {
+        }
+
+        // ...
+      } else {
+        // ...
+      }
+    }
+  };
+
+  Enumerator.prototype._settle = function (state, i, result) {
+    var p = this.promise;
+    var opt = this.option;
+
+    if (p._state === PENDING) {
+      this._remaining--;
+
+      // 修改点
+      // for Promise.any
+      if (opt.isPromiseAnyFlag) {
+        if (state === REJECT) {
+          this._result[i] = result;
+        } else {
+          resolve(p, result);
+        }
+      } else {
+        // ...
+      }
+    }
+
+    if (this._remaining === 0) {
+      // Promise.any 应该 reject
+      // 修改点
+      this.$settle(p, this._result);
+    }
+  };
+#+end_src
+
+测试：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p1 = new MyPromise(resolve => {
+    Util.delay(() => resolve(100), 100)
+  })
+  const p2 = new MyPromise((resolve, reject) => {
+    Util.delay(() => reject(200), 80)
+  })
+
+  const p3 = new MyPromise((resolve, reject) => {
+    Util.delay(() => reject(300), 80)
+  })
+
+  MyPromise.any([p1, p2]).then(val => {
+    console.log(val, ', any then resolve 1')
+  }, reason => {
+    console.log(reason, ', any then reject 1')
+  })
+
+  MyPromise.any([p2, p3]).then(val => {
+    console.log(val, ', any then resolve 2')
+  }, reason => {
+    console.log(reason, ', any then reject 2')
+  })
+#+end_src
+
+#+RESULTS:
+: [ 200, 300 ] , any then reject 2
+: 100 , any then resolve 1
+
+第一行输出：p2, p3 都是 *REJECT* ，所以最后结果是 *REJECT*
+第二行输出：p1, p2 中 p1 是 *FULFILL* ，所以最后结果是 *FULFILL*
 *** Promise.all(entries)
 
-all 函数的实现关键：要等到所有的 promise 状态都 settled 了，才能 fulfill
+all 函数的实现关键：要等到所有的 promise 状态都 settled 了，才能 fulfill。
 
 然后任务有异步也可能有同步任务(即 promise 状态是否立即改变)，不管如何都要等到他
 们状态发生改变了之后才能让 all 结束，所以两种处理情况
 
 1. 状态立即发生改变了的，直接记录
 2. 状态是 PENDING 的注册记录回调直到所有任务都完成
+3. 如果遇到有一个 rejected 的立即结束，否则等待所有都 fulfilled 才结束，并且将所
+   有 fulfilled 结果组成数组传递给下一个 promise。
+
+#+begin_src js
+  // 简化版本，只处理：
+  // 1. entry 是 promise 类型，
+  // 2. entry 是普通类型(非 promise，then 不是函数)
+  Enumerator.prototype._enumerateSimple = function (entries) {
+    var p = this.promise;
+    for (var i = 0; p._state === PENDING && i < entries.length; i++) {
+      var entry = entries[i];
+
+      if (entry.constructor === Ctor) {
+        // 是个 promise 任务
+        if (entry._state !== PENDING) {
+          this._settle(entry._state, i, entry._result);
+        } else {
+          this._willSettle(entry, i);
+        }
+      } else {
+        // 非 promise 类型处理
+        this._remaining--;
+        this._result[i] = entry;
+      }
+    }
+  };
+
+  Enumerator.prototype._enumerate = function (entries) {
+    var p = this.promise;
+    // 当前 promise 状态处于 PENDING 状态下进行遍历
+    for (var i = 0; p._state === PENDING && i < entries.length; i++) {
+      var entry = entries[i];
+      var then, error;
+
+      try {
+        then = entry.then;
+      } catch (e) {
+        error = e;
+      }
+
+      if (then === originalThen && entry._state !== PENDING) {
+        // entry 不一定是 Promise 但有 then 函数，且状态改变了的
+        this._settle(entry._state, i, entry._result);
+      } else if (typeof then !== "function") {
+        // 普通类型值
+        this._remaining--;
+        this._result[i] = entry;
+      } else if (p.constructor === Ctor) {
+        // 到这里前提条件：
+        // 1. then 不是 originalThen 或 entry._state = PENDING
+        // 2. then 是个函数
+        // 3. this.promise 是我们定义的 MyPromise
+        // 那么将 entry 用 MyPromise 封装
+        var promise = new Ctor(noop);
+        if (error) {
+          reject(entry, error);
+        } else {
+          handleMaybeThenable(promise, entry, then);
+        }
+
+        this._willSettle(promise, i);
+      } else {
+        this._willSettle(new Ctor((resolve) => resolve(entry)), i);
+      }
+    }
+  };
+
+  Enumerator.prototype._settle = function (state, i, result) {
+    var p = this.promise;
+
+    if (p._state !== PENDING) {
+      this._remaining--;
+
+      if (state === REJECT) {
+        reject(p, result);
+      } else {
+        this._result[i] = result;
+      }
+    }
+
+    if (this._remaining === 0) {
+      fulfill(p, this._result);
+    }
+  };
+  Enumerator.prototype._willSettle = function (promise, i) {
+    // 订阅结果
+    subscribe(
+      promise,
+      undefined,
+      (value) => this._settle(FULFILL, i, value),
+      (reason) => this._settle(REJECT, i, reason)
+    );
+  };
+
+
+#+end_src   
+
+[[https://github.com/stefanpenner/es6-promise][原作者的实现]]通过封装了一个 ~Enumerator~ 来实现 ~Promise.all~ 其中有一个构造函数
+(~Enumerator~)和三个原型函数(~_settle~, ~_willSettle~, ~_enumrate~)。
+
+1. ~Enumerator~ 接受一个 *entries* 是一个数组
+
+   构造函数初始化了几个变量：
+
+   - ~_length~ 即 entries 任务的个数
+
+   - ~_remaining~ 任务状态是 PENDING 的个数，通过检测这个是不是为零来判断是不是
+     所有任务都结束了。
+     
+   - ~_result~ 一个结果数组，保存所有任务执行的结果。
+
+2. ~_settle~ 检测当前 entry 的状态，如果是 ~REJECT~ 就让 ~this.promise~ *REJECT*
+   ，结束循环，否则保存结果，最后检测 ~this._remaining~ 。
+   
+3. ~_willSettle~ 因为 entry 的状态可能是 *PENDING* 所以要执行订阅，等待它结束再进
+   入 ~_settle~ 回到第 2 步。
+   
+
+所以这个函数的实现关键取决于 entry 状态是否是立即改变了，如果是直接检测结果，否
+则构造该 entry 的 ~onFulfillment~ 和 ~onRejection~ 并执行订阅，等待它结束再检测
+结果。最后根据结果决定 ~this.promise~ 状态，因为 ~Promise.all~ *FULFILL* 的条件
+是所有任务都 *FULFILL* 才行，所以只要遇到一个 entry rejected 了那么
+~this.promise~ 就应该结束且状态是 *REJECT* 。
+
+测试
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p1 = new MyPromise(resolve =>{
+    Util.delay(() => resolve(100), 100)
+  })
+
+  const p2 = new MyPromise(resolve =>{
+    Util.delay(() => resolve(200), 80)
+  })
+
+  const p3 = new MyPromise((_, reject) =>{
+    Util.delay(() => reject(300), 80)
+  })
+
+  MyPromise.all([p1, p2]).then(result => {
+    console.log(result, ', promise all 1')
+  })
+
+  MyPromise.all([p1, p3]).then(null, reason => {
+    console.log(reason, ', promise all 2')
+  })
+#+end_src
+
+#+RESULTS:
+: 300 , promise all 2
+: [ 100, 200 ] , promise all 1
+
+改成原生 Promise 结果：
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p1 = new Promise(resolve =>{
+    Util.delay(() => resolve(100), 100)
+  })
+
+  const p2 = new Promise(resolve =>{
+    Util.delay(() => resolve(200), 80)
+  })
+
+  const p3 = new Promise((_, reject) =>{
+    Util.delay(() => reject(300), 80)
+  })
+
+  Promise.all([p1, p2]).then(result => {
+    console.log(result, ', promise all 1')
+  })
+
+  Promise.all([p1, p3]).then(null, reason => {
+    console.log(reason, ', promise all 2')
+  })
+
+#+end_src
+
+#+RESULTS:
+: 300 , promise all 2
+: [ 100, 200 ] , promise all 1
+
+结果 OK。
+*** Promise.allSettled(entries)^{es2020}
+这个和 ~Promise.all~ 区别在于，它不在乎 entries 中任务的状态是 *FULFILL* 还是 *REJECT* ，
+只要它状态 settled 即可，且会等到所有任务都 settled 了才会 *FULFILL* 。
+
+所以这里的实现和 ~Promise.all~ 会有所差别，但依然可以通过对 ~Enumerator~ 做细微
+改动来实现。
+
+修改点：
+
+#+begin_src js
+  function Enumerator(entries, option) {
+    var p = (this.promise = new Ctor(noop));
+    // 修改点1：增加 Promise.allSettled flag
+    this.isAllSettledFlag = false;
+    if (typeof option === "object") {
+      this.isAllSettledFlag = !!option.isAllSettledFlag;
+    }
+
+    // ... 省略
+  }
+
+
+  Enumerator.prototype._settle = function (state, i, result) {
+    var p = this.promise;
+
+    if (p._state === PENDING) {
+      this._remaining--;
+
+      // api 不是 Promise.allSettled
+      // 修改点2：增加判断是不是 Promise.allSettled 调用
+      if (state === REJECT && !this.isAllSettledFlag) {
+        reject(p, result);
+      } else {
+        this._result[i] = result;
+      }
+    }
+
+    if (this._remaining === 0) {
+      fulfill(p, this._result);
+    }
+  }
+#+end_src
+
+测试：
+
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  const p1 = new MyPromise(resolve =>{
+    Util.delay(() => resolve(100), 100)
+  })
+
+  const p2 = new MyPromise(resolve =>{
+    Util.delay(() => resolve(200), 80)
+  })
+
+  const p3 = new MyPromise((_, reject) =>{
+    Util.delay(() => reject(300), 80)
+  })
+
+  MyPromise.allSettled([p1, p2]).then(result => {
+    console.log(result, ', promise allSettled 1 resolve')
+  })
+
+  MyPromise.allSettled([p1, p3]).then(value => {
+    console.log(value, ', promise allSettled 2 resolve')
+  })
+#+end_src
+
+#+RESULTS:
+: [ 100, 200 ] , promise allSettled 1 resolve
+: [ 100, 300 ] , promise allSettled 2 resolve
 
 *** Promise.prototype.finally(onFinally)
 
@@ -960,8 +1370,8 @@ all 函数的实现关键：要等到所有的 promise 状态都 settled 了，�
 实现如下：
 #+begin_src js
   function originalFinally(callback) {
-    const promise = this;
-    const ctor = promise.constructor;
+    var promise = this;
+    var ctor = promise.constructor;
     // 1. 保证 callback 总是执行，即相当于在最后又挂了个 then，
     //   这样就能保证之前有多少 then 且这些 then 结果是 fulfilled 还是 rejected
     //   这个都会被执行
@@ -969,9 +1379,9 @@ all 函数的实现关键：要等到所有的 promise 状态都 settled 了，�
     //   也能符合 promise then 链规则
     if (typeof callback === "function") {
       return promise.then(
-        (value) => ctor.resolve(callback()).then(() => value),
+        (value) => ctor.resolve(callback(value)).then(() => value),
         (reason) =>
-        ctor.resolve(callback()).then(() => {
+        ctor.resolve(callback(reason)).then(() => {
           throw reason;
         })
       );
@@ -985,7 +1395,7 @@ all 函数的实现关键：要等到所有的 promise 状态都 settled 了，�
 #+begin_src js
   const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
 
-  new MyPromise(resolve => {
+  new Promise(resolve => {
     Util.delay(resolve(100))
   }).then(val => {
     console.log(val, 'then 1')
@@ -1020,7 +1430,6 @@ all 函数的实现关键：要等到所有的 promise 状态都 settled 了，�
 2. finally 的参数可以是普通类型的值
 3. finally 调用之后后面还可以继续链式调用，即它执行完也要返回一个 Promise 实例
 
-   
 换成 MyPromise:
 
 #+begin_src js
@@ -1057,6 +1466,25 @@ all 函数的实现关键：要等到所有的 promise 状态都 settled 了，�
 
 使用 MyPromise 之后又两个异常，被后面两个 then rejection 捕获到了： *promise is
 not defined* ，这说明 finally
+
+增加返回值传递给 finally 回调，测试：
+#+begin_src js
+  const { MyPromise, Util} = require(`${process.env.PWD}/../../static/js/promise.js`)
+
+  new MyPromise(resolve => {
+    Util.delay(resolve(100))
+  }).then(val => {
+    console.log(val, 'then 1')
+    return 200
+  }).finally((val) => {
+    console.log(val, ', finally 1')
+  })
+#+end_src
+
+#+RESULTS:
+: 100 then 1
+: 200 , finally 1
+: undefined
 
 *** Promise.prototype.catch(onRejection)
 
@@ -1103,3 +1531,7 @@ When the catch method is called with argument onRejected, the following steps ar
 
 *then 2* 能够输出是因为 *then 1* 的错误被 catch 处理掉了，所以 *then 2* 可以正常 resolve。
 
+
+* 完整脑图
+
+[[/img/es/es6-promise.svg]]
