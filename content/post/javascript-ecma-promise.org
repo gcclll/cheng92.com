@@ -1531,7 +1531,160 @@ When the catch method is called with argument onRejected, the following steps ar
 
 *then 2* 能够输出是因为 *then 1* 的错误被 catch 处理掉了，所以 *then 2* 可以正常 resolve。
 
-
 * 完整脑图
 
 [[/img/es/es6-promise.svg]]
+
+* Jest 测试
+
+#+begin_src js
+  const Promise = require("./promise.js").MyPromise;
+  const delay = (fn, t) => setTimeout(fn, t);
+  const log = (...args) => console.log.apply(console, args);
+
+  describe("Promise", () => {
+    test("Promise then resolve", () => {
+      return new Promise((resolve) => delay(() => resolve(100))).then((value) =>
+        expect(value).toBe(100)
+      );
+    });
+    test("Promise then reject", () => {
+      return new Promise((_, reject) =>
+        delay(() => reject("test reject"))
+      ).then(null, (reason) => expect(reason).toBe("test reject"));
+    });
+
+    test("Promise catch", () => {
+      return new Promise((resolve) => delay(() => resolve(100)))
+        .then(() => a /* a is not defined */)
+        .catch((err) => expect(err.message).toBe("a is not defined"));
+    });
+
+    test("Promise finally", () => {
+      return new Promise((resolve) => delay(() => resolve(100)))
+        .then((value) => 200)
+        .finally((result) => expect(result).toBe(200));
+    });
+
+    test("Promise finally with catch", () => {
+      return new Promise((resolve) => delay(() => resolve(100)))
+        .then((value) => a)
+        .catch((err) => err.message)
+        .finally((result) => expect(result).toBe("a is not defined"));
+    });
+
+    test("Promise all", () => {
+      const p1 = new Promise((resolve) => delay(() => resolve(100), 100));
+      const p2 = new Promise((_, reject) => delay(() => reject(200), 200));
+      const p3 = new Promise((_, reject) => delay(() => reject(300), 80));
+      const p4 = new Promise((resolve) => delay(() => resolve(400), 120));
+
+      let pa1 = Promise.all([p1, p4]).then((value) => value);
+      let pa2 = Promise.all([p1, p2]).then(null, (reason) => reason);
+      let pa3 = Promise.all([p2, p3]).then(null, (reason) => reason);
+      return Promise.allSettled([pa1, pa2, pa3]).then((value) =>
+        expect(value).toStrictEqual([[100, 400], 200, 300])
+      );
+    });
+
+    test("Promise allSettled", () => {
+      const p1 = new Promise((resolve) => delay(() => resolve(100), 100));
+      const p2 = new Promise((_, reject) =>
+        delay(() => reject("p2 reject"), 200)
+      );
+      const p3 = new Promise((resolve) => delay(() => resolve(300), 120));
+
+      return Promise.allSettled([p1, p2, p3]).then((value) =>
+        expect(value).toStrictEqual([100, "p2 reject", 300])
+      );
+    });
+
+    test("Promise race resolve", () => {
+      const p1 = new Promise((resolve) => delay(() => resolve(100), 100));
+      const p2 = new Promise((_, reject) =>
+        delay(() => reject("p2 reject"), 200)
+      );
+      return Promise.race([p2, p1]).then((value) => expect(value).toBe(100));
+    });
+
+    test("Promise race reject", () => {
+      const p1 = new Promise((resolve) => delay(() => resolve(100), 100));
+      const p2 = new Promise((_, reject) => delay(() => reject("p2 reject"), 80));
+      return Promise.race([p2, p1]).then(null, (reason) =>
+        expect(reason).toBe("p2 reject")
+      );
+    });
+
+    test("Promise any resolve", () => {
+      const p1 = new Promise((resolve) => delay(() => resolve(100), 100));
+      const p2 = new Promise((_, reject) => delay(() => reject("p2 reject"), 80));
+      const p3 = new Promise((_, reject) => delay(() => reject("p3 reject"), 80));
+      return Promise.any([p2, p1, p3]).then((value) => expect(value).toBe(100));
+    });
+
+    test("Promise any reject", () => {
+      const p1 = new Promise((resolve) => delay(() => resolve(100), 100));
+      const p2 = new Promise((_, reject) => delay(() => reject("p2 reject"), 80));
+      const p3 = new Promise((_, reject) => delay(() => reject("p3 reject"), 80));
+      return Promise.any([p2, p3]).then(null, (value) =>
+        expect(value).toStrictEqual(["p2 reject", "p3 reject"])
+      );
+    });
+  });
+#+end_src
+
+结果：
+
+#+begin_example
+  ➜  js git:(master) ✗ jest
+  jest
+  PASS ./promise.spec.js (5.19s)
+    Promise
+      ✓ Promise then resolve (11ms)
+      ✓ Promise then reject (3ms)
+      ✓ Promise catch (5ms)
+      ✓ Promise finally (4ms)
+      ✓ Promise finally with catch (6ms)
+      ✓ Promise all (205ms)
+      ✓ Promise allSettled (204ms)
+      ✓ Promise race resolve (101ms)
+      ✓ Promise race reject (85ms)
+      ✓ Promise any resolve (102ms)
+      ✓ Promise any reject (85ms)
+
+  Test Suites: 1 passed, 1 total
+  Tests:       11 passed, 11 total
+  Snapshots:   0 total
+  Time:        9.801s
+  Ran all test suites.
+#+end_example
+
+* 总结
+
+Promise 实现关键点：
+
+1. resolver 立即执行， resolve/reject 封装之后暴露给 resolver 的使用者调用，比
+   如：请求成功调用 ~resolve(value)~, 请求失败调用 ~reject(reason)~ 。
+2. resolve 函数实现需要判断各种情况，主要包含：
+
+   - 不能处理自身，会造成死循环，即 then 的 callback 里面不能返回当前 promise 实
+     例自身
+     
+   - 如果是对象或函数，要考虑到提供了 ~then(resolve, reject)~ 函数情况
+
+   - 是一个新的 Promise 实例。
+3. 任务分立即完成和延时完成情况，立即完成的代表状态立即改变了直接在 then 函数中
+   ~fulfill~ 或 ~reject~ 即可，如果是异步的，需要通过订阅(~subscribe~)来实现。
+4. then 函数中为了链式调用，需要新建一个 child promise 作为返回值。
+5. ~Promise.all~, ~allSettled~, ~any~ 这几个 api 的实现通过 Enumerator 封装。
+6. ~Promise.all~ 实现原理，遍历所有任务，同步的直接记录结果，异步的订阅结果，异
+   步完成之后检测最终的值，整个过程中只要中间有任一个 *REJECT* 了,
+   ~Promise.all()~ 状态立即改变为 *REJECT* 结束，返回结果是： *FULFILL*-结果数组，
+   *REJECT*-失败原因。
+7. ~Promise.allSettled~ 实现原理与 ~Promise.all~ 大相径庭，只要将 ~Promise.all~ 里面
+   遇到 *REJECT* 的处理改成记录结果就行，最后所有的完成之后就 *FULFILL* ，返回结果
+   是所有任务 *FULFILL* 结果或所有 *REJECT* 原因组成的数组。
+8. ~Promise.any~ 的实现与 ~Promise.all~ 刚好相反，它只要遇到有一个 *FULFILL* 就结束，
+   返回 *FULFILL* 状态，除非所有的都 *REJECT* 了才会 *REJECT* ，返回结果值为：
+   *FULFILL*-成功结果值， *REJECT*-返回所有失败任务的原因组成的数组。
+
