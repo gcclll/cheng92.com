@@ -94,7 +94,7 @@
   测试：
 
   #+begin_export html
-  <link href="/css/tests/web/de-th.css" rel="stylesheet"/>
+  <link href="/css/tests/web/deth.css" rel="stylesheet"/>
   <div id="ArkXnY">
     <div class="_left">移动鼠标到我上面移动，离开时重置</div>
     <div class="_right">
@@ -103,5 +103,5 @@
     </div>
     </div>
 
-  <script src="/js/tests/web/de-th.js"></script>
+  <script src="/js/tests/web/deth.js"></script>
   #+end_export
