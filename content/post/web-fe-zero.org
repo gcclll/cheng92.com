@@ -96,10 +96,14 @@
   #+begin_export html
   <link href="/css/tests/web/deth.css" rel="stylesheet"/>
   <div id="ArkXnY">
-    <div class="_left">移动鼠标到我上面移动，离开时重置</div>
+    <div class="_left">移动鼠标到我上面移动，离开时重置，移动时观察蓝条变化，停止时观察红条变化</div>
+    <div class="_mid">
+      <div class="dd">debounce</div>
+      <div class="dd">throttle</div>
+    </div>
     <div class="_right">
-      <div class="_debounce">_debounce</div>
-      <div class="_throttle">_throttle</div>
+      <div class="_debounce"></div>
+      <div class="_throttle"></div>
     </div>
     </div>
 

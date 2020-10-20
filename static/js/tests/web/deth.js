@@ -18,17 +18,26 @@ function _throttle(fn, duration) {
   };
 }
 
+var dcount = 0,
+  tcount = 0,
+  max = 80;
 var dfn = _debounce(function () {
   $("#ArkXnY ._debounce").append("<span></span>");
-}, 1000);
+  if (dcount++ > max) clearDebounce();
+}, 500);
 var tfn = _throttle(function () {
   $("#ArkXnY ._throttle").append("<span></span>");
-}, 100);
+  if (tcount++ > max) clearThrottle();
+}, 500);
 $("#ArkXnY ._left").mousemove(function (e) {
   dfn();
   tfn();
 });
-$("#ArkXnY ._left").mouseout(function () {
+function clearDebounce() {
   $("#ArkXnY ._debounce").html("");
+  dcount = 0;
+}
+function clearThrottle() {
   $("#ArkXnY ._throttle").html("");
-});
+  tcount = 0;
+}
