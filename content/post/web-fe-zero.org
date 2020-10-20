@@ -85,11 +85,10 @@
   3. 防抖和节流区别
 
      *防抖* 是指同一种类型的动作无论发生多少次，只要间隔时间不够长，就永远只会触发
-     *最后那一个动作回调* 。
+     ~最后那一个动作回调~ 。
      
      *节流* 是指两个动作中间必须间隔特定的时间，否则后面的动作不会触发，即在这固
-     定的时间间隔之内的动作会被忽略， *只会执行第一个动作* 。
-
+     定的时间间隔之内的动作会被忽略， ~只会执行第一个动作回调~ 。
      
   测试：
 
@@ -98,8 +97,8 @@
   <div id="ArkXnY">
     <div class="_left">移动鼠标到我上面移动，离开时重置，移动时观察蓝条变化，停止时观察红条变化</div>
     <div class="_mid">
-      <div class="dd">debounce</div>
-      <div class="dd">throttle</div>
+      <div class="dd" style="color:red;">debounce</div>
+      <div class="dd" style="color:blue;">throttle</div>
     </div>
     <div class="_right">
       <div class="_debounce"></div>

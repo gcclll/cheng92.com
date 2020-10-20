@@ -24,11 +24,11 @@ var dcount = 0,
 var dfn = _debounce(function () {
   $("#ArkXnY ._debounce").append("<span></span>");
   if (dcount++ > max) clearDebounce();
-}, 500);
+}, 100);
 var tfn = _throttle(function () {
   $("#ArkXnY ._throttle").append("<span></span>");
   if (tcount++ > max) clearThrottle();
-}, 500);
+}, 300);
 $("#ArkXnY ._left").mousemove(function (e) {
   dfn();
   tfn();
