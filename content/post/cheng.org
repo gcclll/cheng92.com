@@ -30,6 +30,10 @@ https://github.com/algolia/autocomplete.js
 
   [[http://qiniu.ii6g.com/img/20200925183016.png]]
 * 娱乐世界(play the world :game_die:)
+** 布袋戏
+
+https://www.bilibili.com/video/BV1zK4y1C7vE/
+
 ** app 门户
 - [[https://creatorsdaily.com/][创造者日报]] 各种类型的 app
 
@@ -227,6 +231,8 @@ xlsx 文件转成 json 数据。
 |               |              |                    |
 
 * 软件&命令
+** 网站
+1. [[https://realfavicongenerator.net/][图片/svg 转 favicon]]
 ** MacOs 工具
 *** 系统性工具
 1. [[https://setapp.sjv.io/c/1249877/344537/5114][setapp]]
@@ -332,6 +338,7 @@ https://github.com/PicGo
    | http://fonts.gmirror.org     | 七牛          | timeout |
 
 ** 其他
+
 1. 怎么更新项目中所有的 ~npm~ 包?
 
    [[https://flaviocopes.com/update-npm-dependencies/][  参考链接。]]
@@ -380,3 +387,4 @@ https://github.com/PicGo
    ~$ brew cask install android-platform-tools~
    
    ~$ adb devices~
+6. 批量下载 bilibili 视频(you-get 命令)？

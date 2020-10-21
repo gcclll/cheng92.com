@@ -26,3 +26,8 @@
   [[https://qiniu.ii6g.com/img/glsl-1.png]]
   
   [[https://qiniu.ii6g.com/img/glsl-2.jpeg]]
+* 视频收集
+
+#+begin_export html
+<iframe src="//player.bilibili.com/player.html?aid=9645434&bvid=BV1Dx411Q7gx&cid=15940647&page=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
+#+end_export
