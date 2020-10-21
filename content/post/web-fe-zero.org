@@ -12,7 +12,7 @@
 
 @@html:<kbd>@@
 本文默认处于折叠状态，可点击标题后方的 *...* 展开或闭合。
-@@html:</kbd>@@ 
+@@html:</kbd>@@
 
 #+begin_quote
 参考链接：
@@ -20,144 +20,230 @@
 #+end_quote
 * JavaScript
 ** 节流和防抖
- 1. 防抖：动作发生后，延时多久后执行动作回调
+   1. 防抖：动作发生后，延时多久后执行动作回调
 
-    比如：点击事件，点击之后在一定时间后触发回调，在该时间内如果再发生点击事件
-    不会立即触发回调，而是重置延时触发时间。
-     
-    #+begin_src js
-      function debounce(fn, time) {
-        let timer = null
+      比如：点击事件，点击之后在一定时间后触发回调，在该时间内如果再发生点击事件
+      不会立即触发回调，而是重置延时触发时间。
 
-        return function() {
-          clearTimeout(timer)
-          timer = setTimeout(() => fn.apply(this, arguments), time)
+      #+begin_src js
+        function debounce(fn, time) {
+          let timer = null
+
+          return function() {
+            clearTimeout(timer)
+            timer = setTimeout(() => fn.apply(this, arguments), time)
+          }
         }
-      }
 
-      function log(time) {
-        setTimeout(() => console.log('x: ' + time), time || 10)
-      }
-      const dlog = debounce(log, 100)
-      dlog(10)
-      dlog(50)
-      dlog(100)
-      dlog(120)
-    #+end_src
-
-    #+RESULTS:
-    : x: 120
-
-    10, 50, 100 都没触发，因为执行间隔都不超过 100 所以被 ~clearTimeout~ 取消了，
-    知道第四个 ~dlog(120)~ 调用，后面没有了，得到执行输出结果。
-
- 2. 节流：两个动作触发有一定的时间间隔
-
-    #+begin_src js
-      function throttle(fn, duration) {
-        let last = 0
-
-        return function() {
-          let current = Date.now()
-
-          if (current - last < duration) return
-
-          fn.apply(this, arguments)
-
-          last = Date.now()
+        function log(time) {
+          setTimeout(() => console.log('x: ' + time), time || 10)
         }
-      }
+        const dlog = debounce(log, 100)
+        dlog(10)
+        dlog(50)
+        dlog(100)
+        dlog(120)
+      #+end_src
 
-      function log(time) {
-        console.log('x: ' + time)
-      }
+      #+RESULTS:
+      : x: 120
 
-      function delay(time) {
-        setTimeout(() => dlog(time), time)
-      }
+      10, 50, 100 都没触发，因为执行间隔都不超过 100 所以被 ~clearTimeout~ 取消了，
+      知道第四个 ~dlog(120)~ 调用，后面没有了，得到执行输出结果。
 
-      // 100ms 间隔
-      const dlog = throttle(log, 100)
+   2. 节流：两个动作触发有一定的时间间隔
 
-      delay(10)
-      delay(50)
-      delay(150)
-      delay(160)
-      delay(270)
-    #+end_src
+      #+begin_src js
+        function throttle(fn, duration) {
+          let last = 0
 
-    #+RESULTS:
-    : x: 10 // now - 0 >= 100
-    : x: 150 // 150 - 50 >= 100
-    : x: 270 // 270 - 160 >= 100
+          return function() {
+            let current = Date.now()
 
- 3. 防抖和节流区别
+            if (current - last < duration) return
 
-    *防抖* 是指同一种类型的动作无论发生多少次，只要间隔时间不够长，就永远只会触发
-    ~最后那一个动作回调~ 。
-     
-    *节流* 是指两个动作中间必须间隔特定的时间，否则后面的动作不会触发，即在这固
-    定的时间间隔之内的动作会被忽略， ~只会执行第一个动作回调~ 。
-     
- 测试：
+            fn.apply(this, arguments)
 
- #+begin_export html
- <link href="/css/tests/web/deth.css" rel="stylesheet"/>
- <div id="ArkXnY">
-   <div class="_left">移动鼠标到我上面移动，离开时重置，移动时观察蓝条变化，停止时观察红条变化</div>
-   <div class="_mid">
-     <div class="dd" style="color:red;">debounce</div>
-     <div class="dd" style="color:blue;">throttle</div>
-   </div>
-   <div class="_right">
-     <div class="_debounce"></div>
-     <div class="_throttle"></div>
-   </div>
-   </div>
+            last = Date.now()
+          }
+        }
 
- <script src="/js/tests/web/deth.js"></script>
- #+end_export
+        function log(time) {
+          console.log('x: ' + time)
+        }
+
+        function delay(time) {
+          setTimeout(() => dlog(time), time)
+        }
+
+        // 100ms 间隔
+        const dlog = throttle(log, 100)
+
+        delay(10)
+        delay(50)
+        delay(150)
+        delay(160)
+        delay(270)
+      #+end_src
+
+      #+RESULTS:
+      : x: 10 // now - 0 >= 100
+      : x: 150 // 150 - 50 >= 100
+      : x: 270 // 270 - 160 >= 100
+
+   3. 防抖和节流区别
+
+      *防抖* 是指同一种类型的动作无论发生多少次，只要间隔时间不够长，就永远只会触发
+      ~最后那一个动作回调~ 。
+
+      *节流* 是指两个动作中间必须间隔特定的时间，否则后面的动作不会触发，即在这固
+      定的时间间隔之内的动作会被忽略， ~只会执行第一个动作回调~ 。
+
+   测试：
+
+   #+begin_export html
+   <link href="/css/tests/web/deth.css" rel="stylesheet"/>
+   <div id="ArkXnY">
+     <div class="_left">移动鼠标到我上面移动，离开时重置，移动时观察蓝条变化，停止时观察红条变化</div>
+     <div class="_mid">
+       <div class="dd" style="color:red;">debounce</div>
+       <div class="dd" style="color:blue;">throttle</div>
+     </div>
+     <div class="_right">
+       <div class="_debounce"></div>
+       <div class="_throttle"></div>
+     </div>
+     </div>
+
+   <script src="/js/tests/web/deth.js"></script>
+   #+end_export
 
 
 ** 下面的代码打印什么？
 *** IIFE 函数名是个常量？
+    
+    函数定义实现原理： http://ecma-international.org/ecma-262/5.1/#sec-13
+    
+    [[/post/javascript-apis/#f-function-definition][博客内伪码链接 ->>]]
 
-   #+begin_src js
-     var b = 10
+    1. 非严格模式
 
-     ;(function b() {
-       b = 20
-       console.log(b)
-     })()
-   #+end_src
+       #+begin_src js
+         var b = 10
 
-   #+RESULTS:
-   : [Function: b]
+         ;(function b() {
+           b = 20
+           console.log(b)
+         })()
+       #+end_src
 
-   #+begin_quote
-   输出结果分析：非严格模式下 IIFE 的函数名不能进行赋值，如果赋值了的话静默是失
-   败的，所以说 ~b = 20~ 这一句没其任何作用，函数内部的 ~b~ 还是 IIFE 的那个函数
-   名，所以最后输出依旧是 ~[Function: b]~ 。
-   #+end_quote
-   
-   #+begin_src js
-     var b = 10
+       #+RESULTS:
+       : [Function: b]
 
-     try {
-       ;(function b() {
-         "use strict";
-         b = 20
-         console.log(b)
-       })()
-     } catch(e) {
-       console.log(e)
-     }
-   #+end_src
+       #+begin_quote
+       输出结果分析：非严格模式下 IIFE 的函数名不能进行赋值，如果赋值了的话静默是失
+       败的，所以说 ~b = 20~ 这一句没其任何作用，函数内部的 ~b~ 还是 IIFE 的那个函数
+       名，所以最后输出依旧是 ~[Function: b]~ 。
+       #+end_quote
 
-   #+RESULTS:
-   : TypeError Assignment to constant variable.
+    2. 严格模式
 
-   #+begin_quote
-   结果分析：将 IIFE 内部换成严格模式就能很明显的说明问题了，上面结果报错“不能给
-   常量赋值”，立即函数名是不可变的常量。
-   #+end_quote
+       #+begin_src js
+         var b = 10
+
+         try {
+           ;(function b() {
+             "use strict";
+             b = 20
+             console.log(b)
+           })()
+         } catch(e) {
+           console.log(e)
+         }
+       #+end_src
+
+       #+RESULTS:
+       : TypeError Assignment to constant variable.
+
+       #+begin_quote
+       结果分析：将 IIFE 内部换成严格模式就能很明显的说明问题了，上面结果报错“不能给
+       常量赋值”，立即函数名是不可变的常量。
+       #+end_quote
+
+    3. window.b/this.b
+
+       #+begin_src js
+         var b = 10;
+
+         (function b() {
+           b = 20
+
+           console.log(b)
+           console.log(this.b) // 10
+         })()
+       #+end_src
+
+       #+RESULTS:
+       : [Function: b]
+       : 10
+       
+       #+begin_quote
+       因为这里是以 node module 环境运行的，所以不能直接使用
+       ~window.b/this.b/global.b~ 去取到外面的 ~var b = 10~ 的值，结果是根据浏览器环境
+       运行结果。
+       
+       第二个 log 结果是 *10* ，原因是在全局作用域下用 ~var~ 声明的变量是全局变
+       量，会挂到 *window* 对象下面，所以可以直接通过 *window.b* 取到它的值，用
+       *this.b* 也能取到是因为 IIFE 函数调用上下文是在全局，所以 *this* 指向
+       *window* 。
+       #+end_quote
+
+    4. 函数提升(声明+赋值)
+       
+       #+begin_src js
+         var b = 10
+
+         function b() {
+           b = 20
+           console.log(b)
+         }
+
+         console.log({ b })
+         try {
+           b()
+         } catch(e) {
+           console.log(e.message)
+         }
+       #+end_src
+
+       #+RESULTS:
+       : { b: 10 }
+       : b is not a function
+
+       #+begin_quote
+       结果分析：提升对于命名式函数表达式来说，它的声明和赋值都会被提升，对于
+       ~var~ 声明的变量只会提升声明，所以就有 
+       1. ~function b~ 声明和赋值提升， ~var b~ 声明提升，由于声明只会发生一次，
+          所以这里相当于只有一次声明和赋值，即此时有变量 ~b~ 它的值是 ~function
+          b() {}~ 。
+       2. 但是 ~var b = 10~ 的赋值不会提升，所以当执行到这一句的时候， ~b~ 的值
+          会被这里的赋值操作给替换成 ~10~ 。
+       #+end_quote
+
+    5. 只有 ~b = 10~
+
+       #+begin_src js
+         function b() {
+           console.log(b) // [Function b]
+           b = 1
+           console.log(window.b) // 1
+           console.log(b) // 1
+         }
+
+         b()
+       #+end_src
+       
+       #+RESULT:
+       : [Function b]
+       : 1
+       : 1

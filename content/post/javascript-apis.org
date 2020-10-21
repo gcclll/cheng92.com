@@ -9,16 +9,17 @@
 1. *regenerator*: ~npm install -g renerator~ 将 es6+ 语法编译成 es5 语法
 #+end_quote
 * 社区链接
-| name          | link           |
-|---------------+----------------|
+| name          | link            |
+|---------------+-----------------|
 | [[https://esdiscuss.org/][esdiscuss.org]] | es 标准讨论社区 |
-* 内容简要
-1. [[#i-IsPropertyKey][对象属性名只能是字符串或符号类型]]。
+| [[http://ecma-international.org/ecma-262][ecma262]]       | 官方标准文档    |
+| [[https://tc39.es/ecma262][ecma262]]       | 官方标准文档    |
+
 * Document
 ** Document.execCommand()
 * Array
 *** [[#es2016-includes][Array.prototype.includes]]
-* TODO es2017
+* TODO ES2017
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: es2017
@@ -86,7 +87,7 @@
     return CreateArrayFromList(nameList)
   }
 #+end_src
-* TODO es2016
+* TODO ES2016
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: es2016
@@ -262,8 +263,44 @@ result:
 : { squared: 4, cubed: 8, a: 4, b: 27 }
 
 [[https://github.com/tc39/proposal-exponentiation-operator][more...]]
+* 纯概念
+** Environment Records([[https://tc39.es/ecma262/#sec-environment-records][link]])
+
+[[https://tc39.es/ecma262/#sec-environment-records][英文原版 ->>>]]
+
+[[https://github.com/lizhongzhen11/lizz-blog/issues/49][中文译版 ->>>]]
 * 伪码
 ** C
+*** CreateImmutableBinding(N, S)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: c-CreateImmutableBinding
+:END: 
+
+[[https://tc39.es/ecma262/#sec-declarative-environment-records-createimmutablebinding-n-s][CreateImmutableBinding(N, S)]], 在当前的 *Environment Record* 中为未初始化的 ~N~
+创建一个新的不可变(*Immutable*)的绑定，前提是该绑定关系之前没有发生过，如果 ~S~
+值为 ~true~ 则该关系会被视为严格绑定(即严格模式和非严格模式)。 
+
+#+begin_src js
+  function CreateImmutableBinding(N, S) {
+    // 1. 取当前环境
+    let envRec = DeclarativeEnvirnomentRecord
+
+    // 2. 断言：envRec 中没有 N 的绑定关系
+    assert(envRec..notBinding(N))
+
+    // 3. 创建绑定，且 record 是未初始化状态
+    envRec.ImmutableBinding(N)
+
+    // 4. 严格模式
+    if (S === true) {
+      envRec..Strict = True
+    }
+
+    // 正常结束
+    return NormalCompletion(empty)
+  }
+#+end_src
 *** CreateArrayFromList ( elements )
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -396,6 +433,64 @@ result:
     return properties
   }
 #+end_src
+** F
+*** Function Definition(函数定义)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: f-function-definition
+:END: 
+
+[[http://ecma-international.org/ecma-262/5.1/#sec-13][参考链接]]
+
+有几种函数声明方式：
+
+1. /FunctionDeclaration : function Identifier ( FormalParameterListopt ) {
+   FunctionBody }/
+
+   TODO
+2. /FunctionExpression : function ( FormalParameterListopt ) { FunctionBody }/
+
+   TODO
+3. /FunctionExpression : function Identifier ( FormalParameterListopt ) {
+   FunctionBody }/
+   
+   关联函数： [[#c-CreateImmutableBinding][CreateImmutableBinding(N, S)]]
+   
+   实例，函数表达式： ~(function b() {})()~
+   
+   伪码：
+   #+begin_src js
+     // 1. env 是当前可执行上下文环境变量
+     let funcEnv = NewDeclarativeEnvironment(env) 
+
+     // 2. 保存 funcEnv 的环境记录
+     let envRec = funcEnv.env_record 
+
+     // 3. 不可变绑定？
+     envRec.CreateImmutableBinding(Identifier)
+
+     // 4. 创建函数 new Function('a', 'b', 'return a + b')
+     let closure = new Function(FormalParameterList, FunctionBody)
+
+     // 5. 绑定 closure 执行环境
+     closure.bind(funcEnv)
+
+     // 6. 严格模式处理
+     let Strict
+     if ('use strict;') {
+       Strict = true
+     }
+
+     // 7. 初始化 immutable binding ?
+     envRec.InitializeImmutableBinding(Identifier, closure)
+
+     return closure
+   #+end_src
+   
+4. /FunctionBody : SourceElementsopt/
+   
+   TODO
+
 ** I
 *** IsPropertyKey ( argument )
 :PROPERTIES:
@@ -504,3 +599,4 @@ result:
     return SameValueNonNumeric(x,y)
   }
 #+end_src
+

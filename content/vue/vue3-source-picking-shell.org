@@ -5,48 +5,6 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-* packages(模块列表):
-
-  所有模块以“ *包* ”的形式存在。
-
-  + compiler-core/src
-    + ast.ts -> [[/vue/vue3-source-code-compiler-core-ast_ts/][抽象语法树处理文件]]
-    + codegen.ts
-    + compiler.ts -> [[/vue/vue3-source-code-compiler-core-parse_ts/][模板编译器，将标签模板解析成 ast 对象]]。
-    + errors.ts
-    + index.ts
-    + options.ts
-    + parse.ts
-    + runtimeHelpers.ts
-    + transform.ts
-    + transforms/
-      + hoistStatic.ts
-      + noopDirectiveTransform.ts
-      + transformElement.ts
-      + transformExpression.ts
-      + transformSlotOutlet.ts
-      + transformText.ts
-      + vBind.ts
-      + vFor.ts
-      + vIf.ts
-      + vModel.ts
-      + vOn.ts
-      + vOnce.ts
-      + vSlot.ts
-    + utils.ts
-  + compiler-dom
-  + compiler-sfc
-  + compiler-ssr
-  + global.d.ts
-  + reactivity
-  + runtime-core
-  + runtime-dom
-  + runtime-test
-  + server-renderer
-  + shared
-  + size-check
-  + template-explorer
-  + vue
 * 一个较完整的 AST 结构：
 
   #+begin_src js

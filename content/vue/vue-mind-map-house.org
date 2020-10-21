@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
 <kbd>
 <font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
-  诗号：六道同坠，魔劫万千，引渡如来。 
+  诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
 #+end_export
@@ -26,20 +26,20 @@
 :smile: 更新日志
 1. <2020-09-07 Mon>  +所有图片修改为 github 地址，后续修改图片可以直接使用，而不
    需要上传到七牛。+
-   
+
 2. <2020-09-10 Thu>  +图床切换到 [[https://gitee.com/gcclll/mind-maps.git][码云 gitee]] 自动同步自 [[https://github.com/gcclll/mind-maps.git][github]]。+
 
 3. <2020-09-11 Fri>  更新图片到博客目录 ~/static/imgs/...~ ，文内访问路径：
    ~/img/vue3/...~ ，单独访问加上域名就行： ~https://www.cheng92.com/img/vue3/...~
-   
+
 4. <2020-09-28 Mon> 所有脑图修改为 svg 格式，建议通过新 tab 打开，有些节点可能包含链
    接。
 
-* 🌩 功能性拆分(parser-compiler-generate-...)
+* 🌩 实例列表
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg
-:END: 
+:END:
 
 从 [[#compiler-01][compiler-01]] 开始都是针对某个示例做的分析，但是随时示例的模板复杂度增加，脑图
 的大小将越来越大，不堪重负，阅读回顾起来也很费劲，在完成了 [[#compiler-01][compiler-01]] -
@@ -64,9 +64,9 @@
 #+end_quote
 ** 纯标签 ~<div></div>~
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-01
-:END: 
+:END:
 
 结果：
 #+begin_src js
@@ -89,7 +89,7 @@
 1. parser 阶段， [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement][parseElement]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]]
 
    [[/img/vue3/compiler-core/pcg/pcg-01-1-parser-pure-div.svg]]
-   
+
 2. compiler 阶段， [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform][transform]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren][traverseChildren]] ，只有 ~0,ROOT~
    和 ~1,ELEMENT~ 两个类型分支处理。
 
@@ -99,35 +99,35 @@
    [[/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg]]
 ** 静态属性 ~<div id="foo"></div>~
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-02
-:END: 
+:END:
 
 1. *parser 阶段* ：
 
    与 [[#pcg-01][pcg-01]] 相比较，多了左边 [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattributes][parseAttributes]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattribute][parseAttribute]] 解析属
    性 ~id="foo"~ 的处理。
-   
+
    [[/img/vue3/compiler-core/pcg/pcg-02-1-parser-div-with-id.svg]]
 2. *compiler 阶段：*
-   
+
    与 [[#pcg-01][pcg-01]] 相比较，多了 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transformelement][transformElement]] 中 props 属性的处理，因为这个时候
    props.length = 1 里面有一个 ~id="foo"~ 属性，需要去调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-buildprops][buildProps]] 解析，成下面
    的解构:
-   
-    #+begin_src js
-    {
-      properties: [
-        {
-          key: { type:4, content: "id", ...}, // SIMPLE_EXPRESSION
-          value: {type: 4, content: "foo", ...},
-          type: 16 // JS_PROPERTY
-        }
-      ]
-        type: 15, // JS_OBJECT_EXPRESSION
-    }
-  #+end_src
-  
+
+   #+begin_src js
+     {
+       properties: [
+         {
+           key: { type:4, content: "id", ...}, // SIMPLE_EXPRESSION
+           value: {type: 4, content: "foo", ...},
+           type: 16 // JS_PROPERTY
+         }
+       ]
+       type: 15, // JS_OBJECT_EXPRESSION
+     }
+   #+end_src
+
    [[/img/vue3/compiler-core/pcg/pcg-02-2-compiler-div-with-id.svg]]
 3. *codegen 阶段：*
 
@@ -138,13 +138,13 @@
    ctx)]] -> 遍历 *node.properties*  -> [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpressionaspropertykey][genExpressionPropertyKey(key,ctx)]] 生成属性
    名 ~{ id: ~ -> ~genNode(value, ctx)~ 生成属性值 -> *4, SIMPLE_EXPRESSION* ->
    [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpression][genExpression(value, ctx)]] 生成属性值 ~{ id: "foo"~
-   
+
    [[/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg]]
 ** v-bind 指令 ~<div :class="bar.baz"></div>~
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-03
-:END: 
+:END:
 
 结果预览：
 #+begin_src js
@@ -165,19 +165,19 @@
 1. *parser 阶段：*
 
    [[/img/vue3/compiler-core/pcg/pcg-03-1-parser-div-with-bind.svg]]
-   
+
 2. *compiler 阶段：*
 
    [[/img/vue3/compiler-core/pcg/pcg-03-2-compiler-div-with-bind.svg]]
-   
+
 3. *codegen 阶段：*
 
    [[/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg]]
 ** 插值 ~<div>{{ world.burn() }}</div>~
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-04
-:END: 
+:END:
 
 #+begin_src js
   (function anonymous(
@@ -197,19 +197,19 @@
 1. *parser 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-04-1-parser-div-with-interpolation.svg]]
-   
+
 2. *compiler 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-04-2-compiler-div-with-interpolation.svg]]
-   
+
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg]]
 ** v-if 指令 ~<div><div v-if="ok">yes</div></div>~
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-05
-:END: 
+:END:
 
 vue.global:
 #+begin_src js
@@ -238,8 +238,8 @@ vue.global:
 
 - 少了全局作用域下的 ~_Vue~ 解构
 - key 没有 hoisted
-  
-脑图列表： 
+
+脑图列表：
 1. *parser 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-1-parser-div-with-if.svg]]
@@ -249,11 +249,11 @@ vue.global:
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg]]
-*** 拓展 1：v-if-else 指令 
+*** 拓展 1：v-if-else 指令
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-05-01
-:END: 
+:END:
 
 ~<div><div v-if="ok">yes</div><div v-else>no</div></div>~
 
@@ -318,7 +318,7 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
    *9,IF* 节点即找到的目标节点 sibling)
 4. 删除当前的 node 同时调用 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-createifbranch][createIfBranch]] 创建 ~10,IF_BRANCH~ 类型的分支节点结
    构，合并到 ~sibling.branches~ 中
-   
+
 5. 调用 ~processCodegen~ 函数即 ~transformIf~ 时候执行会得到生成 ~codegenNode~
    的那个函数，执行它获取 tranform 函数 ~exitFn~ 。
 6. 手动执行 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode(node, ...)]] 进行递归遍历该 v-else 节点树(*因为在 4 中节点
@@ -337,19 +337,19 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
 1. *parser 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-01-1-parser-div-with-if-else.svg]]
-   
+
 2. *transform 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-01-2-compiler-div-with-if-else.svg]]
-   
+
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-05-01-3-codegen-div-with-if-else.svg]]
-*** 拓展 2：v-if-elseif-else 指令 
+*** 拓展 2：v-if-elseif-else 指令
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-05-02 
-:END: 
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-05-02
+:END:
 
 
 1. *parser 阶段*
@@ -357,31 +357,42 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
    相比较 [[#pcg-05-01][拓展1：v-if-else]] 这里只是多了一个 v-else-if 这在 parser 阶段没什么区别，
    直接参考拓展 1 的脑图。
 
-   [[/img/vue3/compiler-core/pcg/pcg-05-02-1-parser-div-with-if-else.svg]]
-   
+   [[/img/vue3/compiler-core/pcg/pcg-05-02-1-parser-div-with-if-eif-else.svg]]
+
 2. *transform 阶段*
-2. *codegen 阶段*
-      
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-05-02
-:END: 
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-02-2-compiler-div-with-if-eif-else.svg]]
+
+   对比前后结果发现： ~v-if/v-else-if/v-else~ 指令体系的实现关键在于 ~codegenNode~ 中
+   三个字段：
+   - *test* ~?:~ 表达式的条件
+   - *consequent* ~?:~ 表达式条件为 ~true~ 的时候渲染的节点
+   - *alternate* ~?:~ 表达式条件为 ~false~ 的时候渲染的节点
+
+   如果有多级嵌套的情况，会在 ~alternate~ 中体现出来，这里面要么是一个节点结构，
+   要么是一个完整的包含(~{ test, consequent, alternate }~) 嵌套的表达式结构。
+
+   ~v-else-if~ [[#key-02-transform-if][渲染流程查看特定的功能脑图]]。
+   
+3. *codegen 阶段*
+
+   [[/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg]]
 
 * ☀ 关键功能
 这一章节是针对整个 vue3 源码解构过程中遇到的问题或一些重要或关键的一些功能，进
 行提取解读。
 ** DONE 1. buildProps(node, context) 如何构建 props ?
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-01-build-props
-:END: 
+:END:
 
 CLOSED: [2020-09-18 Fri 16:07]
 
 - State "DONE"       from "TODO"       [2020-09-18 Fri 16:07]
 
 
-props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例04]]) 
+props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例04]])
 
 [[http://qiniu.ii6g.com/img/20200918160246.png]]
 
@@ -394,9 +405,9 @@ props 在 compile 阶段是如何处理的，是如何从([[#compiler-04][示例
 
 ** DONE 2. transformIf() 是如何返回 v-if 指令的 transform 的？
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-02-transform-if
-:END: 
+:END:
 
 参考[[#compiler-05][用例 05]]
 
@@ -409,7 +420,7 @@ v-if 指令是如何转换的？？？
 #+begin_quote
 通过在 [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] 中， switch node 阶段之前，收集 transform 函数到 ~exitFns[]~
 中的时候，如果遇到了 v-if 指令的元素，会执行 ~transformIf~ ，这个时候会遍历解析
-~node.props~ 拿到这个 v-if 指令属性，调用 processIf 将该节点转换成 
+~node.props~ 拿到这个 v-if 指令属性，调用 processIf 将该节点转换成
 
 #+begin_src js
   {
@@ -464,9 +475,9 @@ transformIf:
 [[/img/vue3/compiler-core/key/key-02-transform-if.svg]]
 ** TODO 3. codegen 如何生成属性(_createBLock(tag, props, ...))第二个参数？
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-03-how-gen-props
-:END: 
+:END:
 
 如：
 #+begin_src js
@@ -480,12 +491,12 @@ transformIf:
 
 id 和 class 是如何生成对象的。
 
-** DONE 4. transform 阶段如何对属性静态提升？ 
+** DONE 4. transform 阶段如何对属性静态提升？
 CLOSED: [2020-09-28 Mon 10:55]
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-04-how-hoist
-:END: 
+:END:
 
 - State "DONE"       from "TODO"       [2020-09-28 Mon 10:55]
 没有 hoist 之前：
@@ -538,19 +549,19 @@ CLOSED: [2020-09-28 Mon 10:55]
 
 #+begin_src js
   node:
-    content: "_hoisted_1"
-    isConstant: true
-    isStatic: false
-    type: 4 // SIMPLE_EXPRESSION
+  content: "_hoisted_1"
+  isConstant: true
+  isStatic: false
+  type: 4 // SIMPLE_EXPRESSION
 #+end_src
 
 最后用 ~_hoisted_1~ 来替代 ~{ key: 0 }~ 这个惊天属性。
 ** DONE 5. codegen 如何生成 if-elseif-else 分支节点 ?
 CLOSED: [2020-10-04 Sun 12:47]
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-05-gen-branch
-:END: 
+:END:
 
 - State "DONE"       from "TODO"       [2020-10-04 Sun 12:47]
 [[#key-02-transform-if][生成分支入口函数产生过程]]：[[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] 中收集 ~exitFns~ 过程中执行 ~transformIf~
@@ -561,65 +572,65 @@ CLOSED: [2020-10-04 Sun 12:47]
 
 #+begin_src js
   {
-      "type":19,
-      "test":{ // ok ? ... : ...
-          "type":4,
-          "content":"ok",
-          "isStatic":false,
-          "isConstant":false,
-          "loc":{
-              // ...
-              "source":"ok"
+    "type":19,
+    "test":{ // ok ? ... : ...
+      "type":4,
+      "content":"ok",
+      "isStatic":false,
+      "isConstant":false,
+      "loc":{
+        // ...
+        "source":"ok"
+      }
+    },
+    "consequent":{ // cond ? 这里的代码 : ...
+      "type":13,
+      "tag":""div"",
+      "props":{
+        "type":15,
+        "loc":{ /* ... */ },
+        "properties":[
+          {
+            "type":16,
+            "key":{
+              "type":4,
+              "isConstant":false,
+              "content":"key",
+              "isStatic":true
+            },
+            "value":{
+              "type":4,
+              "isConstant":false,
+              "content":"0",
+              "isStatic":false
+            }
           }
+        ]
       },
-      "consequent":{ // cond ? 这里的代码 : ...
-          "type":13,
-          "tag":""div"",
-          "props":{
-              "type":15,
-              "loc":{ /* ... */ },
-              "properties":[
-                  {
-                      "type":16,
-                      "key":{
-                          "type":4,
-                          "isConstant":false,
-                          "content":"key",
-                          "isStatic":true
-                      },
-                      "value":{
-                          "type":4,
-                          "isConstant":false,
-                          "content":"0",
-                          "isStatic":false
-                      }
-                  }
-              ]
-          },
-          "children":{
-              "type":2,
-              "content":"yes",
-              "loc":{
-                  "source":"yes"
-              }
-          },
-          "isBlock":true,
-          "isForBlock":false,
-          "loc":{
-              "source":"<div v-if="ok">yes</div>"
-          }
+      "children":{
+        "type":2,
+        "content":"yes",
+        "loc":{
+          "source":"yes"
+        }
       },
-      "alternate":{ // cond ? ... : 这里的代码
-          "type":14,
-          "loc":{
-              "source":"",
-          },
-          "arguments":[
-              ""v-if"",
-              "true"
-          ]
+      "isBlock":true,
+      "isForBlock":false,
+      "loc":{
+        "source":"<div v-if="ok">yes</div>"
+      }
+    },
+    "alternate":{ // cond ? ... : 这里的代码
+      "type":14,
+      "loc":{
+        "source":"",
       },
-      "newline":true,
+      "arguments":[
+        ""v-if"",
+        "true"
+      ]
+    },
+    "newline":true,
   }
 #+end_src
 
@@ -629,9 +640,9 @@ CLOSED: [2020-10-04 Sun 12:47]
 
 ** TODO 6. transform 阶段如何转换 v-else-if 指令？
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-06-how-transform-v-else-if
-:END: 
+:END:
 
 示例代码：
 
@@ -887,13 +898,13 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 
 
 流程图：
-[[/img/vue3/compiler-core/compiler.png]] 
+[[/img/vue3/compiler-core/compiler.png]]
 
 ** 01-simple text 编译过程
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compiler-01
-:END: 
+:END:
 
 代码：
 #+begin_src js
@@ -911,9 +922,9 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 
 ** 02-pure interpolation 编译过程
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compiler-02
-:END: 
+:END:
 
 代码：
 #+begin_src js
@@ -929,11 +940,11 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 [[/img/vue3/compiler-core/compiler-test-pure-interpolation.png]]
 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-02][详细过程分析请点击链接。]]
-** 03-inerpolation in pure div 
+** 03-inerpolation in pure div
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compiler-03
-:END: 
+:END:
 
 代码：
 #+begin_src js
@@ -951,9 +962,9 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 [[/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03][详细过程分析请点击链接。]]
 ** 04-interpolation in div with props
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compiler-04
-:END: 
+:END:
 
 代码：
 #+begin_src js
@@ -969,9 +980,9 @@ vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 
 
 ** 05-interpolation, v-if, props
 :PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: compiler-05
-:END:  
+:END:
 
 #+begin_src js
   code = `
@@ -995,4 +1006,3 @@ transform 阶段流程图：
 
 generate 阶段流程图：
 [[/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg]]
-

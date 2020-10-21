@@ -24,6 +24,9 @@ https://github.com/algolia/autocomplete.js
 
   [[http://qiniu.ii6g.com/img/20200925182624.png]]
 
+** 博客收藏
+
+1. [[https://imququ.com/post/series.html][Jerry Qu, HTTP/HTTP2相关内容丰富的博客]]
 ** 杂而全教学网站
 
 - [[https://www.tutorialspoint.com/index.htm][tutorialspoint]] 很多需要付费
