@@ -5,9 +5,53 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
 
-* Awesome/有趣/实用
+* Doom-emacs
+
+感觉 Spacemacs 用起来还是有点卡，且启动慢，用久了更卡了，只能怪自己太菜了，所以今天开始尝试转向 [[https://github.com/hlissner/doom-emacs][doom-emacs]]
+
+** Base Configuration/Operation
+
+*** 重新加载配置
+
+| key       | mode            | function                     |
+|-----------+-----------------+------------------------------|
+| ~gr~      | evil 选中模式下 | 执行选中代码                 |
+| ~C-x C-e~ | -               | ~eval-last-sexp~             |
+| ~SPC c e~ | -               | ~M-x +eval/buffer-or-region~ |
+
+** Keybindings
+
+key 绑定函数：
+- define-key
+- global-set-key
+- map!
+- undefined-key!
+- define-key!
+
+*** 常用功能按键绑定列表：
+
+| key     | desc                                     |
+|---------+------------------------------------------|
+| ~PSC '~ | ~ivy-resume~, resume last search results |
+|         |                                          |
+
+*** fold/unfold, ...(~z~)
+
+| key  | func                      |
+|------+---------------------------|
+| ~za~ | ~evil-toggle-fold~        |
+| ~zo~ | ~evil-open-fold~          |
+| ~zj~ | ~evil-fold-next~          |
+| ~zk~ | ~evil-fold-previous~      |
+| ~zr~ | ~evil-open-folds~         |
+| ~zm~ | ~evil-close-folds~        |
+|------+---------------------------|
+| ~zt~ | ~evil-scroll-line-to-top~ |
+| ~zx~ | ~kill-current-buffer~     |
+* Spaceamcs
+我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
+** Awesome/有趣/实用
 
 | key       | function   | description                       |
 |-----------+------------+-----------------------------------|
@@ -18,7 +62,7 @@
 ~SPC i s~
 
   [[http://qiniu.ii6g.com/img/20200919230430.png]]
-* Key bindings
+** Key bindings
 
   我的自定义按键：
 
@@ -100,10 +144,10 @@
   | ~z .~       | emmet-wrap-with-markup                                                       |
   |-------------+------------------------------------------------------------------------------|
 
-** vue-mode
+*** vue-mode
    [[https://github.com/syl20bnr/spacemacs/tree/develop/layers/%2Bframeworks/vue][vue-mode-key-bindings]]
 
-** smartparens(括号操作)
+*** smartparens(括号操作)
 
 | key   | function               |
 |-------+------------------------|
@@ -114,15 +158,15 @@
 | =C-{= | sp-backward-sexp       |
 | =C-}= | sp-forward-sexp        |
 
-** move-text, up/down
+*** move-text, up/down
 
 | key   | function      |
 |-------+---------------|
 | ~s-<~ | move-text-up  |
 | ~s->~ | move-text-down |
 
-* Modes
-** emms, play music
+** Modes
+*** emms, play music
 #+begin_src elisp
   (spacemacs/set-leader-keys "ama" 'emms-add-directory-tree)
   (spacemacs/set-leader-keys "ame" 'emms-smart-browse)
@@ -147,7 +191,7 @@
 | ~SPC a m S~ | 'emms-stop                   |
 | ~SPC a m t~ | 'emms-toggle-repeat-playlist |
 |             |                              |
-** DONE ranger
+*** DONE ranger
    CLOSED: [2020-08-27 Thu 21:14]
 
    - State "DONE"       from              [2020-08-27 Thu 21:14]
@@ -185,7 +229,7 @@
    | ~C-k~        | scroll preview window up                    |
    | ~S~          | enter shell                                 |
 
-** org-mode
+*** org-mode
 
    ref: https://practicalli.github.io/spacemacs/org-mode/
 
@@ -194,7 +238,7 @@
    | ~, i p~ | set property |
    |         |              |
 
-*** text-style
+**** text-style
 
     ~code: , x c~
 
@@ -207,33 +251,33 @@
     =verbatim: , x v=
 
     *bold: , x b*
-*** checkbox
+**** checkbox
     - [ ] todo one, =C-c C-c= change status
     - [X] todo two, done
     - [X] todo three
 
-*** todos
-**** TODO todo one
+**** todos
+***** TODO todo one
      SCHEDULED: <2020-08-27 Thu>
-**** WAITING todo two waiting
+***** WAITING todo two waiting
 
      - State "WAITING"    from "TODO"       [2020-08-25 Tue 14:46] \\
        --
-**** todo scheduler
+***** todo scheduler
      SCHEDULED: <2020-08-25 Tue>
-** TODO tiny, SPC o e
+*** TODO tiny, SPC o e
    https://github.com/abo-abo/tiny
 
-** TODO multiple-cursors
-** TODO prodigy
+*** TODO multiple-cursors
+*** TODO prodigy
    blog settings.
 
 
-** TODO wrap-region
+*** TODO wrap-region
    
    https://github.com/rejeep/wrap-region.el/blob/master/wrap-region.el
 
-* Misc Settings
+** Misc Settings
 
 *超过 80 列自动换行* ：
 
@@ -246,7 +290,7 @@
 
 ~(global-aggressive-indent-mode)~
 
-* Issues
-** Points
-*** org-mode 简介
+** Issues
+*** Points
+**** org-mode 简介
     1. Jump to inner link: ~<<text>> <- [[test][text]]~

@@ -654,6 +654,32 @@ CLOSED: [2020-10-04 Sun 12:47]
   </div>
 #+end_src
 
+[[/img/vue3/compiler-core/key/key-02-transform-if.svg]]
+** TODO 7. Block 和 VNode 的处理逻辑有什么不一样？
+
+到目前为止大部分的实例都是通过 block 解析的，因为孩子节点只有一个。
+
+孩子节点有多个的时候会进入 VNode 流程，这里相当于创建了一个虚拟节点来将多个孩子
+包起来去生成 render 函数。
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-07-diff-block-vnode
+:END: 
+
+示例：
+#+begin_src html
+  <div>
+    <div class="block">
+      <p>use openBlock + createBlock api</p>
+    </div>
+    <div class="vnode">
+      <p>use createVNode api</p>
+      <p>use createVNode api</p>
+    </div>
+  </div>
+#+end_src
+
+
 * ☁ compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
