@@ -10,8 +10,15 @@
 
 感觉 Spacemacs 用起来还是有点卡，且启动慢，用久了更卡了，只能怪自己太菜了，所以今天开始尝试转向 [[https://github.com/hlissner/doom-emacs][doom-emacs]]
 
-** Base Configuration/Operation
+配置列表：
 
+1. https://github.com/rschmukler/doom.d
+2. https://rgoswami.me/dotdoom/config.html
+3. https://github.com/hlissner/doom-emacs-private
+4. 主题：https://github.com/hlissner/emacs-doom-themes
+
+
+** Base Configuration/Operation
 *** 重新加载配置
 
 | key       | mode            | function                     |
@@ -20,8 +27,23 @@
 | ~C-x C-e~ | -               | ~eval-last-sexp~             |
 | ~SPC c e~ | -               | ~M-x +eval/buffer-or-region~ |
 
-** Keybindings
+** packages
+*** smart-hungry-delete
 
+https://github.com/hrehfeld/emacs-smart-hungry-delete
+
+#+BEGIN_SRC elisp
+(use-package smart-hungry-delete
+  :ensure t
+  :bind (("<backspace>" . smart-hungry-delete-backward-char)
+		 ("C-d" . smart-hungry-delete-forward-char))
+  :defer nil ;; dont defer so we can add our functions to hooks 
+  :config (smart-hungry-delete-add-default-hooks)
+  )
+#+END_SRC
+
+** Keybindings
+*** test
 key 绑定函数：
 - define-key
 - global-set-key
@@ -29,26 +51,208 @@ key 绑定函数：
 - undefined-key!
 - define-key!
 
-*** 常用功能按键绑定列表：
+#+BEGIN_SRC elisp :eval no
+;; bind a global key
+(global-set-key (kbd "C-x y") #'do-something)
+(map! "C-x y" #'do-something)
 
-| key     | desc                                     |
-|---------+------------------------------------------|
-| ~PSC '~ | ~ivy-resume~, resume last search results |
-|         |                                          |
+;; bind a key on a keymap
+(define-key emacs-lisp-mode-map (kbd "C-c p") #'do-something)
+(map! :map emacs-lisp-mode-map "C-c p" #'do-something)
 
-*** fold/unfold, ...(~z~)
+;; unbind a key defined elsewhere
+(define-key lua-mode-map (kbd "SPC m b") nil)
+(map! :map lua-mode-map "SPC m b" nil)
 
-| key  | func                      |
-|------+---------------------------|
-| ~za~ | ~evil-toggle-fold~        |
-| ~zo~ | ~evil-open-fold~          |
-| ~zj~ | ~evil-fold-next~          |
-| ~zk~ | ~evil-fold-previous~      |
-| ~zr~ | ~evil-open-folds~         |
-| ~zm~ | ~evil-close-folds~        |
-|------+---------------------------|
-| ~zt~ | ~evil-scroll-line-to-top~ |
-| ~zx~ | ~kill-current-buffer~     |
+;; bind multiple keys
+(global-set-key (kbd "C-x x") #'do-something)
+(global-set-key (kbd "C-x y") #'do-something-else)
+(global-set-key (kbd "C-x z") #'do-another-thing)
+(map! "C-x x" #'do-something
+      "C-x y" #'do-something-else
+      "C-x z" #'do-another-thing)
+
+;; bind global keys in normal mode
+(evil-define-key* 'normal 'global
+  (kbd "C-x x") #'do-something
+  (kbd "C-x y") #'do-something-else
+  (kbd "C-x z") #'do-another-thing)
+(map! :n "C-x x" #'do-something
+      :n "C-x y" #'do-something-else
+      :n "C-x z" #'do-another-thing)
+
+;; or on a deferred keymap
+(evil-define-key 'normal emacs-lisp-mode-map
+  (kbd "C-x x") #'do-something
+  (kbd "C-x y") #'do-something-else
+  (kbd "C-x z") #'do-another-thing)
+(map! :map emacs-lisp-mode-map
+      :n "C-x x" #'do-something
+      :n "C-x y" #'do-something-else
+      :n "C-x z" #'do-another-thing)
+
+;; or multiple maps
+(dolist (map (list emacs-lisp-mode go-mode-map ivy-minibuffer-map))
+  (evil-define-key '(normal insert) map
+    "a" #'a
+    "b" #'b
+    "c" #'c))
+(map! :map (emacs-lisp-mode go-mode-map ivy-minibuffer-map)
+      :ni "a" #'a
+      :ni "b" #'b
+      :ni "c" #'c)
+
+;; or in multiple states (order of states doesn't matter)
+(evil-define-key* '(normal visual) emacs-lisp-mode-map (kbd "C-x x") #'do-something)
+(evil-define-key* 'insert emacs-lisp-mode-map (kbd "C-x x") #'do-something-else)
+(evil-define-key* '(visual normal insert emacs) emacs-lisp-mode-map (kbd "C-x z") #'do-another-thing)
+(map! :map emacs-lisp-mode
+      :nv   "C-x x" #'do-something      ; normal+visual
+      :i    "C-x y" #'do-something-else ; insert
+      :vnie "C-x z" #'do-another-thing) ; visual+normal+insert+emacs
+
+;; You can nest map! calls:
+(evil-define-key* '(normal visual) emacs-lisp-mode-map (kbd "C-x x") #'do-something)
+(evil-define-key* 'normal go-lisp-mode-map (kbd "C-x x") #'do-something-else)
+(map! (:map emacs-lisp-mode :nv "C-x x" #'do-something)
+      (:map go-lisp-mode    :n  "C-x x" #'do-something-else))
+#+END_SRC
+*** smartparen 括号操作
+
+| key   | function               | description      |
+|-------+------------------------+------------------|
+| ~z [~ | sp-wrap-square         | replace with ~S~ |
+| ~z (~ | sp-wrap-round          | replace with ~S~ |
+| ~z {~ | sp-wrap-curly          | replace with ~S~ |
+| ~z -~ | sp-splice-sexp         | -                |
+| ~z .~ | emmet-wrap-with-markup | -                |
+|-------+------------------------+------------------|
+| =C-(= | sp-backward-slurp-sexp |                  |
+| =C-)= | sp-forward-slurp-sexp  |                  |
+| =s-(= | sp-backward-barf-sexp  |                  |
+| =s-)= | sp-forward-barf-sexp   |                  |
+| =C-{= | sp-backward-sexp       |                  |
+| =C-}= | sp-forward-sexp        |                  |
+
+*** usefull
+常用按键：
+
+| key       | function                        | description                      |
+|-----------+---------------------------------+----------------------------------|
+| ~K~       | ~+lookup/documentation~         | search google/github/youtube/... |
+| ~S~       | ~evil-snipe-S~                  | wrap with char in select mode    |
+|-----------+---------------------------------+----------------------------------|
+| ~M-u~     | ~upcase~                        |                                  |
+| ~M-l~     | ~downcase~                      |                                  |
+| ~M-c~     | ~capitalize-word~               |                                  |
+|-----------+---------------------------------+----------------------------------|
+| ~SPC '~   | ~ivy-resume~                    | resume last search results       |
+| ~SPC b O~ | ~kill-other-buffers~            | -                                |
+| ~SPC s o~ | ~+lookup/online~                |                                  |
+| ~SPC l m~ | ~lsp-ui-imenu~                  | -                                |
+| ~SPC l t~ | ~treemacs~                      |                                  |
+|-----------+---------------------------------+----------------------------------|
+| ~C-=~     | ~er/expand-region~              |                                  |
+| ~C-+~     | ~text-scale-increase~           |                                  |
+| ~C-c r~   | ~vr/replace~                    |                                  |
+| ~C-c q~   | ~vr/query-replace~              |                                  |
+|-----------+---------------------------------+----------------------------------|
+| ~g0~      | ~evil-beginning-of-visual-line~ | -                                |
+| ~g-~      | ~evil-numbers/dec-at-pt~        | decrement number under cursor    |
+| ~g=~      | ~evil-numbers/inc-at-pt~        | increase number under cursor     |
+| ~gd~      | ~+lookup/definition~            | -                                |
+| ~gt~      | ~+workspace:switch-next~        | -                                |
+| ~gD~      | ~+lookup/references~            | -                                |
+| ~gx~      | ~evil-exchange~                 | exchange two regions             |
+| ~g~~      | ~evil-invert-case~              | invert case(down-up)             |
+|           |                                 |                                  |
+
+*** org-mode
+| key   | function        | description       |
+|-------+-----------------+-------------------|
+| ~M-l~ | ~org-metaright~ | move column right |
+| ~M-h~ | ~org-metaleft~  | move column left  |
+| ~M-j~ | ~org-metadown~  | move row down     |
+| ~M-k~ | ~org-metaup~    | move row up       |
+| ~M-u~ | ~upcase-word~   | -                 |
+| ~gu~  | ~evil-downcase~ | -                 |
+| ~gU~  | ~evil-upcase~   |                   |
+
+test word
+*** +workspace
+
+| key           | function                  | description                |
+|---------------+---------------------------+----------------------------|
+| ~SPC TAB 0-9~ | -                         | +workspaces switch to(0-9) |
+| ~SPC TAB .~   | ~+workspace/switch~       | -                          |
+| ~SPC TAB [~   | ~+workspace/previous~     | -                          |
+| ~SPC TAB ]~   | ~+workspace/next~         | -                          |
+| ~SPC TAB `~   | ~+workspace/last~         | -                          |
+| ~SPC TAB d~   | ~+workspace/delete~       | delete this workspace      |
+| ~SPC TAB l~   | ~+workspace/load~         | -                          |
+| ~SPC TAB n~   | ~+workspace/new~          | -                          |
+| ~SPC TAB r~   | ~+workspace/rename~       | -                          |
+| ~SPC TAB s~   | ~+workspace/save~         | -                          |
+| ~SPC TAB x~   | ~+workspace/kill-session~ | -                          |
+| ~SPC TAB R~   | ~+workspace/restore-last~ | -                          |
+
+*** evil-mode
+**** g(go, jump)
+
+| key              | function                                      | description                      |
+|------------------+-----------------------------------------------+----------------------------------|
+| ~ga~             | ~what-cursor-position~                        | -                                |
+| ~gj~             | ~org-forward-heading-same-level~              | last same level header           |
+| ~gk~             | ~org-backward-heading-same-level~             | next same level header           |
+| ~gh~             | ~org-up-element~                              | go org last level header         |
+| ~gf~             | ~+lookup/file~                                | find file with name under cursor |
+| ~gr~             | ~evil-region~                                 | execute region code              |
+| ~gt~             | ~+workspace:switch-next~                      | -                                |
+| ~gu~             | ~evil-downcase~                               |                                  |
+| ~gx~             | ~evil-exchange~                               |                                  |
+| ~g;~             | ~goto-last-change~                            | -                                |
+| ~g$~             | ~evil-end-of-visual-line~                     | -                                |
+| ~g-~             | ~evil-numbers/dec-at-pt~                      | decrement number under cursor    |
+| ~g=~             | ~evil-numbers/inc-at-pt~                      | increase number under cursor     |
+| ~g~~             | ~evil-invert-case~                            | invert case(down-up)             |
+| ~g0~             | ~evil-beginning-of-visual-line~               | -                                |
+| ~g[~             | ~beginning-of-defun~                          | -                                |
+| ~g]~             | ~end-of-defun~                                | -                                |
+|------------------+-----------------------------------------------+----------------------------------|
+| *lookup def/ref* |                                               |                                  |
+| ~gd~             | ~+lookup/definition~                          | -                                |
+| ~gD~             | ~+lookup/references~                          | -                                |
+|------------------+-----------------------------------------------+----------------------------------|
+| *char jump*      |                                               |                                  |
+| ~gss~            | ~evil-avy-goto-char-2~                        | jump by char1-2 input            |
+| ~gs/~            | ~evil-avy-goto-char-timer~                    | jump by a char                   |
+|------------------+-----------------------------------------------+----------------------------------|
+| *line jump*      |                                               |                                  |
+| ~gsj~            | ~evilem-motion-next-line~                     | jump line below current row      |
+| ~gsk~            | ~evilem-motion-previous-line~                 | jump line upon current row       |
+| ~gs+~            | ~evilem-motion-next-line-first-non-blank~     | jump next non blank line         |
+| ~gs-~            | ~evilem-motion-previous-line-first-non-blank~ | jump previous non blankl line    |
+| ~gsgk~           | ~evilem-motion-previous-visual-line~          | -                                |
+| ~gsgj~           | ~evilem-motion-next-visual-line~              | -                                |
+|------------------+-----------------------------------------------+----------------------------------|
+| *section jump*   |                                               |                                  |
+| ~gs[[~           | ~evilem-motion-backward-section-begin~        | jump backward section begin      |
+| ~gs[]~           | ~evilem-motion-backward-section-end~          | jump backward section end        |
+| ~gs]]~           | ~evilem-motion-forward-section-begin~         | -                                |]
+| ~gs[~           | ~evilem-motion-forward-section-end~           | -                                |
+
+**** z(fold/unfold)
+
+| key  | function                  | description |
+|------+---------------------------+-------------|
+| ~za~ | ~evil-toggle-fold~        |             |
+| ~zo~ | ~evil-open-fold~          |             |
+| ~zj~ | ~evil-fold-next~          |             |
+| ~zk~ | ~evil-fold-previous~      |             |
+| ~zr~ | ~evil-open-folds~         |             |
+| ~zm~ | ~evil-close-folds~        |             |
+| ~zt~ | ~evil-scroll-line-to-top~ |             |
+| ~zx~ | ~kill-current-buffer~     |             |
 * Spaceamcs
 我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
 ** Awesome/有趣/实用
