@@ -17,7 +17,6 @@
 3. https://github.com/hlissner/doom-emacs-private
 4. 主题：https://github.com/hlissner/emacs-doom-themes
 
-
 ** Base Configuration/Operation
 *** 重新加载配置
 

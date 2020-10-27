@@ -656,15 +656,15 @@ CLOSED: [2020-10-04 Sun 12:47]
 
 [[/img/vue3/compiler-core/key/key-02-transform-if.svg]]
 ** TODO 7. Block 和 VNode 的处理逻辑有什么不一样？
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-07-diff-block-vnode
+:END: 
 
 到目前为止大部分的实例都是通过 block 解析的，因为孩子节点只有一个。
 
 孩子节点有多个的时候会进入 VNode 流程，这里相当于创建了一个虚拟节点来将多个孩子
 包起来去生成 render 函数。
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: key-07-diff-block-vnode
-:END: 
 
 示例：
 #+begin_src html
@@ -678,7 +678,34 @@ CLOSED: [2020-10-04 Sun 12:47]
     </div>
   </div>
 #+end_src
+** TODO 8. transform 阶段如何做静态提升？
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-08-how-hoist-static
+:END: 
 
+静态提升检测在 transform 阶段， traverseNode 遍历完 ast 树之后，会调用
+~hoistStatic(root, context)~ 对所有 codegenNode 进行递归，将需要静态提升的节点提取
+到 root.hoists 中。
+
+#+BEGIN_SRC js
+function transform(root, options) {
+    const context = createTransformContext(root, options);
+    traverseNode(root, context);
+    if (options.hoistStatic) {
+      hoistStatic(root, context);
+    }
+  // ...
+}
+#+END_SRC
+
+静态提升条件：
+1. 根节点必须有一个孩子以上节点，且该节点是静态节点(~isStatic(child, resultCache)~)
+2. 如果节点是动态节点，则检测其所有属性，提取出静态属性将其提升
+3. 提升之后的属性或节点会保存到 ~context.hoists~ 里面
+
+源码脑图：
+[[/img/vue3/compiler-core/key/key-08-how-hoist-static.svg]]
 
 * ☁ compiler-core: parser
 
