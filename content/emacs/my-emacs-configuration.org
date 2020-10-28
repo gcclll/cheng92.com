@@ -45,6 +45,28 @@ https://github.com/hrehfeld/emacs-smart-hungry-delete
   )
 #+END_SRC
 
+*** string-inflection 代码风格切换(python/java/ruby/...)
+
+[[https://github.com/akicho8/string-inflection][github link-]]
+
+#+BEGIN_SRC emacs-lisp
+(defun gcl/string-inflection-cycle-auto ()
+  "switching by major-mode"
+  (interactive)
+  (cond
+   ;; for emacs-lisp-mode
+   ((eq major-mode 'emacs-lisp-mode)
+    (string-inflection-all-cycle))
+   ;; for python
+   ((eq major-mode 'python-mode)
+    (string-inflection-python-style-cycle))
+   ;; for java
+   ((eq major-mode 'java-mode)
+    (string-inflection-java-style-cycle))
+   (t
+    ;; default
+    (string-inflection-java-style-cycle))))
+#+END_SRC
 ** Keybindings
 所有常用按键均通过 ~hydra~ 注释方式展现，方便查询：
 
@@ -122,7 +144,6 @@ key 绑定函数：
 (map! (:map emacs-lisp-mode :nv "C-x x" #'do-something)
       (:map go-lisp-mode    :n  "C-x x" #'do-something-else))
 #+END_SRC
-
 
 
 *** 主面板
