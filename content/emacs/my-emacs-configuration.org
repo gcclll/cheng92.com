@@ -116,6 +116,29 @@ key 绑定函数：
 (map! (:map emacs-lisp-mode :nv "C-x x" #'do-something)
       (:map go-lisp-mode    :n  "C-x x" #'do-something-else))
 #+END_SRC
+*** crux tool(~C-c~)
+
+| key     | function                      | description                          |
+|---------+-------------------------------+--------------------------------------|
+| ~C-c o~ | ~crux-open-with~              | open with specific application       |
+| ~C-c u~ | ~crux-view-url~               | open the url under cursor            |
+| ~C-c D~ | ~crux-delete-file-and-buffer~ | ~SPC f D~ -> ~doom/delete-this-file~ |
+| ~C-c S~ | ~crux-find-shell-init-file~   | -                                    |
+|         |                               |                                      |
+
+*** buffer operations
+| key       | function                  | description |
+|-----------+---------------------------+-------------|
+| ~SPC b O~ | ~doom/kill-other-buffers~ | -           |
+|           |                           |             |
+*** window operations
+| key       | function                  | description |
+|-----------+---------------------------+-------------|
+| ~SPC w L~ | ~+evil/window-move-right~ | -           |
+| ~SPC w H~ | ~+evil/window-move-left~  |             |
+| ~SPC w J~ | ~+evil/window-move-down~  |             |
+| ~SPC w K~ | ~+evil/window-move-up~    |             |
+
 *** smartparen 括号操作
 
 | key   | function               | description      |
