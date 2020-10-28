@@ -6,6 +6,10 @@
 #+STARTUP: indent
 
 
+#+BEGIN_QUOTE
+[[https://github.com/hick/emacs-chinese][Emacs相关中文问题以及解决方案]]
+#+END_QUOTE
+
 * Doom-emacs
 
 感觉 Spacemacs 用起来还是有点卡，且启动慢，用久了更卡了，只能怪自己太菜了，所以今天开始尝试转向 [[https://github.com/hlissner/doom-emacs][doom-emacs]]
@@ -42,6 +46,8 @@ https://github.com/hrehfeld/emacs-smart-hungry-delete
 #+END_SRC
 
 ** Keybindings
+所有常用按键均通过 ~hydra~ 注释方式展现，方便查询：
+
 *** test
 key 绑定函数：
 - define-key
@@ -116,6 +122,169 @@ key 绑定函数：
 (map! (:map emacs-lisp-mode :nv "C-x x" #'do-something)
       (:map go-lisp-mode    :n  "C-x x" #'do-something-else))
 #+END_SRC
+
+
+
+*** 主面板
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-main (:color blue :exit t :hint nil)
+  "
+all hydra apps:
+------------------------------------------------------------------
+ [_a_]   Tip          [_h_]   Launcher     [_m_]   Multiple Cursors
+ [_w_]   Window       [_t_]   Text Zoom    [_o_]   Org Agenda          
+"
+  ("a" hydra-tip/body)
+  ("h" hydra-launcher/body)
+  ("m" hydra-multiple-cursors/body)
+  ("w" +hydra/window-nav/body)
+  ("t" +hydra/text-zoom/body)
+  ("o" hydra-org-agenda-view/body)
+  )
+#+END_SRC
+
+*** 提示面板入口
+
+#+BEGIN_SRC emacs-lisp
+;; 提示面板
+(defhydra hydra-tip (:color blue :hint nil)
+  "
+Tips for modes or kyes.
+------------------------------------------------------------------
+ [_m_]   M-Cursors   [_e_]   Evil    [_u_]   常用    [_q_] Quit
+"
+  ("m" hydra-tip-mcursors/body)
+  ("u" hydra-tip-useful/body)
+  ("e" hydra-tip-evil/body)
+  ("q" nil)
+  )
+
+#+END_SRC
+
+*** 常用按键提示面板
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-tip-useful (:color blue :hint nil)
+  "
+常用操作提示(C-Control, s-Command, M-option/alt)：
+------------------------------------------------------------------
+  括号操作          文本操作                    搜索/替换
+------------------------------------------------------------------
+ [C-(] 左括号左移   [s-<] move-text-up      [C-c r] 替换
+ [C-)] 右括号右移   [s->] move-text-down    [C-c q] 搜索替换
+ [s-)] 左括号右移   [C-+] 放大字体
+ [s-(] 右括号左移   [C--] 缩小字体
+ [z-]  取消括号     [M-u] 大写化
+                    [M-l] 小写化
+                    [M-c] 首字母大写
+")
+#+END_SRC
+
+*** SPC 开始按键提示面板
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-tip-spc (:hint nil)
+  "
+SPC 按键列表
+------------------------------------------------------------------
+  <a~l>
+------------------------------------------------------------------
+
+  [SPC b O] kill-other-buffers
+  [SPC l m] lsp-ui-imenu
+  [SPC l t] treemacs
+")
+#+END_SRC
+
+*** Org-mode 按键提示面板
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-tip-org (:hint nil)
+  "
+Org-mode 按键提示
+------------------------------------------------------------------
+  Table 操作        跳转
+------------------------------------------------------------------
+  [M-l] 列右移      [gj] 上一个同级标题
+  [M-h] 列左移      [gk] 下一个同级标题
+  [M-j] 行下移      [gh] 父级标题
+  [M-k] 行上移
+")
+#+END_SRC
+
+*** evil-mode按键提示面板
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-tip-evil (:hint nil)
+  "
+evil 模式下操作命令提示。
+------------------------------------------------------------------
+  符号/字母                 <g>                         <z>
+------------------------------------------------------------------
+  [+]   数字+1              [g[] 函数开头               [z-] 取消括号 
+  [-]   数字-1              [g]] 函数结尾               [z.] wrap 标签
+  [K]   查文档              [g~] 大小写切换             [za] fold 所有 
+  [s/S] wrap 字符(选中)     [g0] 行首                   [zo] open 当前
+  [s/S] 文件内字符定位      [gd] 查找定义(definition)   [zj] fold 下一个
+  [f/F] 行内字符定位        [gD] 查找引用(reference)    [zk] fold 上一个
+  [t/T] 行内字符定位        [gt] 切换下一个workspace   [zr] open所有
+                            [gx] 交换两个选中区内容     [zm] close所有
+                            [gf] 查找光标处名称的文件   [zt] 当前行定位到顶部
+                            [gr] 执行选中内容           [zx] kill 当前buffer
+                            [gs/] 按字符定位
+                            [gsj] 按字符往后定位
+                            [gsk] 按字符往前定位
+                            [gs[] 按section向前定位
+                            [gs]] 按section向后定位
+")
+#+END_SRC
+
+*** multiple cursors(~C-S-c~, ~Control-Shift-c~)
+
+| key           | function                       | description    |
+|---------------+--------------------------------+----------------|
+| ~C->~         | ~mc/mark-next-like-this~       | -              |
+| ~C-<~         | ~mc/mark-previous-like-this~   | -              |
+| ~C-c C-<~     | ~mc/mark-all-like-this~        | -              |
+| ~C-S-c C-S-c~ | ~mc/edit-lines~                | S: Shift Key   |
+| ~C-S-c 0~     | ~mc/insert-numbers~            | -              |
+| ~C-S-c 1~     | ~mc/insert-letters~            | -              |
+| ~C-S-c s~     | ~mc/mark-all-in-region~        | -              |
+| ~C-S-c S~     | ~mc/mark-all-in-region-regexp~ | -              |
+| ~C-j~         | -                              | insert newline |
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-tip-mcursors (:color blue :hint nil)
+  "
+Multiple Cursors Mode Tip(C-Control, S-Shift).
+
+ [C-S-c 0] insert numbers   [C->] next 
+ [C-S-c 1] insert letters   [C->] previous
+ [C-S-c s] region           [C-c C-<] all
+ [C-S-c S] region regexp
+ [C-S-c C-S-c] edit lines    
+")
+#+END_SRC
+
+*** Launcher 按键面板
+
+#+BEGIN_SRC emacs-lisp
+(defhydra hydra-launcher (:color blue :hint nil :exit t)
+    "
+all hydra apps or browse urls:
+------------------------------------------------------------------
+ [_h_]   Man     [_r_]   Reddit     [_w_]   EmacsWiki   [_z_]   Zhihu
+ [_s_]   Shell   [_q_]   Cancel
+"
+  ("h" man)
+  ("r" (browse-url "http://www.reddit.com/r/emacs"))
+  ("w" (browse-url "http://www.emacswiki.org/"))
+  ("z" (browse-url "https://www.zhihu.com/"))
+  ("s" shell)
+  ("q" nil))
+#+END_SRC
+
 *** crux tool(~C-c~)
 
 | key     | function                      | description                          |
@@ -124,13 +293,8 @@ key 绑定函数：
 | ~C-c u~ | ~crux-view-url~               | open the url under cursor            |
 | ~C-c D~ | ~crux-delete-file-and-buffer~ | ~SPC f D~ -> ~doom/delete-this-file~ |
 | ~C-c S~ | ~crux-find-shell-init-file~   | -                                    |
-|         |                               |                                      |
+|         | 中文对齐？？                  |                                      |
 
-*** buffer operations
-| key       | function                  | description |
-|-----------+---------------------------+-------------|
-| ~SPC b O~ | ~doom/kill-other-buffers~ | -           |
-|           |                           |             |
 *** window operations
 | key       | function                  | description |
 |-----------+---------------------------+-------------|
@@ -156,51 +320,6 @@ key 绑定函数：
 | =C-{= | sp-backward-sexp       |                  |
 | =C-}= | sp-forward-sexp        |                  |
 
-*** usefull
-常用按键：
-
-| key       | function                        | description                      |
-|-----------+---------------------------------+----------------------------------|
-| ~K~       | ~+lookup/documentation~         | search google/github/youtube/... |
-| ~S~       | ~evil-snipe-S~                  | wrap with char in select mode    |
-|-----------+---------------------------------+----------------------------------|
-| ~M-u~     | ~upcase~                        |                                  |
-| ~M-l~     | ~downcase~                      |                                  |
-| ~M-c~     | ~capitalize-word~               |                                  |
-|-----------+---------------------------------+----------------------------------|
-| ~SPC '~   | ~ivy-resume~                    | resume last search results       |
-| ~SPC b O~ | ~kill-other-buffers~            | -                                |
-| ~SPC s o~ | ~+lookup/online~                |                                  |
-| ~SPC l m~ | ~lsp-ui-imenu~                  | -                                |
-| ~SPC l t~ | ~treemacs~                      |                                  |
-|-----------+---------------------------------+----------------------------------|
-| ~C-=~     | ~er/expand-region~              |                                  |
-| ~C-+~     | ~text-scale-increase~           |                                  |
-| ~C-c r~   | ~vr/replace~                    |                                  |
-| ~C-c q~   | ~vr/query-replace~              |                                  |
-|-----------+---------------------------------+----------------------------------|
-| ~g0~      | ~evil-beginning-of-visual-line~ | -                                |
-| ~g-~      | ~evil-numbers/dec-at-pt~        | decrement number under cursor    |
-| ~g=~      | ~evil-numbers/inc-at-pt~        | increase number under cursor     |
-| ~gd~      | ~+lookup/definition~            | -                                |
-| ~gt~      | ~+workspace:switch-next~        | -                                |
-| ~gD~      | ~+lookup/references~            | -                                |
-| ~gx~      | ~evil-exchange~                 | exchange two regions             |
-| ~g~~      | ~evil-invert-case~              | invert case(down-up)             |
-|           |                                 |                                  |
-
-*** org-mode
-| key   | function        | description       |
-|-------+-----------------+-------------------|
-| ~M-l~ | ~org-metaright~ | move column right |
-| ~M-h~ | ~org-metaleft~  | move column left  |
-| ~M-j~ | ~org-metadown~  | move row down     |
-| ~M-k~ | ~org-metaup~    | move row up       |
-| ~M-u~ | ~upcase-word~   | -                 |
-| ~gu~  | ~evil-downcase~ | -                 |
-| ~gU~  | ~evil-upcase~   |                   |
-
-test word
 *** +workspace
 
 | key           | function                  | description                |
@@ -218,63 +337,6 @@ test word
 | ~SPC TAB x~   | ~+workspace/kill-session~ | -                          |
 | ~SPC TAB R~   | ~+workspace/restore-last~ | -                          |
 
-*** evil-mode
-**** g(go, jump)
-
-| key              | function                                      | description                      |
-|------------------+-----------------------------------------------+----------------------------------|
-| ~ga~             | ~what-cursor-position~                        | -                                |
-| ~gj~             | ~org-forward-heading-same-level~              | last same level header           |
-| ~gk~             | ~org-backward-heading-same-level~             | next same level header           |
-| ~gh~             | ~org-up-element~                              | go org last level header         |
-| ~gf~             | ~+lookup/file~                                | find file with name under cursor |
-| ~gr~             | ~evil-region~                                 | execute region code              |
-| ~gt~             | ~+workspace:switch-next~                      | -                                |
-| ~gu~             | ~evil-downcase~                               |                                  |
-| ~gx~             | ~evil-exchange~                               |                                  |
-| ~g;~             | ~goto-last-change~                            | -                                |
-| ~g$~             | ~evil-end-of-visual-line~                     | -                                |
-| ~g-~             | ~evil-numbers/dec-at-pt~                      | decrement number under cursor    |
-| ~g=~             | ~evil-numbers/inc-at-pt~                      | increase number under cursor     |
-| ~g~~             | ~evil-invert-case~                            | invert case(down-up)             |
-| ~g0~             | ~evil-beginning-of-visual-line~               | -                                |
-| ~g[~             | ~beginning-of-defun~                          | -                                |
-| ~g]~             | ~end-of-defun~                                | -                                |
-|------------------+-----------------------------------------------+----------------------------------|
-| *lookup def/ref* |                                               |                                  |
-| ~gd~             | ~+lookup/definition~                          | -                                |
-| ~gD~             | ~+lookup/references~                          | -                                |
-|------------------+-----------------------------------------------+----------------------------------|
-| *char jump*      |                                               |                                  |
-| ~gss~            | ~evil-avy-goto-char-2~                        | jump by char1-2 input            |
-| ~gs/~            | ~evil-avy-goto-char-timer~                    | jump by a char                   |
-|------------------+-----------------------------------------------+----------------------------------|
-| *line jump*      |                                               |                                  |
-| ~gsj~            | ~evilem-motion-next-line~                     | jump line below current row      |
-| ~gsk~            | ~evilem-motion-previous-line~                 | jump line upon current row       |
-| ~gs+~            | ~evilem-motion-next-line-first-non-blank~     | jump next non blank line         |
-| ~gs-~            | ~evilem-motion-previous-line-first-non-blank~ | jump previous non blankl line    |
-| ~gsgk~           | ~evilem-motion-previous-visual-line~          | -                                |
-| ~gsgj~           | ~evilem-motion-next-visual-line~              | -                                |
-|------------------+-----------------------------------------------+----------------------------------|
-| *section jump*   |                                               |                                  |
-| ~gs[[~           | ~evilem-motion-backward-section-begin~        | jump backward section begin      |
-| ~gs[]~           | ~evilem-motion-backward-section-end~          | jump backward section end        |
-| ~gs]]~           | ~evilem-motion-forward-section-begin~         | -                                |]
-| ~gs[~           | ~evilem-motion-forward-section-end~           | -                                |
-
-**** z(fold/unfold)
-
-| key  | function                  | description |
-|------+---------------------------+-------------|
-| ~za~ | ~evil-toggle-fold~        |             |
-| ~zo~ | ~evil-open-fold~          |             |
-| ~zj~ | ~evil-fold-next~          |             |
-| ~zk~ | ~evil-fold-previous~      |             |
-| ~zr~ | ~evil-open-folds~         |             |
-| ~zm~ | ~evil-close-folds~        |             |
-| ~zt~ | ~evil-scroll-line-to-top~ |             |
-| ~zx~ | ~kill-current-buffer~     |             |
 * Spaceamcs
 我的 Spacemacs 配置文件，参考配置来源于 [[https://github.com/zilongshanren/spacemacs-private][子龙山人]] 的配置方案(进行了部分删减)，我的完整配置文档链接[[https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng][🛬🛬🛬]]。
 ** Awesome/有趣/实用
