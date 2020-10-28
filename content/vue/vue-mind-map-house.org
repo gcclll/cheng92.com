@@ -6,7 +6,7 @@
 #+STARTUP: indent
 
 #+begin_export html
-<link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
 <kbd>
 <font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
   诗号：六道同坠，魔劫万千，引渡如来。
@@ -700,7 +700,8 @@ function transform(root, options) {
 #+END_SRC
 
 静态提升条件：
-1. 根节点必须有一个孩子以上节点，且该节点是静态节点(~isStatic(child, resultCache)~)
+1. 根节点必须有一个孩子以上节点，且所有子孙节点都必须是静态节点(~isStatic(child,
+   resultCache)~)
 2. 如果节点是动态节点，则检测其所有属性，提取出静态属性将其提升
 3. 提升之后的属性或节点会保存到 ~context.hoists~ 里面
 
