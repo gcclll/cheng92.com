@@ -67,6 +67,71 @@ https://github.com/hrehfeld/emacs-smart-hungry-delete
     ;; default
     (string-inflection-java-style-cycle))))
 #+END_SRC
+*** parrot(~C-s~)
+
+https://github.com/dp12/parrot
+
+rotate text，在约定的几个字符串之间来回切换。
+
+#+BEGIN_SRC emacs-lisp
+(setq parrot-rotate-dict
+      '(
+        (:rot ("alpha" "beta") :caps t :lower nil)
+        ;; => rotations are "Alpha" "Beta"
+
+        (:rot ("snek" "snake" "stawp"))
+        ;; => rotations are "snek" "snake" "stawp"
+
+        (:rot ("yes" "no") :caps t :upcase t)
+        ;; => rotations are "yes" "no", "Yes" "No", "YES" "NO"
+
+        (:rot ("&" "|"))
+        ;; => rotations are "&" "|"
+
+        ;; default dictionary starts here ('v')
+        (:rot ("begin" "end") :caps t :upcase t)
+        (:rot ("enable" "disable") :caps t :upcase t)
+        (:rot ("enter" "exit") :caps t :upcase t)
+        (:rot ("forward" "backward") :caps t :upcase t)
+        (:rot ("front" "rear" "back") :caps t :upcase t)
+        (:rot ("get" "set") :caps t :upcase t)
+        (:rot ("high" "low") :caps t :upcase t)
+        (:rot ("in" "out") :caps t :upcase t)
+        (:rot ("left" "right") :caps t :upcase t)
+        (:rot ("min" "max") :caps t :upcase t)
+        (:rot ("on" "off") :caps t :upcase t)
+        (:rot ("prev" "next"))
+        (:rot ("start" "stop") :caps t :upcase t)
+        (:rot ("true" "false") :caps t :upcase t)
+        (:rot ("&&" "||"))
+        (:rot ("==" "!="))
+        (:rot ("." "->"))
+        (:rot ("if" "else" "elif"))
+        (:rot ("ifdef" "ifndef"))
+        (:rot ("int8_t" "int16_t" "int32_t" "int64_t"))
+        (:rot ("uint8_t" "uint16_t" "uint32_t" "uint64_t"))
+        (:rot ("1" "2" "3" "4" "5" "6" "7" "8" "9" "10"))
+        (:rot ("1st" "2nd" "3rd" "4th" "5th" "6th" "7th" "8th" "9th" "10th"))
+        ))
+#+END_SRC
+
+配置：
+
+#+BEGIN_SRC emacs-lisp
+(use-package! parrot
+  :init
+  (progn
+    (define-key global-map (kbd "C-s ,") 'parrot-rotate-prev-word-at-point)
+    (define-key global-map (kbd "C-s .") 'parrot-rotate-next-word-at-point))
+  :config
+  (parrot-mode)
+  (setq parrot-ratate-dict
+        '(
+          (:rot ("alpha" "beta") :caps t :lower nil) ;; => Alpha, Beta
+          (:rot ("yes" "no") :caps t :upcase t) ;; => yes,no,No,YES,NO
+          (:rot ("&" "|"))
+          )))
+#+END_SRC
 ** Keybindings
 所有常用按键均通过 ~hydra~ 注释方式展现，方便查询：
 
@@ -145,6 +210,51 @@ key 绑定函数：
       (:map go-lisp-mode    :n  "C-x x" #'do-something-else))
 #+END_SRC
 
+*** 所有按键表
+
+*C-Control*, *s-Command*, *S-Shift*, *M-option/alt*
+
+| prefix | key               | function                           | description |
+|--------+-------------------+------------------------------------+-------------|
+| ~z~    | *字母 z*          |                                    |             |
+|        | ~-~               | ~sp-splice-sexp~                   | 取消括号    |
+|--------+-------------------+------------------------------------+-------------|
+| ~C~    | *Control*         |                                    |             |
+|        | ~(~               | ~sp-backward-slurp-sexp~           | 左括号左移  |
+|        | ~)~               | ~sp-forward-slurp-sexp~            | 右括号右移  |
+|        | ~+~               | ~cnfonts-increase-fontsize~        | -           |
+|        | ~-~               | ~cnfonts-decrease-fontsize~        | -           |
+|--------+-------------------+------------------------------------+-------------|
+| ~M~    | *Option/Alt*      |                                    |             |
+|        | ~u~               | ~upcase-word~                      |             |
+|        | ~l~               | ~downcase-word~                    |             |
+|        | ~c~               | ~capitalize-word~                  |             |
+|--------+-------------------+------------------------------------+-------------|
+| ~s~    | *Command*         |                                    |             |
+|        | ~<~               | ~move-text-up~                     |             |
+|        | ~>~               | ~move-text-down~                   |             |
+|        | ~(~               | ~sp-forward-barf-sexp~             | 左括号右移  |
+|        | ~)~               | ~sp-backward-barf-sexp~            | 右括号左移  |
+|--------+-------------------+------------------------------------+-------------|
+| ~C-s~  |                   |                                    |             |
+|        | ~,~               | ~parrot-rotate-prev-word-at-point~ | -           |
+|        | ~.~               | ~parrot-rotate-next-word-at-point~ | -           |
+|--------+-------------------+------------------------------------+-------------|
+| ~C-c~  |                   |                                    |             |
+|        | ~r~               | ~vr/replace~                       | -           |
+|        | ~q~               | ~vr/query-replace~                 |             |
+|--------+-------------------+------------------------------------+-------------|
+| ~C-S~  | *Control + Shift* |                                    |             |
+|--------+-------------------+------------------------------------+-------------|
+| ~SPC~  |                   |                                    |             |
+|        | ~b f~             | ~osx-lib-reveal-in-finder~         | -           |
+|        | ~b O~             | ~kill-other-buffers~               | -           |
+|        | ~c e~             | ~+eval/buffer-or-region~           | -           |
+|        | ~l m~             | ~lsp-ui-imenu~                     | -           |
+|        | ~l t~             | ~treemacs~                         | -           |
+|        | ~w -~             | ~evil-window-split~                | 水平分割    |
+|        | ~w v~             | ~evil-window-vsplit~               | 垂直分割    |
+|--------+-------------------+------------------------------------+-------------|
 
 *** 主面板
 
@@ -196,7 +306,7 @@ Tips for modes or kyes.
  [C-)] 右括号右移   [s->] move-text-down    [C-c q] 搜索替换
  [s-)] 左括号右移   [C-+] 放大字体
  [s-(] 右括号左移   [C--] 缩小字体
- [z-]  取消括号     [M-u] 大写化
+ [z--] 取消括号     [M-u] 大写化
                     [M-l] 小写化
                     [M-c] 首字母大写
 ")
@@ -241,24 +351,53 @@ Org-mode 按键提示
   "
 evil 模式下操作命令提示。
 ------------------------------------------------------------------
-  符号/字母                 <g>                         <z>
+  符号/字母                     <z>
 ------------------------------------------------------------------
-  [+]   数字+1              [g[] 函数开头               [z-] 取消括号 
-  [-]   数字-1              [g]] 函数结尾               [z.] wrap 标签
-  [K]   查文档              [g~] 大小写切换             [za] fold 所有 
-  [s/S] wrap 字符(选中)     [g0] 行首                   [zo] open 当前
-  [s/S] 文件内字符定位      [gd] 查找定义(definition)   [zj] fold 下一个
-  [f/F] 行内字符定位        [gD] 查找引用(reference)    [zk] fold 上一个
-  [t/T] 行内字符定位        [gt] 切换下一个workspace   [zr] open所有
-                            [gx] 交换两个选中区内容     [zm] close所有
-                            [gf] 查找光标处名称的文件   [zt] 当前行定位到顶部
-                            [gr] 执行选中内容           [zx] kill 当前buffer
-                            [gs/] 按字符定位
-                            [gsj] 按字符往后定位
-                            [gsk] 按字符往前定位
-                            [gs[] 按section向前定位
-                            [gs]] 按section向后定位
-")
+  [+]   数字+1                  [z-] 取消括号 
+  [-]   数字-1                  [z.] wrap 标签
+  [K]   查文档                  [za] fold 所有 
+  [s/S] wrap 字符(选中)         [zo] open 当前
+  [s/S] 文件内字符定位          [zj] fold 下一个
+  [f/F] 行内字符定位            [zk] fold 上一个
+  [t/T] 行内字符定位            [zr] open所有
+  [;]   向后重复查找            [zm] close所有
+  [,]   向前重复查找            [zt] 当前行定位到顶部
+                                [zx] kill 当前buffer
+------------------------------------------------------------------
+                                <g>
+------------------------------------------------------------------
+ [_g[_] 函数开头                  [_gd_] 查找定义(definition)       [_g0_] 行首
+ [_g]_] 函数结尾                  [_gD_] 查找引用(reference)
+ [_gsj_] 按字符往后定位           [_gr_] 执行选中内容
+ [_gss_] 按两个字符定位           [_gt_] 切换下一个workspace
+ [_gs/_] 按单个字符定位           [_gx_] 交换两个选中区内容
+ [_gsk_] 按字符往前定位           [_gf_] 查找光标处名称的文件
+ [_gs[[_] 按段首向前定位
+ [_gs[]_] 按断尾向前定位
+ [_gs]]_] 按段首向后定位
+ [_gs][_] 按断尾向后定位
+"
+  ("g[" beginning-of-defun)
+  ("g]" end-of-defun)
+  ("g0" evil-beginning-of-visual-line)
+  ("gd" xref-find-definitions)
+  ("gD" xref-find-references)
+  ("gb" xref-pop-marker-stack)
+  ("gr" +eval:region)
+  ("gjj" dumb-jump-go)
+  ("gjb" dumb-jump-back)
+  ("gt" +workspace:switch-next)
+  ("gx" evil-exchange)
+  ("gf" +lookup/file)
+  ("gss" evil-avy-goto-char-2)
+  ("gs/" evil-avy-goto-char-timer)
+  ("gsj" evilem-motion-next-line)
+  ("gsk" evilem-motion-previous-line)
+  ("gs[[" evilem-motion-backward-section-begin)
+  ("gs[]" evilem-motion-backward-section-end)
+  ("gs][" evilem-motion-forward-section-end)
+  ("gs]]" evilem-motion-forward-section-begin)
+  )
 #+END_SRC
 
 *** multiple cursors(~C-S-c~, ~Control-Shift-c~)
