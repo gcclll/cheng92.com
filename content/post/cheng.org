@@ -18,6 +18,8 @@
 ** TODO use algolia autocomplete.js
 
 https://github.com/algolia/autocomplete.js
+* 编程语言
+** go
 * 猿世界
 - [[https://www.w3schools.com/][w3schools]] 初学 
 - GeeksforGeeks，全英文不止有算法
@@ -234,6 +236,13 @@ xlsx 文件转成 json 数据。
 |               |              |                    |
 
 * 软件&命令
+** 字体
+
+#+BEGIN_SRC
+$ brew tap homebrew/cask-fonts
+$ brew cask install font-fira-code 
+#+END_SRC
+
 ** 网站
 1. [[https://realfavicongenerator.net/][图片/svg 转 favicon]]
 ** MacOs 工具
@@ -318,6 +327,18 @@ https://github.com/qiniu/qshell
 
 https://github.com/PicGo
 * 问题列表
+** golang
+
+1. go get 无法下载问题？
+
+    ~Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout~
+
+    https://shockerli.net/post/go-get-golang-org-x-solution/
+
+   - ~export GO111MODULE=on~
+
+   - ~export GOPROXY=https://goproxy.io~
+
 ** 前端
 1. 怎么在 html 中使用 ~.svg~ 文件
    

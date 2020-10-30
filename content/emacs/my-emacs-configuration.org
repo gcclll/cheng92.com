@@ -8,6 +8,8 @@
 
 #+BEGIN_QUOTE
 [[https://github.com/hick/emacs-chinese][Emacs相关中文问题以及解决方案]]
+
+[[https://github.com/chenyanming/spacemacs_module_for_doom][在 doom-emacs 中使用 spacemacs 的 layers]]
 #+END_QUOTE
 
 * Doom-emacs
@@ -17,9 +19,10 @@
 配置列表：
 
 1. https://github.com/rschmukler/doom.d
-2. https://rgoswami.me/dotdoom/config.html
-3. https://github.com/hlissner/doom-emacs-private
-4. 主题：https://github.com/hlissner/emacs-doom-themes
+2. https://github.com/forrestchang/.doom.d
+3. https://rgoswami.me/dotdoom/config.html
+4. https://github.com/hlissner/doom-emacs-private
+5. 主题：https://github.com/hlissner/emacs-doom-themes
 
 ** Base Configuration/Operation
 *** 重新加载配置
@@ -31,6 +34,15 @@
 | ~SPC c e~ | -               | ~M-x +eval/buffer-or-region~ |
 
 ** packages
+*** leetcode
+
+https://github.com/kaiwk/leetcode.el
+*** go-mode
+
+install: https://www.mdeditor.tw/pl/2KAi
+
+1. no such file or directory gocode ?
+
 *** smart-hungry-delete
 
 https://github.com/hrehfeld/emacs-smart-hungry-delete
@@ -214,47 +226,56 @@ key 绑定函数：
 
 *C-Control*, *s-Command*, *S-Shift*, *M-option/alt*
 
-| prefix | key               | function                           | description |
-|--------+-------------------+------------------------------------+-------------|
-| ~z~    | *字母 z*          |                                    |             |
-|        | ~-~               | ~sp-splice-sexp~                   | 取消括号    |
-|--------+-------------------+------------------------------------+-------------|
-| ~C~    | *Control*         |                                    |             |
-|        | ~(~               | ~sp-backward-slurp-sexp~           | 左括号左移  |
-|        | ~)~               | ~sp-forward-slurp-sexp~            | 右括号右移  |
-|        | ~+~               | ~cnfonts-increase-fontsize~        | -           |
-|        | ~-~               | ~cnfonts-decrease-fontsize~        | -           |
-|--------+-------------------+------------------------------------+-------------|
-| ~M~    | *Option/Alt*      |                                    |             |
-|        | ~u~               | ~upcase-word~                      |             |
-|        | ~l~               | ~downcase-word~                    |             |
-|        | ~c~               | ~capitalize-word~                  |             |
-|--------+-------------------+------------------------------------+-------------|
-| ~s~    | *Command*         |                                    |             |
-|        | ~<~               | ~move-text-up~                     |             |
-|        | ~>~               | ~move-text-down~                   |             |
-|        | ~(~               | ~sp-forward-barf-sexp~             | 左括号右移  |
-|        | ~)~               | ~sp-backward-barf-sexp~            | 右括号左移  |
-|--------+-------------------+------------------------------------+-------------|
-| ~C-s~  |                   |                                    |             |
-|        | ~,~               | ~parrot-rotate-prev-word-at-point~ | -           |
-|        | ~.~               | ~parrot-rotate-next-word-at-point~ | -           |
-|--------+-------------------+------------------------------------+-------------|
-| ~C-c~  |                   |                                    |             |
-|        | ~r~               | ~vr/replace~                       | -           |
-|        | ~q~               | ~vr/query-replace~                 |             |
-|--------+-------------------+------------------------------------+-------------|
-| ~C-S~  | *Control + Shift* |                                    |             |
-|--------+-------------------+------------------------------------+-------------|
-| ~SPC~  |                   |                                    |             |
-|        | ~b f~             | ~osx-lib-reveal-in-finder~         | -           |
-|        | ~b O~             | ~kill-other-buffers~               | -           |
-|        | ~c e~             | ~+eval/buffer-or-region~           | -           |
-|        | ~l m~             | ~lsp-ui-imenu~                     | -           |
-|        | ~l t~             | ~treemacs~                         | -           |
-|        | ~w -~             | ~evil-window-split~                | 水平分割    |
-|        | ~w v~             | ~evil-window-vsplit~               | 垂直分割    |
-|--------+-------------------+------------------------------------+-------------|
+| prefix | key               | function                           | mode       | description                  |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~g~    | *字母 g*          |                                    |            |                              |
+|        | ~~                |                                    |            |                              |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~z~    | *字母 z*          |                                    |            |                              |
+|        | ~-~               | ~sp-splice-sexp~                   |            | 取消括号                     |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~C~    | *Control*         |                                    |            |                              |
+|        | ~(~               | ~sp-backward-slurp-sexp~           |            | 左括号左移                   |
+|        | ~)~               | ~sp-forward-slurp-sexp~            |            | 右括号右移                   |
+|        | ~+~               | ~cnfonts-increase-fontsize~        |            | -                            |
+|        | ~-~               | ~cnfonts-decrease-fontsize~        |            | -                            |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~M~    | *Option/Alt*      |                                    |            |                              |
+|        | ~u~               | ~upcase-word~                      |            |                              |
+|        | ~l~               | ~downcase-word~                    |            |                              |
+|        | ~c~               | ~capitalize-word~                  |            |                              |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~s~    | *Command*         |                                    |            |                              |
+|        | ~<~               | ~move-text-up~                     |            |                              |
+|        | ~>~               | ~move-text-down~                   |            |                              |
+|        | ~(~               | ~sp-forward-barf-sexp~             |            | 左括号右移                   |
+|        | ~)~               | ~sp-backward-barf-sexp~            |            | 右括号左移                   |
+|        | ~q~               | ~+workspace/kill-session-and-quit~ |            | ~save-buffers-kill-terminal~ |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~C-s~  |                   |                                    |            |                              |
+|        | ~,~               | ~parrot-rotate-prev-word-at-point~ |            | -                            |
+|        | ~.~               | ~parrot-rotate-next-word-at-point~ |            | -                            |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~C-c~  |                   |                                    |            |                              |
+|        | ~d~               | ~insert-current-date-time~         |            |                              |
+|        | ~t~               | ~insert-current-time~              |            |                              |
+|        | ~r~               | ~vr/replace~                       |            | -                            |
+|        | ~q~               | ~vr/query-replace~                 |            |                              |
+|        | ~u~               | ~crux-view-url~                    |            |                              |
+|        | ~U~               | ~browse-url-at-point~              |            |                              |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~C-S~  | *Control + Shift* |                                    |            |                              |
+|--------+-------------------+------------------------------------+------------+------------------------------|
+| ~SPC~  |                   |                                    |            |                              |
+|        | ~b f~             | ~osx-lib-reveal-in-finder~         |            | -                            |
+|        | ~b O~             | ~kill-other-buffers~               |            | -                            |
+|        | ~c e~             | ~+eval/buffer-or-region~           |            | -                            |
+|        | ~l m~             | ~lsp-ui-imenu~                     |            | -                            |
+|        | ~l t~             | ~treemacs~                         |            | -                            |
+|        | ~m r~             | ~intant-rename-tag~                | *web-mode* | 同步修改标签名               |
+|        | ~w -~             | ~evil-window-split~                |            | 水平分割                     |
+|        | ~w v~             | ~evil-window-vsplit~               |            | 垂直分割                     |
+|--------+-------------------+------------------------------------+------------+------------------------------|
 
 *** 主面板
 
