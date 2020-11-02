@@ -16,14 +16,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="Zhicheng Lee" /><meta name="description" content="该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
 
 
 
 
-
-
-<meta name="generator" content="Hugo 0.74.3 with theme even" />
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
 
 
 <link rel="canonical" href="https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/" />
@@ -34,31 +34,33 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 
 
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
 
 <meta property="og:title" content="Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts" />
-<meta property="og:description" content="该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，" />
+<meta property="og:description" content="window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/" />
 <meta property="article:published_time" content="2020-08-31T00:00:00+00:00" />
 <meta property="article:modified_time" content="2020-08-31T00:00:00+00:00" />
 <meta itemprop="name" content="Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts">
-<meta itemprop="description" content="该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，">
+<meta itemprop="description" content="window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比">
 <meta itemprop="datePublished" content="2020-08-31T00:00:00+00:00" />
 <meta itemprop="dateModified" content="2020-08-31T00:00:00+00:00" />
-<meta itemprop="wordCount" content="25623">
+<meta itemprop="wordCount" content="25626">
 
 
 
 <meta itemprop="keywords" content="vue,,vue3,,vuenext,,compiler," />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts"/>
-<meta name="twitter:description" content="该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，"/>
+<meta name="twitter:description" content="window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比"/>
 
 <!--[if lte IE 9]>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
@@ -126,9 +128,12 @@
         <a class="menu-item-link" href="/tags/">Tags</a>
       </li><li class="menu-item">
         <a class="menu-item-link" href="/categories/">Categories</a>
-      </li>
-  </ul>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
 </nav>
+
     </header>
 
     <main id="main" class="main">
@@ -144,7 +149,7 @@
         <div class="post-category">
             <a href="/categories/vue/"> vue </a>
             </div>
-          <span class="more-meta"> 约 25623 字 </span>
+          <span class="more-meta"> 约 25626 字 </span>
           <span class="more-meta"> 预计阅读 52 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
@@ -161,7 +166,7 @@
 <ul>
 <li><a href="#test-parse-errors">ErrorCodes 各种错误情况用例</a>
 <ul>
-<li><a href="#headline-4">注释反例(嵌套注释)：</a>
+<li><a href="#test-parse-errors-comment">注释反例(嵌套注释)：</a>
 </li>
 </ul>
 </li>
@@ -329,6 +334,9 @@
 </div>
     <div class="post-content">
       
+<script>
+window.g_need_fold = 1
+</script>
 <blockquote>
 <p>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。</p>
 </blockquote>
@@ -609,13 +617,13 @@ ErrorCodes 各种错误情况用例
 </div>
 </div>
 </div>
-<div id="outline-container-headline-4" class="outline-4">
-<h4 id="headline-4">
-注释反例(嵌套注释)：
-</h4>
-</div>
 </li>
 </ol>
+<div id="outline-container-test-parse-errors-comment" class="outline-4">
+<h4 id="test-parse-errors-comment">
+注释反例(嵌套注释)：
+</h4>
+<div id="outline-text-test-parse-errors-comment" class="outline-text-4">
 <ol>
 <li>
 <p><code>&lt;template&gt;&lt;!--a&lt;!--b--&gt;&lt;/template&gt;</code></p>
@@ -630,6 +638,8 @@ ErrorCodes 各种错误情况用例
 <p><code>&lt;template&gt;&lt;!--a&lt;!--</code></p>
 </li>
 </ol>
+</div>
+</div>
 </div>
 </div>
 <div id="outline-container-headline-5" class="outline-3">
@@ -1335,7 +1345,7 @@ props: Array(1)
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">
   <span class="kd">function</span> <span class="nx">parseAttributes</span><span class="p">(</span>
       <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
-      <span class="nx">type</span>: <span class="kt">TagType</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span>
   <span class="p">)</span><span class="o">:</span> <span class="p">(</span><span class="nx">AttributeNode</span> <span class="o">|</span> <span class="nx">DirectiveNode</span><span class="p">)[]</span> <span class="p">{</span>
       <span class="kr">const</span> <span class="nx">props</span> <span class="o">=</span> <span class="p">[]</span>
       <span class="kr">const</span> <span class="nx">attributeNames</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">&lt;</span><span class="nt">string</span><span class="p">&gt;()</span>
@@ -1414,17 +1424,17 @@ props: Array(1)
       <span class="kr">const</span> <span class="nx">element</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">ElementNode</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">element</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.ELEMENT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ELEMENT</span><span class="p">,</span>
           <span class="nx">ns</span>: <span class="kt">Namespaces.HTML</span><span class="p">,</span>
           <span class="nx">tag</span><span class="o">:</span> <span class="s1">&#39;div&#39;</span><span class="p">,</span>
           <span class="nx">tagType</span>: <span class="kt">ElementTypes.ELEMENT</span><span class="p">,</span>
           <span class="nx">codegenNode</span>: <span class="kt">undefined</span><span class="p">,</span>
           <span class="nx">props</span><span class="o">:</span> <span class="p">[</span>
               <span class="p">{</span>
-                  <span class="nx">type</span>: <span class="kt">NodeTypes.ATTRIBUTE</span><span class="p">,</span>
+                  <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ATTRIBUTE</span><span class="p">,</span>
                   <span class="nx">name</span><span class="o">:</span> <span class="s1">&#39;id&#39;</span><span class="p">,</span>
                   <span class="nx">value</span><span class="o">:</span> <span class="p">{</span>
-                      <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+                      <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
                       <span class="nx">content</span><span class="o">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
                       <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
                           <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">8</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">9</span> <span class="p">},</span>
@@ -1668,10 +1678,10 @@ props: Array(1)
 </span><span class="c1"></span>
       <span class="c1">// ... id 非指令属性，所以直接到最后以普通属性类型退出
 </span><span class="c1"></span>      <span class="k">return</span> <span class="p">{</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.ATTRIBUTE</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ATTRIBUTE</span><span class="p">,</span>
           <span class="nx">name</span><span class="p">,</span>
           <span class="nx">value</span>: <span class="kt">value</span> <span class="o">&amp;&amp;</span> <span class="p">{</span>
-              <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+              <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
               <span class="nx">content</span>: <span class="kt">value.content</span><span class="p">,</span>
               <span class="nx">loc</span>: <span class="kt">value.loc</span>
           <span class="p">},</span>
@@ -1801,7 +1811,7 @@ props: Array(1)
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">
   <span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
       <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
-      <span class="nx">type</span>: <span class="kt">TagType</span><span class="p">,</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span><span class="p">,</span>
       <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span>
   <span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="p">{</span>
       <span class="c1">// ... 省略
@@ -1811,7 +1821,7 @@ props: Array(1)
       <span class="c1">// &lt;comp&gt; 由于是 isCustomElement 因此压根不会进入下面的 if (false) ...
 </span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">context</span><span class="p">.</span><span class="nx">inVPre</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">options</span><span class="p">.</span><span class="nx">isCustomElement</span><span class="p">(</span><span class="nx">tag</span><span class="p">))</span> <span class="p">{</span>
           <span class="kr">const</span> <span class="nx">hasVIs</span> <span class="o">=</span> <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span>
-              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
+              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
           <span class="p">)</span>
           <span class="k">if</span> <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">isNativeTag</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">hasVIs</span><span class="p">)</span> <span class="p">{</span>
               <span class="c1">// div 会进入到这里，但是检测失败 if (!true) ...
@@ -1833,7 +1843,7 @@ props: Array(1)
               <span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;template&#39;</span> <span class="o">&amp;&amp;</span>
                   <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="nx">p</span> <span class="o">=&gt;</span> <span class="p">{</span>
                       <span class="k">return</span> <span class="p">(</span>
-                          <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">isSpecialTemplateDirective</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span>
+                          <span class="nx">p</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">isSpecialTemplateDirective</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span>
                       <span class="p">)</span>
                   <span class="p">})</span>
           <span class="p">)</span> <span class="p">{</span>
@@ -1844,7 +1854,7 @@ props: Array(1)
       <span class="c1">// 所以 &lt;div&gt; 最终使用了默认值：ELEMENT
 </span><span class="c1"></span>      <span class="c1">// 所以 &lt;comp&gt; 直接到了这里，是：ELEMENT 类型
 </span><span class="c1"></span>      <span class="k">return</span> <span class="p">{</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.ELEMENT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ELEMENT</span><span class="p">,</span>
           <span class="nx">ns</span><span class="p">,</span>
           <span class="nx">tag</span><span class="p">,</span>
           <span class="nx">tagType</span><span class="p">,</span>
@@ -1986,7 +1996,7 @@ props: Array(1)
 <td class="lntd">
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">  <span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
       <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
-      <span class="nx">type</span>: <span class="kt">TagType</span><span class="p">,</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span><span class="p">,</span>
       <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span>
   <span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="p">{</span>
       <span class="c1">// ... 省略
@@ -1998,7 +2008,7 @@ props: Array(1)
 
           <span class="c1">// 是否有 v-is 指令
 </span><span class="c1"></span>          <span class="kr">const</span> <span class="nx">hasVIs</span> <span class="o">=</span> <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span>
-              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
+              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
           <span class="p">)</span>
 
           <span class="c1">// 首先由提供原生标签检测函数，且没有 v-is 情况下进入组件判断
@@ -2011,7 +2021,7 @@ props: Array(1)
 </span><span class="c1"></span>      <span class="p">}</span>
 
       <span class="k">return</span> <span class="p">{</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.ELEMENT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ELEMENT</span><span class="p">,</span>
           <span class="nx">ns</span><span class="p">,</span>
           <span class="nx">tag</span><span class="p">,</span>
           <span class="nx">tagType</span><span class="p">,</span>
@@ -2084,7 +2094,7 @@ props: Array(1)
 <td class="lntd">
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">  <span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
       <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
-      <span class="nx">type</span>: <span class="kt">TagType</span><span class="p">,</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span><span class="p">,</span>
       <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span>
   <span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="p">{</span>
       <span class="c1">// ... 省略
@@ -2096,7 +2106,7 @@ props: Array(1)
 
           <span class="c1">// 是否有 v-is 指令
 </span><span class="c1"></span>          <span class="kr">const</span> <span class="nx">hasVIs</span> <span class="o">=</span> <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span>
-              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
+              <span class="nx">p</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;is&#39;</span>
           <span class="p">)</span>
 
           <span class="c1">// 首先由提供原生标签检测函数，且没有 v-is 情况下进入组件判断
@@ -2119,7 +2129,7 @@ props: Array(1)
 </span><span class="c1"></span>      <span class="p">}</span>
 
       <span class="k">return</span> <span class="p">{</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.ELEMENT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ELEMENT</span><span class="p">,</span>
           <span class="nx">ns</span><span class="p">,</span>
           <span class="nx">tag</span><span class="p">,</span>
           <span class="nx">tagType</span><span class="p">,</span>
@@ -2990,9 +3000,9 @@ Interpolation 插值解析
 </span><span class="c1"></span>      <span class="kr">const</span> <span class="nx">interpolation</span> <span class="o">=</span> <span class="nx">element</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">InterpolationNode</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">interpolation</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.INTERPOLATION</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">INTERPOLATION</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="p">{</span>
-              <span class="nx">type</span>: <span class="kt">NodeTypes.SIMPLE_EXPRESSION</span><span class="p">,</span>
+              <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">SIMPLE_EXPRESSION</span><span class="p">,</span>
               <span class="nx">isStatic</span>: <span class="kt">false</span><span class="p">,</span>
               <span class="c1">// The `isConstant` is the default value and will be determined in `transformExpression`.
 </span><span class="c1"></span>              <span class="nx">isConstant</span>: <span class="kt">false</span><span class="p">,</span>
@@ -3082,9 +3092,9 @@ Interpolation 插值解析
       <span class="kr">const</span> <span class="nx">interpolation2</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">InterpolationNode</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">interpolation1</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.INTERPOLATION</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">INTERPOLATION</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="p">{</span>
-              <span class="nx">type</span>: <span class="kt">NodeTypes.SIMPLE_EXPRESSION</span><span class="p">,</span>
+              <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">SIMPLE_EXPRESSION</span><span class="p">,</span>
               <span class="nx">content</span><span class="o">:</span> <span class="sb">`a&lt;b`</span><span class="p">,</span>
               <span class="nx">isStatic</span>: <span class="kt">false</span><span class="p">,</span>
               <span class="nx">isConstant</span>: <span class="kt">false</span><span class="p">,</span>
@@ -3102,9 +3112,9 @@ Interpolation 插值解析
       <span class="p">})</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">interpolation2</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.INTERPOLATION</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">INTERPOLATION</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="p">{</span>
-              <span class="nx">type</span>: <span class="kt">NodeTypes.SIMPLE_EXPRESSION</span><span class="p">,</span>
+              <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">SIMPLE_EXPRESSION</span><span class="p">,</span>
               <span class="nx">isStatic</span>: <span class="kt">false</span><span class="p">,</span>
               <span class="nx">isConstant</span>: <span class="kt">false</span><span class="p">,</span>
               <span class="nx">content</span><span class="o">:</span> <span class="s1">&#39;c&gt;d&#39;</span><span class="p">,</span>
@@ -3533,7 +3543,7 @@ test:</p>
       <span class="kr">const</span> <span class="nx">text2</span> <span class="o">=</span> <span class="p">(</span><span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">ElementNode</span><span class="p">).</span><span class="nx">children</span><span class="o">!</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">TextNode</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">text1</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="s1">&#39;some &#39;</span><span class="p">,</span>
           <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
               <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">0</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">1</span> <span class="p">},</span>
@@ -3542,7 +3552,7 @@ test:</p>
           <span class="p">}</span>
       <span class="p">})</span>
       <span class="nx">expect</span><span class="p">(</span><span class="nx">text2</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="s1">&#39; text&#39;</span><span class="p">,</span>
           <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
               <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">32</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">33</span> <span class="p">},</span>
@@ -3672,7 +3682,7 @@ Ran all test suites matching /compiler-core/i.
       <span class="kr">const</span> <span class="nx">text2</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">TextNode</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">text1</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="s1">&#39;some &#39;</span><span class="p">,</span>
           <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
               <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">0</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">1</span> <span class="p">},</span>
@@ -3681,7 +3691,7 @@ Ran all test suites matching /compiler-core/i.
           <span class="p">}</span>
       <span class="p">})</span>
       <span class="nx">expect</span><span class="p">(</span><span class="nx">text2</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="s1">&#39; text&#39;</span><span class="p">,</span>
           <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
               <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">21</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">22</span> <span class="p">},</span>
@@ -3791,7 +3801,7 @@ Ran all test suites matching /compiler-core/i.
       <span class="nx">text2</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">text1</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="s2">&#34;some &#34;</span><span class="p">,</span>
           <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
               <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">0</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">1</span> <span class="p">},</span>
@@ -3801,7 +3811,7 @@ Ran all test suites matching /compiler-core/i.
       <span class="p">});</span>
 
       <span class="nx">expect</span><span class="p">(</span><span class="nx">text2</span><span class="p">).</span><span class="nx">toStrictEqual</span><span class="p">({</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="o">:</span> <span class="s2">&#34; text&#34;</span><span class="p">,</span>
           <span class="nx">loc</span><span class="o">:</span> <span class="p">{</span>
               <span class="nx">start</span><span class="o">:</span> <span class="p">{</span> <span class="nx">offset</span>: <span class="kt">20</span><span class="p">,</span> <span class="nx">line</span>: <span class="kt">1</span><span class="p">,</span> <span class="nx">column</span>: <span class="kt">21</span> <span class="p">},</span>
@@ -6116,7 +6126,7 @@ parseTag(context, type, parent)
 <td class="lntd">
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">  <span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
       <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span> <span class="c1">// 要继续解析的模板对象 simple text&lt;/div&gt; 里面的 &lt;/div&gt;
-</span><span class="c1"></span>      <span class="nx">type</span>: <span class="kt">TagType</span><span class="p">,</span> <span class="c1">// Start(&lt;div&gt;), End(&lt;/div&gt;)开始结束标签
+</span><span class="c1"></span>      <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span><span class="p">,</span> <span class="c1">// Start(&lt;div&gt;), End(&lt;/div&gt;)开始结束标签
 </span><span class="c1"></span>      <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span> <span class="c1">// 该标签的父级
 </span><span class="c1"></span>  <span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span>
 </code></pre></td></tr></table>
@@ -6734,7 +6744,7 @@ parseText(context, mode)
 </span><span class="c1"></span>      <span class="kr">const</span> <span class="nx">content</span> <span class="o">=</span> <span class="nx">parseTextData</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">endIndex</span><span class="p">,</span> <span class="nx">mode</span><span class="p">)</span>
 
       <span class="k">return</span> <span class="p">{</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.TEXT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
           <span class="nx">content</span><span class="p">,</span>
           <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">)</span>
       <span class="p">}</span>
@@ -7917,7 +7927,7 @@ ParserOptions
       <span class="cm">/**
 </span><span class="cm">       ,* Platform-specific built-in components e.g. &lt;Transition&gt;
 </span><span class="cm">       ,*/</span>
-      <span class="nx">isBuiltInComponent</span><span class="o">?:</span> <span class="p">(</span><span class="nx">tag</span>: <span class="kt">string</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">symbol</span> <span class="o">|</span> <span class="k">void</span>
+      <span class="nx">isBuiltInComponent</span><span class="o">?:</span> <span class="p">(</span><span class="nx">tag</span>: <span class="kt">string</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="kt">symbol</span> <span class="o">|</span> <span class="k">void</span>
       <span class="cm">/**
 </span><span class="cm">       ,* Separate option for end users to extend the native elements list
 </span><span class="cm">       ,*/</span>
@@ -8011,7 +8021,7 @@ ParserContext
 <td class="lntd">
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">  <span class="kr">export</span> <span class="kr">interface</span> <span class="nx">ParserContext</span> <span class="p">{</span>
       <span class="nx">options</span>: <span class="kt">MergedParserOptions</span> <span class="c1">// 解析器选项，即合并之后的参数对象
-</span><span class="c1"></span>      <span class="nx">readonly</span> <span class="nx">originalSource</span>: <span class="kt">string</span> <span class="c1">// 最初的源码，即解析之前的最原始的字符串，只读版本
+</span><span class="c1"></span>      <span class="kr">readonly</span> <span class="nx">originalSource</span>: <span class="kt">string</span> <span class="c1">// 最初的源码，即解析之前的最原始的字符串，只读版本
 </span><span class="c1"></span>      <span class="nx">source</span>: <span class="kt">string</span> <span class="c1">// 解析中的源码字符串，会发生变化的字符串
 </span><span class="c1"></span>      <span class="nx">offset</span>: <span class="kt">number</span> <span class="c1">// 解析的指针位置，类似文件读取是的指针偏移量
 </span><span class="c1"></span>      <span class="nx">line</span>: <span class="kt">number</span> <span class="c1">// 解析位置在源码中的当前行
@@ -8770,11 +8780,20 @@ push 到~div.ancestors~ 中去。</p>
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
 
 
 
-<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
 
 
 <script type="application/javascript">

@@ -18,12 +18,12 @@
 
 <meta name="author" content="Zhicheng Lee" /><meta name="description" content="该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
 
 
 
 
-
-<meta name="generator" content="Hugo 0.74.3 with theme even" />
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
 
 
 <link rel="canonical" href="https://www.cheng92.com/vue/vue3-source-code-reactivity/" />
@@ -34,9 +34,11 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 
 
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
@@ -126,9 +128,12 @@
         <a class="menu-item-link" href="/tags/">Tags</a>
       </li><li class="menu-item">
         <a class="menu-item-link" href="/categories/">Categories</a>
-      </li>
-  </ul>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
 </nav>
+
     </header>
 
     <main id="main" class="main">
@@ -225,7 +230,7 @@
       <ul>
         <li><a href="#reactivets">reactive.ts</a>
           <ul>
-            <li><a href="#font-colorred首先新增了两个类型font"><font color="red">**首先新增了两个类型：**</font></a></li>
+            <li><a href="#font-colorred首先新增了两个类型font"><font color="red"><strong>首先新增了两个类型：</strong></font></a></li>
             <li><a href="#font-colorredcanobserve-实现变化font"><font color="red"><strong>canObserve 实现变化</strong></font></a></li>
             <li><a href="#font-colorredreactivetargetfont"><font color="red">reactive(target)</font></a></li>
             <li><a href="#font-colorredcreatereactiveobjecttarget-isreadonly-basehandlers-collectionhandlersfont"><font color="red">createReactiveObject(target, isReadonly, baseHandlers, collectionHandlers)</font></a></li>
@@ -1133,14 +1138,14 @@ true</p>
 </span><span class="c1"></span><span class="kd">function</span> <span class="nx">createSetter</span><span class="p">(</span><span class="nx">shallow</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
 
 <span class="c1">// delete obj.name 原子操作
-</span><span class="c1"></span><span class="kd">function</span> <span class="nx">deleteProperty</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span> <span class="o">|</span> <span class="nx">symbol</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="p">{</span> 	<span class="cm">/*...*/</span> 
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">deleteProperty</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span> <span class="o">|</span> <span class="kt">symbol</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="p">{</span> 	<span class="cm">/*...*/</span> 
 <span class="p">}</span>
 
 <span class="c1">// 原子操作 key in obj
-</span><span class="c1"></span><span class="kd">function</span> <span class="nx">has</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span> <span class="o">|</span> <span class="nx">symbol</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">has</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span> <span class="o">|</span> <span class="kt">symbol</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
 
 <span class="c1">// Object.keys(target) 操作，取对象 key
-</span><span class="c1"></span><span class="kd">function</span> <span class="nx">ownKeys</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">)</span><span class="o">:</span> <span class="p">(</span><span class="kt">string</span> <span class="o">|</span> <span class="kt">number</span> <span class="o">|</span> <span class="nx">symbol</span><span class="p">)[]</span>  <span class="p">{</span><span class="cm">/*...*/</span><span class="p">}</span>
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">ownKeys</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">)</span><span class="o">:</span> <span class="p">(</span><span class="kt">string</span> <span class="o">|</span> <span class="kt">number</span> <span class="o">|</span> <span class="kt">symbol</span><span class="p">)[]</span>  <span class="p">{</span><span class="cm">/*...*/</span><span class="p">}</span>
 </code></pre></td></tr></table>
 </div>
 </div><p>四个要被导出的 <code>handlers</code>：</p>
@@ -1318,7 +1323,7 @@ true</p>
 <p>也就是说不检测结果是不是对象，而直接返回当前取值的结果：</p>
 <blockquote>
 <p>=&gt; objObserved.foo
-&quot;foo&rdquo; &ldquo;get&hellip;&rdquo;
+&ldquo;foo&rdquo; &ldquo;get&hellip;&rdquo;
 1
 =&gt; objObserved.bar
 {name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&rdquo;
@@ -1326,12 +1331,12 @@ true</p>
 {name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&rdquo;
 =&gt; objObserved.bar.name
 {name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&rdquo;
-&quot;bar&rdquo;
+&ldquo;bar&rdquo;
 =&gt; const bar = objObserved.bar
 {name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&rdquo;
 undefined
 =&gt; bar.name
-&quot;bar&rdquo;</p>
+&ldquo;bar&rdquo;</p>
 </blockquote>
 <p>分析上面的测试结果：</p>
 <ul>
@@ -1356,12 +1361,12 @@ Proxy {name: &ldquo;bar&rdquo;}
 =&gt; objObserved.bar.name
 {name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&rdquo;
 bar name get&hellip;
-&quot;bar&rdquo;
+&ldquo;bar&rdquo;
 =&gt; const bar = objObserved.bar
 {name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&rdquo;
 bar.name
 =&gt; bar name get&hellip;
-&quot;bar&rdquo;</p>
+&ldquo;bar&rdquo;</p>
 </blockquote>
 <p>看到差异没，首先从 <code>objObserved.bar.name</code> 就可看出差异了，这里首先触发的实际是 <code>objObserved.bar</code> 的 <code>proxy get</code>，此时 <code>return</code> 的时候发现结果是个对象，因此将 <code>bar</code> 传入 <code>reactive(bar)</code> 进一步代理，完成之后取 <code>bar.name</code> 的时候 <code>bar</code> 已经是 reactive 对象了，因此就在 <strong>{name: &ldquo;bar&rdquo;} &ldquo;bar&rdquo; &ldquo;get&hellip;&quot;</strong> 后面紧跟着出现了<strong>bar name get&hellip;</strong> 输出。</p>
 <p>此时，无论后面是赋值到变量 <code>bar</code> 再取 <code>bar.name</code> 结果一样会触发对应的 <code>proxy get</code>，毕竟对象是引用类型，类似指针一样，新增了一个变量指向它，它依旧在哪里。</p>
@@ -1936,17 +1941,17 @@ bar.name
 </span><span class="lnt">25
 </span></code></pre></td>
 <td class="lntd">
-<pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">track</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">type</span>: <span class="kt">TrackOpTypes</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">unknown</span><span class="p">)</span> <span class="p">{</span>
+<pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">track</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="kr">type</span><span class="o">:</span> <span class="nx">TrackOpTypes</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">unknown</span><span class="p">)</span> <span class="p">{</span>
   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">shouldTrack</span> <span class="o">||</span> <span class="nx">activeEffect</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">return</span>
   <span class="p">}</span>
-  <span class="kd">let</span> <span class="nx">depsMap</span> <span class="o">=</span> <span class="nx">targetMap</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">target</span><span class="p">)</span>
+  <span class="kd">let</span> <span class="nx">depsMap</span> <span class="o">=</span> <span class="nx">targetMap</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="nx">target</span><span class="p">)</span>
   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">depsMap</span><span class="p">)</span> <span class="p">{</span>
-    <span class="nx">targetMap</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="nx">target</span><span class="p">,</span> <span class="p">(</span><span class="nx">depsMap</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Map</span><span class="p">()))</span>
+    <span class="nx">targetMap</span><span class="p">.</span><span class="kr">set</span><span class="p">(</span><span class="nx">target</span><span class="p">,</span> <span class="p">(</span><span class="nx">depsMap</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Map</span><span class="p">()))</span>
   <span class="p">}</span>
-  <span class="kd">let</span> <span class="nx">dep</span> <span class="o">=</span> <span class="nx">depsMap</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+  <span class="kd">let</span> <span class="nx">dep</span> <span class="o">=</span> <span class="nx">depsMap</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">dep</span><span class="p">)</span> <span class="p">{</span>
-    <span class="nx">depsMap</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="p">(</span><span class="nx">dep</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">()))</span>
+    <span class="nx">depsMap</span><span class="p">.</span><span class="kr">set</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="p">(</span><span class="nx">dep</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Set</span><span class="p">()))</span>
   <span class="p">}</span>
   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">dep</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">activeEffect</span><span class="p">))</span> <span class="p">{</span>
     <span class="nx">dep</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">activeEffect</span><span class="p">)</span>
@@ -1955,7 +1960,7 @@ bar.name
       <span class="nx">activeEffect</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">onTrack</span><span class="p">({</span>
         <span class="nx">effect</span>: <span class="kt">activeEffect</span><span class="p">,</span>
         <span class="nx">target</span><span class="p">,</span>
-        <span class="nx">type</span><span class="p">,</span>
+        <span class="kr">type</span><span class="p">,</span>
         <span class="nx">key</span>
       <span class="p">})</span>
     <span class="p">}</span>
@@ -2058,13 +2063,13 @@ bar.name
 <td class="lntd">
 <pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">trigger</span><span class="p">(</span>
   <span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span>
-  <span class="nx">type</span>: <span class="kt">TriggerOpTypes</span><span class="p">,</span>
+  <span class="kr">type</span><span class="o">:</span> <span class="nx">TriggerOpTypes</span><span class="p">,</span>
   <span class="nx">key?</span>: <span class="kt">unknown</span><span class="p">,</span>
   <span class="nx">newValue?</span>: <span class="kt">unknown</span><span class="p">,</span>
   <span class="nx">oldValue?</span>: <span class="kt">unknown</span><span class="p">,</span>
   <span class="nx">oldTarget?</span>: <span class="kt">Map</span><span class="p">&lt;</span><span class="nt">unknown</span><span class="err">,</span> <span class="na">unknown</span><span class="p">&gt;</span> <span class="o">|</span> <span class="nx">Set</span><span class="p">&lt;</span><span class="nt">unknown</span><span class="p">&gt;</span>
 <span class="p">)</span> <span class="p">{</span>
-  <span class="kr">const</span> <span class="nx">depsMap</span> <span class="o">=</span> <span class="nx">targetMap</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">target</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">depsMap</span> <span class="o">=</span> <span class="nx">targetMap</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="nx">target</span><span class="p">)</span>
   <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">depsMap</span><span class="p">)</span> <span class="p">{</span>
     <span class="c1">// never been tracked
 </span><span class="c1"></span>    <span class="k">return</span>
@@ -2090,7 +2095,7 @@ bar.name
     <span class="p">}</span>
   <span class="p">}</span>
 
-  <span class="k">if</span> <span class="p">(</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">CLEAR</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">CLEAR</span><span class="p">)</span> <span class="p">{</span>
     <span class="c1">// collection being cleared
 </span><span class="c1"></span>    <span class="c1">// trigger all effects for target
 </span><span class="c1"></span>    <span class="nx">depsMap</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">add</span><span class="p">)</span>
@@ -2103,20 +2108,20 @@ bar.name
   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
     <span class="c1">// schedule runs for SET | ADD | DELETE
 </span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="o">!==</span> <span class="k">void</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-      <span class="nx">add</span><span class="p">(</span><span class="nx">depsMap</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span>
+      <span class="nx">add</span><span class="p">(</span><span class="nx">depsMap</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span>
     <span class="p">}</span>
     <span class="c1">// also run for iteration key on ADD | DELETE | Map.SET
 </span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">isAddOrDelete</span> <span class="o">=</span>
-      <span class="nx">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">ADD</span> <span class="o">||</span>
-      <span class="p">(</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">DELETE</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">target</span><span class="p">))</span>
+      <span class="kr">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">ADD</span> <span class="o">||</span>
+      <span class="p">(</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">DELETE</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">target</span><span class="p">))</span>
     <span class="k">if</span> <span class="p">(</span>
       <span class="nx">isAddOrDelete</span> <span class="o">||</span>
-      <span class="p">(</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">SET</span> <span class="o">&amp;&amp;</span> <span class="nx">target</span> <span class="k">instanceof</span> <span class="nx">Map</span><span class="p">)</span>
+      <span class="p">(</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">TriggerOpTypes</span><span class="p">.</span><span class="nx">SET</span> <span class="o">&amp;&amp;</span> <span class="nx">target</span> <span class="k">instanceof</span> <span class="nx">Map</span><span class="p">)</span>
     <span class="p">)</span> <span class="p">{</span>
-      <span class="nx">add</span><span class="p">(</span><span class="nx">depsMap</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">target</span><span class="p">)</span> <span class="o">?</span> <span class="s1">&#39;length&#39;</span> <span class="o">:</span> <span class="nx">ITERATE_KEY</span><span class="p">))</span>
+      <span class="nx">add</span><span class="p">(</span><span class="nx">depsMap</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">target</span><span class="p">)</span> <span class="o">?</span> <span class="s1">&#39;length&#39;</span> <span class="o">:</span> <span class="nx">ITERATE_KEY</span><span class="p">))</span>
     <span class="p">}</span>
     <span class="k">if</span> <span class="p">(</span><span class="nx">isAddOrDelete</span> <span class="o">&amp;&amp;</span> <span class="nx">target</span> <span class="k">instanceof</span> <span class="nx">Map</span><span class="p">)</span> <span class="p">{</span>
-      <span class="nx">add</span><span class="p">(</span><span class="nx">depsMap</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="nx">MAP_KEY_ITERATE_KEY</span><span class="p">))</span>
+      <span class="nx">add</span><span class="p">(</span><span class="nx">depsMap</span><span class="p">.</span><span class="kr">get</span><span class="p">(</span><span class="nx">MAP_KEY_ITERATE_KEY</span><span class="p">))</span>
     <span class="p">}</span>
   <span class="p">}</span>
 
@@ -2126,7 +2131,7 @@ bar.name
         <span class="nx">effect</span><span class="p">,</span>
         <span class="nx">target</span><span class="p">,</span>
         <span class="nx">key</span><span class="p">,</span>
-        <span class="nx">type</span><span class="p">,</span>
+        <span class="kr">type</span><span class="p">,</span>
         <span class="nx">newValue</span><span class="p">,</span>
         <span class="nx">oldValue</span><span class="p">,</span>
         <span class="nx">oldTarget</span>
@@ -2215,7 +2220,7 @@ bar.name
   <span class="nx">fn</span><span class="o">:</span> <span class="p">(...</span><span class="nx">args</span>: <span class="kt">any</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="nx">T</span><span class="p">,</span>
   <span class="nx">options</span>: <span class="kt">ReactiveEffectOptions</span>
 <span class="p">)</span><span class="o">:</span> <span class="nx">ReactiveEffect</span><span class="p">&lt;</span><span class="nt">T</span><span class="p">&gt;</span> <span class="p">{</span>
-  <span class="kr">const</span> <span class="nx">effect</span> <span class="o">=</span> <span class="kd">function</span> <span class="nx">reactiveEffect</span><span class="p">(...</span><span class="nx">args</span>: <span class="kt">unknown</span><span class="p">[])</span><span class="o">:</span> <span class="nx">unknown</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">effect</span> <span class="o">=</span> <span class="kd">function</span> <span class="nx">reactiveEffect</span><span class="p">(...</span><span class="nx">args</span>: <span class="kt">unknown</span><span class="p">[])</span><span class="o">:</span> <span class="kt">unknown</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">effect</span><span class="p">.</span><span class="nx">active</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="nx">options</span><span class="p">.</span><span class="nx">scheduler</span> <span class="o">?</span> <span class="kc">undefined</span> <span class="o">:</span> <span class="nx">fn</span><span class="p">(...</span><span class="nx">args</span><span class="p">)</span>
     <span class="p">}</span>
@@ -5512,7 +5517,7 @@ dummy = ob.num++
 <li>未变更的篇幅较多的代码将省略，如注释：// &hellip;. 省略</li>
 </ol>
 <h2 id="reactivets">reactive.ts</h2>
-<h3 id="font-colorred首先新增了两个类型font"><font color="red">**首先新增了两个类型：**</font></h3>
+<h3 id="font-colorred首先新增了两个类型font"><font color="red"><strong>首先新增了两个类型：</strong></font></h3>
 <ol>
 <li>
 <p>ReactiveFlags 枚举对象，用来记录对象特征的，比如：是否只读等等</p>
@@ -5534,7 +5539,7 @@ dummy = ob.num++
   <span class="nx">isReadonly</span> <span class="o">=</span> <span class="s1">&#39;__v_isReadonly&#39;</span><span class="p">,</span>
   <span class="nx">raw</span> <span class="o">=</span> <span class="s1">&#39;__v_raw&#39;</span><span class="p">,</span>
   <span class="nx">reactive</span> <span class="o">=</span> <span class="s1">&#39;__v_reactive&#39;</span><span class="p">,</span>
-  <span class="nx">readonly</span> <span class="o">=</span> <span class="s1">&#39;__v_readonly&#39;</span>
+  <span class="kr">readonly</span> <span class="o">=</span> <span class="s1">&#39;__v_readonly&#39;</span>
 <span class="p">}</span>
 </code></pre></td></tr></table>
 </div>
@@ -5908,7 +5913,7 @@ dummy = ob.num++
 </span></code></pre></td>
 <td class="lntd">
 <pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kd">function</span> <span class="nx">createGetter</span><span class="p">(</span><span class="nx">isReadonly</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">shallow</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">{</span>
-  <span class="k">return</span> <span class="kd">function</span> <span class="nx">get</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span> <span class="o">|</span> <span class="nx">symbol</span><span class="p">,</span> <span class="nx">receiver</span>: <span class="kt">object</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="kd">function</span> <span class="kr">get</span><span class="p">(</span><span class="nx">target</span>: <span class="kt">object</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span> <span class="o">|</span> <span class="kt">symbol</span><span class="p">,</span> <span class="nx">receiver</span>: <span class="kt">object</span><span class="p">)</span> <span class="p">{</span>
     <span class="c1">// 变化1：新增对标识性的属性读取，vue 给增加的一些属性
 </span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="o">===</span> <span class="nx">ReactiveFlags</span><span class="p">.</span><span class="nx">isReactive</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="o">!</span><span class="nx">isReadonly</span>
@@ -5957,8 +5962,8 @@ dummy = ob.num++
 </span><span class="lnt">3
 </span></code></pre></td>
 <td class="lntd">
-<pre class="chroma"><code class="language-ts" data-lang="ts"><span class="nx">type</span> <span class="nx">Dep</span> <span class="o">=</span> <span class="nx">Set</span><span class="p">&lt;</span><span class="nt">ReactiveEffect</span><span class="p">&gt;</span> <span class="c1">// 新增 Dep 类型
-</span><span class="c1"></span><span class="nx">type</span> <span class="nx">KeyToDepMap</span> <span class="o">=</span> <span class="nx">Map</span><span class="p">&lt;</span><span class="nt">any</span><span class="err">,</span> <span class="na">Dep</span><span class="p">&gt;</span> <span class="c1">// 新增对象的 key -&gt; Dep
+<pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">type</span> <span class="nx">Dep</span> <span class="o">=</span> <span class="nx">Set</span><span class="p">&lt;</span><span class="nt">ReactiveEffect</span><span class="p">&gt;</span> <span class="c1">// 新增 Dep 类型
+</span><span class="c1"></span><span class="kr">type</span> <span class="nx">KeyToDepMap</span> <span class="o">=</span> <span class="nx">Map</span><span class="p">&lt;</span><span class="nt">any</span><span class="err">,</span> <span class="na">Dep</span><span class="p">&gt;</span> <span class="c1">// 新增对象的 key -&gt; Dep
 </span><span class="c1"></span><span class="kr">const</span> <span class="nx">targetMap</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">WeakMap</span><span class="p">&lt;</span><span class="nt">any</span><span class="err">,</span> <span class="na">KeyToDepMap</span><span class="p">&gt;()</span>
 </code></pre></td></tr></table>
 </div>
@@ -6163,12 +6168,12 @@ Ran all test suites.
 
 <span class="c1">// readonly reactive
 </span><span class="c1"></span><span class="kr">const</span> <span class="nx">toReadonly</span> <span class="o">=</span> <span class="p">&lt;</span><span class="nt">T</span> <span class="na">extends</span> <span class="na">unknown</span><span class="p">&gt;(</span><span class="nx">value</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="nx">T</span> <span class="o">=&gt;</span>
-  <span class="nx">isObject</span><span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="o">?</span> <span class="nx">readonly</span><span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="o">:</span> <span class="nx">value</span>
+  <span class="nx">isObject</span><span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="o">?</span> <span class="kr">readonly</span><span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="o">:</span> <span class="nx">value</span>
 
 <span class="c1">// shallow reactive
 </span><span class="c1"></span><span class="kr">const</span> <span class="nx">toShallow</span> <span class="o">=</span> <span class="p">&lt;</span><span class="nt">T</span> <span class="na">extends</span> <span class="na">unknown</span><span class="p">&gt;(</span><span class="nx">value</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="nx">T</span> <span class="o">=&gt;</span> <span class="nx">value</span>
 <span class="c1">// 取原型原子操作 Reflect
-</span><span class="c1"></span><span class="kr">const</span> <span class="nx">getProto</span> <span class="o">=</span> <span class="p">&lt;</span><span class="nt">T</span> <span class="na">extends</span> <span class="na">CollectionTypes</span><span class="p">&gt;(</span><span class="nx">v</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="nx">any</span> <span class="o">=&gt;</span>
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">getProto</span> <span class="o">=</span> <span class="p">&lt;</span><span class="nt">T</span> <span class="na">extends</span> <span class="na">CollectionTypes</span><span class="p">&gt;(</span><span class="nx">v</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="kt">any</span> <span class="o">=&gt;</span>
   <span class="nx">Reflect</span><span class="p">.</span><span class="nx">getPrototypeOf</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>
 
 <span class="c1">// 三个 handlers 对应的 instrumentations
@@ -6181,15 +6186,15 @@ Ran all test suites.
 
 <span class="c1">// 三个 handlers 只需要一个 get ????????????
 </span><span class="c1"></span><span class="kr">export</span> <span class="kr">const</span> <span class="nx">mutableCollectionHandlers</span>: <span class="kt">ProxyHandler</span><span class="p">&lt;</span><span class="nt">CollectionTypes</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="nx">get</span>: <span class="kt">createInstrumentationGetter</span><span class="p">(</span><span class="kc">false</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
+  <span class="kr">get</span><span class="o">:</span> <span class="nx">createInstrumentationGetter</span><span class="p">(</span><span class="kc">false</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
 <span class="p">}</span>
 
 <span class="kr">export</span> <span class="kr">const</span> <span class="nx">shallowCollectionHandlers</span>: <span class="kt">ProxyHandler</span><span class="p">&lt;</span><span class="nt">CollectionTypes</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="nx">get</span>: <span class="kt">createInstrumentationGetter</span><span class="p">(</span><span class="kc">false</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+  <span class="kr">get</span><span class="o">:</span> <span class="nx">createInstrumentationGetter</span><span class="p">(</span><span class="kc">false</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
 <span class="p">}</span>
 
 <span class="kr">export</span> <span class="kr">const</span> <span class="nx">readonlyCollectionHandlers</span>: <span class="kt">ProxyHandler</span><span class="p">&lt;</span><span class="nt">CollectionTypes</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="nx">get</span>: <span class="kt">createInstrumentationGetter</span><span class="p">(</span><span class="kc">true</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
+  <span class="kr">get</span><span class="o">:</span> <span class="nx">createInstrumentationGetter</span><span class="p">(</span><span class="kc">true</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></td></tr></table>
 </div>
@@ -7863,7 +7868,7 @@ Ran all test suites.</p>
 </span><span class="lnt">8
 </span></code></pre></td>
 <td class="lntd">
-<pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">declare</span> <span class="kr">const</span> <span class="nx">RefSymbol</span>: <span class="kt">unique</span> <span class="nx">symbol</span>
+<pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">declare</span> <span class="kr">const</span> <span class="nx">RefSymbol</span>: <span class="kt">unique</span> <span class="kt">symbol</span>
 
 <span class="c1">// Ref 类型主要有两个属性，一个 值为 true 的唯一的符号属性
 </span><span class="c1">// 一个是 value 值
@@ -9089,7 +9094,7 @@ Ran all test suites.
 <span class="nx">expect</span><span class="p">(</span><span class="nx">dummy</span><span class="p">).</span><span class="nx">toBe</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></td></tr></table>
 </div>
-</div><p>所以上这个用例的关键点在于<strong><font color="red">理解 value.foo 是如何收集到 effect(fn) 里面的fn</font></strong>，因为 fn 里面并没有直接访问 value.foo ，而是访问的 cValue.value。</p>
+</div><p>所以上这个用例的关键点在于**<font color="red">理解 value.foo 是如何收集到 effect(fn) 里面的fn</font>**，因为 fn 里面并没有直接访问 value.foo ，而是访问的 cValue.value。</p>
 </li>
 <li>
 <p><font color="green">✓ should work when chained (1 ms)</font><span id="test-case-computed-chained"></span></p>
@@ -9595,11 +9600,20 @@ P13: 1 &ldquo;c1.value 2&rdquo;</p>
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
 
 
 
-<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
 
 
 <script type="application/javascript">

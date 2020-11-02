@@ -6,10 +6,15 @@
     <description>Recent content in es6 on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 28 Aug 2020 15:42:38 +0800</lastBuildDate>
-    
-	<atom:link href="https://www.cheng92.com/tags/es6/index.xml" rel="self" type="application/rss+xml" />
-    
+    <lastBuildDate>Mon, 12 Oct 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/es6/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>JavaScript - Promise 实现(0-1)</title>
+      <link>https://www.cheng92.com/post/javascript-ecma-promise/</link>
+      <pubDate>Mon, 12 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/javascript-ecma-promise/</guid>
+      <description>源码参考链接：https://github.com/stefanpenner/e</description>
+    </item>
     
     <item>
       <title>Javascript ECMA 6 Plus</title>

@@ -6,11 +6,7 @@
     <description>Recent content in algorithm, on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 28 Aug 2020 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="https://www.cheng92.com/tags/algorithm/index.xml" rel="self" type="application/rss+xml" />
-    
-    
+    <lastBuildDate>Fri, 28 Aug 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/algorithm/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Algorithm On Leetcode&lt;String&gt; 1 (Easy Level)</title>
       <link>https://www.cheng92.com/algo/algo-leetcode-string-01/</link>

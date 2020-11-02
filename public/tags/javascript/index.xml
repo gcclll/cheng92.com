@@ -6,10 +6,24 @@
     <description>Recent content in javascript, on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Thu, 03 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 20 Oct 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/javascript/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>前端，一点都不好玩</title>
+      <link>https://www.cheng92.com/post/web-fe-zero/</link>
+      <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/web-fe-zero/</guid>
+      <description>window.g_fold_chapter = 1 本文默认处于折叠状态，可点击标题后方的 … 展开或闭合。 参考链接： https://muyiy.cn/question/js/33.html JavaScript 节流和防</description>
+    </item>
     
-	<atom:link href="https://www.cheng92.com/tags/javascript/index.xml" rel="self" type="application/rss+xml" />
-    
+    <item>
+      <title>JavaScript - Promise 实现(0-1)</title>
+      <link>https://www.cheng92.com/post/javascript-ecma-promise/</link>
+      <pubDate>Mon, 12 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/javascript-ecma-promise/</guid>
+      <description>源码参考链接：https://github.com/stefanpenner/e</description>
+    </item>
     
     <item>
       <title>JavaScript Api</title>
@@ -17,7 +31,7 @@
       <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/post/javascript-apis/</guid>
-      <description> Document  Document.execCommand()     </description>
+      <description>regenerator: npm install -g renerator 将 es6+ 语法编译成 es5 语法 社区链接 name link esdiscuss.org es 标准讨论社区 ecma262 官方标准文档 ecma262 官方标</description>
     </item>
     
     <item>

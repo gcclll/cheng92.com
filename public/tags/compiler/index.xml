@@ -6,18 +6,14 @@
     <description>Recent content in compiler on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Mon, 31 Aug 2020 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="https://www.cheng92.com/tags/compiler/index.xml" rel="self" type="application/rss+xml" />
-    
-    
+    <lastBuildDate>Mon, 31 Aug 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/compiler/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts</title>
       <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</link>
       <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</guid>
-      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+      <description>window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比</description>
     </item>
     
     <item>
@@ -35,7 +31,7 @@
       <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/</guid>
-      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+      <description>window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比</description>
     </item>
     
     <item>
@@ -44,7 +40,7 @@
       <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/vue/vue-mind-map-house/</guid>
-      <description>⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能 ⭐ ⭐ 快 1M) 加载挺慢</description>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 🌧 序 ⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速</description>
     </item>
     
   </channel>

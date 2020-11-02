@@ -3,7 +3,168 @@
   
   <url>
     <loc>https://www.cheng92.com/categories/</loc>
-    <lastmod>2020-09-12T00:00:00+00:00</lastmod>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/categories/javascript/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/javascript/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/post/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/web/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/post/web-fe-zero/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/</loc>
+    <lastmod>2020-10-20T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/vue/vue-tool-vite/</loc>
+    <lastmod>2020-10-17T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/vue/</loc>
+    <lastmod>2020-10-17T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/post/javascript-native-dev-with-rollupjs/</loc>
+    <lastmod>2020-10-17T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/es6/</loc>
+    <lastmod>2020-10-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/post/javascript-ecma-promise/</loc>
+    <lastmod>2020-10-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/promise/</loc>
+    <lastmod>2020-10-12T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/funny/</loc>
+    <lastmod>2020-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/interesting/</loc>
+    <lastmod>2020-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/categories/life/</loc>
+    <lastmod>2020-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/life/</loc>
+    <lastmod>2020-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/post/life-bdx-persons/</loc>
+    <lastmod>2020-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/categories/vue/</loc>
+    <lastmod>2020-09-19T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/vue/</loc>
+    <lastmod>2020-09-19T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/vue3/</loc>
+    <lastmod>2020-09-19T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/vue/vue-next-rfcs/</loc>
+    <lastmod>2020-09-19T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://www.cheng92.com/tags/vuenext/</loc>
+    <lastmod>2020-09-19T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -30,35 +191,7 @@
   </url>
   
   <url>
-    <loc>https://www.cheng92.com/post/</loc>
-    <lastmod>2020-09-12T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/tags/</loc>
-    <lastmod>2020-09-12T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/</loc>
-    <lastmod>2020-09-12T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
     <loc>https://www.cheng92.com/tags/api/</loc>
-    <lastmod>2020-09-03T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/categories/javascript/</loc>
     <lastmod>2020-09-03T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
@@ -72,13 +205,6 @@
   </url>
   
   <url>
-    <loc>https://www.cheng92.com/tags/javascript/</loc>
-    <lastmod>2020-09-03T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
     <loc>https://www.cheng92.com/post/my-first-post/</loc>
     <lastmod>2020-09-03T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
@@ -86,42 +212,7 @@
   </url>
   
   <url>
-    <loc>https://www.cheng92.com/categories/vue/</loc>
-    <lastmod>2020-09-01T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/tags/vue/</loc>
-    <lastmod>2020-09-01T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/tags/vue3/</loc>
-    <lastmod>2020-09-01T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
     <loc>https://www.cheng92.com/vue/vue3-source-picking-shell/</loc>
-    <lastmod>2020-09-01T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/tags/vuenext/</loc>
-    <lastmod>2020-09-01T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/vue/</loc>
     <lastmod>2020-09-01T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
@@ -165,13 +256,6 @@
   <url>
     <loc>https://www.cheng92.com/vue/vue3-source-code-reactivity/</loc>
     <lastmod>2020-08-28T15:48:02+08:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://www.cheng92.com/tags/es6/</loc>
-    <lastmod>2020-08-28T15:42:38+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -345,7 +429,7 @@
   </url>
   
   <url>
-    <loc>https://www.cheng92.com/post/my-emacs-configuration/</loc>
+    <loc>https://www.cheng92.com/emacs/my-emacs-configuration/</loc>
     <lastmod>2020-08-27T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>

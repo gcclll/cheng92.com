@@ -16,14 +16,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="Zhicheng Lee" /><meta name="description" content="⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能 ⭐ ⭐ 快 1M) 加载挺慢" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 🌧 序 ⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
 
 
 
 
-
-
-<meta name="generator" content="Hugo 0.74.3 with theme even" />
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
 
 
 <link rel="canonical" href="https://www.cheng92.com/vue/vue-mind-map-house/" />
@@ -34,31 +34,33 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 
 
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
 
 <meta property="og:title" content="Vue3 源码的头脑风暴(脑图仓库)" />
-<meta property="og:description" content="⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能 ⭐ ⭐ 快 1M) 加载挺慢" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 🌧 序 ⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.cheng92.com/vue/vue-mind-map-house/" />
 <meta property="article:published_time" content="2020-08-28T00:00:00+00:00" />
 <meta property="article:modified_time" content="2020-08-28T00:00:00+00:00" />
 <meta itemprop="name" content="Vue3 源码的头脑风暴(脑图仓库)">
-<meta itemprop="description" content="⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能 ⭐ ⭐ 快 1M) 加载挺慢">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 🌧 序 ⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速">
 <meta itemprop="datePublished" content="2020-08-28T00:00:00+00:00" />
 <meta itemprop="dateModified" content="2020-08-28T00:00:00+00:00" />
-<meta itemprop="wordCount" content="1857">
+<meta itemprop="wordCount" content="5323">
 
 
 
 <meta itemprop="keywords" content="vue,,vue3,,compiler-core,,parser,,compiler," />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Vue3 源码的头脑风暴(脑图仓库)"/>
-<meta name="twitter:description" content="⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能 ⭐ ⭐ 快 1M) 加载挺慢"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 🌧 序 ⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速"/>
 
 <!--[if lte IE 9]>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
@@ -126,9 +128,12 @@
         <a class="menu-item-link" href="/tags/">Tags</a>
       </li><li class="menu-item">
         <a class="menu-item-link" href="/categories/">Categories</a>
-      </li>
-  </ul>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
 </nav>
+
     </header>
 
     <main id="main" class="main">
@@ -144,8 +149,8 @@
         <div class="post-category">
             <a href="/categories/vue/"> vue </a>
             </div>
-          <span class="more-meta"> 约 1857 字 </span>
-          <span class="more-meta"> 预计阅读 4 分钟 </span>
+          <span class="more-meta"> 约 5323 字 </span>
+          <span class="more-meta"> 预计阅读 11 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
     </header>
@@ -155,7 +160,49 @@
   <div class="post-toc-content always-active">
     <nav id="TableOfContents">
 <ul>
-<li><a href="#headline-1">compiler-core: parser</a>
+<li><a href="#headline-1">🌧 序</a>
+</li>
+<li><a href="#pcg">🌩 实例列表</a>
+<ul>
+<li><a href="#pcg-01">纯标签 <code>&lt;div&gt;&lt;/div&gt;</code></a>
+</li>
+<li><a href="#pcg-02">静态属性 <code>&lt;div id=&#34;foo&#34;&gt;&lt;/div&gt;</code></a>
+</li>
+<li><a href="#pcg-03">v-bind 指令 <code>&lt;div :class=&#34;bar.baz&#34;&gt;&lt;/div&gt;</code></a>
+</li>
+<li><a href="#pcg-04">插值 <code>&lt;div&gt;{{ world.burn() }}&lt;/div&gt;</code></a>
+</li>
+<li><a href="#pcg-05">v-if 指令 <code>&lt;div&gt;&lt;div v-if=&#34;ok&#34;&gt;yes&lt;/div&gt;&lt;/div&gt;</code></a>
+<ul>
+<li><a href="#pcg-05-01">拓展 1：v-if-else 指令</a>
+</li>
+<li><a href="#pcg-05-02">拓展 2：v-if-elseif-else 指令</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#headline-10">☀ 关键功能</a>
+<ul>
+<li><a href="#key-01-build-props">1. buildProps(node, context) 如何构建 props ?</a>
+</li>
+<li><a href="#key-02-transform-if">2. transformIf() 是如何返回 v-if 指令的 transform 的？</a>
+</li>
+<li><a href="#key-03-how-gen-props">3. codegen 如何生成属性(_createBLock(tag, props, …))第二个参数？</a>
+</li>
+<li><a href="#headline-14">4. transform 阶段如何对属性静态提升？</a>
+</li>
+<li><a href="#headline-15">5. codegen 如何生成 if-elseif-else 分支节点 ?</a>
+</li>
+<li><a href="#key-06-how-transform-v-else-if">6. transform 阶段如何转换 v-else-if 指令？</a>
+</li>
+<li><a href="#key-07-diff-block-vnode">7. Block 和 VNode 的处理逻辑有什么不一样？</a>
+</li>
+<li><a href="#key-08-how-hoist-static">8. transform 阶段如何做静态提升？</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-19">☁ compiler-core: parser</a>
 <ul>
 <li><a href="#map-parse-with-directive">带指令的标签解析全过程(<code>v-bind</code>)</a>
 </li>
@@ -177,13 +224,17 @@
 </li>
 </ul>
 </li>
-<li><a href="#headline-10">compiler-core: compiler</a>
+<li><a href="#headline-28">🌙 compiler-core: compiler</a>
 <ul>
-<li><a href="#compiler-03">03-inerpolation in pure div </a>
+<li><a href="#compiler-01">01-simple text 编译过程</a>
 </li>
 <li><a href="#compiler-02">02-pure interpolation 编译过程</a>
 </li>
-<li><a href="#compiler-01">01-simple text 编译过程</a>
+<li><a href="#compiler-03">03-inerpolation in pure div</a>
+</li>
+<li><a href="#compiler-04">04-interpolation in div with props</a>
+</li>
+<li><a href="#compiler-05">05-interpolation, v-if, props</a>
 </li>
 </ul>
 </li>
@@ -193,7 +244,19 @@
 </div>
     <div class="post-content">
       
-<blockquote>
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+🌧 序
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
 <p>⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速，且有些图片比较大(可能</p>
 <p>
 ⭐ ⭐ 快 1M) 加载挺慢的，每张图片都有对应的七牛(但不一定是最新的)链接，可能会快一点。</p>
@@ -203,23 +266,1188 @@
 😄 更新日志</p>
 <ol>
 <li>
-<p><span class="timestamp">&lt;2020-09-07 Mon&gt;</span>  所有图片修改为 github 地址，后续修改图片可以直接使用，而不
-需要上传到七牛。</p>
+<p><span class="timestamp">&lt;2020-09-07 Mon&gt;</span>  <del>所有图片修改为 github 地址，后续修改图片可以直接使用，而不
+需要上传到七牛。</del></p>
 </li>
 <li>
-<p><span class="timestamp">&lt;2020-09-10 Thu&gt;</span>  图床切换到 <a href="https://gitee.com/gcclll/mind-maps.git">码云 gitee</a> 自动同步自 <a href="https://github.com/gcclll/mind-maps.git">github</a>。</p>
+<p><span class="timestamp">&lt;2020-09-10 Thu&gt;</span>  <del>图床切换到 <a href="https://gitee.com/gcclll/mind-maps.git">码云 gitee</a> 自动同步自 <a href="https://github.com/gcclll/mind-maps.git">github</a>。</del></p>
 </li>
 <li>
 <p><span class="timestamp">&lt;2020-09-11 Fri&gt;</span>  更新图片到博客目录 <code>/static/imgs/...</code> ，文内访问路径：
 <code>/img/vue3/...</code> ，单独访问加上域名就行： <code>https://www.cheng92.com/img/vue3/...</code></p>
 </li>
+<li>
+<p><span class="timestamp">&lt;2020-09-28 Mon&gt;</span> 所有脑图修改为 svg 格式，建议通过新 tab 打开，有些节点可能包含链
+接。</p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-pcg" class="outline-2">
+<h2 id="pcg">
+🌩 实例列表
+</h2>
+<div id="outline-text-pcg" class="outline-text-2">
+<p>
+从 <a href="#compiler-01">compiler-01</a> 开始都是针对某个示例做的分析，但是随时示例的模板复杂度增加，脑图
+的大小将越来越大，不堪重负，阅读回顾起来也很费劲，在完成了 <a href="#compiler-01">compiler-01</a> -
+<a href="#compiler-05">compiler-05</a> 之后对整个分析过程也有了大概的了解，另起这一章节的目的就是为了能单纯
+的针对某一特定功能绘制对应的流程图，比如：</p>
+<p>
+属性是如何解析的，最后在 render 函数中又是什么？</p>
+<p>
+插值？ <code>v-if, v-else, v-for</code> 等指令？</p>
+<p>
+又是如何解析的，了解了这些之后剩下的就是将所有需要的过程拼凑起来而已，后面也会看
+情况增加几个复杂或全的模板解析流程图。</p>
+<p>
+所以这一章节就很有必要了🐶🐶🐶🐶🐶 !!!</p>
+<blockquote>
+<p>这一章节的所有脑图，绘制分为以下阶段，如果流程简单多个阶段可能会在同一张脑图上</p>
+<ol>
+<li>
+<p><strong>parser</strong> 阶段得到完整的 ast</p>
+</li>
+<li>
+<p><strong>compiler</strong> 阶段解析 ast 生成节点 <code>codegenNode</code></p>
+</li>
+<li>
+<p><strong>generate</strong> 阶段利用 <code>codegenNode</code> 组装成 render 函数</p>
+</li>
+<li>
+<p>待续……</p>
+</li>
 </ol>
 </blockquote>
-<div id="outline-container-headline-1" class="outline-2">
-<h2 id="headline-1">
-compiler-core: parser
+<div id="outline-container-pcg-01" class="outline-3">
+<h3 id="pcg-01">
+纯标签 <code>&lt;div&gt;&lt;/div&gt;</code>
+</h3>
+<div id="outline-text-pcg-01" class="outline-text-3">
+<p>
+结果：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">(</span><span class="kd">function</span> <span class="nx">anonymous</span><span class="p">(</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">_Vue</span> <span class="o">=</span> <span class="nx">Vue</span>
+
+    <span class="k">return</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">_ctx</span><span class="p">,</span> <span class="nx">_cache</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">with</span> <span class="p">(</span><span class="nx">_ctx</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="p">{</span> <span class="nx">createVNode</span><span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">openBlock</span><span class="o">:</span> <span class="nx">_openBlock</span><span class="p">,</span> <span class="nx">createBlock</span><span class="o">:</span> <span class="nx">_createBlock</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">))</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-01-pure-div.svg" alt="/img/vue3/compiler-core/pcg/pcg-01-pure-div.svg" title="/img/vue3/compiler-core/pcg/pcg-01-pure-div.svg" /></p>
+<ol>
+<li>
+<p>parser 阶段， <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement">parseElement</a> -&gt; <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag">parseTag</a></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-01-1-parser-pure-div.svg" alt="/img/vue3/compiler-core/pcg/pcg-01-1-parser-pure-div.svg" title="/img/vue3/compiler-core/pcg/pcg-01-1-parser-pure-div.svg" /></p>
+</li>
+<li>
+<p>compiler 阶段， <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform">transform</a> -&gt; <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode">traverseNode</a> -&gt; <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren">traverseChildren</a> ，只有 <code>0,ROOT</code>
+和 <code>1,ELEMENT</code> 两个类型分支处理。</p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-01-2-compiler-pure-div.svg" alt="/img/vue3/compiler-core/pcg/pcg-01-2-compiler-pure-div.svg" title="/img/vue3/compiler-core/pcg/pcg-01-2-compiler-pure-div.svg" /></p>
+</li>
+<li>
+<p>codegen 阶段，只有 div 的 block 处理(<code>_openBlock(), _createBlock(&#34;div&#34;)</code>)</p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg" alt="/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg" title="/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg" /></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-pcg-02" class="outline-3">
+<h3 id="pcg-02">
+静态属性 <code>&lt;div id=&#34;foo&#34;&gt;&lt;/div&gt;</code>
+</h3>
+<div id="outline-text-pcg-02" class="outline-text-3">
+<ol>
+<li>
+<p><strong>parser 阶段</strong> ：</p>
+<p>
+与 <a href="#pcg-01">pcg-01</a> 相比较，多了左边 <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag">parseTag</a> -&gt; <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattributes">parseAttributes</a> -&gt; <a href="/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseattribute">parseAttribute</a> 解析属
+性 <code>id=&#34;foo&#34;</code> 的处理。</p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-02-1-parser-div-with-id.svg" alt="/img/vue3/compiler-core/pcg/pcg-02-1-parser-div-with-id.svg" title="/img/vue3/compiler-core/pcg/pcg-02-1-parser-div-with-id.svg" /></p>
+</li>
+<li>
+<p><strong>compiler 阶段：</strong></p>
+<p>
+与 <a href="#pcg-01">pcg-01</a> 相比较，多了 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-transformelement">transformElement</a> 中 props 属性的处理，因为这个时候
+props.length = 1 里面有一个 <code>id=&#34;foo&#34;</code> 属性，需要去调用 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-buildprops">buildProps</a> 解析，成下面
+的解构:</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">{</span>
+    <span class="nx">properties</span><span class="o">:</span> <span class="p">[</span>
+      <span class="p">{</span>
+        <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span> <span class="nx">content</span><span class="o">:</span> <span class="s2">&#34;id&#34;</span><span class="p">,</span> <span class="p">...},</span> <span class="c1">// SIMPLE_EXPRESSION
+</span><span class="c1"></span>        <span class="nx">value</span><span class="o">:</span> <span class="p">{</span><span class="nx">type</span><span class="o">:</span> <span class="mi">4</span><span class="p">,</span> <span class="nx">content</span><span class="o">:</span> <span class="s2">&#34;foo&#34;</span><span class="p">,</span> <span class="p">...},</span>
+        <span class="nx">type</span><span class="o">:</span> <span class="mi">16</span> <span class="c1">// JS_PROPERTY
+</span><span class="c1"></span>      <span class="p">}</span>
+    <span class="p">]</span>
+    <span class="nx">type</span><span class="o">:</span> <span class="mi">15</span><span class="p">,</span> <span class="c1">// JS_OBJECT_EXPRESSION
+</span><span class="c1"></span>  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-02-2-compiler-div-with-id.svg" alt="/img/vue3/compiler-core/pcg/pcg-02-2-compiler-div-with-id.svg" title="/img/vue3/compiler-core/pcg/pcg-02-2-compiler-div-with-id.svg" /></p>
+</li>
+<li>
+<p><strong>codegen 阶段：</strong></p>
+<p>
+在 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-gennodelist">genNodeList([tag, props, children, …], ctx)</a> 解析的时候，这里 props 不再是
+null，因此会进入 Props 解析过程：</p>
+<p>
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-gennode">genNode(props, ctx)</a> -&gt; <strong>15,JS_OBJECT_EXPRESSION</strong> -&gt; <a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genobjectexpression">genObjectExpression(node,
+ctx)</a> -&gt; 遍历 <strong>node.properties</strong>  -&gt; <a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpressionaspropertykey">genExpressionPropertyKey(key,ctx)</a> 生成属性
+名 <code>{ id: ~ -&gt; ~genNode(value, ctx)</code> 生成属性值 -&gt; <strong>4, SIMPLE_EXPRESSION</strong> -&gt;
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpression">genExpression(value, ctx)</a> 生成属性值 <code>{ id: &#34;foo&#34;</code></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg" alt="/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg" title="/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg" /></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-pcg-03" class="outline-3">
+<h3 id="pcg-03">
+v-bind 指令 <code>&lt;div :class=&#34;bar.baz&#34;&gt;&lt;/div&gt;</code>
+</h3>
+<div id="outline-text-pcg-03" class="outline-text-3">
+<p>
+结果预览：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">(</span><span class="kd">function</span> <span class="nx">anonymous</span><span class="p">(</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">_Vue</span> <span class="o">=</span> <span class="nx">Vue</span>
+
+    <span class="k">return</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">_ctx</span><span class="p">,</span> <span class="nx">_cache</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">with</span> <span class="p">(</span><span class="nx">_ctx</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="p">{</span> <span class="nx">createVNode</span> <span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">openBlock</span> <span class="o">:</span> <span class="nx">_openBlock</span><span class="p">,</span> <span class="nx">createBlock</span> <span class="o">:</span> <span class="nx">_createBlock</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="p">{</span> <span class="kr">class</span><span class="o">:</span> <span class="nx">bar</span><span class="p">.</span><span class="nx">baz</span> <span class="p">},</span> <span class="kc">null</span><span class="p">,</span> <span class="mi">2</span> <span class="cm">/* CLASS */</span><span class="p">))</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p><strong>parser 阶段：</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-03-1-parser-div-with-bind.svg" alt="/img/vue3/compiler-core/pcg/pcg-03-1-parser-div-with-bind.svg" title="/img/vue3/compiler-core/pcg/pcg-03-1-parser-div-with-bind.svg" /></p>
+</li>
+<li>
+<p><strong>compiler 阶段：</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-03-2-compiler-div-with-bind.svg" alt="/img/vue3/compiler-core/pcg/pcg-03-2-compiler-div-with-bind.svg" title="/img/vue3/compiler-core/pcg/pcg-03-2-compiler-div-with-bind.svg" /></p>
+</li>
+<li>
+<p><strong>codegen 阶段：</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg" alt="/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg" title="/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg" /></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-pcg-04" class="outline-3">
+<h3 id="pcg-04">
+插值 <code>&lt;div&gt;{{ world.burn() }}&lt;/div&gt;</code>
+</h3>
+<div id="outline-text-pcg-04" class="outline-text-3">
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">(</span><span class="kd">function</span> <span class="nx">anonymous</span><span class="p">(</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">_Vue</span> <span class="o">=</span> <span class="nx">Vue</span>
+
+    <span class="k">return</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">_ctx</span><span class="p">,</span> <span class="nx">_cache</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">with</span> <span class="p">(</span><span class="nx">_ctx</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="p">{</span> <span class="nx">toDisplayString</span> <span class="o">:</span> <span class="nx">_toDisplayString</span><span class="p">,</span> <span class="nx">createVNode</span> <span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">openBlock</span> <span class="o">:</span> <span class="nx">_openBlock</span><span class="p">,</span> <span class="nx">createBlock</span> <span class="o">:</span> <span class="nx">_createBlock</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">_toDisplayString</span><span class="p">(</span><span class="nx">world</span><span class="p">.</span><span class="nx">burn</span><span class="p">()),</span> <span class="mi">1</span> <span class="cm">/* TEXT */</span><span class="p">))</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p><strong>parser 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-04-1-parser-div-with-interpolation.svg" alt="/img/vue3/compiler-core/pcg/pcg-04-1-parser-div-with-interpolation.svg" title="/img/vue3/compiler-core/pcg/pcg-04-1-parser-div-with-interpolation.svg" /></p>
+</li>
+<li>
+<p><strong>compiler 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-04-2-compiler-div-with-interpolation.svg" alt="/img/vue3/compiler-core/pcg/pcg-04-2-compiler-div-with-interpolation.svg" title="/img/vue3/compiler-core/pcg/pcg-04-2-compiler-div-with-interpolation.svg" /></p>
+</li>
+<li>
+<p><strong>codegen 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg" alt="/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg" title="/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg" /></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-pcg-05" class="outline-3">
+<h3 id="pcg-05">
+v-if 指令 <code>&lt;div&gt;&lt;div v-if=&#34;ok&#34;&gt;yes&lt;/div&gt;&lt;/div&gt;</code>
+</h3>
+<div id="outline-text-pcg-05" class="outline-text-3">
+<p>
+vue.global:</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">(</span><span class="kd">function</span> <span class="nx">anonymous</span><span class="p">(</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">_Vue</span> <span class="o">=</span> <span class="nx">Vue</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">createVNode</span><span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">createCommentVNode</span><span class="o">:</span> <span class="nx">_createCommentVNode</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+    <span class="kr">const</span> <span class="nx">_hoisted_1</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">key</span><span class="o">:</span> <span class="mi">0</span> <span class="p">}</span>
+
+    <span class="k">return</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">_ctx</span><span class="p">,</span> <span class="nx">_cache</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">with</span> <span class="p">(</span><span class="nx">_ctx</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="p">{</span> <span class="nx">createVNode</span><span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">openBlock</span><span class="o">:</span> <span class="nx">_openBlock</span><span class="p">,</span> <span class="nx">createBlock</span><span class="o">:</span> <span class="nx">_createBlock</span><span class="p">,</span> <span class="nx">createCommentVNode</span><span class="o">:</span> <span class="nx">_createCommentVNode</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="p">[</span>
+          <span class="nx">ok</span>
+            <span class="o">?</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_1</span><span class="p">,</span> <span class="s2">&#34;yes&#34;</span><span class="p">))</span>
+            <span class="o">:</span> <span class="nx">_createCommentVNode</span><span class="p">(</span><span class="s2">&#34;v-if&#34;</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+        <span class="p">]))</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+差异点：</p>
+<ul>
+<li>
+<p>少了全局作用域下的 <code>_Vue</code> 解构</p>
+</li>
+<li>
+<p>key 没有 hoisted</p>
+</li>
+</ul>
+<p>脑图列表：</p>
+<ol>
+<li>
+<p><strong>parser 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-1-parser-div-with-if.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-1-parser-div-with-if.svg" title="/img/vue3/compiler-core/pcg/pcg-05-1-parser-div-with-if.svg" /></p>
+</li>
+<li>
+<p><strong>compiler 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-2-compiler-div-with-if.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-2-compiler-div-with-if.svg" title="/img/vue3/compiler-core/pcg/pcg-05-2-compiler-div-with-if.svg" /></p>
+</li>
+<li>
+<p><strong>codegen 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg" title="/img/vue3/compiler-core/pcg/pcg-05-3-codegen-div-with-if.svg" /></p>
+</li>
+</ol>
+<div id="outline-container-pcg-05-01" class="outline-4">
+<h4 id="pcg-05-01">
+拓展 1：v-if-else 指令
+</h4>
+<div id="outline-text-pcg-05-01" class="outline-text-4">
+<p>
+<code>&lt;div&gt;&lt;div v-if=&#34;ok&#34;&gt;yes&lt;/div&gt;&lt;div v-else&gt;no&lt;/div&gt;&lt;/div&gt;</code></p>
+<p>
+vue.global:</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">(</span><span class="kd">function</span> <span class="nx">anonymous</span><span class="p">(</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">_Vue</span> <span class="o">=</span> <span class="nx">Vue</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">createVNode</span><span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">createCommentVNode</span><span class="o">:</span> <span class="nx">_createCommentVNode</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+    <span class="kr">const</span> <span class="nx">_hoisted_1</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">key</span><span class="o">:</span> <span class="mi">0</span> <span class="p">}</span>
+    <span class="kr">const</span> <span class="nx">_hoisted_2</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">key</span><span class="o">:</span> <span class="mi">1</span> <span class="p">}</span>
+
+    <span class="k">return</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">_ctx</span><span class="p">,</span> <span class="nx">_cache</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">with</span> <span class="p">(</span><span class="nx">_ctx</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="p">{</span> <span class="nx">createVNode</span><span class="o">:</span> <span class="nx">_createVNode</span><span class="p">,</span> <span class="nx">openBlock</span><span class="o">:</span> <span class="nx">_openBlock</span><span class="p">,</span> <span class="nx">createBlock</span><span class="o">:</span> <span class="nx">_createBlock</span><span class="p">,</span> <span class="nx">createCommentVNode</span><span class="o">:</span> <span class="nx">_createCommentVNode</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">_Vue</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="p">[</span>
+          <span class="nx">ok</span>
+            <span class="o">?</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_1</span><span class="p">,</span> <span class="s2">&#34;yes&#34;</span><span class="p">))</span>
+            <span class="o">:</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_2</span><span class="p">,</span> <span class="s2">&#34;no&#34;</span><span class="p">))</span>
+        <span class="p">]))</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+与 <a href="#pcg-05">pcg-05</a> 差异：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">ok</span>
+    <span class="o">?</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_1</span><span class="p">,</span> <span class="s2">&#34;yes&#34;</span><span class="p">))</span>
+    <span class="o">:</span> <span class="nx">_createCommentVNode</span><span class="p">(</span><span class="s2">&#34;v-if&#34;</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span> <span class="c1">// 这里没有 elseif, else 分支会创建一个注释节点
+</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+和</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">ok</span>
+    <span class="o">?</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_1</span><span class="p">,</span> <span class="s2">&#34;yes&#34;</span><span class="p">))</span>
+    <span class="o">:</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_2</span><span class="p">,</span> <span class="s2">&#34;no&#34;</span><span class="p">))</span> <span class="c1">// 分支节点
+</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+造成这差一点是在哪处理的呢？？？</p>
+<p>
+v-if 指令的 codegen 过程有三个重要因素：</p>
+<ol>
+<li>
+<p>test 生成条件表达式</p>
+</li>
+<li>
+<p>consequent 生成成立条件(<code>ok=true</code>)表达式的</p>
+</li>
+<li>
+<p>alternate 生成失败条件(<code>ok=false</code>)表达式的</p>
+</li>
+</ol>
+<p>因此该扩展重点在 alternate 处理 🛬…</p>
+<p>
+在 transform 阶段针对 <code>v-else</code> 的处理逻辑：</p>
+<blockquote>
+<p>traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函数过程中，有
+以下几个重要步骤：</p>
+<ol>
+<li>
+<p>遍历当前 <code>v-else</code> 节点的所有兄弟节点(<code>siblings=parent.children</code>)</p>
+</li>
+<li>
+<p>找到当前节点 node 在 <code>siblings</code> 中的位置 i</p>
+</li>
+<li>
+<p><code>while i--</code> 依次往前找兄弟节点(如果是 <strong>COMMENT</strong> 节点，删除保存待恢复，如果是
+<strong>9,IF</strong> 节点即找到的目标节点 sibling)</p>
+</li>
+<li>
+<p>删除当前的 node 同时调用 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-createifbranch">createIfBranch</a> 创建 <code>10,IF_BRANCH</code> 类型的分支节点结
+构，合并到 <code>sibling.branches</code> 中</p>
+</li>
+<li>
+<p>调用 <code>processCodegen</code> 函数即 <code>transformIf</code> 时候执行会得到生成 <code>codegenNode</code>
+的那个函数，执行它获取 tranform 函数 <code>exitFn</code> 。</p>
+</li>
+<li>
+<p>手动执行 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode">traverseNode(node, …)</a> 进行递归遍历该 v-else 节点树(<strong>因为在 4 中节点
+被删除了，因此主递归线上不会出现这个节点，需要手动执行一次 traverse</strong>)</p>
+</li>
+<li>
+<p>最后执行 exitFn 生成该 <code>v-else</code> 节点树的 <code>codegenNode</code> 。</p>
+<p>
+<strong>注意点</strong> ：这一步 <code>v-else</code> 替换 alternate 过程中有个 while 循环用来递归查找非
+<strong>19,JS_CONDITIONAL_EXPRESSION</strong> 类型的节点的 alternate 再进行替换，这么做的原
+因是 v-if-else 指令的在 render 函数中是通过三目运算符(<code>?:</code>)实现的，一般情况下
+<code>:</code> 后面的是一个 comment vnode 类型占位用，当实际有 else 分支的时候会进行替换，
+此时替换需要考虑到表达式嵌套的情况，所以需要找到最后那个 comment vnode ，详细
+步骤直接看脑图吧。</p>
+</li>
+</ol>
+</blockquote>
+<ol>
+<li>
+<p><strong>parser 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-01-1-parser-div-with-if-else.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-01-1-parser-div-with-if-else.svg" title="/img/vue3/compiler-core/pcg/pcg-05-01-1-parser-div-with-if-else.svg" /></p>
+</li>
+<li>
+<p><strong>transform 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-01-2-compiler-div-with-if-else.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-01-2-compiler-div-with-if-else.svg" title="/img/vue3/compiler-core/pcg/pcg-05-01-2-compiler-div-with-if-else.svg" /></p>
+</li>
+<li>
+<p><strong>codegen 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-01-3-codegen-div-with-if-else.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-01-3-codegen-div-with-if-else.svg" title="/img/vue3/compiler-core/pcg/pcg-05-01-3-codegen-div-with-if-else.svg" /></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-pcg-05-02" class="outline-4">
+<h4 id="pcg-05-02">
+拓展 2：v-if-elseif-else 指令
+</h4>
+<div id="outline-text-pcg-05-02" class="outline-text-4">
+<ol>
+<li>
+<p><strong>parser 阶段</strong></p>
+<p>
+相比较 <a href="#pcg-05-01">拓展1：v-if-else</a> 这里只是多了一个 v-else-if 这在 parser 阶段没什么区别，
+直接参考拓展 1 的脑图。</p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-02-1-parser-div-with-if-eif-else.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-02-1-parser-div-with-if-eif-else.svg" title="/img/vue3/compiler-core/pcg/pcg-05-02-1-parser-div-with-if-eif-else.svg" /></p>
+</li>
+<li>
+<p><strong>transform 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-02-2-compiler-div-with-if-eif-else.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-02-2-compiler-div-with-if-eif-else.svg" title="/img/vue3/compiler-core/pcg/pcg-05-02-2-compiler-div-with-if-eif-else.svg" /></p>
+<p>
+对比前后结果发现： <code>v-if/v-else-if/v-else</code> 指令体系的实现关键在于 <code>codegenNode</code> 中
+三个字段：</p>
+<ul>
+<li>
+<p><strong>test</strong> <code>?:</code> 表达式的条件</p>
+</li>
+<li>
+<p><strong>consequent</strong> <code>?:</code> 表达式条件为 <code>true</code> 的时候渲染的节点</p>
+</li>
+<li>
+<p><strong>alternate</strong> <code>?:</code> 表达式条件为 <code>false</code> 的时候渲染的节点</p>
+</li>
+</ul>
+<p>如果有多级嵌套的情况，会在 <code>alternate</code> 中体现出来，这里面要么是一个节点结构，
+要么是一个完整的包含(<code>{ test, consequent, alternate }</code>) 嵌套的表达式结构。</p>
+<p>
+<code>v-else-if</code> <a href="#key-02-transform-if">渲染流程查看特定的功能脑图</a>。</p>
+</li>
+<li>
+<p><strong>codegen 阶段</strong></p>
+<p>
+<img src="/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg" alt="/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg" title="/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg" /></p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+☀ 关键功能
 </h2>
-<div id="outline-text-headline-1" class="outline-text-2">
+<div id="outline-text-headline-10" class="outline-text-2">
+<p>这一章节是针对整个 vue3 源码解构过程中遇到的问题或一些重要或关键的一些功能，进
+行提取解读。</p>
+<div id="outline-container-key-01-build-props" class="outline-3">
+<h3 id="key-01-build-props">
+<span class="todo">DONE</span>
+1. buildProps(node, context) 如何构建 props ?
+</h3>
+<div id="outline-text-key-01-build-props" class="outline-text-3">
+<p>
+CLOSED: [2020-09-18 Fri 16:07]</p>
+<ul>
+<li>
+<p>State &#34;DONE&#34;       from &#34;TODO&#34;       [2020-09-18 Fri 16:07]</p>
+</li>
+</ul>
+<p>
+props 在 compile 阶段是如何处理的，是如何从(<a href="#compiler-04">示例04</a>)</p>
+<p>
+<img src="http://qiniu.ii6g.com/img/20200918160246.png" alt="http://qiniu.ii6g.com/img/20200918160246.png" title="http://qiniu.ii6g.com/img/20200918160246.png" /></p>
+<p>
+变成下面这样的：</p>
+<p>
+<img src="http://qiniu.ii6g.com/img/20200918160311.png" alt="http://qiniu.ii6g.com/img/20200918160311.png" title="http://qiniu.ii6g.com/img/20200918160311.png" /></p>
+<p>
+完整流程：
+<img src="/img/vue3/compiler-core/key/key-01-how-build-props.svg" alt="/img/vue3/compiler-core/key/key-01-how-build-props.svg" title="/img/vue3/compiler-core/key/key-01-how-build-props.svg" /></p>
+</div>
+</div>
+<div id="outline-container-key-02-transform-if" class="outline-3">
+<h3 id="key-02-transform-if">
+<span class="todo">DONE</span>
+2. transformIf() 是如何返回 v-if 指令的 transform 的？
+</h3>
+<div id="outline-text-key-02-transform-if" class="outline-text-3">
+<p>
+参考<a href="#compiler-05">用例 05</a></p>
+<p>
+v-if 指令是如何转换的？？？</p>
+<p>
+这个转换函数又是怎么来的？？？</p>
+<p>
+得到这个转换函数过程中做了什么 ？？？</p>
+<blockquote>
+<p>通过在 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode">traverseNode</a> 中， switch node 阶段之前，收集 transform 函数到 <code>exitFns[]</code>
+中的时候，如果遇到了 v-if 指令的元素，会执行 <code>transformIf</code> ，这个时候会遍历解析
+<code>node.props</code> 拿到这个 v-if 指令属性，调用 processIf 将该节点转换成</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">{</span>
+    <span class="nx">branches</span><span class="o">:</span> <span class="p">[</span><span class="nx">branch</span><span class="p">],</span>
+    <span class="nx">type</span><span class="o">:</span> <span class="mi">9</span> <span class="c1">// IF
+</span><span class="c1"></span>  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+并且用这个新生成的节点结构去替换原来的 div v-if 节点结构。</p>
+<p>
+即：在拿到 transform if 函数之前 div v-if 节点结构已经发生了变化，成为了</p>
+<p>
+<code>type = 9</code> 的结构，最后原来的节点成为了 branches 的元素。</p>
+<p>
+并且原节点的 props 会被清空(避免回溯的时候重复处理)。</p>
+</blockquote>
+<p>
+transformIf:</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="kr">const</span> <span class="nx">transformIf</span> <span class="o">=</span> <span class="nx">createStructuralDirectiveTransform</span><span class="p">(</span>
+    <span class="sr">/^(if|else|else-if)$/</span><span class="p">,</span>
+    <span class="p">(</span><span class="nx">node</span><span class="p">,</span> <span class="nx">dir</span><span class="p">,</span> <span class="nx">context</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">processIf</span><span class="p">(</span><span class="nx">node</span><span class="p">,</span> <span class="nx">dir</span><span class="p">,</span> <span class="nx">context</span><span class="p">,</span> <span class="p">(</span><span class="nx">ifNode</span><span class="p">,</span> <span class="nx">branch</span><span class="p">,</span> <span class="nx">isRoot</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+        <span class="c1">// Exit callback. Complete the codegenNode when all children have been
+</span><span class="c1"></span>        <span class="c1">// transformed.
+</span><span class="c1"></span>        <span class="k">return</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span> <span class="c1">// 这个才是真正在回溯过程中调用的 transform if 函数
+</span><span class="c1"></span>          <span class="k">if</span> <span class="p">(</span><span class="nx">isRoot</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">ifNode</span><span class="p">.</span><span class="nx">codegenNode</span> <span class="o">=</span> <span class="nx">createCodegenNodeForBranch</span><span class="p">(</span><span class="nx">branch</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">context</span><span class="p">);</span>
+          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="c1">// attach this branch&#39;s codegen node to the v-if root.
+</span><span class="c1"></span>            <span class="kd">let</span> <span class="nx">parentCondition</span> <span class="o">=</span> <span class="nx">ifNode</span><span class="p">.</span><span class="nx">codegenNode</span><span class="p">;</span>
+            <span class="k">while</span> <span class="p">(</span>
+              <span class="nx">parentCondition</span><span class="p">.</span><span class="nx">alternate</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span>
+                <span class="mi">19</span> <span class="cm">/* JS_CONDITIONAL_EXPRESSION */</span>
+            <span class="p">)</span> <span class="p">{</span>
+              <span class="nx">parentCondition</span> <span class="o">=</span> <span class="nx">parentCondition</span><span class="p">.</span><span class="nx">alternate</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="nx">parentCondition</span><span class="p">.</span><span class="nx">alternate</span> <span class="o">=</span> <span class="nx">createCodegenNodeForBranch</span><span class="p">(</span>
+              <span class="nx">branch</span><span class="p">,</span>
+              <span class="nx">ifNode</span><span class="p">.</span><span class="nx">branches</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+              <span class="nx">context</span>
+            <span class="p">);</span>
+          <span class="p">}</span>
+        <span class="p">};</span>
+      <span class="p">});</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+流程图：
+<img src="/img/vue3/compiler-core/key/key-02-transform-if.svg" alt="/img/vue3/compiler-core/key/key-02-transform-if.svg" title="/img/vue3/compiler-core/key/key-02-transform-if.svg" /></p>
+</div>
+</div>
+<div id="outline-container-key-03-how-gen-props" class="outline-3">
+<h3 id="key-03-how-gen-props">
+<span class="todo">TODO</span>
+3. codegen 如何生成属性(_createBLock(tag, props, …))第二个参数？
+</h3>
+<div id="outline-text-key-03-how-gen-props" class="outline-text-3">
+<p>
+如：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="c1">// ...
+</span><span class="c1"></span>
+  <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">,</span> <span class="p">{</span>
+    <span class="nx">id</span><span class="o">:</span> <span class="s2">&#34;foo&#34;</span><span class="p">,</span>
+    <span class="kr">class</span><span class="o">:</span> <span class="nx">bar</span><span class="p">.</span><span class="nx">baz</span>
+  <span class="p">}))</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+id 和 class 是如何生成对象的。</p>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+<span class="todo">DONE</span>
+4. transform 阶段如何对属性静态提升？
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>CLOSED: [2020-09-28 Mon 10:55]</p>
+<ul>
+<li>
+<p>State &#34;DONE&#34;       from &#34;TODO&#34;       [2020-09-28 Mon 10:55]</p>
+</li>
+</ul>
+<p>没有 hoist 之前：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="p">[</span>
+    <span class="nx">ok</span>
+      <span class="o">?</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="p">{</span> <span class="nx">key</span><span class="o">:</span> <span class="mi">0</span> <span class="p">},</span> <span class="s2">&#34;yes&#34;</span><span class="p">))</span>
+      <span class="o">:</span> <span class="nx">_createCommentVNode</span><span class="p">(</span><span class="s2">&#34;v-if&#34;</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+  <span class="p">]))</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+有 hoist 之后：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">(</span><span class="kd">function</span> <span class="nx">anonymous</span><span class="p">(</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">_Vue</span> <span class="o">=</span> <span class="nx">Vue</span>
+    <span class="c1">// ... 省略
+</span><span class="c1"></span>
+    <span class="c1">// 提升到 render 函数之后
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">_hoisted_1</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">key</span><span class="o">:</span> <span class="mi">0</span> <span class="p">}</span>
+
+    <span class="k">return</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">_ctx</span><span class="p">,</span> <span class="nx">_cache</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">with</span> <span class="p">(</span><span class="nx">_ctx</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// ... 省略
+</span><span class="c1"></span>        <span class="k">return</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="p">[</span>
+          <span class="nx">ok</span>
+            <span class="o">?</span> <span class="p">(</span><span class="nx">_openBlock</span><span class="p">(),</span> <span class="nx">_createBlock</span><span class="p">(</span><span class="s2">&#34;div&#34;</span><span class="p">,</span> <span class="nx">_hoisted_1</span><span class="p">,</span> <span class="s2">&#34;yes&#34;</span><span class="p">))</span>
+            <span class="o">:</span> <span class="nx">_createCommentVNode</span><span class="p">(</span><span class="s2">&#34;v-if&#34;</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+        <span class="p">]))</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<img src="/img/vue3/compiler-core/key/key-04-how-hoist-props.svg" alt="/img/vue3/compiler-core/key/key-04-how-hoist-props.svg" title="/img/vue3/compiler-core/key/key-04-how-hoist-props.svg" /></p>
+<p>
+<strong>transform</strong> 阶段是在 执行完 <a href="vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode">traverseNode()</a> 之后调用 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-hoiststatic">hoistStatic(root,context)</a> 通过 walk() 递归遍历
+所有的孩子节点来检测满足条件的 hoist 属性或节点。</p>
+<blockquote>
+<p>即：静态提升动作发生在所有节点的 codegenNode 解析完毕之后(且满足：
+<code>options.hoistStatic = true</code>)。</p>
+</blockquote>
+<p>
+<strong>codegen</strong> 阶段是在 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genfunctionpreamble">genFunctionPreamable(ast, context)</a> 检测 ast.hoists 数组将需要用
+到的函数提升到 render 之外，然后调用 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genhoists">genHoists(ast.hoists)</a> 生成需要提升的属性。</p>
+<p>
+最后根据：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">node</span><span class="o">:</span>
+  <span class="nx">content</span><span class="o">:</span> <span class="s2">&#34;_hoisted_1&#34;</span>
+  <span class="nx">isConstant</span><span class="o">:</span> <span class="kc">true</span>
+  <span class="nx">isStatic</span><span class="o">:</span> <span class="kc">false</span>
+  <span class="nx">type</span><span class="o">:</span> <span class="mi">4</span> <span class="c1">// SIMPLE_EXPRESSION
+</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+最后用 <code>_hoisted_1</code> 来替代 <code>{ key: 0 }</code> 这个惊天属性。</p>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+<span class="todo">DONE</span>
+5. codegen 如何生成 if-elseif-else 分支节点 ?
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>CLOSED: [2020-10-04 Sun 12:47]</p>
+<ul>
+<li>
+<p>State &#34;DONE&#34;       from &#34;TODO&#34;       [2020-10-04 Sun 12:47]</p>
+</li>
+</ul>
+<p><a href="#key-02-transform-if">生成分支入口函数产生过程</a>：<a href="/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode">traverseNode</a> 中收集 <code>exitFns</code> 过程中执行 <code>transformIf</code>
+经过一些列操作之后得到一个函数，该函数会在当前节点树递归结束后调用，生成
+<code>codegenNode</code></p>
+<p>
+返回的分支节点 codegenNode 结构：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="p">{</span>
+    <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">19</span><span class="p">,</span>
+    <span class="s2">&#34;test&#34;</span><span class="o">:</span><span class="p">{</span> <span class="c1">// ok ? ... : ...
+</span><span class="c1"></span>      <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+      <span class="s2">&#34;content&#34;</span><span class="o">:</span><span class="s2">&#34;ok&#34;</span><span class="p">,</span>
+      <span class="s2">&#34;isStatic&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+      <span class="s2">&#34;isConstant&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+      <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="c1">// ...
+</span><span class="c1"></span>        <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;ok&#34;</span>
+      <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&#34;consequent&#34;</span><span class="o">:</span><span class="p">{</span> <span class="c1">// cond ? 这里的代码 : ...
+</span><span class="c1"></span>      <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">13</span><span class="p">,</span>
+      <span class="s2">&#34;tag&#34;</span><span class="o">:</span><span class="s2">&#34;&#34;</span><span class="nx">div</span><span class="s2">&#34;&#34;</span><span class="p">,</span>
+      <span class="s2">&#34;props&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">15</span><span class="p">,</span>
+        <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">},</span>
+        <span class="s2">&#34;properties&#34;</span><span class="o">:</span><span class="p">[</span>
+          <span class="p">{</span>
+            <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">16</span><span class="p">,</span>
+            <span class="s2">&#34;key&#34;</span><span class="o">:</span><span class="p">{</span>
+              <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+              <span class="s2">&#34;isConstant&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+              <span class="s2">&#34;content&#34;</span><span class="o">:</span><span class="s2">&#34;key&#34;</span><span class="p">,</span>
+              <span class="s2">&#34;isStatic&#34;</span><span class="o">:</span><span class="kc">true</span>
+            <span class="p">},</span>
+            <span class="s2">&#34;value&#34;</span><span class="o">:</span><span class="p">{</span>
+              <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">4</span><span class="p">,</span>
+              <span class="s2">&#34;isConstant&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+              <span class="s2">&#34;content&#34;</span><span class="o">:</span><span class="s2">&#34;0&#34;</span><span class="p">,</span>
+              <span class="s2">&#34;isStatic&#34;</span><span class="o">:</span><span class="kc">false</span>
+            <span class="p">}</span>
+          <span class="p">}</span>
+        <span class="p">]</span>
+      <span class="p">},</span>
+      <span class="s2">&#34;children&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">2</span><span class="p">,</span>
+        <span class="s2">&#34;content&#34;</span><span class="o">:</span><span class="s2">&#34;yes&#34;</span><span class="p">,</span>
+        <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+          <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;yes&#34;</span>
+        <span class="p">}</span>
+      <span class="p">},</span>
+      <span class="s2">&#34;isBlock&#34;</span><span class="o">:</span><span class="kc">true</span><span class="p">,</span>
+      <span class="s2">&#34;isForBlock&#34;</span><span class="o">:</span><span class="kc">false</span><span class="p">,</span>
+      <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;&lt;div v-if=&#34;</span><span class="nx">ok</span><span class="s2">&#34;&gt;yes&lt;/div&gt;&#34;</span>
+      <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&#34;alternate&#34;</span><span class="o">:</span><span class="p">{</span> <span class="c1">// cond ? ... : 这里的代码
+</span><span class="c1"></span>      <span class="s2">&#34;type&#34;</span><span class="o">:</span><span class="mi">14</span><span class="p">,</span>
+      <span class="s2">&#34;loc&#34;</span><span class="o">:</span><span class="p">{</span>
+        <span class="s2">&#34;source&#34;</span><span class="o">:</span><span class="s2">&#34;&#34;</span><span class="p">,</span>
+      <span class="p">},</span>
+      <span class="s2">&#34;arguments&#34;</span><span class="o">:</span><span class="p">[</span>
+        <span class="s2">&#34;&#34;</span><span class="nx">v</span><span class="o">-</span><span class="k">if</span><span class="s2">&#34;&#34;</span><span class="p">,</span>
+        <span class="s2">&#34;true&#34;</span>
+      <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&#34;newline&#34;</span><span class="o">:</span><span class="kc">true</span><span class="p">,</span>
+  <span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+处理流程图：</p>
+<p>
+<img src="/img/vue3/compiler-core/key/key-05-how-gen-if-branches.svg" alt="/img/vue3/compiler-core/key/key-05-how-gen-if-branches.svg" title="/img/vue3/compiler-core/key/key-05-how-gen-if-branches.svg" /></p>
+</div>
+</div>
+<div id="outline-container-key-06-how-transform-v-else-if" class="outline-3">
+<h3 id="key-06-how-transform-v-else-if">
+<span class="todo">TODO</span>
+6. transform 阶段如何转换 v-else-if 指令？
+</h3>
+<div id="outline-text-key-06-how-transform-v-else-if" class="outline-text-3">
+<p>
+示例代码：</p>
+<div class="src src-html">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-html" data-lang="html">  <span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">v-if</span><span class="o">=</span><span class="s">&#34;ok&#34;</span><span class="p">&gt;</span>yes<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">v-else-if</span><span class="o">=</span><span class="s">&#34;nok&#34;</span><span class="p">&gt;</span>nok<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">v-else</span><span class="p">&gt;</span>no<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<img src="/img/vue3/compiler-core/key/key-02-transform-if.svg" alt="/img/vue3/compiler-core/key/key-02-transform-if.svg" title="/img/vue3/compiler-core/key/key-02-transform-if.svg" /></p>
+</div>
+</div>
+<div id="outline-container-key-07-diff-block-vnode" class="outline-3">
+<h3 id="key-07-diff-block-vnode">
+<span class="todo">TODO</span>
+7. Block 和 VNode 的处理逻辑有什么不一样？
+</h3>
+<div id="outline-text-key-07-diff-block-vnode" class="outline-text-3">
+<p>
+到目前为止大部分的实例都是通过 block 解析的，因为孩子节点只有一个。</p>
+<p>
+孩子节点有多个的时候会进入 VNode 流程，这里相当于创建了一个虚拟节点来将多个孩子
+包起来去生成 render 函数。</p>
+<p>
+示例：</p>
+<div class="src src-html">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-html" data-lang="html">  <span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;block&#34;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>use openBlock + createBlock api<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;vnode&#34;</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>use createVNode api<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>use createVNode api<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-key-08-how-hoist-static" class="outline-3">
+<h3 id="key-08-how-hoist-static">
+<span class="todo">TODO</span>
+8. transform 阶段如何做静态提升？
+</h3>
+<div id="outline-text-key-08-how-hoist-static" class="outline-text-3">
+<p>
+静态提升检测在 transform 阶段， traverseNode 遍历完 ast 树之后，会调用
+<code>hoistStatic(root, context)</code> 对所有 codegenNode 进行递归，将需要静态提升的节点提取
+到 root.hoists 中。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">transform</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">context</span> <span class="o">=</span> <span class="nx">createTransformContext</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span> <span class="nx">options</span><span class="p">);</span>
+    <span class="nx">traverseNode</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span> <span class="nx">context</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">hoistStatic</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">hoistStatic</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span> <span class="nx">context</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="c1">// ...
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+静态提升条件：</p>
+<ol>
+<li>
+<p>根节点必须有一个孩子以上节点，且所有子孙节点都必须是静态节点(<code>isStatic(child,
+resultCache)</code>)</p>
+</li>
+<li>
+<p>如果节点是动态节点，则检测其所有属性，提取出静态属性将其提升</p>
+</li>
+<li>
+<p>提升之后的属性或节点会保存到 <code>context.hoists</code> 里面</p>
+</li>
+</ol>
+<p>源码脑图：
+<img src="/img/vue3/compiler-core/key/key-08-how-hoist-static.svg" alt="/img/vue3/compiler-core/key/key-08-how-hoist-static.svg" title="/img/vue3/compiler-core/key/key-08-how-hoist-static.svg" /></p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-2">
+<h2 id="headline-19">
+☁ compiler-core: parser
+</h2>
+<div id="outline-text-headline-19" class="outline-text-2">
 <p>
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。</p>
 <div id="outline-container-map-parse-with-directive" class="outline-3">
@@ -439,7 +1667,7 @@ children[0]， <code>content = `&lt;/div&gt;`</code></p>
 <td class="lntd">
 <pre class="chroma"><code class="language-typescript" data-lang="typescript">  <span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
       <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
-      <span class="nx">type</span>: <span class="kt">TagType</span><span class="p">,</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span><span class="p">,</span>
       <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span>
   <span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="p">{</span>
 
@@ -460,7 +1688,7 @@ children[0]， <code>content = `&lt;/div&gt;`</code></p>
 </span><span class="c1"></span>              <span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;template&#39;</span> <span class="o">&amp;&amp;</span>
                   <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="nx">p</span> <span class="o">=&gt;</span> <span class="p">{</span>
                       <span class="k">return</span> <span class="p">(</span>
-                          <span class="nx">p</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">isSpecialTemplateDirective</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span>
+                          <span class="nx">p</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">isSpecialTemplateDirective</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span>
                       <span class="p">)</span>
                   <span class="p">})</span>
           <span class="p">)</span> <span class="p">{</span>
@@ -469,7 +1697,7 @@ children[0]， <code>content = `&lt;/div&gt;`</code></p>
       <span class="p">}</span>
 
       <span class="k">return</span> <span class="p">{</span>
-          <span class="nx">type</span>: <span class="kt">NodeTypes.ELEMENT</span><span class="p">,</span>
+          <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ELEMENT</span><span class="p">,</span>
           <span class="nx">ns</span><span class="p">,</span>
           <span class="nx">tag</span><span class="p">,</span>
           <span class="nx">tagType</span><span class="p">,</span>
@@ -620,11 +1848,11 @@ html 语义符号之后返回给 <code>parseText:content</code> 组织文本节�
 </div>
 </div>
 </div>
-<div id="outline-container-headline-10" class="outline-2">
-<h2 id="headline-10">
-compiler-core: compiler
+<div id="outline-container-headline-28" class="outline-2">
+<h2 id="headline-28">
+🌙 compiler-core: compiler
 </h2>
-<div id="outline-text-headline-10" class="outline-text-2">
+<div id="outline-text-headline-28" class="outline-text-2">
 <p>
 vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 render 函数。</p>
 <p>
@@ -644,12 +1872,12 @@ Function(code)</code> 生成 render 函数。</p>
 </ol>
 <p>
 流程图：
-<img src="/img/vue3/compiler-core/compiler.png" alt="/img/vue3/compiler-core/compiler.png" title="/img/vue3/compiler-core/compiler.png" /> </p>
-<div id="outline-container-compiler-03" class="outline-3">
-<h3 id="compiler-03">
-03-inerpolation in pure div 
+<img src="/img/vue3/compiler-core/compiler.png" alt="/img/vue3/compiler-core/compiler.png" title="/img/vue3/compiler-core/compiler.png" /></p>
+<div id="outline-container-compiler-01" class="outline-3">
+<h3 id="compiler-01">
+01-simple text 编译过程
 </h3>
-<div id="outline-text-compiler-03" class="outline-text-3">
+<div id="outline-text-compiler-01" class="outline-text-3">
 <p>
 代码：</p>
 <div class="src src-js">
@@ -660,21 +1888,20 @@ Function(code)</code> 生成 render 函数。</p>
 </span><span class="lnt">3
 </span></code></pre></td>
 <td class="lntd">
-<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">compile</span><span class="p">(</span><span class="sb">`&lt;div&gt;{{ world.burn() }}&lt;/div&gt;`</span><span class="p">,</span> <span class="p">{</span>
-    <span class="nx">filename</span><span class="o">:</span> <span class="sb">`foo.vue`</span><span class="p">,</span>
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">compile</span><span class="p">(</span><span class="sb">`simple text`</span><span class="p">,</span> <span class="p">{</span>
+    <span class="nx">filename</span><span class="o">:</span> <span class="sb">`foo.vue`</span>
   <span class="p">})</span>
 </code></pre></td></tr></table>
 </div>
 </div>
 </div>
 <p>
-<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03">用例地址</a></p>
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01">01-simple-text 测试用例地址</a></p>
 <p>
-流程图：</p>
+流程图：
+<img src="/img/vue3/compiler-core/compiler-test-simple-text.png" alt="/img/vue3/compiler-core/compiler-test-simple-text.png" title="/img/vue3/compiler-core/compiler-test-simple-text.png" /></p>
 <p>
-<img src="/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg" alt="/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg" title="/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg" /></p>
-<p>
-<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03">详细过程分析请点击链接。</a></p>
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-01">详细过程分析请点击链接。</a></p>
 </div>
 </div>
 <div id="outline-container-compiler-02" class="outline-3">
@@ -709,11 +1936,11 @@ Function(code)</code> 生成 render 函数。</p>
 <a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-02">详细过程分析请点击链接。</a></p>
 </div>
 </div>
-<div id="outline-container-compiler-01" class="outline-3">
-<h3 id="compiler-01">
-01-simple text 编译过程
+<div id="outline-container-compiler-03" class="outline-3">
+<h3 id="compiler-03">
+03-inerpolation in pure div
 </h3>
-<div id="outline-text-compiler-01" class="outline-text-3">
+<div id="outline-text-compiler-03" class="outline-text-3">
 <p>
 代码：</p>
 <div class="src src-js">
@@ -724,20 +1951,99 @@ Function(code)</code> 生成 render 函数。</p>
 </span><span class="lnt">3
 </span></code></pre></td>
 <td class="lntd">
-<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">compile</span><span class="p">(</span><span class="sb">`simple text`</span><span class="p">,</span> <span class="p">{</span>
-    <span class="nx">filename</span><span class="o">:</span> <span class="sb">`foo.vue`</span>
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">compile</span><span class="p">(</span><span class="sb">`&lt;div&gt;{{ world.burn() }}&lt;/div&gt;`</span><span class="p">,</span> <span class="p">{</span>
+    <span class="nx">filename</span><span class="o">:</span> <span class="sb">`foo.vue`</span><span class="p">,</span>
   <span class="p">})</span>
 </code></pre></td></tr></table>
 </div>
 </div>
 </div>
 <p>
-<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-text-01">01-simple-text 测试用例地址</a></p>
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03">用例地址</a></p>
+<p>
+流程图：</p>
+<p>
+<img src="/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg" alt="/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg" title="/img/vue3/compiler-core/compiler-test-interpolation-in-div.svg" /></p>
+<p>
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-03">详细过程分析请点击链接。</a></p>
+</div>
+</div>
+<div id="outline-container-compiler-04" class="outline-3">
+<h3 id="compiler-04">
+04-interpolation in div with props
+</h3>
+<div id="outline-text-compiler-04" class="outline-text-3">
+<p>
+代码：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">compile</span><span class="p">(</span><span class="sb">`&lt;div id=&#34;foo&#34; :class=&#34;bar.baz&#34;&gt;{{ world.burn() }}&lt;/div&gt;`</span><span class="p">,</span> <span class="p">{</span>
+    <span class="nx">filename</span><span class="o">:</span> <span class="sb">`foo.vue`</span><span class="p">,</span>
+  <span class="p">})</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-04">用例地址</a></p>
 <p>
 流程图：
-<img src="/img/vue3/compiler-core/compiler-test-simple-text.png" alt="/img/vue3/compiler-core/compiler-test-simple-text.png" title="/img/vue3/compiler-core/compiler-test-simple-text.png" /></p>
+<img src="/img/vue3/compiler-core/compiler-test-interpolation-in-div-with-props.svg" alt="/img/vue3/compiler-core/compiler-test-interpolation-in-div-with-props.svg" title="/img/vue3/compiler-core/compiler-test-interpolation-in-div-with-props.svg" /></p>
+</div>
+</div>
+<div id="outline-container-compiler-05" class="outline-3">
+<h3 id="compiler-05">
+05-interpolation, v-if, props
+</h3>
+<div id="outline-text-compiler-05" class="outline-text-3">
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">  <span class="nx">code</span> <span class="o">=</span> <span class="sb">`
+</span><span class="sb">  &lt;div id=&#34;foo&#34; :class=&#34;bar.baz&#34;&gt;
+</span><span class="sb">  {{ world.burn() }}
+</span><span class="sb">  &lt;div v-if=&#34;ok&#34;&gt;yes&lt;/div&gt;
+</span><span class="sb">  &lt;/div&gt;`</span>
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
 <p>
-<a href="/vue/vue3-source-code-compiler-core-compile_ts/#test-cc-01">详细过程分析请点击链接。</a></p>
+如果放到一张图里面，实在太繁琐了，简化，拆分如下：</p>
+<p>
+<img src="/img/vue3/compiler-core/compiler-test-05-div-with-vif.svg" alt="/img/vue3/compiler-core/compiler-test-05-div-with-vif.svg" title="/img/vue3/compiler-core/compiler-test-05-div-with-vif.svg" /></p>
+<ol>
+<li>
+<p>整体流程及导致结果</p>
+</li>
+<li>
+<p>parse ast 流程</p>
+</li>
+<li>
+<p>transform ast 流程，这部分会比较繁琐</p>
+</li>
+<li>
+<p>codegen generate 流程</p>
+</li>
+</ol>
+<p>transform 阶段流程图：
+<img src="/img/vue3/compiler-core/lib/compiler-lib-04-transform.svg" alt="/img/vue3/compiler-core/lib/compiler-lib-04-transform.svg" title="/img/vue3/compiler-core/lib/compiler-lib-04-transform.svg" /></p>
+<p>
+generate 阶段流程图：
+<img src="/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg" alt="/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg" title="/img/vue3/compiler-core/lib/compiler-lib-03-generate.svg" /></p>
 </div>
 </div>
 </div>
@@ -865,11 +2171,20 @@ Function(code)</code> 生成 render 函数。</p>
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
 
 
 
-<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
 
 
 <script type="application/javascript">

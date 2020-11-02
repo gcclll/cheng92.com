@@ -6,10 +6,33 @@
     <description>Recent content in Categories on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sat, 12 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 20 Oct 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/categories/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>javascript</title>
+      <link>https://www.cheng92.com/categories/javascript/</link>
+      <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/javascript/</guid>
+      <description></description>
+    </item>
     
-	<atom:link href="https://www.cheng92.com/categories/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>life</title>
+      <link>https://www.cheng92.com/categories/life/</link>
+      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/life/</guid>
+      <description></description>
+    </item>
     
+    <item>
+      <title>vue</title>
+      <link>https://www.cheng92.com/categories/vue/</link>
+      <pubDate>Sat, 19 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/categories/vue/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title>css3</title>
@@ -17,24 +40,6 @@
       <pubDate>Sat, 12 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/categories/css3/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>javascript</title>
-      <link>https://www.cheng92.com/categories/javascript/</link>
-      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.cheng92.com/categories/javascript/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>vue</title>
-      <link>https://www.cheng92.com/categories/vue/</link>
-      <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.cheng92.com/categories/vue/</guid>
       <description></description>
     </item>
     

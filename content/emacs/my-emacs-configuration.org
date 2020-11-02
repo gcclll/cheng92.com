@@ -22,7 +22,8 @@
 2. https://github.com/forrestchang/.doom.d
 3. https://rgoswami.me/dotdoom/config.html
 4. https://github.com/hlissner/doom-emacs-private
-5. 主题：https://github.com/hlissner/emacs-doom-themes
+5. https://github.com/sunnyhasija/Academic-Doom-Emacs-Config
+6. 主题：https://github.com/hlissner/emacs-doom-themes
 
 ** Base Configuration/Operation
 *** 重新加载配置

@@ -16,14 +16,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="Zhicheng Lee" /><meta name="description" content="hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，在这个页面里面进行搜索，不是很" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="window.g_need_fold = 1 use bootstrap buttons: Primary Secondary Success Danger Warning Info Light Dark icons: hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
 
 
 
 
-
-
-<meta name="generator" content="Hugo 0.74.3 with theme even" />
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
 
 
 <link rel="canonical" href="https://www.cheng92.com/post/my-first-post/" />
@@ -34,31 +34,33 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 
 
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
 
 <meta property="og:title" content="My First Post" />
-<meta property="og:description" content="hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，在这个页面里面进行搜索，不是很" />
+<meta property="og:description" content="window.g_need_fold = 1 use bootstrap buttons: Primary Secondary Success Danger Warning Info Light Dark icons: hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.cheng92.com/post/my-first-post/" />
 <meta property="article:published_time" content="2020-09-03T00:00:00+00:00" />
 <meta property="article:modified_time" content="2020-09-03T00:00:00+00:00" />
 <meta itemprop="name" content="My First Post">
-<meta itemprop="description" content="hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，在这个页面里面进行搜索，不是很">
+<meta itemprop="description" content="window.g_need_fold = 1 use bootstrap buttons: Primary Secondary Success Danger Warning Info Light Dark icons: hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，">
 <meta itemprop="datePublished" content="2020-09-03T00:00:00+00:00" />
 <meta itemprop="dateModified" content="2020-09-03T00:00:00+00:00" />
-<meta itemprop="wordCount" content="568">
+<meta itemprop="wordCount" content="583">
 
 
 
 <meta itemprop="keywords" content="" />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="My First Post"/>
-<meta name="twitter:description" content="hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，在这个页面里面进行搜索，不是很"/>
+<meta name="twitter:description" content="window.g_need_fold = 1 use bootstrap buttons: Primary Secondary Success Danger Warning Info Light Dark icons: hugo-test 使用教程 增加搜索功能 方案一 这个是增加了一个页面，"/>
 
 <!--[if lte IE 9]>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
@@ -126,9 +128,12 @@
         <a class="menu-item-link" href="/tags/">Tags</a>
       </li><li class="menu-item">
         <a class="menu-item-link" href="/categories/">Categories</a>
-      </li>
-  </ul>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
 </nav>
+
     </header>
 
     <main id="main" class="main">
@@ -142,7 +147,7 @@
       <div class="post-meta">
         <span class="post-time"> 2020-09-03 </span>
         
-          <span class="more-meta"> 约 568 字 </span>
+          <span class="more-meta"> 约 583 字 </span>
           <span class="more-meta"> 预计阅读 2 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
@@ -153,21 +158,23 @@
   <div class="post-toc-content always-active">
     <nav id="TableOfContents">
 <ul>
-<li><a href="#headline-1">hugo-test</a>
+<li><a href="#headline-1">use bootstrap</a>
+</li>
+<li><a href="#headline-2">hugo-test</a>
 <ul>
-<li><a href="#headline-2">增加搜索功能</a>
+<li><a href="#headline-3">增加搜索功能</a>
 </li>
-<li><a href="#headline-3">网易云音乐</a>
+<li><a href="#headline-4">网易云音乐</a>
 </li>
-<li><a href="#headline-4">YouTuBe</a>
+<li><a href="#headline-5">YouTuBe</a>
 </li>
-<li><a href="#headline-5">增加代码区复制按钮</a>
+<li><a href="#headline-6">增加代码区复制按钮</a>
 </li>
-<li><a href="#headline-6">header2</a>
+<li><a href="#headline-7">header2</a>
 <ul>
-<li><a href="#headline-7">header3</a>
+<li><a href="#headline-8">header3</a>
 <ul>
-<li><a href="#headline-8">header4</a>
+<li><a href="#headline-9">header4</a>
 </li>
 </ul>
 </li>
@@ -181,17 +188,47 @@
 </div>
     <div class="post-content">
       
+<script>
+window.g_need_fold = 1
+</script>
 <div id="outline-container-headline-1" class="outline-2">
 <h2 id="headline-1">
-hugo-test
+use bootstrap
 </h2>
 <div id="outline-text-headline-1" class="outline-text-2">
+<p>
+buttons:</p>
+<button type="button" class="btn btn-outline-primary">Primary</button>
+<button type="button" class="btn btn-outline-secondary">Secondary</button>
+<button type="button" class="btn btn-outline-success">Success</button>
+<button type="button" class="btn btn-outline-danger">Danger</button>
+<button type="button" class="btn btn-outline-warning">Warning</button>
+<button type="button" class="btn btn-outline-info">Info</button>
+<button type="button" class="btn btn-outline-light">Light</button>
+<button type="button" class="btn btn-outline-dark">Dark</button>
+<p>
+icons:</p>
+<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-alarm-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <path fill-rule="evenodd" d="M6 .5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1H9v1.07a7.001 7.001 0 0 1 3.274 12.474l.601.602a.5.5 0 0 1-.707.708l-.746-.746A6.97 6.97 0 0 1 8 16a6.97 6.97 0 0 1-3.422-.892l-.746.746a.5.5 0 0 1-.707-.708l.602-.602A7.001 7.001 0 0 1 7 2.07V1h-.5A.5.5 0 0 1 6 .5zM.86 5.387A2.5 2.5 0 1 1 4.387 1.86 8.035 8.035 0 0 0 .86 5.387zM11.613 1.86a2.5 2.5 0 1 1 3.527 3.527 8.035 8.035 0 0 0-3.527-3.527zM8.5 5.5a.5.5 0 0 0-1 0v3.362l-1.429 2.38a.5.5 0 1 0 .858.515l1.5-2.5A.5.5 0 0 0 8.5 9V5.5z"/>
+</svg>
+
+<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-search" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <path fill-rule="evenodd" d="M10.442 10.442a1 1 0 0 1 1.415 0l3.85 3.85a1 1 0 0 1-1.414 1.415l-3.85-3.85a1 1 0 0 1 0-1.415z"/>
+  <path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
+</svg>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+hugo-test
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
 <p><a href="https://hugo-theme-even.netlify.app/post/even-preview/">使用教程</a></p>
-<div id="outline-container-headline-2" class="outline-3">
-<h3 id="headline-2">
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
 增加搜索功能
 </h3>
-<div id="outline-text-headline-2" class="outline-text-3">
+<div id="outline-text-headline-3" class="outline-text-3">
 <ol>
 <li>
 <p><a href="https://blog.humblepg.com/post/2019/06/hugo-search.html">方案一</a></p>
@@ -217,11 +254,11 @@ hugo-test
 </ol>
 </div>
 </div>
-<div id="outline-container-headline-3" class="outline-3">
-<h3 id="headline-3">
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
 网易云音乐
 </h3>
-<div id="outline-text-headline-3" class="outline-text-3">
+<div id="outline-text-headline-4" class="outline-text-3">
   <iframe style="max-width: 100%"
       class="music163"
       frameborder="no"
@@ -234,22 +271,22 @@ hugo-test
     </iframe>
 </div>
 </div>
-<div id="outline-container-headline-4" class="outline-3">
-<h3 id="headline-4">
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
 YouTuBe
 </h3>
-<div id="outline-text-headline-4" class="outline-text-3">
+<div id="outline-text-headline-5" class="outline-text-3">
 
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
   <iframe src="https://www.youtube-nocookie.com/embed/wC5pJm8RAu4" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;" allowfullscreen title="YouTube Video"></iframe>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-5" class="outline-3">
-<h3 id="headline-5">
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
 增加代码区复制按钮
 </h3>
-<div id="outline-text-headline-5" class="outline-text-3">
+<div id="outline-text-headline-6" class="outline-text-3">
 <ol>
 <li>
 <p>修改 <strong>themes/even/assets/js/main.js</strong> 增加 addCopyButton 原理就是，将
@@ -403,18 +440,18 @@ test使用的 begin_example
 </div>
 </div>
 </div>
-<div id="outline-container-headline-6" class="outline-3">
-<h3 id="headline-6">
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
 header2
 </h3>
-<div id="outline-text-headline-6" class="outline-text-3">
-<div id="outline-container-headline-7" class="outline-4">
-<h4 id="headline-7">
+<div id="outline-text-headline-7" class="outline-text-3">
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
 header3
 </h4>
-<div id="outline-text-headline-7" class="outline-text-4">
-<div id="outline-container-headline-8" class="outline-5">
-<h5 id="headline-8">
+<div id="outline-text-headline-8" class="outline-text-4">
+<div id="outline-container-headline-9" class="outline-5">
+<h5 id="headline-9">
 header4
 </h5>
 </div>
@@ -545,11 +582,20 @@ header4
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
 
 
 
-<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
 
 
 <script type="application/javascript">

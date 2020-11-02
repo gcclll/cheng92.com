@@ -6,10 +6,96 @@
     <description>Recent content in Tags on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sat, 12 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Tue, 20 Oct 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>javascript,</title>
+      <link>https://www.cheng92.com/tags/javascript/</link>
+      <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/javascript/</guid>
+      <description></description>
+    </item>
     
-	<atom:link href="https://www.cheng92.com/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>web</title>
+      <link>https://www.cheng92.com/tags/web/</link>
+      <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/web/</guid>
+      <description></description>
+    </item>
     
+    <item>
+      <title>es6</title>
+      <link>https://www.cheng92.com/tags/es6/</link>
+      <pubDate>Mon, 12 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/es6/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>promise</title>
+      <link>https://www.cheng92.com/tags/promise/</link>
+      <pubDate>Mon, 12 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/promise/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>funny</title>
+      <link>https://www.cheng92.com/tags/funny/</link>
+      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/funny/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>interesting,</title>
+      <link>https://www.cheng92.com/tags/interesting/</link>
+      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/interesting/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>life,</title>
+      <link>https://www.cheng92.com/tags/life/</link>
+      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/life/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>vue,</title>
+      <link>https://www.cheng92.com/tags/vue/</link>
+      <pubDate>Sat, 19 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/vue/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>vue3,</title>
+      <link>https://www.cheng92.com/tags/vue3/</link>
+      <pubDate>Sat, 19 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/vue3/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>vuenext</title>
+      <link>https://www.cheng92.com/tags/vuenext/</link>
+      <pubDate>Sat, 19 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/tags/vuenext/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title>css3</title>
@@ -30,42 +116,6 @@
     </item>
     
     <item>
-      <title>javascript,</title>
-      <link>https://www.cheng92.com/tags/javascript/</link>
-      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.cheng92.com/tags/javascript/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>vue,</title>
-      <link>https://www.cheng92.com/tags/vue/</link>
-      <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.cheng92.com/tags/vue/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>vue3,</title>
-      <link>https://www.cheng92.com/tags/vue3/</link>
-      <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.cheng92.com/tags/vue3/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>vuenext,</title>
-      <link>https://www.cheng92.com/tags/vuenext/</link>
-      <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.cheng92.com/tags/vuenext/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>compiler</title>
       <link>https://www.cheng92.com/tags/compiler/</link>
       <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
@@ -80,15 +130,6 @@
       <pubDate>Fri, 28 Aug 2020 15:48:02 +0800</pubDate>
       
       <guid>https://www.cheng92.com/tags/reactivity/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>es6</title>
-      <link>https://www.cheng92.com/tags/es6/</link>
-      <pubDate>Fri, 28 Aug 2020 15:42:38 +0800</pubDate>
-      
-      <guid>https://www.cheng92.com/tags/es6/</guid>
       <description></description>
     </item>
     

@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>vuenext, on 若叶知秋</title>
+    <title>vuenext on 若叶知秋</title>
     <link>https://www.cheng92.com/tags/vuenext/</link>
-    <description>Recent content in vuenext, on 若叶知秋</description>
+    <description>Recent content in vuenext on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 01 Sep 2020 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="https://www.cheng92.com/tags/vuenext/index.xml" rel="self" type="application/rss+xml" />
-    
+    <lastBuildDate>Sat, 19 Sep 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/vuenext/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue3.0 RFCs 过眼云烟(古陵逝烟)</title>
+      <link>https://www.cheng92.com/vue/vue-next-rfcs/</link>
+      <pubDate>Sat, 19 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-next-rfcs/</guid>
+      <description>诗号：冷灯看剑，剑上几番功名？炉香无须计苍生，纵一川烟逝，万丈云埋，孤阳还照古陵</description>
+    </item>
     
     <item>
       <title>Vue3.0源码系列 -- 重要知识点捡漏</title>
@@ -17,7 +22,7 @@
       <pubDate>Tue, 01 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/vue/vue3-source-picking-shell/</guid>
-      <description>packages(模块列表): 所有模块以“ *包* ”的形式存在。 compiler-core/src ast.ts -&amp;gt; 抽象语法树处</description>
+      <description>一个较完整的 AST 结构： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30</description>
     </item>
     
     <item>
@@ -26,7 +31,7 @@
       <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</guid>
-      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+      <description>window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比</description>
     </item>
     
     <item>
@@ -44,7 +49,7 @@
       <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/</guid>
-      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+      <description>window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比</description>
     </item>
     
     <item>

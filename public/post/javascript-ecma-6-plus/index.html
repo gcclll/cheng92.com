@@ -18,12 +18,12 @@
 
 <meta name="author" content="Zhicheng Lee" /><meta name="description" content="参考链接：https://leanpub.com/understandinges" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
 
 
 
 
-
-<meta name="generator" content="Hugo 0.74.3 with theme even" />
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
 
 
 <link rel="canonical" href="https://www.cheng92.com/post/javascript-ecma-6-plus/" />
@@ -34,9 +34,11 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 
 
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
@@ -51,7 +53,7 @@
 <meta itemprop="description" content="参考链接：https://leanpub.com/understandinges">
 <meta itemprop="datePublished" content="2020-08-28T15:42:38+08:00" />
 <meta itemprop="dateModified" content="2020-08-28T15:42:38+08:00" />
-<meta itemprop="wordCount" content="68279">
+<meta itemprop="wordCount" content="68278">
 
 
 
@@ -126,9 +128,12 @@
         <a class="menu-item-link" href="/tags/">Tags</a>
       </li><li class="menu-item">
         <a class="menu-item-link" href="/categories/">Categories</a>
-      </li>
-  </ul>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
 </nav>
+
     </header>
 
     <main id="main" class="main">
@@ -144,7 +149,7 @@
         <div class="post-category">
             <a href="/categories/javascript/"> javascript </a>
             </div>
-          <span class="more-meta"> 约 68279 字 </span>
+          <span class="more-meta"> 约 68278 字 </span>
           <span class="more-meta"> 预计阅读 137 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
@@ -6404,7 +6409,7 @@ JavaScript 引擎所决定的</em>)，分别表示：</p>
 16
 32°
 </code></pre>
-<p>结果就像我们之前分析的， 只有 <code>==</code> 和 <code>+</code> 执行的是 “default&rdquo; 模式，</p>
+<p>结果就像我们之前分析的， 只有 <code>==</code> 和 <code>+</code> 执行的是 “default&quot; 模式，</p>
 <p>其他情况执行的要么是 &ldquo;number&rdquo; 模式(如： <code>freezing / 2</code>)</p>
 <p>要么是 &ldquo;string&rdquo; 模式(如： <code>String(freezing)</code>)</p>
 <h3 id="symboltostringtag-介绍a-idorgc7b5259a">Symbol.toStringTag 介绍<a id="orgc7b5259"></a></h3>
@@ -9548,8 +9553,8 @@ Boom
   <span class="p">},</span> <span class="nx">time</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
 <span class="p">}</span>
 
-<span class="nx">async</span> <span class="kd">function</span> <span class="nx">test</span><span class="p">()</span> <span class="p">{</span>
-  <span class="k">for</span> <span class="nx">await</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">x</span> <span class="k">of</span> <span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">])</span> <span class="p">{</span>
+<span class="kr">async</span> <span class="kd">function</span> <span class="nx">test</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">for</span> <span class="kr">await</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">x</span> <span class="k">of</span> <span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">])</span> <span class="p">{</span>
     <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
   <span class="p">}</span>
 <span class="p">}</span>
@@ -14003,8 +14008,8 @@ value 值，但实际最后被使用的是 readFile 中的 <code>fs.readFile()</
   <span class="p">})</span>
 <span class="p">}</span>
 
-<span class="p">(</span><span class="nx">async</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-  <span class="kd">let</span> <span class="nx">contents</span> <span class="o">=</span> <span class="nx">await</span> <span class="nx">readFile</span><span class="p">(</span><span class="nx">__dirname</span> <span class="o">+</span> <span class="s1">&#39;/config.json&#39;</span><span class="p">)</span>
+<span class="p">(</span><span class="kr">async</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">contents</span> <span class="o">=</span> <span class="kr">await</span> <span class="nx">readFile</span><span class="p">(</span><span class="nx">__dirname</span> <span class="o">+</span> <span class="s1">&#39;/config.json&#39;</span><span class="p">)</span>
   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">contents</span><span class="p">)</span>
   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Done&#39;</span><span class="p">)</span>
 <span class="p">})()</span>
@@ -18115,11 +18120,20 @@ true
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
 
 
 
-<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
 
 
 <script type="application/javascript">

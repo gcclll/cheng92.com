@@ -6,18 +6,14 @@
     <description>Recent content in org-mode on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 28 Aug 2020 00:00:00 +0000</lastBuildDate>
-    
-	<atom:link href="https://www.cheng92.com/tags/org-mode/index.xml" rel="self" type="application/rss+xml" />
-    
-    
+    <lastBuildDate>Fri, 28 Aug 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/org-mode/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>My Emacs Org-Mode Document</title>
       <link>https://www.cheng92.com/emacs/emacs-org-mode/</link>
       <pubDate>Fri, 28 Aug 2020 00:00:00 +0000</pubDate>
       
       <guid>https://www.cheng92.com/emacs/emacs-org-mode/</guid>
-      <description>org-mode Hyperlinks(超链接) Internal Links(内部链接) org file link target: &amp;lt;&amp;lt;target&amp;gt;&amp;gt; link source: target 这种方式</description>
+      <description>org-mode keybindings 逗号(,) , s trees/subtrees 操作 key function description , s h org-premote-subtree 升级, h4 -&amp;gt; h3 , s l org-demote-subtree 降级, h3 -&amp;gt; h4 , s n org-narrow-to-subtree 定</description>
     </item>
     
   </channel>

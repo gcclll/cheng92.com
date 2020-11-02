@@ -6,11 +6,7 @@
     <description>Recent content in reactivity on 若叶知秋</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 28 Aug 2020 15:48:02 +0800</lastBuildDate>
-    
-	<atom:link href="https://www.cheng92.com/tags/reactivity/index.xml" rel="self" type="application/rss+xml" />
-    
-    
+    <lastBuildDate>Fri, 28 Aug 2020 15:48:02 +0800</lastBuildDate><atom:link href="https://www.cheng92.com/tags/reactivity/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Vue3.0源码系列（一）响应式原理 - Reactivity</title>
       <link>https://www.cheng92.com/vue/vue3-source-code-reactivity/</link>

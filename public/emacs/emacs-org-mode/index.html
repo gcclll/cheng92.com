@@ -16,14 +16,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="Zhicheng Lee" /><meta name="description" content="org-mode Hyperlinks(超链接) Internal Links(内部链接) org file link target: &amp;lt;&amp;lt;target&amp;gt;&amp;gt; link source: target 这种方式" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="org-mode keybindings 逗号(,) , s trees/subtrees 操作 key function description , s h org-premote-subtree 升级, h4 -&amp;gt; h3 , s l org-demote-subtree 降级, h3 -&amp;gt; h4 , s n org-narrow-to-subtree 定" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
 
 
 
 
-
-
-<meta name="generator" content="Hugo 0.74.3 with theme even" />
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
 
 
 <link rel="canonical" href="https://www.cheng92.com/emacs/emacs-org-mode/" />
@@ -34,31 +34,33 @@
 <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 
 
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.2499e32d74a6cc0160ac255ec03920131b2c5ed27b587e9208f24b4d1683cf9f.css" rel="stylesheet">
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
 
 <meta property="og:title" content="My Emacs Org-Mode Document" />
-<meta property="og:description" content="org-mode Hyperlinks(超链接) Internal Links(内部链接) org file link target: &lt;&lt;target&gt;&gt; link source: target 这种方式" />
+<meta property="og:description" content="org-mode keybindings 逗号(,) , s trees/subtrees 操作 key function description , s h org-premote-subtree 升级, h4 -&gt; h3 , s l org-demote-subtree 降级, h3 -&gt; h4 , s n org-narrow-to-subtree 定" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.cheng92.com/emacs/emacs-org-mode/" />
 <meta property="article:published_time" content="2020-08-28T00:00:00+00:00" />
 <meta property="article:modified_time" content="2020-08-28T00:00:00+00:00" />
 <meta itemprop="name" content="My Emacs Org-Mode Document">
-<meta itemprop="description" content="org-mode Hyperlinks(超链接) Internal Links(内部链接) org file link target: &lt;&lt;target&gt;&gt; link source: target 这种方式">
+<meta itemprop="description" content="org-mode keybindings 逗号(,) , s trees/subtrees 操作 key function description , s h org-premote-subtree 升级, h4 -&gt; h3 , s l org-demote-subtree 降级, h3 -&gt; h4 , s n org-narrow-to-subtree 定">
 <meta itemprop="datePublished" content="2020-08-28T00:00:00+00:00" />
 <meta itemprop="dateModified" content="2020-08-28T00:00:00+00:00" />
-<meta itemprop="wordCount" content="823">
+<meta itemprop="wordCount" content="936">
 
 
 
 <meta itemprop="keywords" content="emacs,,org-mode," />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="My Emacs Org-Mode Document"/>
-<meta name="twitter:description" content="org-mode Hyperlinks(超链接) Internal Links(内部链接) org file link target: &lt;&lt;target&gt;&gt; link source: target 这种方式"/>
+<meta name="twitter:description" content="org-mode keybindings 逗号(,) , s trees/subtrees 操作 key function description , s h org-premote-subtree 升级, h4 -&gt; h3 , s l org-demote-subtree 降级, h3 -&gt; h4 , s n org-narrow-to-subtree 定"/>
 
 <!--[if lte IE 9]>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
@@ -126,9 +128,12 @@
         <a class="menu-item-link" href="/tags/">Tags</a>
       </li><li class="menu-item">
         <a class="menu-item-link" href="/categories/">Categories</a>
-      </li>
-  </ul>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
 </nav>
+
     </header>
 
     <main id="main" class="main">
@@ -144,7 +149,7 @@
         <div class="post-category">
             <a href="/categories/emacs/"> emacs </a>
             </div>
-          <span class="more-meta"> 约 823 字 </span>
+          <span class="more-meta"> 约 936 字 </span>
           <span class="more-meta"> 预计阅读 2 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
@@ -157,29 +162,41 @@
 <ul>
 <li><a href="#doc_header">org-mode</a>
 </li>
-<li><a href="#headline-2">Hyperlinks(超链接)</a>
+<li><a href="#headline-2">keybindings</a>
 <ul>
-<li><a href="#headline-3">Internal Links(内部链接)</a>
+<li><a href="#headline-3">逗号(<strong>,</strong>)</a>
+<ul>
+<li><a href="#headline-4"><strong>, s</strong> trees/subtrees 操作</a>
+</li>
+<li><a href="#headline-5"><strong>, b</strong> org-babel-* 操作</a>
 </li>
 </ul>
 </li>
-<li><a href="#headline-4">Markup for Rich Contents(富文本)</a>
+</ul>
+</li>
+<li><a href="#headline-6">Hyperlinks(超链接)</a>
+<ul>
+<li><a href="#headline-7">Internal Links(内部链接)</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-8">Markup for Rich Contents(富文本)</a>
 <ul>
 <li><a href="#literal_eg">Literal Examples(文本模板)</a>
 </li>
 </ul>
 </li>
-<li><a href="#headline-6">16 Miscellaneous(杂项)</a>
+<li><a href="#headline-10">16 Miscellaneous(杂项)</a>
 <ul>
-<li><a href="#headline-7">16.2 Structure Templates(结构化模板)</a>
+<li><a href="#headline-11">16.2 Structure Templates(结构化模板)</a>
 </li>
-<li><a href="#headline-8">16.7 Summary of In-Buffer Settings(文件设置)</a>
+<li><a href="#headline-12">16.7 Summary of In-Buffer Settings(文件设置)</a>
 </li>
 </ul>
 </li>
-<li><a href="#headline-9">Org-mode in hugo</a>
+<li><a href="#headline-13">Org-mode in hugo</a>
 <ul>
-<li><a href="#headline-10"><code>#+</code> 开头的属性</a>
+<li><a href="#headline-14"><code>#+</code> 开头的属性</a>
 </li>
 </ul>
 </li>
@@ -196,14 +213,104 @@ org-mode
 </div>
 <div id="outline-container-headline-2" class="outline-2">
 <h2 id="headline-2">
-Hyperlinks(超链接)
+keybindings
 </h2>
 <div id="outline-text-headline-2" class="outline-text-2">
 <div id="outline-container-headline-3" class="outline-3">
 <h3 id="headline-3">
-Internal Links(内部链接)
+逗号(<strong>,</strong>)
 </h3>
 <div id="outline-text-headline-3" class="outline-text-3">
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+<strong>, s</strong> trees/subtrees 操作
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>, s h</code></td>
+<td>org-premote-subtree</td>
+<td>升级, h4 -&gt; h3</td>
+</tr>
+<tr>
+<td><code>, s l</code></td>
+<td>org-demote-subtree</td>
+<td>降级, h3 -&gt; h4</td>
+</tr>
+<tr>
+<td><code>, s n</code></td>
+<td>org-narrow-to-subtree</td>
+<td>定位到当前的标题试图，隐藏其他</td>
+</tr>
+<tr>
+<td><code>, s N</code></td>
+<td>widen</td>
+<td>恢复隐藏</td>
+</tr>
+<tr>
+<td><code>, s j</code></td>
+<td>org-move-subtree-down</td>
+<td>当前树下移</td>
+</tr>
+<tr>
+<td><code>, s k</code></td>
+<td>org-move-subtree-up</td>
+<td>当前树上移</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+<strong>, b</strong> org-babel-* 操作
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>, b p</code></td>
+<td>org-babel-previous-src-block</td>
+<td>跳转到上一个代码块</td>
+</tr>
+<tr>
+<td><code>, b n</code></td>
+<td>org-babel-next-src-block</td>
+<td>跳转到下一个代码块</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+Hyperlinks(超链接)
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+Internal Links(内部链接)
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
 <ol>
 <li>
 <p>org file
@@ -232,28 +339,28 @@ link source: <code>C-c C-l</code> 或者 <code>org-insert-link</code> 或者直�
 </div>
 </div>
 </div>
-<div id="outline-container-headline-4" class="outline-2">
-<h2 id="headline-4">
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
 Markup for Rich Contents(富文本)
 </h2>
-<div id="outline-text-headline-4" class="outline-text-2">
+<div id="outline-text-headline-8" class="outline-text-2">
 <div id="outline-container-literal_eg" class="outline-3">
 <h3 id="literal_eg">
 Literal Examples(文本模板)
 </h3>
 <div id="outline-text-literal_eg" class="outline-text-3">
 <p>
-   适合长文本内容的：</p>
+适合长文本内容的：</p>
 <pre class="example">
 * some example from a text file
 </pre>
 <p>
-   如果只是简短的语句，可直接使用 `:`(冒号)也可以达到同样效果：</p>
+如果只是简短的语句，可直接使用 `:`(冒号)也可以达到同样效果：</p>
 <pre class="example">
 * some short example from a text file
 </pre>
 <p>
-   代码模板：</p>
+代码模板：</p>
 <div class="src src-emacs-lisp">
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -269,27 +376,27 @@ Literal Examples(文本模板)
 </div>
 </div>
 <p>
-   配置选项: <code>-n</code> ，可以在代码中加入引用 <code>(ref:sc)</code> ，然后在文章任意地方使用
-   <code>[[(sc)]]</code> 创建一个链接，点击后可以定位到代码中该出。</p>
+配置选项: <code>-n</code> ，可以在代码中加入引用 <code>(ref:sc)</code> ，然后在文章任意地方使用
+<code>[[(sc)]]</code> 创建一个链接，点击后可以定位到代码中该出。</p>
 <p>
-   In line <a href="(sc)">(sc)</a> we remember the current position. <a href="(jump)">Line (jump)</a>
-   jumps to point-min.</p>
+In line <a href="(sc)">(sc)</a> we remember the current position. <a href="(jump)">Line (jump)</a>
+jumps to point-min.</p>
 <p>
-   link: <a href="#literal_eg">literal_eg</a></p>
+link: <a href="#literal_eg">literal_eg</a></p>
 </div>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-6" class="outline-2">
-<h2 id="headline-6">
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
 16 Miscellaneous(杂项)
 </h2>
-<div id="outline-text-headline-6" class="outline-text-2">
-<div id="outline-container-headline-7" class="outline-3">
-<h3 id="headline-7">
+<div id="outline-text-headline-10" class="outline-text-2">
+<div id="outline-container-headline-11" class="outline-3">
+<h3 id="headline-11">
 16.2 Structure Templates(结构化模板)
 </h3>
-<div id="outline-text-headline-7" class="outline-text-3">
+<div id="outline-text-headline-11" class="outline-text-3">
 <pre class="example">
   a	‘#+BEGIN_EXPORT ascii’ … ‘#+END_EXPORT’
   c	‘#+BEGIN_CENTER’ … ‘#+END_CENTER’
@@ -304,11 +411,11 @@ Literal Examples(文本模板)
 </pre>
 </div>
 </div>
-<div id="outline-container-headline-8" class="outline-3">
-<h3 id="headline-8">
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
 16.7 Summary of In-Buffer Settings(文件设置)
 </h3>
-<div id="outline-text-headline-8" class="outline-text-3">
+<div id="outline-text-headline-12" class="outline-text-3">
 <ol>
 <li>
 <p>`#+STARTUP:`</p>
@@ -336,22 +443,22 @@ Literal Examples(文本模板)
 </div>
 </div>
 </div>
-<div id="outline-container-headline-9" class="outline-2">
-<h2 id="headline-9">
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
 Org-mode in hugo
 </h2>
-<div id="outline-text-headline-9" class="outline-text-2">
+<div id="outline-text-headline-13" class="outline-text-2">
 <p>
-  给图片增加属性(使用 <code>#+attr_html</code>)：</p>
+给图片增加属性(使用 <code>#+attr_html</code>)：</p>
 <pre class="example">
 #+attr_html: :width 100 :height 200
 [[/images/some-img.png]]
 </pre>
-<div id="outline-container-headline-10" class="outline-3">
-<h3 id="headline-10">
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
 <code>#+</code> 开头的属性
 </h3>
-<div id="outline-text-headline-10" class="outline-text-3">
+<div id="outline-text-headline-14" class="outline-text-3">
 <ul>
 <li>
 <p><code>#+caption: 设置表名称</code></p>
@@ -409,7 +516,11 @@ Org-mode in hugo
           </div>
       <nav class="post-nav">
         
-        
+        <a class="next" href="/emacs/my-emacs-configuration/">
+            <span class="next-text nav-default">My Emacs(Spacemacs) Configuration</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
       </nav>
     </footer>
   </article>
@@ -497,11 +608,20 @@ Org-mode in hugo
   
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
 
 
 
-<script type="text/javascript" src="/js/main.min.efef178e9ade173371feb5d85e86fd69ee5952357e21df32223481b02cb782a5.js"></script>
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
 
 
 <script type="application/javascript">

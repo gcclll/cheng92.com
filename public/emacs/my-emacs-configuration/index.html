@@ -1,0 +1,2716 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>My Emacs(Spacemacs) Configuration - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="Emacs相关中文问题以及解决方案 在 doom-emacs 中使用 spacemacs 的 layers Doom-emacs 感觉 Spacemacs 用起来还是有点卡，且启" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.76.5 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/emacs/my-emacs-configuration/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.82a3cd5d48f8908f385c7cb4088edc324ee1dcab1ade8b3f6f6c51097e700594.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="My Emacs(Spacemacs) Configuration" />
+<meta property="og:description" content="Emacs相关中文问题以及解决方案 在 doom-emacs 中使用 spacemacs 的 layers Doom-emacs 感觉 Spacemacs 用起来还是有点卡，且启" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/emacs/my-emacs-configuration/" />
+<meta property="article:published_time" content="2020-08-27T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-08-27T00:00:00+00:00" />
+<meta itemprop="name" content="My Emacs(Spacemacs) Configuration">
+<meta itemprop="description" content="Emacs相关中文问题以及解决方案 在 doom-emacs 中使用 spacemacs 的 layers Doom-emacs 感觉 Spacemacs 用起来还是有点卡，且启">
+<meta itemprop="datePublished" content="2020-08-27T00:00:00+00:00" />
+<meta itemprop="dateModified" content="2020-08-27T00:00:00+00:00" />
+<meta itemprop="wordCount" content="3055">
+
+
+
+<meta itemprop="keywords" content="emacs," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="My Emacs(Spacemacs) Configuration"/>
+<meta name="twitter:description" content="Emacs相关中文问题以及解决方案 在 doom-emacs 中使用 spacemacs 的 layers Doom-emacs 感觉 Spacemacs 用起来还是有点卡，且启"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">My Emacs(Spacemacs) Configuration</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-08-27 </span>
+        <div class="post-category">
+            <a href="/categories/emacs/"> emacs </a>
+            </div>
+          <span class="more-meta"> 约 3055 字 </span>
+          <span class="more-meta"> 预计阅读 7 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#headline-1">Doom-emacs</a>
+<ul>
+<li><a href="#headline-2">Base Configuration/Operation</a>
+<ul>
+<li><a href="#headline-3">重新加载配置</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-4">packages</a>
+<ul>
+<li><a href="#headline-5">leetcode</a>
+</li>
+<li><a href="#headline-6">go-mode</a>
+</li>
+<li><a href="#headline-7">smart-hungry-delete</a>
+</li>
+<li><a href="#headline-8">string-inflection 代码风格切换(python/java/ruby/…)</a>
+</li>
+<li><a href="#headline-9">parrot(<code>C-s</code>)</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-10">Keybindings</a>
+<ul>
+<li><a href="#headline-11">test</a>
+</li>
+<li><a href="#headline-12">所有按键表</a>
+</li>
+<li><a href="#headline-13">主面板</a>
+</li>
+<li><a href="#headline-14">提示面板入口</a>
+</li>
+<li><a href="#headline-15">常用按键提示面板</a>
+</li>
+<li><a href="#headline-16">SPC 开始按键提示面板</a>
+</li>
+<li><a href="#headline-17">Org-mode 按键提示面板</a>
+</li>
+<li><a href="#headline-18">evil-mode按键提示面板</a>
+</li>
+<li><a href="#headline-19">multiple cursors(<code>C-S-c</code>, <code>Control-Shift-c</code>)</a>
+</li>
+<li><a href="#headline-20">Launcher 按键面板</a>
+</li>
+<li><a href="#headline-21">crux tool(<code>C-c</code>)</a>
+</li>
+<li><a href="#headline-22">window operations</a>
+</li>
+<li><a href="#headline-23">smartparen 括号操作</a>
+</li>
+<li><a href="#headline-24">+workspace</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#headline-25">Spaceamcs</a>
+<ul>
+<li><a href="#headline-26">Awesome/有趣/实用</a>
+</li>
+<li><a href="#headline-27">Key bindings</a>
+<ul>
+<li><a href="#headline-28">vue-mode</a>
+</li>
+<li><a href="#headline-29">smartparens(括号操作)</a>
+</li>
+<li><a href="#headline-30">move-text, up/down</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-31">Modes</a>
+<ul>
+<li><a href="#headline-32">emms, play music</a>
+</li>
+<li><a href="#headline-33">ranger</a>
+</li>
+<li><a href="#headline-34">org-mode</a>
+<ul>
+<li><a href="#headline-35">text-style</a>
+</li>
+<li><a href="#headline-36">checkbox</a>
+</li>
+<li><a href="#headline-37">todos</a>
+<ul>
+<li><a href="#headline-38">todo one</a>
+</li>
+<li><a href="#headline-39">WAITING todo two waiting</a>
+</li>
+<li><a href="#headline-40">todo scheduler</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#headline-41">tiny, SPC o e</a>
+</li>
+<li><a href="#headline-42">multiple-cursors</a>
+</li>
+<li><a href="#headline-43">prodigy</a>
+</li>
+<li><a href="#headline-44">wrap-region</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-45">Misc Settings</a>
+</li>
+<li><a href="#headline-46">Issues</a>
+<ul>
+<li><a href="#headline-47">Points</a>
+<ul>
+<li><a href="#headline-48">org-mode 简介</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<blockquote>
+<p><a href="https://github.com/hick/emacs-chinese">Emacs相关中文问题以及解决方案</a></p>
+<p>
+<a href="https://github.com/chenyanming/spacemacs_module_for_doom">在 doom-emacs 中使用 spacemacs 的 layers</a></p>
+</blockquote>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Doom-emacs
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+感觉 Spacemacs 用起来还是有点卡，且启动慢，用久了更卡了，只能怪自己太菜了，所以今天开始尝试转向 <a href="https://github.com/hlissner/doom-emacs">doom-emacs</a></p>
+<p>
+配置列表：</p>
+<ol>
+<li>
+<p><a href="https://github.com/rschmukler/doom.d">https://github.com/rschmukler/doom.d</a></p>
+</li>
+<li>
+<p><a href="https://github.com/forrestchang/.doom.d">https://github.com/forrestchang/.doom.d</a></p>
+</li>
+<li>
+<p><a href="https://rgoswami.me/dotdoom/config.html">https://rgoswami.me/dotdoom/config.html</a></p>
+</li>
+<li>
+<p><a href="https://github.com/hlissner/doom-emacs-private">https://github.com/hlissner/doom-emacs-private</a></p>
+</li>
+<li>
+<p>主题：<a href="https://github.com/hlissner/emacs-doom-themes">https://github.com/hlissner/emacs-doom-themes</a></p>
+</li>
+</ol>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+Base Configuration/Operation
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+重新加载配置
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>mode</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gr</code></td>
+<td>evil 选中模式下</td>
+<td>执行选中代码</td>
+</tr>
+<tr>
+<td><code>C-x C-e</code></td>
+<td>-</td>
+<td><code>eval-last-sexp</code></td>
+</tr>
+<tr>
+<td><code>SPC c e</code></td>
+<td>-</td>
+<td><code>M-x +eval/buffer-or-region</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+packages
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+leetcode
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<p>
+https://github.com/kaiwk/leetcode.el</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+go-mode
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+install: <a href="https://www.mdeditor.tw/pl/2KAi">https://www.mdeditor.tw/pl/2KAi</a></p>
+<ol>
+<li>
+<p>no such file or directory gocode ?</p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+smart-hungry-delete
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<p>
+https://github.com/hrehfeld/emacs-smart-hungry-delete</p>
+<div class="src src-elisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-elisp" data-lang="elisp"><span class="p">(</span><span class="nb">use-package</span> <span class="nv">smart-hungry-delete</span>
+  <span class="nb">:ensure</span> <span class="no">t</span>
+  <span class="nb">:bind</span> <span class="p">((</span><span class="s">&#34;&lt;backspace&gt;&#34;</span> <span class="o">.</span> <span class="nv">smart-hungry-delete-backward-char</span><span class="p">)</span>
+		 <span class="p">(</span><span class="s">&#34;C-d&#34;</span> <span class="o">.</span> <span class="nv">smart-hungry-delete-forward-char</span><span class="p">))</span>
+  <span class="nb">:defer</span> <span class="no">nil</span> <span class="c1">;; dont defer so we can add our functions to hooks </span>
+  <span class="nb">:config</span> <span class="p">(</span><span class="nv">smart-hungry-delete-add-default-hooks</span><span class="p">)</span>
+  <span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
+string-inflection 代码风格切换(python/java/ruby/…)
+</h4>
+<div id="outline-text-headline-8" class="outline-text-4">
+<p>
+<a href="https://github.com/akicho8/string-inflection">github link-</a></p>
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nb">defun</span> <span class="nv">gcl/string-inflection-cycle-auto</span> <span class="p">()</span>
+  <span class="s">&#34;switching by major-mode&#34;</span>
+  <span class="p">(</span><span class="nb">interactive</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">cond</span>
+   <span class="c1">;; for emacs-lisp-mode</span>
+   <span class="p">((</span><span class="nf">eq</span> <span class="nv">major-mode</span> <span class="ss">&#39;emacs-lisp-mode</span><span class="p">)</span>
+    <span class="p">(</span><span class="nv">string-inflection-all-cycle</span><span class="p">))</span>
+   <span class="c1">;; for python</span>
+   <span class="p">((</span><span class="nf">eq</span> <span class="nv">major-mode</span> <span class="ss">&#39;python-mode</span><span class="p">)</span>
+    <span class="p">(</span><span class="nv">string-inflection-python-style-cycle</span><span class="p">))</span>
+   <span class="c1">;; for java</span>
+   <span class="p">((</span><span class="nf">eq</span> <span class="nv">major-mode</span> <span class="ss">&#39;java-mode</span><span class="p">)</span>
+    <span class="p">(</span><span class="nv">string-inflection-java-style-cycle</span><span class="p">))</span>
+   <span class="p">(</span><span class="no">t</span>
+    <span class="c1">;; default</span>
+    <span class="p">(</span><span class="nv">string-inflection-java-style-cycle</span><span class="p">))))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+parrot(<code>C-s</code>)
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<p>
+https://github.com/dp12/parrot</p>
+<p>
+rotate text，在约定的几个字符串之间来回切换。</p>
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nb">setq</span> <span class="nv">parrot-rotate-dict</span>
+      <span class="o">&#39;</span><span class="p">(</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;alpha&#34;</span> <span class="s">&#34;beta&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:lower</span> <span class="no">nil</span><span class="p">)</span>
+        <span class="c1">;; =&gt; rotations are &#34;Alpha&#34; &#34;Beta&#34;</span>
+
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;snek&#34;</span> <span class="s">&#34;snake&#34;</span> <span class="s">&#34;stawp&#34;</span><span class="p">))</span>
+        <span class="c1">;; =&gt; rotations are &#34;snek&#34; &#34;snake&#34; &#34;stawp&#34;</span>
+
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;yes&#34;</span> <span class="s">&#34;no&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="c1">;; =&gt; rotations are &#34;yes&#34; &#34;no&#34;, &#34;Yes&#34; &#34;No&#34;, &#34;YES&#34; &#34;NO&#34;</span>
+
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;&amp;&#34;</span> <span class="s">&#34;|&#34;</span><span class="p">))</span>
+        <span class="c1">;; =&gt; rotations are &#34;&amp;&#34; &#34;|&#34;</span>
+
+        <span class="c1">;; default dictionary starts here (&#39;v&#39;)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;begin&#34;</span> <span class="s">&#34;end&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;enable&#34;</span> <span class="s">&#34;disable&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;enter&#34;</span> <span class="s">&#34;exit&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;forward&#34;</span> <span class="s">&#34;backward&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;front&#34;</span> <span class="s">&#34;rear&#34;</span> <span class="s">&#34;back&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;get&#34;</span> <span class="s">&#34;set&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;high&#34;</span> <span class="s">&#34;low&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;in&#34;</span> <span class="s">&#34;out&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;left&#34;</span> <span class="s">&#34;right&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;min&#34;</span> <span class="s">&#34;max&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;on&#34;</span> <span class="s">&#34;off&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;prev&#34;</span> <span class="s">&#34;next&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;start&#34;</span> <span class="s">&#34;stop&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;true&#34;</span> <span class="s">&#34;false&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;&amp;&amp;&#34;</span> <span class="s">&#34;||&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;==&#34;</span> <span class="s">&#34;!=&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;.&#34;</span> <span class="s">&#34;-&gt;&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;if&#34;</span> <span class="s">&#34;else&#34;</span> <span class="s">&#34;elif&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;ifdef&#34;</span> <span class="s">&#34;ifndef&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;int8_t&#34;</span> <span class="s">&#34;int16_t&#34;</span> <span class="s">&#34;int32_t&#34;</span> <span class="s">&#34;int64_t&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;uint8_t&#34;</span> <span class="s">&#34;uint16_t&#34;</span> <span class="s">&#34;uint32_t&#34;</span> <span class="s">&#34;uint64_t&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;1&#34;</span> <span class="s">&#34;2&#34;</span> <span class="s">&#34;3&#34;</span> <span class="s">&#34;4&#34;</span> <span class="s">&#34;5&#34;</span> <span class="s">&#34;6&#34;</span> <span class="s">&#34;7&#34;</span> <span class="s">&#34;8&#34;</span> <span class="s">&#34;9&#34;</span> <span class="s">&#34;10&#34;</span><span class="p">))</span>
+        <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;1st&#34;</span> <span class="s">&#34;2nd&#34;</span> <span class="s">&#34;3rd&#34;</span> <span class="s">&#34;4th&#34;</span> <span class="s">&#34;5th&#34;</span> <span class="s">&#34;6th&#34;</span> <span class="s">&#34;7th&#34;</span> <span class="s">&#34;8th&#34;</span> <span class="s">&#34;9th&#34;</span> <span class="s">&#34;10th&#34;</span><span class="p">))</span>
+        <span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+配置：</p>
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">use-package!</span> <span class="nv">parrot</span>
+  <span class="nb">:init</span>
+  <span class="p">(</span><span class="nb">progn</span>
+    <span class="p">(</span><span class="nf">define-key</span> <span class="nv">global-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-s ,&#34;</span><span class="p">)</span> <span class="ss">&#39;parrot-rotate-prev-word-at-point</span><span class="p">)</span>
+    <span class="p">(</span><span class="nf">define-key</span> <span class="nv">global-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-s .&#34;</span><span class="p">)</span> <span class="ss">&#39;parrot-rotate-next-word-at-point</span><span class="p">))</span>
+  <span class="nb">:config</span>
+  <span class="p">(</span><span class="nv">parrot-mode</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">setq</span> <span class="nv">parrot-ratate-dict</span>
+        <span class="o">&#39;</span><span class="p">(</span>
+          <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;alpha&#34;</span> <span class="s">&#34;beta&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:lower</span> <span class="no">nil</span><span class="p">)</span> <span class="c1">;; =&gt; Alpha, Beta</span>
+          <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;yes&#34;</span> <span class="s">&#34;no&#34;</span><span class="p">)</span> <span class="nb">:caps</span> <span class="no">t</span> <span class="nb">:upcase</span> <span class="no">t</span><span class="p">)</span> <span class="c1">;; =&gt; yes,no,No,YES,NO</span>
+          <span class="p">(</span><span class="nb">:rot</span> <span class="p">(</span><span class="s">&#34;&amp;&#34;</span> <span class="s">&#34;|&#34;</span><span class="p">))</span>
+          <span class="p">)))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+Keybindings
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>所有常用按键均通过 <code>hydra</code> 注释方式展现，方便查询：</p>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+test
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<p>key 绑定函数：</p>
+<ul>
+<li>
+<p>define-key</p>
+</li>
+<li>
+<p>global-set-key</p>
+</li>
+<li>
+<p>map!</p>
+</li>
+<li>
+<p>undefined-key!</p>
+</li>
+<li>
+<p>define-key!</p>
+</li>
+</ul>
+<div class="src src-elisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-elisp" data-lang="elisp"><span class="c1">;; bind a global key</span>
+<span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x y&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="s">&#34;C-x y&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+
+<span class="c1">;; bind a key on a keymap</span>
+<span class="p">(</span><span class="nf">define-key</span> <span class="nv">emacs-lisp-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-c p&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="nb">:map</span> <span class="nv">emacs-lisp-mode-map</span> <span class="s">&#34;C-c p&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+
+<span class="c1">;; unbind a key defined elsewhere</span>
+<span class="p">(</span><span class="nf">define-key</span> <span class="nv">lua-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;SPC m b&#34;</span><span class="p">)</span> <span class="no">nil</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="nb">:map</span> <span class="nv">lua-mode-map</span> <span class="s">&#34;SPC m b&#34;</span> <span class="no">nil</span><span class="p">)</span>
+
+<span class="c1">;; bind multiple keys</span>
+<span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x y&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x z&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="s">&#34;C-x x&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span>
+      <span class="s">&#34;C-x y&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span>
+      <span class="s">&#34;C-x z&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+
+<span class="c1">;; bind global keys in normal mode</span>
+<span class="p">(</span><span class="nv">evil-define-key*</span> <span class="ss">&#39;normal</span> <span class="ss">&#39;global</span>
+  <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span>
+  <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x y&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span>
+  <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x z&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="nb">:n</span> <span class="s">&#34;C-x x&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span>
+      <span class="nb">:n</span> <span class="s">&#34;C-x y&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span>
+      <span class="nb">:n</span> <span class="s">&#34;C-x z&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+
+<span class="c1">;; or on a deferred keymap</span>
+<span class="p">(</span><span class="nv">evil-define-key</span> <span class="ss">&#39;normal</span> <span class="nv">emacs-lisp-mode-map</span>
+  <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span>
+  <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x y&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span>
+  <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x z&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="nb">:map</span> <span class="nv">emacs-lisp-mode-map</span>
+      <span class="nb">:n</span> <span class="s">&#34;C-x x&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span>
+      <span class="nb">:n</span> <span class="s">&#34;C-x y&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span>
+      <span class="nb">:n</span> <span class="s">&#34;C-x z&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+
+<span class="c1">;; or multiple maps</span>
+<span class="p">(</span><span class="nb">dolist</span> <span class="p">(</span><span class="nv">map</span> <span class="p">(</span><span class="nf">list</span> <span class="nv">emacs-lisp-mode</span> <span class="nv">go-mode-map</span> <span class="nv">ivy-minibuffer-map</span><span class="p">))</span>
+  <span class="p">(</span><span class="nv">evil-define-key</span> <span class="o">&#39;</span><span class="p">(</span><span class="nv">normal</span> <span class="nf">insert</span><span class="p">)</span> <span class="nv">map</span>
+    <span class="s">&#34;a&#34;</span> <span class="nf">#&#39;</span><span class="nv">a</span>
+    <span class="s">&#34;b&#34;</span> <span class="nf">#&#39;</span><span class="nv">b</span>
+    <span class="s">&#34;c&#34;</span> <span class="nf">#&#39;</span><span class="nv">c</span><span class="p">))</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="nb">:map</span> <span class="p">(</span><span class="nv">emacs-lisp-mode</span> <span class="nv">go-mode-map</span> <span class="nv">ivy-minibuffer-map</span><span class="p">)</span>
+      <span class="nb">:ni</span> <span class="s">&#34;a&#34;</span> <span class="nf">#&#39;</span><span class="nv">a</span>
+      <span class="nb">:ni</span> <span class="s">&#34;b&#34;</span> <span class="nf">#&#39;</span><span class="nv">b</span>
+      <span class="nb">:ni</span> <span class="s">&#34;c&#34;</span> <span class="nf">#&#39;</span><span class="nv">c</span><span class="p">)</span>
+
+<span class="c1">;; or in multiple states (order of states doesn&#39;t matter)</span>
+<span class="p">(</span><span class="nv">evil-define-key*</span> <span class="o">&#39;</span><span class="p">(</span><span class="nv">normal</span> <span class="nv">visual</span><span class="p">)</span> <span class="nv">emacs-lisp-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">evil-define-key*</span> <span class="ss">&#39;insert</span> <span class="nv">emacs-lisp-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">evil-define-key*</span> <span class="o">&#39;</span><span class="p">(</span><span class="nv">visual</span> <span class="nv">normal</span> <span class="nf">insert</span> <span class="nv">emacs</span><span class="p">)</span> <span class="nv">emacs-lisp-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x z&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="nb">:map</span> <span class="nv">emacs-lisp-mode</span>
+      <span class="nb">:nv</span>   <span class="s">&#34;C-x x&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span>      <span class="c1">; normal+visual</span>
+      <span class="nb">:i</span>    <span class="s">&#34;C-x y&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span> <span class="c1">; insert</span>
+      <span class="nb">:vnie</span> <span class="s">&#34;C-x z&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-another-thing</span><span class="p">)</span> <span class="c1">; visual+normal+insert+emacs</span>
+
+<span class="c1">;; You can nest map! calls:</span>
+<span class="p">(</span><span class="nv">evil-define-key*</span> <span class="o">&#39;</span><span class="p">(</span><span class="nv">normal</span> <span class="nv">visual</span><span class="p">)</span> <span class="nv">emacs-lisp-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">evil-define-key*</span> <span class="ss">&#39;normal</span> <span class="nv">go-lisp-mode-map</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-x x&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">map!</span> <span class="p">(</span><span class="nb">:map</span> <span class="nv">emacs-lisp-mode</span> <span class="nb">:nv</span> <span class="s">&#34;C-x x&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something</span><span class="p">)</span>
+      <span class="p">(</span><span class="nb">:map</span> <span class="nv">go-lisp-mode</span>    <span class="nb">:n</span>  <span class="s">&#34;C-x x&#34;</span> <span class="nf">#&#39;</span><span class="nv">do-something-else</span><span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+所有按键表
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<p>
+<strong>C-Control</strong>, <strong>s-Command</strong>, <strong>S-Shift</strong>, <strong>M-option/alt</strong></p>
+<table>
+<thead>
+<tr>
+<th>prefix</th>
+<th>key</th>
+<th>function</th>
+<th>mode</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>g</code></td>
+<td><strong>字母 g</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>~~</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>z</code></td>
+<td><strong>字母 z</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>-</code></td>
+<td><code>sp-splice-sexp</code></td>
+<td></td>
+<td>取消括号</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>C</code></td>
+<td><strong>Control</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>(</code></td>
+<td><code>sp-backward-slurp-sexp</code></td>
+<td></td>
+<td>左括号左移</td>
+</tr>
+<tr>
+<td></td>
+<td><code>)</code></td>
+<td><code>sp-forward-slurp-sexp</code></td>
+<td></td>
+<td>右括号右移</td>
+</tr>
+<tr>
+<td></td>
+<td><code>+</code></td>
+<td><code>cnfonts-increase-fontsize</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>-</code></td>
+<td><code>cnfonts-decrease-fontsize</code></td>
+<td></td>
+<td>-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>M</code></td>
+<td><strong>Option/Alt</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>u</code></td>
+<td><code>upcase-word</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>l</code></td>
+<td><code>downcase-word</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>c</code></td>
+<td><code>capitalize-word</code></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>s</code></td>
+<td><strong>Command</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>&lt;</code></td>
+<td><code>move-text-up</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>&gt;</code></td>
+<td><code>move-text-down</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>(</code></td>
+<td><code>sp-forward-barf-sexp</code></td>
+<td></td>
+<td>左括号右移</td>
+</tr>
+<tr>
+<td></td>
+<td><code>)</code></td>
+<td><code>sp-backward-barf-sexp</code></td>
+<td></td>
+<td>右括号左移</td>
+</tr>
+<tr>
+<td></td>
+<td><code>q</code></td>
+<td><code>+workspace/kill-session-and-quit</code></td>
+<td></td>
+<td><code>save-buffers-kill-terminal</code></td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>C-s</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>,</code></td>
+<td><code>parrot-rotate-prev-word-at-point</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>.</code></td>
+<td><code>parrot-rotate-next-word-at-point</code></td>
+<td></td>
+<td>-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>C-c</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>d</code></td>
+<td><code>insert-current-date-time</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>t</code></td>
+<td><code>insert-current-time</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>r</code></td>
+<td><code>vr/replace</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>q</code></td>
+<td><code>vr/query-replace</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>u</code></td>
+<td><code>crux-view-url</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>U</code></td>
+<td><code>browse-url-at-point</code></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>C-S</code></td>
+<td><strong>Control + Shift</strong></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>b f</code></td>
+<td><code>osx-lib-reveal-in-finder</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>b O</code></td>
+<td><code>kill-other-buffers</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>c e</code></td>
+<td><code>+eval/buffer-or-region</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>l m</code></td>
+<td><code>lsp-ui-imenu</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>l t</code></td>
+<td><code>treemacs</code></td>
+<td></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td><code>m r</code></td>
+<td><code>intant-rename-tag</code></td>
+<td><strong>web-mode</strong></td>
+<td>同步修改标签名</td>
+</tr>
+<tr>
+<td></td>
+<td><code>w -</code></td>
+<td><code>evil-window-split</code></td>
+<td></td>
+<td>水平分割</td>
+</tr>
+<tr>
+<td></td>
+<td><code>w v</code></td>
+<td><code>evil-window-vsplit</code></td>
+<td></td>
+<td>垂直分割</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+主面板
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-main</span> <span class="p">(</span><span class="nb">:color</span> <span class="nv">blue</span> <span class="nb">:exit</span> <span class="no">t</span> <span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">all hydra apps:
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s"> [_a_]   Tip          [_h_]   Launcher     [_m_]   Multiple Cursors
+</span><span class="s"> [_w_]   Window       [_t_]   Text Zoom    [_o_]   Org Agenda          
+</span><span class="s">&#34;</span>
+  <span class="p">(</span><span class="s">&#34;a&#34;</span> <span class="nv">hydra-tip/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;h&#34;</span> <span class="nv">hydra-launcher/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;m&#34;</span> <span class="nv">hydra-multiple-cursors/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;w&#34;</span> <span class="nv">+hydra/window-nav/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;t&#34;</span> <span class="nv">+hydra/text-zoom/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;o&#34;</span> <span class="nv">hydra-org-agenda-view/body</span><span class="p">)</span>
+  <span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-4">
+<h4 id="headline-14">
+提示面板入口
+</h4>
+<div id="outline-text-headline-14" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="c1">;; 提示面板</span>
+<span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-tip</span> <span class="p">(</span><span class="nb">:color</span> <span class="nv">blue</span> <span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">Tips for modes or kyes.
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s"> [_m_]   M-Cursors   [_e_]   Evil    [_u_]   常用    [_q_] Quit
+</span><span class="s">&#34;</span>
+  <span class="p">(</span><span class="s">&#34;m&#34;</span> <span class="nv">hydra-tip-mcursors/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;u&#34;</span> <span class="nv">hydra-tip-useful/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;e&#34;</span> <span class="nv">hydra-tip-evil/body</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;q&#34;</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-4">
+<h4 id="headline-15">
+常用按键提示面板
+</h4>
+<div id="outline-text-headline-15" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-tip-useful</span> <span class="p">(</span><span class="nb">:color</span> <span class="nv">blue</span> <span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">常用操作提示(C-Control, s-Command, M-option/alt)：
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">  括号操作          文本操作                    搜索/替换
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s"> [C-(] 左括号左移   [s-&lt;] move-text-up      [C-c r] 替换
+</span><span class="s"> [C-)] 右括号右移   [s-&gt;] move-text-down    [C-c q] 搜索替换
+</span><span class="s"> [s-)] 左括号右移   [C-+] 放大字体
+</span><span class="s"> [s-(] 右括号左移   [C--] 缩小字体
+</span><span class="s"> [z--] 取消括号     [M-u] 大写化
+</span><span class="s">                    [M-l] 小写化
+</span><span class="s">                    [M-c] 首字母大写
+</span><span class="s">&#34;</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-4">
+<h4 id="headline-16">
+SPC 开始按键提示面板
+</h4>
+<div id="outline-text-headline-16" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-tip-spc</span> <span class="p">(</span><span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">SPC 按键列表
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">  &lt;a~l&gt;
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">
+</span><span class="s">  [SPC b O] kill-other-buffers
+</span><span class="s">  [SPC l m] lsp-ui-imenu
+</span><span class="s">  [SPC l t] treemacs
+</span><span class="s">&#34;</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-4">
+<h4 id="headline-17">
+Org-mode 按键提示面板
+</h4>
+<div id="outline-text-headline-17" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-tip-org</span> <span class="p">(</span><span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">Org-mode 按键提示
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">  Table 操作        跳转
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">  [M-l] 列右移      [gj] 上一个同级标题
+</span><span class="s">  [M-h] 列左移      [gk] 下一个同级标题
+</span><span class="s">  [M-j] 行下移      [gh] 父级标题
+</span><span class="s">  [M-k] 行上移
+</span><span class="s">&#34;</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
+evil-mode按键提示面板
+</h4>
+<div id="outline-text-headline-18" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-tip-evil</span> <span class="p">(</span><span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">evil 模式下操作命令提示。
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">  符号/字母                     &lt;z&gt;
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">  [+]   数字+1                  [z-] 取消括号 
+</span><span class="s">  [-]   数字-1                  [z.] wrap 标签
+</span><span class="s">  [K]   查文档                  [za] fold 所有 
+</span><span class="s">  [s/S] wrap 字符(选中)         [zo] open 当前
+</span><span class="s">  [s/S] 文件内字符定位          [zj] fold 下一个
+</span><span class="s">  [f/F] 行内字符定位            [zk] fold 上一个
+</span><span class="s">  [t/T] 行内字符定位            [zr] open所有
+</span><span class="s">  [;]   向后重复查找            [zm] close所有
+</span><span class="s">  [,]   向前重复查找            [zt] 当前行定位到顶部
+</span><span class="s">                                [zx] kill 当前buffer
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s">                                &lt;g&gt;
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s"> [_g[_] 函数开头                  [_gd_] 查找定义(definition)       [_g0_] 行首
+</span><span class="s"> [_g]_] 函数结尾                  [_gD_] 查找引用(reference)
+</span><span class="s"> [_gsj_] 按字符往后定位           [_gr_] 执行选中内容
+</span><span class="s"> [_gss_] 按两个字符定位           [_gt_] 切换下一个workspace
+</span><span class="s"> [_gs/_] 按单个字符定位           [_gx_] 交换两个选中区内容
+</span><span class="s"> [_gsk_] 按字符往前定位           [_gf_] 查找光标处名称的文件
+</span><span class="s"> [_gs[[_] 按段首向前定位
+</span><span class="s"> [_gs[]_] 按断尾向前定位
+</span><span class="s"> [_gs]]_] 按段首向后定位
+</span><span class="s"> [_gs][_] 按断尾向后定位
+</span><span class="s">&#34;</span>
+  <span class="p">(</span><span class="s">&#34;g[&#34;</span> <span class="nv">beginning-of-defun</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;g]&#34;</span> <span class="nv">end-of-defun</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;g0&#34;</span> <span class="nv">evil-beginning-of-visual-line</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gd&#34;</span> <span class="nv">xref-find-definitions</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gD&#34;</span> <span class="nv">xref-find-references</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gb&#34;</span> <span class="nv">xref-pop-marker-stack</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gr&#34;</span> <span class="nv">+eval:region</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gjj&#34;</span> <span class="nv">dumb-jump-go</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gjb&#34;</span> <span class="nv">dumb-jump-back</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gt&#34;</span> <span class="nv">+workspace:switch-next</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gx&#34;</span> <span class="nv">evil-exchange</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gf&#34;</span> <span class="nv">+lookup/file</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gss&#34;</span> <span class="nv">evil-avy-goto-char-2</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gs/&#34;</span> <span class="nv">evil-avy-goto-char-timer</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gsj&#34;</span> <span class="nv">evilem-motion-next-line</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gsk&#34;</span> <span class="nv">evilem-motion-previous-line</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gs[[&#34;</span> <span class="nv">evilem-motion-backward-section-begin</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gs[]&#34;</span> <span class="nv">evilem-motion-backward-section-end</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gs][&#34;</span> <span class="nv">evilem-motion-forward-section-end</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;gs]]&#34;</span> <span class="nv">evilem-motion-forward-section-begin</span><span class="p">)</span>
+  <span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-4">
+<h4 id="headline-19">
+multiple cursors(<code>C-S-c</code>, <code>Control-Shift-c</code>)
+</h4>
+<div id="outline-text-headline-19" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>C-&gt;</code></td>
+<td><code>mc/mark-next-like-this</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-&lt;</code></td>
+<td><code>mc/mark-previous-like-this</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-c C-&lt;</code></td>
+<td><code>mc/mark-all-like-this</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-S-c C-S-c</code></td>
+<td><code>mc/edit-lines</code></td>
+<td>S: Shift Key</td>
+</tr>
+<tr>
+<td><code>C-S-c 0</code></td>
+<td><code>mc/insert-numbers</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-S-c 1</code></td>
+<td><code>mc/insert-letters</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-S-c s</code></td>
+<td><code>mc/mark-all-in-region</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-S-c S</code></td>
+<td><code>mc/mark-all-in-region-regexp</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>C-j</code></td>
+<td>-</td>
+<td>insert newline</td>
+</tr>
+</tbody>
+</table>
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-tip-mcursors</span> <span class="p">(</span><span class="nb">:color</span> <span class="nv">blue</span> <span class="nb">:hint</span> <span class="no">nil</span><span class="p">)</span>
+  <span class="s">&#34;
+</span><span class="s">Multiple Cursors Mode Tip(C-Control, S-Shift).
+</span><span class="s">
+</span><span class="s"> [C-S-c 0] insert numbers   [C-&gt;] next 
+</span><span class="s"> [C-S-c 1] insert letters   [C-&gt;] previous
+</span><span class="s"> [C-S-c s] region           [C-c C-&lt;] all
+</span><span class="s"> [C-S-c S] region regexp
+</span><span class="s"> [C-S-c C-S-c] edit lines    
+</span><span class="s">&#34;</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-20" class="outline-4">
+<h4 id="headline-20">
+Launcher 按键面板
+</h4>
+<div id="outline-text-headline-20" class="outline-text-4">
+<div class="src src-emacs-lisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-emacs-lisp" data-lang="emacs-lisp"><span class="p">(</span><span class="nv">defhydra</span> <span class="nv">hydra-launcher</span> <span class="p">(</span><span class="nb">:color</span> <span class="nv">blue</span> <span class="nb">:hint</span> <span class="no">nil</span> <span class="nb">:exit</span> <span class="no">t</span><span class="p">)</span>
+    <span class="s">&#34;
+</span><span class="s">all hydra apps or browse urls:
+</span><span class="s">------------------------------------------------------------------
+</span><span class="s"> [_h_]   Man     [_r_]   Reddit     [_w_]   EmacsWiki   [_z_]   Zhihu
+</span><span class="s"> [_s_]   Shell   [_q_]   Cancel
+</span><span class="s">&#34;</span>
+  <span class="p">(</span><span class="s">&#34;h&#34;</span> <span class="nv">man</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;r&#34;</span> <span class="p">(</span><span class="nv">browse-url</span> <span class="s">&#34;http://www.reddit.com/r/emacs&#34;</span><span class="p">))</span>
+  <span class="p">(</span><span class="s">&#34;w&#34;</span> <span class="p">(</span><span class="nv">browse-url</span> <span class="s">&#34;http://www.emacswiki.org/&#34;</span><span class="p">))</span>
+  <span class="p">(</span><span class="s">&#34;z&#34;</span> <span class="p">(</span><span class="nv">browse-url</span> <span class="s">&#34;https://www.zhihu.com/&#34;</span><span class="p">))</span>
+  <span class="p">(</span><span class="s">&#34;s&#34;</span> <span class="nv">shell</span><span class="p">)</span>
+  <span class="p">(</span><span class="s">&#34;q&#34;</span> <span class="no">nil</span><span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
+crux tool(<code>C-c</code>)
+</h4>
+<div id="outline-text-headline-21" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>C-c o</code></td>
+<td><code>crux-open-with</code></td>
+<td>open with specific application</td>
+</tr>
+<tr>
+<td><code>C-c u</code></td>
+<td><code>crux-view-url</code></td>
+<td>open the url under cursor</td>
+</tr>
+<tr>
+<td><code>C-c D</code></td>
+<td><code>crux-delete-file-and-buffer</code></td>
+<td><code>SPC f D</code> -&gt; <code>doom/delete-this-file</code></td>
+</tr>
+<tr>
+<td><code>C-c S</code></td>
+<td><code>crux-find-shell-init-file</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>中文对齐？？</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-4">
+<h4 id="headline-22">
+window operations
+</h4>
+<div id="outline-text-headline-22" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPC w L</code></td>
+<td><code>+evil/window-move-right</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC w H</code></td>
+<td><code>+evil/window-move-left</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SPC w J</code></td>
+<td><code>+evil/window-move-down</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SPC w K</code></td>
+<td><code>+evil/window-move-up</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-4">
+<h4 id="headline-23">
+smartparen 括号操作
+</h4>
+<div id="outline-text-headline-23" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>z [</code></td>
+<td>sp-wrap-square</td>
+<td>replace with <code>S</code></td>
+</tr>
+<tr>
+<td><code>z (</code></td>
+<td>sp-wrap-round</td>
+<td>replace with <code>S</code></td>
+</tr>
+<tr>
+<td><code>z {</code></td>
+<td>sp-wrap-curly</td>
+<td>replace with <code>S</code></td>
+</tr>
+<tr>
+<td><code>z -</code></td>
+<td>sp-splice-sexp</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>z .</code></td>
+<td>emmet-wrap-with-markup</td>
+<td>-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code class="verbatim">C-(</code></td>
+<td>sp-backward-slurp-sexp</td>
+<td></td>
+</tr>
+<tr>
+<td><code class="verbatim">C-)</code></td>
+<td>sp-forward-slurp-sexp</td>
+<td></td>
+</tr>
+<tr>
+<td><code class="verbatim">s-(</code></td>
+<td>sp-backward-barf-sexp</td>
+<td></td>
+</tr>
+<tr>
+<td><code class="verbatim">s-)</code></td>
+<td>sp-forward-barf-sexp</td>
+<td></td>
+</tr>
+<tr>
+<td><code class="verbatim">C-{</code></td>
+<td>sp-backward-sexp</td>
+<td></td>
+</tr>
+<tr>
+<td><code class="verbatim">C-}</code></td>
+<td>sp-forward-sexp</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-24" class="outline-4">
+<h4 id="headline-24">
++workspace
+</h4>
+<div id="outline-text-headline-24" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPC TAB 0-9</code></td>
+<td>-</td>
+<td>+workspaces switch to(0-9)</td>
+</tr>
+<tr>
+<td><code>SPC TAB .</code></td>
+<td><code>+workspace/switch</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB [</code></td>
+<td><code>+workspace/previous</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB ]</code></td>
+<td><code>+workspace/next</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB `</code></td>
+<td><code>+workspace/last</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB d</code></td>
+<td><code>+workspace/delete</code></td>
+<td>delete this workspace</td>
+</tr>
+<tr>
+<td><code>SPC TAB l</code></td>
+<td><code>+workspace/load</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB n</code></td>
+<td><code>+workspace/new</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB r</code></td>
+<td><code>+workspace/rename</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB s</code></td>
+<td><code>+workspace/save</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB x</code></td>
+<td><code>+workspace/kill-session</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>SPC TAB R</code></td>
+<td><code>+workspace/restore-last</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-25" class="outline-2">
+<h2 id="headline-25">
+Spaceamcs
+</h2>
+<div id="outline-text-headline-25" class="outline-text-2">
+<p>我的 Spacemacs 配置文件，参考配置来源于 <a href="https://github.com/zilongshanren/spacemacs-private">子龙山人</a> 的配置方案(进行了部分删减)，我的完整配置文档链接<a href="https://github.com/gcclll/.emacs.d/tree/space/layers/zcheng">🛬🛬🛬</a>。</p>
+<div id="outline-container-headline-26" class="outline-3">
+<h3 id="headline-26">
+Awesome/有趣/实用
+</h3>
+<div id="outline-text-headline-26" class="outline-text-3">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPC i s</code></td>
+<td>ivy-yas</td>
+<td>插入 snippet 实时显示要插入的内容</td>
+</tr>
+<tr>
+<td><code>C-c i m</code></td>
+<td>helm-imenu</td>
+<td>函数，变量列表</td>
+</tr>
+</tbody>
+</table>
+<p>
+<code>SPC i s</code></p>
+<p>
+  <img src="http://qiniu.ii6g.com/img/20200919230430.png" alt="http://qiniu.ii6g.com/img/20200919230430.png" title="http://qiniu.ii6g.com/img/20200919230430.png" /></p>
+</div>
+</div>
+<div id="outline-container-headline-27" class="outline-3">
+<h3 id="headline-27">
+Key bindings
+</h3>
+<div id="outline-text-headline-27" class="outline-text-3">
+<p>
+  我的自定义按键：</p>
+<table>
+<thead>
+<tr>
+<th>Key Binding</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPC a m n</code></td>
+<td>emms-next</td>
+</tr>
+<tr>
+<td><code>SPC a m p</code></td>
+<td>emms-previous</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC b i</code></td>
+<td>ibuffer</td>
+</tr>
+<tr>
+<td><code>SPC b D</code></td>
+<td>spacemacs/kill-other-buffers</td>
+</tr>
+<tr>
+<td><code>SPC b m s</code></td>
+<td>bookmark-set</td>
+</tr>
+<tr>
+<td><code>SPC b m r</code></td>
+<td>bookmark-rename</td>
+</tr>
+<tr>
+<td><code>SPC b m d</code></td>
+<td>bookmark-delete</td>
+</tr>
+<tr>
+<td><code>SPC b m j</code></td>
+<td>counsel-bookmark</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC d d</code></td>
+<td>dash-at-point</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC e n</code></td>
+<td>flycheck-next-error</td>
+</tr>
+<tr>
+<td><code>SPC e p</code></td>
+<td>flycheck-previous-error</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC f d</code></td>
+<td>projectile-find-file-dwim-other-window</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC g g</code></td>
+<td>magit</td>
+</tr>
+<tr>
+<td><code>SPC g L</code></td>
+<td>magit-log-buffer-file, show git logs</td>
+</tr>
+<tr>
+<td><code>SPC g n</code></td>
+<td>smerge-next</td>
+</tr>
+<tr>
+<td><code>SPC g p</code></td>
+<td>smerge-prev</td>
+</tr>
+<tr>
+<td><code>SPC g M</code></td>
+<td>git-messenger:popup-message, show git log message, with `f&#39; open in browser.</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC h h</code></td>
+<td>zilongshanren/highlight-dwim</td>
+</tr>
+<tr>
+<td><code>SPC h c</code></td>
+<td>zilongshanren/clearn-highlight, TODO</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC o o</code></td>
+<td>zilongshanren/helm-hotspots</td>
+</tr>
+<tr>
+<td><code>SPC o x</code></td>
+<td>org-open-at-point-global, open link</td>
+</tr>
+<tr>
+<td><code>SPC o r</code></td>
+<td>zilongshanren/browser-refresh–chrome-applescript</td>
+</tr>
+<tr>
+<td><code>SPC o s</code></td>
+<td>spacemacs/search-engine-select, open search engine list to search</td>
+</tr>
+<tr>
+<td><code>SPC o g</code></td>
+<td>my-git-timemachine, git record</td>
+</tr>
+<tr>
+<td><code>SPC o !</code></td>
+<td>zilongshanren/iterm-shell-command, go current dir &amp; run command</td>
+</tr>
+<tr>
+<td><code>SPC o e</code></td>
+<td>tiny-expand</td>
+</tr>
+<tr>
+<td><code>SPC o i</code></td>
+<td>org-mode insert command</td>
+</tr>
+<tr>
+<td><code>SPC o i t</code></td>
+<td>org-set-tags-command, –&gt; :done:</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC p b</code></td>
+<td>counsel-projectile-switch-to-buffer</td>
+</tr>
+<tr>
+<td><code>SPC p t</code></td>
+<td>my-simple-todo</td>
+</tr>
+<tr>
+<td><code>SPC p f</code></td>
+<td>zilongshanren/open-file-with-projectile-or-counsel-git</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC r l</code></td>
+<td>ivy-resume, resume last search result</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC s j</code></td>
+<td>counsel-jump-in-buffer</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>SPC y i</code></td>
+<td>yas/insert-snippet</td>
+</tr>
+<tr>
+<td><code>SPC y d</code></td>
+<td>youdao-dictionary-search-at-point+</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>C-c l</code></td>
+<td>zilongshanren/insert-chrome-current-tab-url</td>
+</tr>
+<tr>
+<td><code>C-c t</code></td>
+<td>org-capture</td>
+</tr>
+<tr>
+<td><code>C-c r</code></td>
+<td>vr/replace</td>
+</tr>
+<tr>
+<td><code>C-c q</code></td>
+<td>vr/query-replace</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>M--</code></td>
+<td>zilongshanren/goto-match-paren</td>
+</tr>
+<tr>
+<td><code>M-i</code></td>
+<td>string-inflection-java-style-cycle</td>
+</tr>
+<tr>
+<td><code>M-&#39;</code></td>
+<td>avy-goto-char-2</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>s-p</code></td>
+<td>find-file-in-project</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>, &#39;</code></td>
+<td>ielm, lisp-repl</td>
+</tr>
+<tr>
+<td><code>, g d</code></td>
+<td>xref-find-definition</td>
+</tr>
+<tr>
+<td><code>, g b</code></td>
+<td>xref-pop-marker-stack</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>+</code></td>
+<td>evil-numbers/inc-at-pt，number +1</td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td>evil-numbers/dec-at-pt, number -1</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>g [</code></td>
+<td>beginning-of-defun</td>
+</tr>
+<tr>
+<td><code>g ]</code></td>
+<td>end-of-defun</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td><code>z [</code></td>
+<td>sp-wrap-square</td>
+</tr>
+<tr>
+<td><code>z (</code></td>
+<td>sp-wrap-round</td>
+</tr>
+<tr>
+<td><code>z {</code></td>
+<td>sp-wrap-curly</td>
+</tr>
+<tr>
+<td><code>z -</code></td>
+<td>sp-splice-sexp</td>
+</tr>
+<tr>
+<td><code>z .</code></td>
+<td>emmet-wrap-with-markup</td>
+</tr>
+</tbody>
+</table>
+<div id="outline-container-headline-28" class="outline-4">
+<h4 id="headline-28">
+vue-mode
+</h4>
+<div id="outline-text-headline-28" class="outline-text-4">
+<p><a href="https://github.com/syl20bnr/spacemacs/tree/develop/layers/%2Bframeworks/vue">vue-mode-key-bindings</a></p>
+</div>
+</div>
+<div id="outline-container-headline-29" class="outline-4">
+<h4 id="headline-29">
+smartparens(括号操作)
+</h4>
+<div id="outline-text-headline-29" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="verbatim">C-(</code></td>
+<td>sp-backward-slurp-sexp</td>
+</tr>
+<tr>
+<td><code class="verbatim">s-(</code></td>
+<td>sp-backward-barf-sexp</td>
+</tr>
+<tr>
+<td><code class="verbatim">C-)</code></td>
+<td>sp-forward-slurp-sexp</td>
+</tr>
+<tr>
+<td><code class="verbatim">s-)</code></td>
+<td>sp-forward-barf-sexp</td>
+</tr>
+<tr>
+<td><code class="verbatim">C-{</code></td>
+<td>sp-backward-sexp</td>
+</tr>
+<tr>
+<td><code class="verbatim">C-}</code></td>
+<td>sp-forward-sexp</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-30" class="outline-4">
+<h4 id="headline-30">
+move-text, up/down
+</h4>
+<div id="outline-text-headline-30" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s-&lt;</code></td>
+<td>move-text-up</td>
+</tr>
+<tr>
+<td><code>s-&gt;</code></td>
+<td>move-text-down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-31" class="outline-3">
+<h3 id="headline-31">
+Modes
+</h3>
+<div id="outline-text-headline-31" class="outline-text-3">
+<div id="outline-container-headline-32" class="outline-4">
+<h4 id="headline-32">
+emms, play music
+</h4>
+<div id="outline-text-headline-32" class="outline-text-4">
+<div class="src src-elisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-elisp" data-lang="elisp">  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;ama&#34;</span> <span class="ss">&#39;emms-add-directory-tree</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;ame&#34;</span> <span class="ss">&#39;emms-smart-browse</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;aml&#34;</span> <span class="ss">&#39;emms-play-playlist</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;amn&#34;</span> <span class="ss">&#39;emms-next</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;amp&#34;</span> <span class="ss">&#39;emms-previous</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;amP&#34;</span> <span class="ss">&#39;emms-pause</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;ams&#34;</span> <span class="ss">&#39;emms-start</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;amS&#34;</span> <span class="ss">&#39;emms-stop</span><span class="p">)</span>
+  <span class="p">(</span><span class="nv">spacemacs/set-leader-keys</span> <span class="s">&#34;amt&#34;</span> <span class="ss">&#39;emms-toggle-repeat-playlist</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPC a m a</code></td>
+<td>&#39;emms-add-directory-tree</td>
+</tr>
+<tr>
+<td><code>SPC a m e</code></td>
+<td>&#39;emms-smart-browse</td>
+</tr>
+<tr>
+<td><code>SPC a m l</code></td>
+<td>&#39;emms-play-playlist</td>
+</tr>
+<tr>
+<td><code>SPC a m n</code></td>
+<td>&#39;emms-next</td>
+</tr>
+<tr>
+<td><code>SPC a m p</code></td>
+<td>&#39;emms-previous</td>
+</tr>
+<tr>
+<td><code>SPC a m P</code></td>
+<td>&#39;emms-pause</td>
+</tr>
+<tr>
+<td><code>SPC a m s</code></td>
+<td>&#39;emms-start</td>
+</tr>
+<tr>
+<td><code>SPC a m S</code></td>
+<td>&#39;emms-stop</td>
+</tr>
+<tr>
+<td><code>SPC a m t</code></td>
+<td>&#39;emms-toggle-repeat-playlist</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-33" class="outline-4">
+<h4 id="headline-33">
+<span class="todo">DONE</span>
+ranger
+</h4>
+<div id="outline-text-headline-33" class="outline-text-4">
+<p>CLOSED: [2020-08-27 Thu 21:14]</p>
+<ul>
+<li>
+<p>State &#34;DONE&#34;       from              [2020-08-27 Thu 21:14]</p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPC a r</code></td>
+<td>open ranger</td>
+</tr>
+<tr>
+<td><code>q</code></td>
+<td>quit</td>
+</tr>
+<tr>
+<td><code>j</code></td>
+<td>move down</td>
+</tr>
+<tr>
+<td><code>k</code></td>
+<td>move up</td>
+</tr>
+<tr>
+<td><code>l</code></td>
+<td>into current directory</td>
+</tr>
+<tr>
+<td><code>h</code></td>
+<td>up to parent dir</td>
+</tr>
+</tbody>
+</table>
+<p>
+   file manangement:</p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>r</code></td>
+<td>revert buffer</td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td>rename</td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td>delete</td>
+</tr>
+<tr>
+<td><code>yy</code></td>
+<td>copy</td>
+</tr>
+<tr>
+<td><code>pp</code></td>
+<td>paste</td>
+</tr>
+<tr>
+<td><code>f</code></td>
+<td>search file names</td>
+</tr>
+<tr>
+<td><code>i</code></td>
+<td>toggle showing literal / full-text previews</td>
+</tr>
+<tr>
+<td><code>zh</code></td>
+<td>toggle dot files</td>
+</tr>
+<tr>
+<td><code>o</code></td>
+<td>sort options</td>
+</tr>
+<tr>
+<td><code>H</code></td>
+<td>search through history</td>
+</tr>
+<tr>
+<td><code>z-</code> or <code>z+</code></td>
+<td>reduce/increase parents</td>
+</tr>
+<tr>
+<td><code>C-SPC</code></td>
+<td>mark a file or directory</td>
+</tr>
+<tr>
+<td><code>v</code></td>
+<td>toggle mark</td>
+</tr>
+<tr>
+<td><code>V</code></td>
+<td>visually select lines</td>
+</tr>
+<tr>
+<td><code>;C</code></td>
+<td>copy / move directory</td>
+</tr>
+<tr>
+<td><code>;+</code></td>
+<td>create directory</td>
+</tr>
+<tr>
+<td><code>SPC a d</code></td>
+<td>deer</td>
+</tr>
+<tr>
+<td><code>C-j</code></td>
+<td>scroll preview window down</td>
+</tr>
+<tr>
+<td><code>C-k</code></td>
+<td>scroll preview window up</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>enter shell</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-34" class="outline-4">
+<h4 id="headline-34">
+org-mode
+</h4>
+<div id="outline-text-headline-34" class="outline-text-4">
+<p>
+   ref: <a href="https://practicalli.github.io/spacemacs/org-mode/">https://practicalli.github.io/spacemacs/org-mode/</a></p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>, i p</code></td>
+<td>set property</td>
+</tr>
+</tbody>
+</table>
+<div id="outline-container-headline-35" class="outline-5">
+<h5 id="headline-35">
+text-style
+</h5>
+<div id="outline-text-headline-35" class="outline-text-5">
+<p>
+    <code>code: , x c</code></p>
+<p>
+    <em>italic: , x i</em></p>
+<p>
+    <del>line-throught: , x s</del></p>
+<p>
+    <span style="text-decoration: underline;">underline: , x u</span></p>
+<p>
+    <code class="verbatim">verbatim: , x v</code></p>
+<p>
+    <strong>bold: , x b</strong></p>
+</div>
+</div>
+<div id="outline-container-headline-36" class="outline-5">
+<h5 id="headline-36">
+checkbox
+</h5>
+<div id="outline-text-headline-36" class="outline-text-5">
+<ul>
+<li class="unchecked">
+<p>todo one, <code class="verbatim">C-c C-c</code> change status</p>
+</li>
+<li class="checked">
+<p>todo two, done</p>
+</li>
+<li class="checked">
+<p>todo three</p>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-headline-37" class="outline-5">
+<h5 id="headline-37">
+todos
+</h5>
+<div id="outline-text-headline-37" class="outline-text-5">
+<div id="outline-container-headline-38" class="outline-6">
+<h6 id="headline-38">
+<span class="todo">TODO</span>
+todo one
+</h6>
+<div id="outline-text-headline-38" class="outline-text-6">
+<p>SCHEDULED: <span class="timestamp">&lt;2020-08-27 Thu&gt;</span></p>
+</div>
+</div>
+<div id="outline-container-headline-39" class="outline-6">
+<h6 id="headline-39">
+WAITING todo two waiting
+</h6>
+<div id="outline-text-headline-39" class="outline-text-6">
+<ul>
+<li>
+<p>State &#34;WAITING&#34;    from &#34;TODO&#34;       [2020-08-25 Tue 14:46] <br>
+–</p>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-headline-40" class="outline-6">
+<h6 id="headline-40">
+todo scheduler
+</h6>
+<div id="outline-text-headline-40" class="outline-text-6">
+<p>SCHEDULED: <span class="timestamp">&lt;2020-08-25 Tue&gt;</span></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-41" class="outline-4">
+<h4 id="headline-41">
+<span class="todo">TODO</span>
+tiny, SPC o e
+</h4>
+<div id="outline-text-headline-41" class="outline-text-4">
+<p><a href="https://github.com/abo-abo/tiny">https://github.com/abo-abo/tiny</a></p>
+</div>
+</div>
+<div id="outline-container-headline-42" class="outline-4">
+<h4 id="headline-42">
+<span class="todo">TODO</span>
+multiple-cursors
+</h4>
+</div>
+<div id="outline-container-headline-43" class="outline-4">
+<h4 id="headline-43">
+<span class="todo">TODO</span>
+prodigy
+</h4>
+<div id="outline-text-headline-43" class="outline-text-4">
+<p>blog settings.</p>
+</div>
+</div>
+<div id="outline-container-headline-44" class="outline-4">
+<h4 id="headline-44">
+<span class="todo">TODO</span>
+wrap-region
+</h4>
+<div id="outline-text-headline-44" class="outline-text-4">
+<p>
+   <a href="https://github.com/rejeep/wrap-region.el/blob/master/wrap-region.el">https://github.com/rejeep/wrap-region.el/blob/master/wrap-region.el</a></p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-45" class="outline-3">
+<h3 id="headline-45">
+Misc Settings
+</h3>
+<div id="outline-text-headline-45" class="outline-text-3">
+<p>
+<strong>超过 80 列自动换行</strong> ：</p>
+<div class="src src-elisp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-elisp" data-lang="elisp">  <span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;org-mode-hook</span> <span class="ss">&#39;turn-on-auto-fill</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">setq-default</span> <span class="nv">fill-column</span> <span class="mi">80</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<strong>自动缩进</strong>:</p>
+<p>
+<code>(global-aggressive-indent-mode)</code></p>
+</div>
+</div>
+<div id="outline-container-headline-46" class="outline-3">
+<h3 id="headline-46">
+Issues
+</h3>
+<div id="outline-text-headline-46" class="outline-text-3">
+<div id="outline-container-headline-47" class="outline-4">
+<h4 id="headline-47">
+Points
+</h4>
+<div id="outline-text-headline-47" class="outline-text-4">
+<div id="outline-container-headline-48" class="outline-5">
+<h5 id="headline-48">
+org-mode 简介
+</h5>
+<div id="outline-text-headline-48" class="outline-text-5">
+<ol>
+<li>
+<p>Jump to inner link: <code>&lt;&lt;text&gt;&gt; &lt;- [[test][text]]</code></p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-08-27
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/emacs/">emacs</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/emacs/emacs-org-mode/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">My Emacs Org-Mode Document</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Zhicheng Lee</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.d33b84bebc7c384b56f2733fe2385c9017ee0b83c484f803130e9b7069175e0c.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

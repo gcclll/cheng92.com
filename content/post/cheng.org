@@ -34,7 +34,7 @@ https://github.com/algolia/autocomplete.js
 - [[https://www.tutorialspoint.com/index.htm][tutorialspoint]] 很多需要付费
 
   [[http://qiniu.ii6g.com/img/20200925183016.png]]
-* 娱乐世界(play the world :game_die:)
+* 娱乐世界play the world :game_die:)
 ** 布袋戏
 
 https://www.bilibili.com/video/BV1zK4y1C7vE/
@@ -47,7 +47,7 @@ https://www.bilibili.com/video/BV1zK4y1C7vE/
 - [[https://ef.zhiweidata.com/][知微事见]] - 最全的互联网社会热点聚合平台
 
   [[http://qiniu.ii6g.com/img/20200925181419.png]]
-- 
+  - 
 ** 音乐世界
 1. [[https://www.jamendo.com/][Jamendo]], English Music Free Download
 2. [[https://www.westonemusic.com/][West One Music]]
@@ -159,20 +159,20 @@ xlsx 文件转成 json 数据。
 [[https://github.com/vitejs/vite][vite(vue-cli)]]
 
 #+begin_src shell
-  $ yarn create vite-app <project-name>
-  $ cd <project-name>
-  $ yarn
-  $ yarn dev
+$ yarn create vite-app <project-name>
+$ cd <project-name>
+$ yarn
+$ yarn dev
 #+end_src
 
 或
 
 #+begin_src shell
-  $ npm install -g @vue/cli
-  $ vue create 01-vue3-cli
-  $ cd 01-vue3-cli
-  $ vue add vue-next
-  $ npm run serve
+$ npm install -g @vue/cli
+$ vue create 01-vue3-cli
+$ cd 01-vue3-cli
+$ vue add vue-next
+$ npm run serve
 #+end_src
 ** v3boss(Based on vue3)
 
@@ -191,10 +191,10 @@ xlsx 文件转成 json 数据。
    #+end_example
 
    #+begin_src json
-     alias: {
-       '/@/': path.resolve(__dirname, 'src'),
-       '/@assets/': path.resolve(__dirname, 'src/assets')
-     }
+alias: {
+  '/@/': path.resolve(__dirname, 'src'),
+  '/@assets/': path.resolve(__dirname, 'src/assets')
+}
    #+end_src
 
 ** 工具
@@ -207,26 +207,26 @@ xlsx 文件转成 json 数据。
 
    其中的 "2006" 修改成 "2006-01" 即可。
    #+begin_src html
-     {{- range $index, $element := $paginator.Pages -}}
-     {{- $thisYear := $element.Date.Format "2006-01" }}
-     {{- $lastElement := $index | add -1 | index $paginator.Pages }}
-     {{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
-     <div class="collection-title">
-       <h2 class="archive-year">{{ $thisYear }}</h2>
-     </div>
-     {{- end }}
+{{- range $index, $element := $paginator.Pages -}}
+{{- $thisYear := $element.Date.Format "2006-01" }}
+{{- $lastElement := $index | add -1 | index $paginator.Pages }}
+{{- if or (eq $index 0) ( ne ($lastElement.Date.Format "2006-01") $thisYear ) }}
+<div class="collection-title">
+  <h2 class="archive-year">{{ $thisYear }}</h2>
+</div>
+{{- end }}
 
-     <div class="archive-post">
-       <span class="archive-post-time">
-         {{ $element.Date.Format "01-02" }}
-       </span>
-       <span class="archive-post-title">
-         <a href="{{ $element.RelPermalink }}" class="archive-post-link">
-           {{ .Title }}
-         </a>
-       </span>
-     </div>
-     {{- end -}}
+<div class="archive-post">
+  <span class="archive-post-time">
+    {{ $element.Date.Format "01-02" }}
+  </span>
+  <span class="archive-post-title">
+    <a href="{{ $element.RelPermalink }}" class="archive-post-link">
+      {{ .Title }}
+    </a>
+  </span>
+</div>
+{{- end -}}
    #+end_src
 * api
 
@@ -236,6 +236,71 @@ xlsx 文件转成 json 数据。
 |               |              |                    |
 
 * 软件&命令
+
+** macos 重装系统必备步骤
+1. 安装 CommandLineTools ，[[https://developer.apple.com/download/more/][直接官网下载就行->>]]
+
+    git 代理设置：
+
+    #+begin_example
+    git ----------
+
+    取消
+    git config --global --unset http.https://github.com.proxy
+    git config --global --unset https.https://github.com.proxy
+    git config --global --unset http.proxy
+    git config --global --unset https.proxy
+    设置
+    git config --global http.https://github.com.proxysocks5://127.0.0.1:7891
+    git config --global https.https://github.com.proxysocks5://127.0.0.1:7891
+    git config --global http.https://github.com.proxyhttps://127.0.0.1:7890
+    git config --global https.https://github.com.proxyhttps://127.0.0.1:7890
+
+    git config --global http.proxy socks5://127.0.0.1:7891
+    git config --global https.proxy socks5://127.0.0.1:7891
+    #+end_example
+2. 下载 ssh 配置： ~git clone git@code.aliyun.com:wyu/dotdat.git~
+
+   解决权限问题： ~chmod 400 ~/.ssh/id_rsa_ali~
+3. 下载文档: ~git clone git@code.aliyun.com:wyu/documents.git~
+4. 下载安装 [[https://www.macports.org/][MacPorts]], [[https://nodejs.org/en/download/][Node.js]] , [[https://github.com/Homebrew/brew][HomeBrew]]
+
+   解决安装冲突问题： ~sudo killall -1 installd~
+   解决 npm 安装权限问题： ~sudo chown -R $USER /usr/local/lib/node_modules~
+
+   npm 代理设置和取消：
+
+   #+begin_src shell
+    npm config set proxy=http://127.0.0.1:8087
+    npm config set registry=http://registry.npmjs.org
+
+    npm config delete proxy
+    npm config delete https-proxy
+   #+end_src
+5. 下载 MacOS 工具： iTerm, oh-my-zsh
+6. 安装其他 shell 命令工具： *fasd, autojump, n, ag, rg*
+
+   均可以通过 *brew/port* 安装
+
+   ~brew install fasd/...~
+   ~sudo port install fasd/...~
+7. 安装 [[https://emba.gnu.org/emacs/emacs/tree/emacs-27][Emacs]]
+
+    ~sudo port install emacs-app~
+    ~sudo port install emacs~
+8. 安装 [[https://github.com/Molunerfinn/picgo/releases][PicGo]] 截图，图床工具: ~brew cask install picgo~
+
+   配置文件 ~~/Library/Application\ Support/picgo/data.json~
+
+   [[http://qiniu.ii6g.com/img/20201031145254.png]]
+
+    七牛秘钥：https://portal.qiniu.com/user/key
+9. hugo
+
+   ~brew install hugo~
+
+   rust: ~curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh~
+10. 安装 alfred 及其 workflows
 ** 字体
 
 #+BEGIN_SRC
@@ -271,13 +336,60 @@ $ brew cask install font-fira-code
    
    增加和删除都是针对增加的 abbrev 文件操作。
 
-   1) 先复制内容到剪贴板
+   1 先复制内容到剪贴板
 
    2) ts add [shortcut name] 增加
 
    3) ts del [shortcut name] 删除
 
    4) ts [shortcut name] 取出对应的内容，复制到当前活跃应用
+
+
+| command                        | function                                        |
+|--------------------------------+-------------------------------------------------|
+| web 查询                       |                                                 |
+|                                | bd, 百度                                        |
+|                                | w3, w3c                                         |
+|                                | mdn                                             |
+|--------------------------------+-------------------------------------------------|
+| open                           | 搜索打开                                        |
+| find                           | 查找文件                                        |
+| in                             | 内容搜索                                        |
+| tags                           | 查找被标记颜色的文件夹                          |
+| j                              | autojump                                        |
+| user                           | can i use                                       |
+| cov                            | 进制转换                                        |
+| rjs                            | react docs                                      |
+| json                           | json 格式化                                     |
+| twd                            | tailwind css docs                               |
+| v                              | vuejs docs, ⌘Y 快速预览                         |
+| v routing                      | vuejs router docs                               |
+| [[https://www.packal.org/workflow/adb][adb]]                            | TODO                                            |
+| lc                             | leetcode 搜索 (-e, -m, -h, 容易，中等，高难)    |
+| lct                            | leetcode 话题搜索                               |
+| gh                             | github search                                   |
+| b64                            | 图片转base64                                    |
+| fa                             | 搜索 fontasesome 的 icons                       |
+| gicon                          | google icons 上搜索                             |
+| qr                             | 将文本生成二维码(奇慢无比)                      |
+| giphy                          | 搜索动态图片 gif                                |
+| ip                             | 查电脑内外网ip                                  |
+| gt                             | google 翻译                                     |
+| emoj                           | 表情搜索                                        |
+| emoji                          | 表情搜索                                        |
+| ascii/rascii                   | ASCII编码互转                                   |
+| http                           | http 状态码                                     |
+| yd                             | 有道翻译，支持双语互转,yd zh=>ja 我爱你，中转日 |
+|                                | zh, ja, en, ko, fr,                             |
+|                                | ru(俄文), pt(葡萄牙文), es(西班牙文), auto      |
+| kill                           | 杀进程                                          |
+| audiorec, screenrec, webcamred | 音频/屏幕/视频录制(自带的QuickPlayer)           |
+| vd                             | 视频下载(youtube, vimeo,dailymotion,...)        |
+| vd-update                      | 更新自身                                        |
+| vd video-url                   | 下载到桌面                                      |
+| vd-audio video-url             | 下载同时自动分离出音频文件                      |
+| vd-info video-url              | 查看视频信息                                    |
+|                                |                                                 |
 ** qshell 批量下载七牛
 https://github.com/qiniu/qshell
 
