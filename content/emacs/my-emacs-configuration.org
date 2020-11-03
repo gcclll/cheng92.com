@@ -1,9 +1,9 @@
-#+TITLE: My Emacs(Spacemacs) Configuration
+#+TITLE: My Emacs Configuration
 #+DATE: <2020-08-27 14:20:16>
 #+TAGS[]: emacs
 #+CATEGORIES[]: emacs
 #+LANGUAGE: zh-cn
-#+STARTUP: indent
+#+STARTUP: indent shrink
 
 
 #+BEGIN_QUOTE
@@ -37,33 +37,49 @@
 ** packages
 *** web-mode
 
-| key         | functions                                  | desc                                                             |
-|-------------+--------------------------------------------+------------------------------------------------------------------|
-| ~[t~        | ~web-mode-tag-previous~                    | 上一个标签(包含开闭标签)                                         |
-| ~]t~        | ~web-mode-tag-next~                        | 下一个标签(包含开闭标签)                                         |
-|             |                                            |                                                                  |
-|-------------+--------------------------------------------+------------------------------------------------------------------|
-| *z*         |                                            |                                                                  |
-| ~z.~        | ~emmet-wrap-with-markup~                   |                                                                  |
-|-------------+--------------------------------------------+------------------------------------------------------------------|
-| *C-c C-e*   |                                            |                                                                  |
-| ~C-c C-e a~ | ~web-mode-element-content-select~          | 选择标签内容                                                     |
-| ~C-c C-e b~ | ~web-mode-element-beginning~               | -                                                                |
-| ~C-c C-e e~ | ~web-mode-element-end~                     | -                                                                |
-| ~C-c C-e f~ | ~web-mode-element-children-fold-or-unfold~ | fold/unfold children element                                     |
-| ~C-c C-e i~ | ~web-mode-element-insert~                  | 插入标签根据输入标签名                                           |
-| ~C-c C-e I~ | ~web-mode-element-insert-at-point~         | 根据光标处的名字插入标签                                         |
-| ~C-c C-e k~ | ~web-mode-element-kill~                    | 删除当前标签                                                     |
-| ~C-c C-e m~ | ~web-mode-element-mute-blanks~             | ?                                                                |
-| ~C-c C-e n~ | ~web-mode-element-next~                    |                                                                  |
-| ~C-c C-e p~ | ~web-mode-element-previous~                | -                                                                |
-| ~C-c C-e r~ | ~web-mode-element-rename~                  |                                                                  |
-| ~C-c C-e s~ | ~web-mode-element-select~                  | 选中标签及其内容                                                 |
-| ~C-c C-e t~ | ~web-mode-element-transpose~               | 将当前标签移到下一个标签后面                                     |
-| ~C-c C-e u~ | ~web-mode-element-parent~                  | -                                                                |
-| ~C-c C-e v~ | ~web-mode-element-vanish~                  | 删除标签只保留标签内容，如： ~<div>{{xx}}</div>~ 变成： ~{{xx}}~ |
-| ~C-c C-e w~ | ~web-mode-element-wrap~                    | wrap with tag                                                    |
-|             |                                            |                                                                  |
+|    key    | functions                                  | desc                                                             |
+|    <c>    |                                            |                                                                  |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+|   ~[t~    | ~web-mode-tag-previous~                    | 上一个标签(包含开闭标签)                                         |
+|   ~]t~    | ~web-mode-tag-next~                        | 下一个标签(包含开闭标签)                                         |
+|           |                                            |                                                                  |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+|    *z*    |                                            |                                                                  |
+|   ~z.~    | ~emmet-wrap-with-markup~                   |                                                                  |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+| *C-c C-e* | element操作                                |                                                                  |
+|    ~a~    | ~web-mode-element-content-select~          | 选择标签内容                                                     |
+|    ~b~    | ~web-mode-element-beginning~               | -                                                                |
+|    ~e~    | ~web-mode-element-end~                     | -                                                                |
+|    ~f~    | ~web-mode-element-children-fold-or-unfold~ | fold/unfold children element                                     |
+|    ~i~    | ~web-mode-element-insert~                  | 插入标签根据输入标签名                                           |
+|    ~I~    | ~web-mode-element-insert-at-point~         | 根据光标处的名字插入标签                                         |
+|    ~k~    | ~web-mode-element-kill~                    | 删除当前标签                                                     |
+|    ~m~    | ~web-mode-element-mute-blanks~             | ?                                                                |
+|    ~n~    | ~web-mode-element-next~                    |                                                                  |
+|    ~p~    | ~web-mode-element-previous~                | -                                                                |
+|    ~r~    | ~web-mode-element-rename~                  |                                                                  |
+|    ~s~    | ~web-mode-element-select~                  | 选中标签及其内容                                                 |
+|    ~t~    | ~web-mode-element-transpose~               | 将当前标签移到下一个标签后面                                     |
+|    ~u~    | ~web-mode-element-parent~                  | -                                                                |
+|    ~v~    | ~web-mode-element-vanish~                  | 删除标签只保留标签内容，如： ~<div>{{xx}}</div>~ 变成： ~{{xx}}~ |
+|    ~w~    | ~web-mode-element-wrap~                    | wrap with tag                                                    |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+| *C-c C-b* | block 操作                                 |                                                                  |
+|    ~n~    | ~web-mode-block-next~                      | 下一个block                                                      |
+|    ~p~    | ~web-mode-block-previous~                  | 上一个 block                                                     |
+|    ~s~    | ~web-mode-block-select~                    | 选中当前block                                                    |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+| *C-c C-a* | attribute 操作                             |                                                                  |
+|    ~b~    | ~web-mode-attribute-beginning~             | 定位到属性开始                                                   |
+|    ~e~    | ~web-mode-attribute-end~                   | 定位到属性结尾                                                   |
+|    ~i~    | ~web-mode-attribute-insert~                | 插入属性                                                         |
+|    ~k~    | ~web-mode-attribute-kill~                  | 删除属性                                                         |
+|    ~n~    | ~web-mode-attribute-next~                  |                                                                  |
+|    ~p~    | ~web-mode-attribute-previous~              |                                                                  |
+|    ~s~    | ~web-mode-attribute-select~                |                                                                  |
+|    ~t~    | ~web-mode-attribute-transpose~             |                                                                  |
+
 
 *** lsp-mode
 *** leetcode
