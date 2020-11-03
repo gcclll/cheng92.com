@@ -20,6 +20,8 @@
 https://github.com/algolia/autocomplete.js
 * 编程语言
 ** go
+
+~go get golang.org/x/tools/gopls@latest~
 * 猿世界
 - [[https://www.w3schools.com/][w3schools]] 初学 
 - GeeksforGeeks，全英文不止有算法
@@ -301,6 +303,32 @@ alias: {
 
    rust: ~curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh~
 10. 安装 alfred 及其 workflows
+11. lsp languages
+
+    https://emacs-lsp.github.io/lsp-mode/page/lsp-eslint/
+
+    #+begin_src shell
+    # js/ts, vue, css/less/scss/...
+    $ npm i -g javascript-typescript-langserver \
+        vls \
+        vscode-css-languageserver-bin \
+        bash-language-server \
+        vscode-html-languageserver-bin \
+        typescript \
+        vscode-json-languageserver \
+        yaml-language-server &&  \
+        pip install 'python-language-server[all]' \
+        brew install ccls \
+        go get golang.org/x/tools/gopls@latest
+    #+end_src
+
+    gopls: ~~
+12. ssh/sftp 工具： ~npm i -g electerm~
+
+    https://electerm.github.io/electerm/
+13. rsync: ~brew install rsync~
+
+    download linux kernel src: ~git clone git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git~
 ** 字体
 
 #+BEGIN_SRC

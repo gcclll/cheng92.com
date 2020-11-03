@@ -35,6 +35,37 @@
 | ~SPC c e~ | -               | ~M-x +eval/buffer-or-region~ |
 
 ** packages
+*** web-mode
+
+| key         | functions                                  | desc                                                             |
+|-------------+--------------------------------------------+------------------------------------------------------------------|
+| ~[t~        | ~web-mode-tag-previous~                    | 上一个标签(包含开闭标签)                                         |
+| ~]t~        | ~web-mode-tag-next~                        | 下一个标签(包含开闭标签)                                         |
+|             |                                            |                                                                  |
+|-------------+--------------------------------------------+------------------------------------------------------------------|
+| *z*         |                                            |                                                                  |
+| ~z.~        | ~emmet-wrap-with-markup~                   |                                                                  |
+|-------------+--------------------------------------------+------------------------------------------------------------------|
+| *C-c C-e*   |                                            |                                                                  |
+| ~C-c C-e a~ | ~web-mode-element-content-select~          | 选择标签内容                                                     |
+| ~C-c C-e b~ | ~web-mode-element-beginning~               | -                                                                |
+| ~C-c C-e e~ | ~web-mode-element-end~                     | -                                                                |
+| ~C-c C-e f~ | ~web-mode-element-children-fold-or-unfold~ | fold/unfold children element                                     |
+| ~C-c C-e i~ | ~web-mode-element-insert~                  | 插入标签根据输入标签名                                           |
+| ~C-c C-e I~ | ~web-mode-element-insert-at-point~         | 根据光标处的名字插入标签                                         |
+| ~C-c C-e k~ | ~web-mode-element-kill~                    | 删除当前标签                                                     |
+| ~C-c C-e m~ | ~web-mode-element-mute-blanks~             | ?                                                                |
+| ~C-c C-e n~ | ~web-mode-element-next~                    |                                                                  |
+| ~C-c C-e p~ | ~web-mode-element-previous~                | -                                                                |
+| ~C-c C-e r~ | ~web-mode-element-rename~                  |                                                                  |
+| ~C-c C-e s~ | ~web-mode-element-select~                  | 选中标签及其内容                                                 |
+| ~C-c C-e t~ | ~web-mode-element-transpose~               | 将当前标签移到下一个标签后面                                     |
+| ~C-c C-e u~ | ~web-mode-element-parent~                  | -                                                                |
+| ~C-c C-e v~ | ~web-mode-element-vanish~                  | 删除标签只保留标签内容，如： ~<div>{{xx}}</div>~ 变成： ~{{xx}}~ |
+| ~C-c C-e w~ | ~web-mode-element-wrap~                    | wrap with tag                                                    |
+|             |                                            |                                                                  |
+
+*** lsp-mode
 *** leetcode
 
 https://github.com/kaiwk/leetcode.el
