@@ -1,0 +1,9 @@
+#+TITLE: Algorithm On Leetcode - Easy Level
+#+DATE: <2020-11-04 Wed>
+#+TAGS[]: algorithm, leetcode, programming, javascript
+#+CATEGORIES[]: algorithm, array
+#+LANGUAGE: zh-cn
+#+OPTIONS: ^:{} _:{}
+#+STARTUP: indent
+
+* 0001_two-sum

@@ -775,6 +775,8 @@ vnode 版 v1:
 脑图：
 
 [[/img/vue3/compiler-core/key/key-07-diff-block-vnode.svg]]
+
+
 ** TODO 8. transform 阶段如何做静态提升？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

@@ -144,6 +144,52 @@ _p_ : Previous
 *** leetcode
 
 https://github.com/kaiwk/leetcode.el
+
+
+#+begin_src emacs-lisp
+(:prefix ("l" . "Leetcode")
+        "l" #'leetcode
+        "s" #'leetcode-submit
+        "t" #'leetcode-try
+        "r" #'leetcode-refresh
+        "R" #'leetcode-refresh-fetch
+        "f" #'leetcode-set-filter-difficulty
+        "." #'leetcode-reset-filter
+        )
+#+end_src
+
+keybinds:
+| key         | function                         |
+|-------------+----------------------------------|
+| ~SPC a l l~ | ~leetcode~                       |
+| ~SPC a l s~ | ~leetcode-submit~                |
+| ~SPC a l t~ | ~leetcode-try~                   |
+| ~SPC a l T~ | ~leetcode-set-filter-tags~       |
+| ~SPC a l r~ | ~leetcode-refresh~               |
+| ~SPC a l R~ | ~leetcode-refresh-fetch~         |
+| ~SPC a l f~ | ~leetcode-set-filter-difficulty~ |
+| ~SPC a l .~ | ~leetcode-reset-filter~          |
+| ~SPC a l x~ | ~leetcode-set-filter-regex~      |
+| ~SPC a l p~ | ~leetcode-show-current-problem~  |
+
+hydra/body:
+#+begin_src emacs-lisp
+(defhydra hydra-leetcode (:columns 3)
+  "
+^^^^Leetcode^^^^
+----------------------------------------------------------------------
+"
+  ("s" leetcode-submit "sumbit")
+  ("t" leetcode-try "try")
+  ("r" leetcode-refresh "refresh")
+  ("R" leetcode-refresh-fetch "refresh fetch")
+  ("s" leetcode-show-current-problem "show current problem")
+  ("f" leetcode-set-filter-difficulty "filter by difficulty")
+  ("g" leetcode-set-filter-tag "filter by tag")
+  ("e" leetcode-set-filter-regex "filter by regexp")
+  ("0" leetcode-reset-filter "reset filter")
+  )
+#+end_src
 *** go-mode
 
 install: https://www.mdeditor.tw/pl/2KAi
