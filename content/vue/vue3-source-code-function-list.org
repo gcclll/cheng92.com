@@ -1,0 +1,2204 @@
+#+TITLE: Vue3 所有函数源码即简要说明
+#+DATE: <2020-11-04 16:50:00>
+#+TAGS[]: vue, vue3, vuenext, compiler
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* compiler-core
+** compile.ts
+*** baseCompile
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-basecompile
+:END:
+
+~baseCompile(template, options)~
+
+将 template 解析成 render 函数，重点步骤:
+
+1. [[vue/vue3-source-code-compiler-core-parse_ts/][baseParse(template, options)]] 将字符串模板解析成 AST 对象。
+2. [[#transform-transform][transform(ast, ...)]] 将 AST 进一步转换处理
+3. 将转换后的 ast 调用 codegen 的 generate 方法生成 render 。
+
+#+begin_src js
+  export function baseCompile(template, options) {
+    const isModuleMode = options.mode === "module";
+
+    // ... 略去错误❎处理
+    const prefixIdentifiers =
+          !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode);
+
+    // 1. baseParse 得到 AST 对象，两种情况：1. 未解析的模板，2. 以解析之后的 ast 对象
+    const ast =
+          typeof template === "string" ? baseParse(template, options) : template;
+
+    // 2. 取出所有 node 和 directive 的 transforms
+    const [nodeTransforms, directiveTransforms] = getBaseTransformPreset(
+      prefixIdentifiers
+    );
+
+    // 3. 进行转换，调用 transform
+    transform(ast, {
+      // 合并选项
+      ...options, // 调用 baseCompile 时候的第二个参数
+      prefixIdentifiers, // 还不知道是干啥的???
+      // 节点转换器合并，外部转换器优先，即使用者可自定义自己的转换器
+      nodeTransforms: [...nodeTransforms, ...(options.nodeTransforms || {})],
+      // 指令转换器，同上。
+      directiveTransforms: [
+        ...directiveTransforms,
+        ...(options.directiveTransforms || {}),
+      ],
+    });
+
+    // 4. 调用 generate 生成 render 函数的 codegen 并返回，这就是我们需要的组件渲
+    // 染函数
+    return generate(ast, {
+      ...options,
+      prefixIdentifiers,
+    });
+  }
+#+end_src
+
+这也是除了错误处理之后的完整的 baseCompile 函数实现。
+*** getBaseTransformPreset
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-getbasetransformpreset
+:END:
+
+~getBaseTransformPreset(prefixIdentifiers: boolean)~
+
+合并所有 transform，返回一个 ~TransformPreset~ 类型的数组
+
+**** stage-2:
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-getbasetransformpreset-stage-2
+:END:
+
+增加 transformBind 指令处理，处理 ~:class = "bar.baz"~ 的时候需要用到
+#+begin_src js
+
+  export function getBaseTransformPreset(prefixIdentifiers) {
+    return [
+      [
+        // ... 省略其他，第一阶段我们应该只需要文本转换
+        transformText,
+        ...(!__BROWSER__ && prefixIdentifiers ? [transformExpression] : []),
+        transformElement,
+      ],
+      {
+        // ...省略指令
+        bind: transformBind,
+      },
+    ];
+  }
+#+end_src
+**** stage-1: [[#test-cc-01][01-simple text]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: compile-getbasetransformpreset-stage-1
+:END:
+
+第一阶段我们只需要文本转换，通过 [[#test-cc-01][用例一]] 即可，所以这里就只保留
+[[transform-transformtext][transformText]] 就可以了，剩下的就是去实现它。
+
+#+begin_src js
+  export function getBaseTransformPreset(prefixIdentifiers) {
+    return [
+      [
+        // ... 省略其他，第一阶段我们应该只需要文本转换
+        transformText,
+      ],
+      {
+        // ...省略指令
+      },
+    ];
+  }
+#+end_src
+
+** tranform.ts
+*** transformExpression
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformexpression
+:END:
+
+~transformExpression(node, context)~
+*** transformText
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformtext
+:END:
+
+
+~transformText(node, context)~
+
+该函数会返回一个用来转换文本节点类型(~NodeTransform~)的函数。
+
+返回函数分析(~return () => { ... }~)，主要由三个 for 构成：
+
+1. 第一个 for 嵌套第二个 for 构成双重循环，用来合并 node.children 里面相邻的文本
+   节点
+
+   第一个 For 里面使用的是 children.length 动态获取当前数组的长度，结合代码中的
+   splice 和 j--。从而完成合并操作。
+
+   #+begin_src js
+     // 1. 原来的 child 被重写
+     // 2. child, ` + `, next 合并到了新 child.children 里面
+     currentContainer.children.push(` + `, next);
+     // 删除被合并的文本节点
+     children.splice(j, 1);
+     j--; // -1 是因为上面删除了当前元素，for 循环过程中长度是动态获取的
+   #+end_src
+
+2. 第三个 for 遍历第一步之后的 children，对每个 child 进行重定义，类型改变成
+   ~NodeTyeps.TEXT_CALL~ 类型，增加 codegenNode 属性。
+
+
+代码完整版：
+#+begin_src js
+
+  export const transformText = (node, context) => {
+    // 文本转换只能是下面四种类型
+    const validTypes = [
+      NodeTypes.ROOT,
+      NodeTypes.ELEMENT,
+      NodeTypes.FOR,
+      NodeTypes.IF_BRANCH,
+    ];
+
+    // 合法类型检测
+    if (validTypes.indexOf(node.type)) {
+      // 返回一个可执行函数，记得在 transformNode 吗，这个返回的函数
+      // 将会被它在 while 中 执行 掉。
+      return () => {
+        const children = node.children;
+
+        let currentContainer = undefined;
+        let hasText = false;
+
+        // 双重循环，合并所有相邻的文本节点
+        // 如：[text1, text2, element, text3, ele, text4, text5]
+        // text1 和 text2 会合并到text1
+        // text3 不会合并
+        // text4 和 text5 会被合并
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+
+          if (isText(child)) {
+            // TODO 文本节点才进行解析
+            hasText = true;
+            // 合并相邻的文本节点， text1 + text2
+            for (let j = i + 1; j < children.length; j++) {
+              const next = children[j];
+              // 下一个也是文本节点的时候，要将两者合并
+              if (isText(next)) {
+                if (!currentContainer) {
+                  // 这里等于重写了 child 的引用，将自身 push 到了
+                  // 新结构中的 children
+                  currentContainer = children[i] = {
+                    type: NodeTypes.COMPOUND_EXPRESSION,
+                    loc: child.loc,
+                    children: [child],
+                  };
+                }
+
+                // 1. 原来的 child 被重写
+                // 2. child, ` + `, next 合并到了新 child.children 里面
+                currentContainer.children.push(` + `, next);
+                // 删除被合并的文本节点
+                children.splice(j, 1);
+                j--; // -1 是因为上面删除了当前元素，for 循环过程中长度是动态获取的
+              } else {
+                currentContainer = undefined;
+                break;
+              }
+            }
+          }
+        }
+
+        // 集中不满足转换条件的情况
+        if (
+          // 1. 没有文本内容
+          // 2. 只有一个孩子节点
+          //   2.1 组件根节点
+          //   2.2 <element> 元素节点
+          !hasText ||
+            (children.length === 1 &&
+             (node.type === NodeTypes.ROOT ||
+              (node.type === NodeTypes.ELEMENT &&
+               node.tagType === ElementTypes.ELEMENT)))
+        ) {
+          return;
+        }
+
+        // 开始转换
+        for (let i = 0; i < children.length; i++) {
+          const chld = children[i];
+          if (isText(child) || child.type === NodeTypes.COMPOUND_EXPRESSION) {
+            const callArgs = [];
+
+            // 非文本节点，直接 push 掉，这里 child.content !== ' ' 的原因在于
+            // parseChildren 里面 while 循环最后有个remove whitespace 操作
+            // 会将有效的空节点转成一个空格的字符串。
+            // createTextVNode 默认是一个单空格
+            if (child.type !== NodeTypes.TEXT || child.content !== " ") {
+              callArgs.push(child);
+            }
+
+            // 非服务端渲染，且非文本节点
+            if (!context.ssr && child.type !== NodeTypes.TEXT) {
+              callArgs.push(
+                // TODO 这个是干嘛的？？？
+                `${PatchFlags.TEXT} /* ${PatchFlagNames[PatchFlags.TEXT]} */`
+              );
+            }
+
+            children[i] = {
+              type: NodeTypes.TEXT_CALL, // 文本函数
+              content: child,
+              loc: child.loc,
+              codegenNode: createCallExpression(
+                context.helper(CREATE_TEXT),
+                callArgs
+              ),
+            };
+          }
+        }
+      };
+    }
+  }
+#+end_src
+
+使用到的外面函数和属性：
+
+1. CREATE_TEXT： 一个符号属性 ~export const CREATE_TEXT = Symbol(__DEV__ ? `createTextVNode` : ``);~
+2. [[#ast-createcallexpression][createCallExpression(callee, args, loc)]] 返回 JS_CALL_EXPRESSION 类型对象。
+3. PatchFlags 和 PatchFlagNames 一个名字映射
+4. isText 文本节点类型(插值和 text)
+
+   #+begin_src js
+     export function isText(node) {
+       // 插值或 text 均视为文本
+       return node.type === NodeTypes.INTERPOLATION || node.type === NodeTypes.TEXT;
+     }
+   #+end_src
+
+
+*对应的虚拟节点创建函数： createTextVNode*
+*** transform
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transform
+:END:
+
+~transform(root, options)~
+
+调用的函数：
+1. [[#transform-createtransformcontext][createTransformContext(root, options)]] 创建 transform 转换器类型的上下文对象
+2. [[#transform-traversenode][traverseNode(root, context)]] 遍历所有节点
+3. ssr 服务端渲染处理
+4. 初始化 root 根节点上的一些属性
+
+#+begin_src js
+
+  export function transform(root, options) {
+    const context = createTransformContext(root, options);
+
+    traverseNode(root, context);
+
+    if (options.hoistStatic) {
+      hoistStatic(root, context);
+    }
+
+    // ... ssr 处理
+
+    // root 属性合并，初始化
+    root.helpers = [...context.helpers];
+    root.components = [...context.components];
+    root.directives = [...context.directives];
+    root.imports = [...context.imports];
+    root.hoists = context.hoists;
+    root.temps = context.temps;
+    root.cached = context.cached;
+  }
+#+end_src
+*** transformElement
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformelement
+:END:
+
+~transformElement(node, context)~
+
+**** stage-2
+**** stage-1 [[#test-cc-03][03-inerpolation in pure div]]
+
+#+begin_src js
+
+  export const transformElement = (node, context) => {
+    if (
+      !(
+        // 首先必须是 ELEMENT 类型
+        (
+          node.type === NodeTypes.ELEMENT &&
+            // 然后是标签类型为 element 或者是 component 组件
+          (node.tagType === ElementTypes.ELEMENT ||
+           node.tagType === ElementTypes.COMPONENT)
+        )
+      )
+    ) {
+      return;
+    }
+
+    return function postTransformElement() {
+      const { tag, props } = node;
+      const isComponent = node.tagType === ElementTypes.COMPONENT;
+
+      // 虚拟节点的 tag 类型，test-03 直接返回 `div`
+      const vnodeTag = isComponent
+            ? resolveComponentType(node, context)
+            : `"${tag}"`;
+
+      // 是不是动态组件
+      const isDynamicComponent =
+            typeof vnodeTag === "object" &&
+            vnodeTag.callee === RESOLVE_DYNAMIC_COMPONENT;
+
+      // TODO ... 声明一些变量
+      let vnodeProps;
+      let vnodeChildren;
+      let vnodePatchFlag;
+      let patchFlag = 0;
+      let vnodeDynamicProps;
+      let dynamicPropNames;
+      let vnodeDirectives;
+
+      // TODO shouldUseBlock
+      let shouldUseBlock = false;
+
+      if (props.length > 0) {
+        // TODO
+      }
+
+      if (node.children.length > 0) {
+        if (vnodeTag === KEEP_ALIVE) {
+          // TODO KeepAlive
+        }
+
+        const shouldBuildAsSlots =
+              isComponent &&
+              // Teleport 并非真实的组件，且专用于运行时处理
+              vnodeTag !== TELEPORT &&
+              vnodeTag !== KEEP_ALIVE;
+
+        // 这段 if...else if ...else 目的是得到 vnodeChildren
+        if (shouldBuildAsSlots) {
+          // TODO
+        } else if (node.children.length === 1 && vnodeTag !== TELEPORT) {
+          const child = node.children[0];
+          const type = child.type;
+
+          // 动态文本孩子节点检测
+          const hasDynamicTextChild =
+                type === NodeTypes.INTERPOLATION ||
+                type === NodeTypes.COMPOUND_EXPRESSION;
+
+          if (hasDynamicTextChild && !getStaticType(child)) {
+            patchFlag |= PatchFlags.TEXT;
+          }
+
+          if (hasDynamicTextChild || type === NodeTypes.TEXT) {
+            vnodeChildren = child;
+          } else {
+            vnodeChildren = node.children;
+          }
+        } else {
+          vnodeChildren = node.children;
+        }
+      }
+
+      // TODO patchFlag & dynamicPropNames
+
+      node.codegenNode = createVNodeCall(
+        context,
+        vnodeTag,
+        vnodeProps,
+        vnodeChildren,
+        vnodePatchFlag,
+        vnodeDynamicProps,
+        vnodeDirectives,
+        !!shouldUseBlock,
+        false /* isForBlack */,
+        node.loc
+      );
+    };
+  }
+#+end_src
+
+进入 [[/vue/vue3-source-code-compiler-core-ast_ts/#ast-createvnodecall][createVNodeCall]] 时的参数值：
+
+[[http://qiniu.ii6g.com/img/20200911152142.png]]
+
+这里会将一些需要用到的函数添加到 ~context.helpers:Set~ 中等待解构：
+
+该用例中会有 ~CREATE_VNODE~ 被解构出来。
+
+*** transformBind
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformbind
+:END:
+
+~transformBind(prop, node, context)~
+
+指令也属于属性一种，所以它的处理源头是在 [[#transform-transformelement][transformElement]] 里面。
+
+这里只不过是提供了 v-bind 处理方式。
+
+#+begin_src js
+  export const transformBind = (dir, node, context) => {
+    const { exp, modifiers, loc } = dir;
+
+    const arg = dir.arg;
+
+    // TODO 错误处理
+
+    if (modifiers.includes("camel")) {
+      if (arg.type === NodeTypes.SIMPLE_EXPRESSION) {
+        if (arg.isStatic) {
+          // 横线 转驼峰式
+          arg.content = camelize(arg.content);
+        } else {
+          arg.content = `${context.helperString(CAMELIZE)}(${arg.content})`;
+        }
+      } else {
+        arg.children.unshift(`${context.helperString(CAMELIZE)}(`);
+        arg.children.push(`)`);
+      }
+    }
+
+    return {
+      props: [
+        createObjectProperty(arg, exp || createSimpleExpression("", true, loc)),
+      ],
+    };
+  };
+
+#+end_src
+*** transformIf()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-transformif
+:END: 
+
+这个函数是由一系列的操作之后才返回的一个函数，用来处理 ~/^(if|else|else-if)$/~
+指令，生成对应分支节点的  ~codegenNode~ 。
+
+#+begin_src js
+
+  export const transformIf = createStructuralDirectiveTransform(
+    /^(if|else|else-if)$/,
+    (node, dir, context) => {
+      return processIf(node, dir, context, (ifNode, branch, isRoot) => {
+        // 能到这里说明 v-if 下所有的 child 都已经处理完毕，可以返回处理
+        // codegenNode 的函数了
+        return () => {
+          console.log({ dir, isRoot });
+          if (isRoot) {
+            ifNode.codegenNode = createCodegenNodeForBranch(branch, 0, context);
+          } else {
+            // 将当前分支的codegenNode挂载到 v-if 根节点上
+            let parentCondition = ifNode.codegenNode;
+            while (
+              parentCondition.alternate.type ===
+              NodeTypes.JS_CONDITIONAL_EXPRESSION
+            ) {
+              // 这个循环的目的是为了找到最后那个需要被替换的 alternate 节点
+              // 因为有可能会有 `?:` 嵌套的可能
+              // 如： ok ? expr1 : expr2 情况找到的是 expr2 需要被替换
+              // 如： ok ? expr1 : (ok2 ? expr2 : expr3) 那么找到的就是 expr3
+              // ...
+              // 因为最后一个 `:` 后面的表达式如果没有 else 应该会是个
+              // comment vnode类型的占位节点
+              parentCondition = parentCondition.alternate;
+            }
+            parentCondition.alternate = createCodegenNodeForBranch(
+              branch,
+              ifNode.branches.length - 1,
+              context
+            );
+          }
+        };
+      });
+    }
+  )
+#+end_src
+
+*** createCodegenNodeForBranch
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createcodegennodeforbranch
+:END: 
+
+~createCodegenNodeForBranch(branch, index, context)~
+
+#+begin_src js
+
+  function createCodegenNodeForBranch(branch, index, context) {
+    if (branch.condition) {
+      return createConditionalExpression(
+        branch.condition,
+        createChildrenCodegenNode(branch, index, context),
+        createCallExpression(context.helper(CREATE_COMMENT), [
+          __DEV__ ? '"v-if"' : '""',
+          "true",
+        ])
+      );
+    } else {
+      return createChildrenCodegenNode(branch, index, context);
+    }
+  }
+#+end_src
+*** createChildrenCodegenNode 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createchildrencodegennode
+:END: 
+
+~createChildrenCodegenNode(branch, index, context)~
+
+**** stage-1 [[#test-cc-05][05-interpolation, v-if, props]]
+
+该阶段只完成一个孩子节点且是 ELEMENT 类型的时候处理，如果不是这种情况是需要用
+fragment 将这些 children 包起来的。
+#+begin_src js
+
+  // 创建 v-if 分支的孩子节点，同时加上 key 属性
+  function createChildrenCodegenNode(branch, index, context) {
+    const { helper } = context;
+    const keyProperty = createObjectProperty(
+      `key`,
+      createSimpleExpression(index + ``, false)
+    );
+
+    const { children } = branch;
+    const firstChild = children[0];
+    // 多个节点的情况下用 fragment 包起来
+    const needFragmentWrapper =
+          children.length !== 1 || firstChild.type !== NodeTypes.ELEMENT;
+
+    if (needFragmentWrapper) {
+      // TODO
+    } else {
+      // 只有一个孩子节点且是 ELEMENT
+      const vnodeCall = firstChild.codegenNode;
+
+      if (
+        vnodeCall.type === NodeTypes.VNODE_CALL &&
+          // 组件的 vnodes 总是被追踪且它的孩子们会被编译进
+        // slots 因此没必要将它变成一个 block
+        (firstChild.tagType !== ElementTypes.COMPONENT ||
+         vnodeCall.tag === TELEPORT)
+      ) {
+        // TODO
+        vnodeCall.isBlock = true;
+        helper(OPEN_BLOCK);
+        helper(CREATE_BLOCK);
+      }
+
+      injectProp(vnodeCall, keyProperty, context);
+      return vnodeCall;
+    }
+  }
+#+end_src
+*** createTransformContext
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createtransformcontext
+:END:
+
+~createTransformContext(root, options)~
+
+单纯的构建和初始化 transform 转换器上下文对象。
+
+**** stage-1: [[#test-cc-01][01 simple text]]
+
+一些初始化的工作，并不需要具体实现什么，纯文本并没有用到。
+
+#+begin_src js
+  export function createTransformContext(
+    root,
+    {
+      prefixIdentifiers = false,
+      hoistStatic = false,
+      cacheHandlers = false,
+      nodeTransforms = [],
+      directiveTransforms = {},
+      transformHoist = null,
+      isBuiltInComponent = NOOP,
+      expressionPlugins = [],
+      scopeId = null,
+      ssr = false,
+      onError = defaultOnError,
+    }
+  ) {
+    const context = {
+      // options
+      prefixIdentifiers,
+      hoistStatic,
+      cacheHandlers,
+      nodeTransforms,
+      directiveTransforms,
+      transformHoist,
+      isBuiltInComponent,
+      expressionPlugins,
+      scopeId,
+      ssr,
+      onError,
+
+      // state
+      root,
+      helpers: new Set(),
+      components: new Set(),
+      directives: new Set(),
+      hoists: [],
+      imports: new Set(),
+      temps: 0,
+      cached: 0,
+      identifiers: {},
+      scopes: {
+        vFor: 0,
+        vSlot: 0,
+        vPre: 0,
+        vOnce: 0,
+      },
+      parent: null,
+      currentNode: root,
+      childIndex: 0,
+
+      // methods
+      helper(name) {},
+      helperString(name) {},
+      replaceNode(node) {},
+      removeNode(node) {},
+      onNodeRemoved: () => {},
+      addIdentifiers(exp) {},
+      removeIdentifiers(exp) {},
+      hoist(exp) {},
+      cache(exp, isVNode = false) {},
+    };
+
+    function addId(id) {}
+
+    function removeId(id) {}
+
+    return context;
+  }
+#+end_src
+
+**** stage-2: [[#test-cc-02][02 pure interpolation]] 插值节点的编译
+
+#+begin_src js
+
+  export function createTransformContext(
+    root,
+    { ... }
+  ) {
+    const context = {
+      // ...
+      helpers: new Set(),
+
+      // ...
+
+      // 新增 helper 实现
+      helper(name) {
+        context.helpers.add(name);
+        return name;
+      },
+
+      // ...
+    };
+
+    function addId(id) {}
+
+    function removeId(id) {}
+
+    return context;
+  }
+#+end_src
+*** createRootCodegen
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createrootcodegen
+:END:
+
+~createRootCodegen(root, context)~
+
+创建 root 节点上的 codegenNode 值，这也是将来用来编译成 render 函数的源码字符串。
+
+**** stage-1: [[#test-cc-01][01 simple text]]
+#+begin_src js
+
+  function createRootCodegen(root, context) {
+    // TODO  helper
+    const { children } = root;
+    const child = children[0];
+
+    if (children.length === 1) {
+      // 只有一个孩子节点
+
+      // 且孩子节点是一个元素 element 类型，将它放在一个代码块钟返回
+      // 如： { code }
+      if (isSingleElementRoot(root, child) && child.codegenNode) {
+        // TODO
+      } else {
+        root.codegenNode = child;
+      }
+    } else if (children.length > 1) {
+    } else {
+      // 没有孩子节点， codegen 返回 null，看到没
+      // 01 simple text 返回 null 问题找到根源了
+    }
+  }
+#+end_src
+
+实现完这个之后发现，generate 里面的 [[#codegen-gennode][genNode]] 还没实现，真实丢三落四~~~~。
+*** createStructuralDirectiveTransform
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createstructuraldirectivetransform
+:END:
+
+~createStructuralDirectiveTransform(name, fn)~
+
+#+begin_src js
+  function createStructuralDirectiveTransform(name, fn) {
+    const matches = isString(name) ? (n) => n === name : (n) => name.test(n);
+    return (node, context) => {
+      if (node.type === 1 /* ELEMENT */) {
+        const { props } = node;
+        // structural directive transforms are not concerned with slots
+        // as they are handled separately in vSlot.ts
+        if (node.tagType === 3 /* TEMPLATE */ && props.some(isVSlot)) {
+          return;
+        }
+        const exitFns = [];
+        for (let i = 0; i < props.length; i++) {
+          const prop = props[i];
+          if (prop.type === 7 /* DIRECTIVE */ && matches(prop.name)) {
+            // structural directives are removed to avoid infinite recursion
+            // also we remove them *before* applying so that it can further
+            // traverse itself in case it moves the node around
+            props.splice(i, 1);
+            i--;
+            const onExit = fn(node, prop, context);
+            if (onExit) exitFns.push(onExit);
+          }
+        }
+        return exitFns;
+      }
+    };
+  }
+#+end_src
+*** traverseNode
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode
+:END:
+
+~traverseNode(node, context)~
+
+**** stage-1: [[#test-cc-01][01 simple text]] 省略 switch 里面的上线，因为这里只是纯文本不再 case 范围。
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode-stage1
+:END:
+
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    context.currentNode = node;
+
+    const { nodeTransforms } = context;
+    const exitFns = [];
+
+    for (let i = 0; i < nodeTransforms.length; i++) {
+      // 调用诸如  transformText 的函数
+      const onExit = nodeTransforms[i](node, context);
+      if (onExit) {
+        const fns = Array.isArray(onExit) ? onExit : [onExit];
+        exitFns.push(...fns);
+      }
+
+      if (!context.currentNode) {
+        // 可能被移除了
+        return;
+      } else {
+        // 节点可能被替换过，重新建立引用
+        node = context.currentNode;
+      }
+    }
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.ROOT:
+        traverseChildren(node, context);
+        break;
+    }
+
+    let i = exitFns.length;
+    // 执行所有转换
+    while (i--) {
+      exitFns[i]();
+    }
+  }
+#+end_src
+**** stage-2: [[#test-cc-02][02 pure interpolation]] 插值节点的编译
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode-stage2
+:END:
+
+增加 INTERPOLATION 类型节点分支处理。
+
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    // ...
+
+    switch (node.type) {
+        // ...
+
+        // 新增：对插值类型节点处理
+      case NodeTypes.INTERPOLATION:
+        if (!context.ssr) {
+          // 这个函数来自上下文处理中的 helper(name)
+          context.helper(TO_DISPLAY_STRING);
+        }
+        break
+
+        // ...
+    }
+
+    // ...
+  }
+#+end_src
+
+修改之后代码：
+
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    context.currentNode = node;
+
+    const { nodeTransforms } = context;
+    const exitFns = [];
+
+    for (let i = 0; i < nodeTransforms.length; i++) {
+      // 调用诸如  transformText 的函数
+      const onExit = nodeTransforms[i](node, context);
+      if (onExit) {
+        const fns = Array.isArray(onExit) ? onExit : [onExit];
+        exitFns.push(...fns);
+      }
+
+      if (!context.currentNode) {
+        // 可能被移除了
+        return;
+      } else {
+        // 节点可能被替换过，重新建立引用
+        node = context.currentNode;
+      }
+    }
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.INTERPOLATION:
+        if (!context.ssr) {
+          // 这个函数来自上下文处理中的 helper(name)
+          context.helper(TO_DISPLAY_STRING);
+        }
+        break;
+      case NodeTypes.ROOT:
+        traverseChildren(node, context);
+        break;
+    }
+
+    let i = exitFns.length;
+    // 执行所有转换
+    while (i--) {
+      exitFns[i]();
+    }
+  }
+#+end_src
+**** stage-3: [[#test-cc-05][05-interpolation, v-if, props]]
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversenode-stage3
+:END: 
+
+增加 IF 和 IF_BRANCH 分支处理：
+#+begin_src js
+
+  export function traverseNode(node, context) {
+    context.currentNode = node;
+
+    const { nodeTransforms } = context;
+    const exitFns = [];
+
+    for (let i = 0; i < nodeTransforms.length; i++) {
+      // 调用诸如  transformText 的函数
+      const onExit = nodeTransforms[i](node, context);
+      if (onExit) {
+        const fns = Array.isArray(onExit) ? onExit : [onExit];
+        exitFns.push(...fns);
+      }
+
+      if (!context.currentNode) {
+        // 可能被移除了
+        return;
+      } else {
+        // 节点可能被替换过，重新建立引用
+        node = context.currentNode;
+      }
+    }
+
+    switch (node.type) {
+      // ... 省略
+      case NodeTypes.INTERPOLATION:
+        if (!context.ssr) {
+          // 这个函数来自上下文处理中的 helper(name)
+          context.helper(TO_DISPLAY_STRING);
+        }
+        break;
+      case NodeTypes.IF:
+        for (let i = 0; i < node.branches.length; i++) {
+          traverseNode(node.branches[i], context);
+        }
+        break;
+      case NodeTypes.IF_BRANCH:
+      case NodeTypes.ELEMENT:
+      case NodeTypes.ROOT:
+        traverseChildren(node, context);
+        break;
+    }
+
+    let i = exitFns.length;
+    // 执行所有转换
+    while (i--) {
+      exitFns[i]();
+    }
+  }
+#+end_src
+*** TODO createIfBranch(...)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-createifbranch
+:END: 
+*** traverseChildren
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-traversechildren
+:END:
+
+~traverseChildren(parent, context)~
+
+处理 node.children 孩子节点。
+
+#+begin_src js
+
+  export function traverseChildren(parent, context) {
+    let i = 0;
+    const nodeRemoved = () => {
+      i--;
+    };
+
+    for (; i < parent.children.length; i++) {
+      const child = parent.children[i];
+      // 过略掉字符串，只处理 ast child
+      if (typeof child === "string") continue;
+
+      context.parent = parent;
+      context.childIndex = i;
+      context.onNodeRemoved = nodeRemoved;
+      traverseNode(child, context);
+    }
+  }
+#+end_src
+
+1. 遍历所有 ast ，让每个节点持有自父级引用。
+2. 遍历所有节点，进行 [[#transform-traversenode][traverseNode]]，解析出 codegenNode 值
+
+*** buildProps
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-buildprops
+:END:
+
+~buildProps(node, context, props = node.props, ssr = false)~
+
+**** stage-1 [[#test-cc-05][05-interpolation, v-if, props]]
+
+#+begin_src js
+  export function buildProps(node, context, props = node.props, ssr = false) {
+    const { tag, loc: elementLoc } = node;
+    const isComponent = node.tagType === ElementTypes.COMPONENT;
+
+    let properties = [];
+    // 保存合并之后的属性，前提是有重复属性，比如：
+    // class,style 会合并成一个
+    // v-on 的 handlers 会合并成数组
+    const mergeArgs = [];
+    const runtimeDirectives = [];
+
+    let patchFlag = 0;
+    let hasRef = false;
+    let hasClassBinding = false;
+    let hasStyleBinding = false;
+    let hasHydrationEventBinding = false;
+    let hasDynamicKeys = false;
+    const dynamicPropNames = [];
+
+    const analyzePatchFlag = ({ key, value }) => {
+      if (key.type === NodeTypes.SIMPLE_EXPRESSION && key.isStatic) {
+        const name = key.content;
+        // TODO v-on
+
+        if (
+          value.type === NodeTypes.JS_CACHE_EXPRESSION ||
+          ((value.type === NodeTypes.SIMPLE_EXPRESSION ||
+            value.type === NodeTypes.COMPOUND_EXPRESSION) &&
+            getStaticType(value) > 0)
+        ) {
+          // 如果 prop 是一个 cached handler 或者有一个常量值，就忽略
+          return;
+        }
+
+        if (name === "ref") {
+          hasRef = true;
+        } else if (name === "class" && !isComponent) {
+          hasClassBinding = true;
+        } // TODO style, 动态属性名
+      } else {
+        hasDynamicKeys = true;
+      }
+    };
+
+    for (let i = 0; i < props.length; i++) {
+      // 静态属性
+      const prop = props[i];
+      if (prop.type === NodeTypes.ATTRIBUTE) {
+        const { loc, name, value } = prop;
+        // TODO hasRef
+
+        // TODO skip <component :is="...">
+
+        // 处理静态属性
+        properties.push(
+          createObjectProperty(
+            createSimpleExpression(
+              name,
+              true,
+              getInnerRange(loc, 0, name.length)
+            ),
+            createSimpleExpression(
+              value ? value.content : "",
+              true,
+              value ? value.loc : loc
+            )
+          )
+        );
+      } else {
+        // DIRECTIVE 指令处理
+
+        // name 指令名, arg 指令参数，exp 指令表达式
+        const { name, arg, exp, loc } = prop;
+        const isBind = name === "bind";
+
+        // TODO v-slot
+
+        // TODO v-once
+
+        // TODO v-is 或 :is + <component>
+
+        // TODO isOn && ssr
+
+        // TODO v-bind 和 v-on 没有参数情况
+
+        // 取出对应的 transform 函数处理，比如：v-bind 对应 transformBind
+        const directiveTransform = context.directiveTransforms[name];
+        if (directiveTransform) {
+          const { props, needRuntime } = directiveTransform(prop, node, context);
+
+          !ssr && props.forEach(analyzePatchFlag);
+
+          properties.push(...props);
+
+          // TODO needRuntime
+        } else {
+          // TODO 没有内置 transform，表示该指令是用户自定义的
+          // runtimeDirectives.push(prop)
+        }
+      }
+    }
+
+    let propsExpression = undefined;
+
+    // TODO v-bind="object" 或 v-on="object"
+    // 合并属性
+    if (mergeArgs.length) {
+      // TODO merge args
+    } else if (properties.length) {
+      propsExpression = createObjectExpression(
+        dedupeProperties(properties),
+        elementLoc
+      );
+    }
+
+    // patchFlag 分析
+    if (hasDynamicKeys) {
+      // TODO
+    } else {
+      if (hasClassBinding) {
+        patchFlag |= PatchFlags.CLASS;
+      }
+
+      // TODO 其他, style, 动态属性，hydration
+    }
+
+    // TODO need_patch
+
+    return {
+      props: propsExpression,
+      directives: runtimeDirectives,
+      patchFlag,
+      dynamicPropNames,
+    };
+  }
+#+end_src
+*** hoistStatic
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-hoiststatic
+:END: 
+
+~hoistStatic(root, context)~
+
+#+begin_src js
+  // 静态提升，将静态文本节点提升吗？？？
+  export function hoistStatic(root, context) {
+    walk(
+      root.children,
+      context,
+      new Map(),
+      isSingleElementRoot(root, root.children[0])
+    );
+  }
+#+end_src
+*** walk
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-walk
+:END: 
+
+~walk(children, context, resultCache, doNotHoistNode = false)~
+
+#+begin_src js
+
+  function walk(children, context, resultCache, doNotHoistNode = false) {
+    let hasHoistedNode = false;
+
+    let hasRuntimeConstant = false;
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+
+      if (
+        child.type === NodeTypes.ELEMENT &&
+        child.tagType === ElementTypes.ELEMENT
+      ) {
+        let staticType;
+
+        if (
+          !doNotHoistNode &&
+          (staticType === getStaticType(child, resultCache)) > 0
+        ) {
+          if (staticType === StaticType.HAS_RUNTIME_CONSTANT) {
+            hasRuntimeConstant = true;
+          }
+
+          // 整个树都是静态的
+          child.codegenNode.patchFlag =
+            PatchFlags.HOISTED + (__DEV__ ? ` /* HOISTED */` : ``);
+
+          child.codegenNode = context.hoist(child.codegenNode);
+          hasHoistedNode = true;
+          continue;
+        } else {
+          // 节点包含动态孩子节点，但是它的属性可能符合 hoisting 条件
+          const codegenNode = child.codegenNode;
+          if (codegenNode.type === NodeTypes.VNODE_CALL) {
+            const flag = getPatchFlag(codegenNode);
+            if (
+              (!flag ||
+                flag === PatchFlags.NEED_PATCH ||
+                flag === PatchFlags.TEXT) &&
+              !hasDynamicKeyOrRef(child) &&
+              !hasCachedProps(child)
+            ) {
+              const props = getNodeProps(child);
+              if (props) {
+                codegenNode.props = context.hoist(props);
+              }
+            }
+          }
+        }
+      } else if (child.type === NodeTypes.TEXT_CALL) {
+        const staticType = getStaticType(child.content, resultCache);
+        if (staticType > 0) {
+          if (staticType === StaticType.HAS_RUNTIME_CONSTANT) {
+            hasRuntimeConstant = true;
+          }
+
+          child.codegenNode = context.hoist(child.codegenNode);
+          hasHoistedNode = true;
+        }
+      }
+
+      // 递归孩子节点
+      if (child.type === NodeTypes.ELEMENT) {
+        walk(child.children, context, resultCache);
+      } else if (child.type === NodeTypes.FOR) {
+        // 不提升 v-for 单孩子节点因为它会变成一个 block
+        walk(child.children, context, resultCache, child.children.length === 1);
+      } else if (child.type === NodeTypes.IF) {
+        for (let i = 0; i < child.branches.length; i++) {
+          const branchChildren = child.branches[i].children;
+          // 不提升 v-if 单孩子节点因为它会变成一个 block
+          walk(branchChildren, context, resultCache, branchChildren.length === 1);
+        }
+      }
+    }
+
+    if (!hasRuntimeConstant && hasHoistedNode && context.transformHoist) {
+      context.transformHoist(children, context);
+    }
+  }
+#+end_src
+*** processIf
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transform-processif
+:END: 
+
+~processIf(node, dir, context, processCodegen)~
+
+处理 v-if/v-else/v-else-if 指令的函数。
+
+#+begin_src js
+
+  export function processIf(node, dir, context, processCodegen) {
+    // TODO no exp error handle
+
+    // TODO prefixIdentifiers && dir.exp
+
+    if (dir.name === "if") {
+      const branch = createIfBranch(node, dir);
+      const ifNode = {
+        type: NodeTypes.IF,
+        loc: node.loc,
+        branches: [branch],
+      };
+      context.replaceNode(ifNode);
+      if (processCodegen) {
+        return processCodegen(ifNode, branch, true);
+      }
+    } else {
+      // 找到对应的兄弟节点(v-if)
+      const siblings = context.parent.children;
+      const comments = [];
+      // 当前分支节点在其父节点的 children 中的位置
+      // 方便后面找到前面最近的那个兄弟
+      let i = siblings.indexOf(node);
+
+      while (i-- >= -1) {
+        const sibling = siblings[i];
+        if (__DEV__ && sibling && sibling.type === NodeTypes.COMMENT) {
+          context.removeNode(sibling);
+          // 将来要合并回去的
+          comments.unshift(sibling);
+          continue;
+        }
+
+        if (sibling && sibling.type === NodeTypes.IF) {
+          // 1. 将当前节点删除同时将移动到 if 分支的 branches[] 中去
+          context.removeNode();
+          if (__DEV__ && comments.length) {
+            branch.children = [...comments, ...branch.children];
+          }
+
+          sibling.branches.push(branch);
+          // 这个 onExit 就是用来 transform 分支得到codegenNode的那个函数
+          const onExit = processCodegen && processCodegen(sibling, branch, false);
+
+          // 2. 因为 1 中已经将节点从主干递归树种删除了，因此这里需要手动执行一次
+          // traverse 确保该分支节点的树能正确解析出 codgenNode
+          traverseNode(branch, context);
+
+          // 3. 执行 transform 函数，解析当前节点的 codegenNode
+          if (onExit) onExit();
+
+          // 4. 重置 currentNode，表明该节点已经被删除了
+          // 还记得 traverseNode 里面收集 exitFns 循环找那个有个检测吧
+          context.currentNode = null;
+        } else {
+          // 非法的使用，v-if/v-else/v-else-if 必须紧靠着
+          context.onError(
+            createCompilerError(ErrorCodes.X_V_ELSE_NO_ADJACENT_IF, node.loc)
+          );
+          break;
+        }
+      }
+    }
+  }
+#+end_src
+** codegen.ts
+*** createCodgenContext(ast, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-createcodegencontext
+:END:
+**** stage-1: [[#test-cc-01][01 simple text]]
+
+#+begin_src js
+
+  // 构建 condegen 上下文对象
+  function createCodegenContext(
+    ast,
+    {
+      mode = "function",
+      prefixIdentifiers = mode === "module",
+      sourceMap = false,
+      filename = `template.vue.html`,
+      scopeId = null,
+      optimizeBindings = false,
+      runtimeGlobalName = `Vue`,
+      runtimeModuleName = `vue`,
+      ssr = false,
+    }
+  ) {
+    const context = {
+      mode,
+      prefixIdentifiers,
+      sourceMap,
+      filename,
+      scopeId,
+      optimizeBindings,
+      runtimeGlobalName,
+      runtimeModuleName,
+      ssr,
+      source: ast.loc.source,
+      code: ``,
+      column: 1,
+      line: 1,
+      offset: 0,
+      indentLevel: 0,
+      pure: false,
+      map: undefined,
+      helper(key) {},
+      push(code, node) {
+        context.code += code;
+        // TODO 非浏览器环境处理，node 环境
+      },
+      indent() {
+        // 新行缩进
+        newline(++context.indentLevel);
+      },
+      deindent(withoutNewLine = false) {
+        if (withoutNewLine) {
+          --context.indentLevel;
+        } else {
+          newline(--context.indentLevel);
+        }
+      },
+      newline() {
+        newline(context.indentLevel);
+      },
+    };
+
+    function newline(n) {
+      context.push("\n" + ` `.repeat(n));
+    }
+
+    function addMapping(loc, name) {}
+
+    return context;
+  }
+#+end_src
+*** generate()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen_generate
+:END:
+
+generate 函数雏形：
+
+#+begin_src js
+  export function generate(ast, options) {
+    return {
+      ast,
+      code: "",
+      map: "",
+    };
+  }
+
+#+end_src
+
+函数的目的是：通过 ast 来生成 code，这个 code 将来会被 compileToFunction 调用 ~new
+Function(code)~ 生成 render 函数的。
+
+**** stage-1: [[#test-cc-01][01 simple text]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-generate-stage1
+:END:
+
+#+begin_src js
+
+  export function generate(ast, options = {}) {
+    const context = createCodegenContext(ast, options);
+    const {
+      mode,
+      push,
+      prefixIdentifiers,
+      indent,
+      deindent,
+      newline,
+      scopeId,
+      ssr,
+    } = context;
+
+    const hasHelpers = ast.helpers.length > 0;
+    const useWithBlock = !prefixIdentifiers && mode !== "module";
+    const genScopeId = !__BROWSER__ && scopeId != null && mode === "module";
+
+    // TODO preambles
+    if (!__BROWSER__ && mode === "module") {
+      // TODO genModulePreamble(ast, context, genScopeId)
+    } else {
+      genFunctionPreamble(ast, context);
+    }
+
+    if (genScopeId && !ssr) {
+      push(`const render = ${PURE_ANNOTATION}_withId(`);
+    }
+
+    if (!ssr) {
+      // 函数声明
+      push(`function render(_ctx, _cache) {`);
+    } else {
+      // TODO ssr render
+    }
+
+    indent();
+
+    if (useWithBlock) {
+      // use with(_ctx) { ...}
+      push(`with (_ctx) {`);
+      indent();
+
+      // TODO hasHelpers
+    }
+
+    // TODO ast.components 组件处理
+
+    // TODO ast.directives 指令处理
+
+    // TODO ast.temps 临时变量处理
+
+    // TODO 换行
+
+    if (!ssr) {
+      push(`return `);
+    }
+
+    // 生成代码片段
+    if (ast.codegenNode) {
+      genNode(ast.codegenNode, context);
+    } else {
+      push(`null`);
+    }
+
+    if (useWithBlock) {
+      deindent();
+      push(`}`);
+    }
+
+    deindent();
+    push(`}`);
+
+    if (genScopeId && !ssr) {
+      push(`)`);
+    }
+
+    return {
+      ast,
+      code: context.code,
+      map: "",
+    };
+  }
+#+end_src
+
+代码中只包含文本解析需要的内容。但是结果显示：
+
+#+begin_example
+ast: {type: 0, children: Array(1), loc: {…}, helpers: Array(0), components: Array(0), …}
+  code: "function render(_ctx, _cache) {↵ with (_ctx) {↵  return null}}"
+  map: ""
+#+end_example
+
+即： ~ast.codegenNode~ 是空值，最后并没有 执行 ~genNode(ast.codgenNode, context)~
+。
+
+因此问题还在 [[#transform-transformtext][transformText]] 里面，但是纯文本会直接在第一个 for 后的 if 判断中直接
+~return~ 了，那么问题出在哪？？？
+
+进过往上追溯，发现在 traverseNode 实现中有一部分 switch 代码被我们省略，而里面就
+有个 case 是文本节点会走到的，即： ~NodeTypes.ROOT~ 因为这个用例文本是直接挂在根
+节点下面的，那么就得实现 [[#transform-traversechildren][traverseChildren]] 了。
+
+然后，实现完 traverseChildren 之后并没解决问题，因为这里面根本没有处理赋值
+codgenNode 的操作。
+
+那么只能用最笨拙的方法了，直接搜索 ~codegen*~ 然后又发现新大陆(transform 里面有
+个 [[#transform-createrootcodegen][createRootCodgen(...)]] 并没有实现)， :runner: go ->
+
+**** stage-2: [[#test-cc-02][02 pure interpolation]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-generate-stage2
+:END:
+
+这里新增了 ~push ast.helpers.map(...)~ 处理，比如 traverseNode stage-2 中新增的
+INTERPOLATION 分支中的处理是 ~context.helper(TO_DISPLAY_STRING)~ 就是给上下文的
+helpers 增加了 ~Symbol('toDisplayString')~ 。
+
+#+begin_src js
+
+  export function generate(ast, options = {}) {
+    // ...
+
+    const hasHelpers = ast.helpers.length > 0;
+
+    // ...
+
+    if (useWithBlock) {
+      // use with(_ctx) { ...}
+      push(`with (_ctx) {`);
+      indent();
+
+      // 新增： hasHelpers
+      if (hasHelpers) {
+        // 比如：插值处理时用到 TO_DISPLAY_STRING helper
+        // 为了避免命名冲突，这里都需要将他们重命名
+
+        push(
+          `const { ${ast.helpers
+            .map((s) => `${helperNameMap[s]} : _${helperNameMap[s]}`)
+            .join(", ")} } = _Vue`
+        );
+
+        push("\n");
+        newline();
+      }
+    }
+
+    // ...
+  }
+#+end_src
+
+正好在这里会检测 ~context.helpers~ 进行相应的处理。
+
+[[#transform-traversenode][traverseNode]] 的 switch 中插值 INTERPOLATION 分支处理中增加了一个
+TO_DISPLAY_STRING 符号类型值到 ~context.helpers: Set~ 中，这其实就是个 ~_Vue~
+实例中的一个函数名称，在这里会遍历 ~context.helpers~ 将需要用到的函数从实例中解
+构出来。
+
+*** genNode(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode
+:END:
+
+**** stage-3: [[#test-cc-04][04-interpolation in div with props]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode-stage3
+:END:
+
+这个用例中需要解析 ~props[{ id }, { class }]~ 这两个属性经过 buildProps 处理之后
+会变成一个对象结构：
+
+~{ type: 15 /* JS_OBJECT_EXPRESSION */, properties: [{id}, {class}], ...}~
+
+#+begin_src js
+  0:
+  key: {type: 4 /*SIMPLE_EXPRESSION*/, loc: {…}, isConstant: false, content: "id", isStatic: true}
+  type: 16 // JS_PROPERTY
+  value: {type: 4, loc: {…}, isConstant: false, content: "foo", isStatic: true}
+  1:
+  key: {type: 4, content: "class", isStatic: true, isConstant: true, loc: {…}}
+  type: 16 // JS_PROPERTY
+  value: {type: 4, content: "bar.baz", isStatic: false, isConstant: false, loc: {…}}
+#+end_src
+
+所以这里首先需要增加一个 ~JS_OBJECT_EXPRESSION~ 分支处理这两个属性，解析成属性对
+象传递给 ~_createBlock('div', props, ...)~
+
+
+#+begin_src js
+
+  function genNode(node, context) {
+    if (typeof node === "string") {
+      context.push(node);
+      return;
+    }
+
+    // TODO is symbol
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.ELEMENT:
+        genNode(node.codegenNode, context);
+        break;
+      case NodeTypes.TEXT:
+        genText(node, context);
+        break;
+      case NodeTypes.SIMPLE_EXPRESSION:
+        // 如：插值内容，属性值
+        genExpression(node, context);
+        break;
+      case NodeTypes.INTERPOLATION:
+        console.log(node, "interpolation");
+        genInterpolation(node, context);
+        break;
+      case NodeTypes.VNODE_CALL:
+        genVNodeCall(node, context);
+        break;
+      case NodeTypes.JS_OBJECT_EXPRESSION: // 新增属性 properties处理
+        genObjectExpression(node, context);
+        break;
+    }
+#+end_src
+
+**** stage-2: [[#test-cc-02][02 pure interpolation]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode-stage2
+:END:
+
+这个阶段需要支持插值的解析，而插值在 ast 中数据结构为：
+
+#+begin_src json
+  {
+    "type":5, // INTERPOLATION
+    "content":{
+      "type":4, // SIMPLE_EXPRESSION
+      "isStatic":false,
+      "isConstant":false,
+      "content":"world.burn()",
+      "loc":{
+        // ... ,
+        "source":"world.burn()"
+      }
+    },
+    "loc":{
+      // ...,
+      "source":"{{ world.burn() }}"
+    }
+  }
+#+end_src
+
+这里需要经过两次递归调用 genNode 分别去解析 ~type=5 // INTERPOLATION~ 和 ~type=4
+// SIMPLE_EXPRESSION~ 两种类型，且前后形同父子关系。
+
+那么就有：
+
+#+begin_src js
+  function genNode(node, context) {
+    if (typeof node === "string") {
+      context.push(node);
+      return;
+    }
+
+    // TODO is symbol
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.TEXT:
+        genText(node, context);
+        break;
+      case NodeTypes.SIMPLE_EXPRESSION:
+        // 如：插值内容，属性值
+        genExpression(node, context);
+        break;
+      case NodeTypes.INTERPOLATION:
+        console.log(node, "interpolation");
+        genInterpolation(node, context);
+        break;
+    }
+  }
+#+end_src
+
+1. 先经过 INTERPOLATION 分支调用 [[#codegen-geninterpolation][genInterpolation(node, context)]] 去解析插值节点
+**** stage-1: [[#test-cc-01][01 simple text]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennode-stage1
+:END:
+
+这里我们只处理文本节点的情况：
+#+begin_src js
+
+  function genNode(node, context) {
+    if (typeof node === "string") {
+      context.push(node);
+      return;
+    }
+
+    // TODO is symbol
+
+    switch (node.type) {
+        // ... 省略
+      case NodeTypes.TEXT:
+        genText(node, context);
+        break;
+    }
+  }
+#+end_src
+
+然后就是实现 case 的 [[#codegen-gentext][genText(node, context)]]
+
+*** genNodeList(nodes, context, multilines=false, comma=true)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennodelist
+:END:
+
+生成 _createBlock(tag, props, children, ...) 函数的参数列表。
+
+#+begin_src js
+
+  function genNodeList(nodes, context, multilines = false, comma = true) {
+    const { push, newline } = context;
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (typeof node === "string") {
+        push(node);
+      } else if (Array.isArray(node)) {
+        genNodeListAsArray(node, context);
+      } else {
+        // nodes[1], props 进入这里处理
+        genNode(node, context);
+      }
+
+      if (i < nodes.length - 1) {
+        if (multilines) {
+          comma && push(",");
+          newline();
+        } else {
+          comma && push(", ");
+        }
+      }
+    }
+  }
+#+end_src
+*** genNodeListAsArray(nodes, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennodelistasarray
+:END:
+
+将参数列表转成数组， ~nodes: [tag, props, chldren, ...]~ -> ~['div', {}, ...}]~
+
+#+begin_src js
+
+  // 将参数们变成数组
+  function genNodeListAsArray(nodes, context) {
+    const multilines =
+          nodes.length > 3 ||
+          ((!__BROWSER__ || __DEV__) &&
+           nodes.some((n) => Array.isArray(n) || !isText(n)));
+
+    context.push(`[`);
+    multilines && context.indent();
+    genNodeList(nodes, context, multilines);
+    multilines && context.deindent();
+    context.push(`]`);
+  }
+#+end_src
+
+*** genNullableArgs(args)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gennullableargs
+:END:
+
+过滤掉参数列表尾部值为 *假值* 的参数。
+
+#+begin_src js
+
+  // 过滤尾部 nullable 的值
+  function genNullableArgs(args) {
+    let i = args.length;
+    while (i--) {
+      if (args[i] != null) break;
+    }
+
+    // 中间的 nullable 值 转成 null
+    return args.slice(0, i + 1).map((arg) => arg || `null`);
+  }
+#+end_src
+
+*** genObjectExpression(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genobjectexpression
+:END:
+
+1. 空属性列表，返回 ~{}~
+2. 先 [[#codegen-genexpressionaspropertykey][genExpressionAsPropertyKey(node, context)]] 解析属性名
+
+#+begin_src js
+  // 生成对象表达式，用来处理 properties
+  function genObjectExpression(node, context) {
+    const { push, indent, deindent, newline } = context;
+    const { properties } = node;
+    if (!properties.length) {
+      push(`{}`, node);
+      return;
+    }
+
+    const multilines =
+          properties.length > 1 ||
+          ((!__BROWSER__ || __DEV__) &&
+           properties.some((p) => p.value.type !== NodeTypes.SIMPLE_EXPRESSION));
+
+    push(multilines ? `{` : `{ `);
+    multilines && indent();
+    for (let i = 0; i < properties.length; i++) {
+      const { key, value } = properties[i];
+      // key 处理，属性名
+      genExpressionAsPropertyKey(key, context);
+      push(`: `);
+      // value 处理，属性值，如果是静态的字符串化，如果是动态的直接变量方式
+      // 如： id="foo" -> id: "foo"
+      // 如： :class="bar.baz" -> class: bar.baz
+      // 这里 bar 是对象，baz 是 bar对象的属性
+      genNode(value, context);
+      if (i < properties.length - 1) {
+        push(`,`);
+        newline();
+      }
+    }
+    multilines && deindent();
+    push(multilines ? `}` : ` }`);
+  }
+#+end_src
+*** genExpressionAsPropertyKey(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genexpressionaspropertykey
+:END:
+
+生成对象属性名：
+
+1. 属性名由组合表达式动态生成，如： ~{ [prefix + '_' + name]: 'value' }~
+2. 静态属性，又分标准标识符和非标准的(需要用引号包起来的)，如： ~{ foo: 'value'
+   }~ 或 ~{ '23adf34': 'value' }~
+3. 简单的动态属性，如： ~{ [foo]: 'value' }~
+
+#+begin_src js
+
+  function genExpressionAsPropertyKey(node, context) {
+    const { push } = context;
+    if (node.type === NodeTypes.COMPOUND_EXPRESSION) {
+      push(`[`);
+      genCompoundExpression(node, context);
+      push(`]`);
+    } else if (node.isStatic) {
+      // 静态属性
+      const text = isSimpleIdentifier(node.content)
+            ? node.content
+            : JSON.stringify(node.content);
+
+      push(text, node);
+    } else {
+      // 动态属性
+      push(`[${node.content}]`, node);
+    }
+  }
+#+end_src
+*** genCompoundExpression(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gencompoundexpression
+:END:
+
+#+begin_src js
+  function genCompoundExpression(node, context) {
+    for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+      if (typeof child === "string") {
+        context.push(child);
+      } else {
+        genNode(child, context);
+      }
+    }
+  }
+#+end_src
+*** genText(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gentext
+:END:
+
+这里没什么阶段性的，就是一句很简单的字符串化文本节点内容。
+
+#+begin_src js
+  function genText(node, context) {
+    // 文本直接字符串化
+    context.push(JSON.stringify(node.content), node);
+  }
+
+#+end_src
+
+*** genFunctionPreamble(ast, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genfunctionpreamble
+:END:
+
+1. 生成 ~const _Vue = Vue~
+2. 一些函数的全局提升解构，如： ~const { createVNode: _createVnode } = _Vue~
+3. 一些静态属性提升，如： ~const _hoisted_1 = {key: 0}~
+
+#+begin_src js
+
+  function genFunctionPreamble(ast, context) {
+    const {
+      push,
+      newline,
+      ssr,
+      runtimeGlobalName,
+      runtimeModuleName,
+      prefixIdentifiers,
+    } = context;
+
+    // TODO ...
+    const VueBinding =
+      !__BROWSER__ && ssr
+        ? `require(${JSON.striingify(runtimeModuleName)})`
+        : runtimeGlobalName;
+
+    const aliasHelper = (s) => `${helperNameMap[s]}: _${helperNameMap[s]}`;
+
+    if (ast.helpers.length > 0) {
+      if (!__BROWSER__ && prefixIdentifiers) {
+        push(
+          `const { ${ast.helpers.map(aliasHelper).join(", ")} } = ${VueBinding}\n`
+        );
+      } else {
+        // with 模式，重命名 Vue 避免冲突
+        push(`const _Vue = ${VueBinding}\n`);
+
+        if (ast.hoists.length) {
+          const staticHelpers = [
+            CREATE_VNODE,
+            CREATE_COMMENT,
+            CREATE_TEXT,
+            CREATE_STATIC,
+          ]
+            .filter((helper) => ast.helpers.includes(helper))
+            .map(aliasHelper)
+            .join(", ");
+
+          push(`const { ${staticHelpers} } = _Vue\n`);
+        }
+      }
+    }
+
+    // TODO 生成 ssr helpers 变量
+    genHoists(ast.hoists, context);
+    newline();
+    push(`return `);
+  }
+#+end_src
+*** genInterpolation(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-geninterpolation
+:END:
+
+#+begin_src js
+  function genInterpolation(node, context) {
+    const { push, helper, pure } = context;
+
+    if (pure) push(PURE_ANNOTATION);
+
+    push(`${helper(TO_DISPLAY_STRING)}(`);
+    // 调用 genNode 解析插值的内容，表达式节点类型，NodeTypes.SIMPLE_EXPRESSION
+    genNode(node.content, context);
+    push(`)`);
+  }
+#+end_src
+
+~context.helper(TO_DISPLAY_STRING)~ 是从 helpersMap 中取出 TO_DISPLAY_STRING 对
+应的函数名称(下划线重命名之后的名称)，看 ~context.helper~ 实现:
+#+begin_src js
+  helper(key) {
+    return `_${helperNameMap[key]}`;
+  }
+#+end_src
+
+别名操作在 [[#codegen-generate][generate]] 的 useWithBlock 判断中生成。
+
+*** genExpression(node, context)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genexpression
+:END:
+
+#+begin_src js
+  function genExpression(node, context) {
+    const { content, isStatic } = node;
+    context.push(isStatic ? JSON.stringify(content) : content, node);
+  }
+#+end_src
+
+表达式的值可以是静态的，也可以是动态的，
+
+1. TODO 如果是静态直接字符串化？？？
+
+2. DONE 如果是动态的直接 push content 变成变量直接从上下文去取变量值
+
+   如 [[test-cc-02][02 pure interpolation]] 中的 ~world.burn()~ 会直接被塞到 ~context.code~ 结合
+   成 ~return _toDisplayString(world.burn());~ 生成函数之后相当于这样调
+   用： ~_ctx.world.burn()~  。
+
+*** genVNodeCall(node, context)
+
+**** stage-1 [[#test-cc-03][03-inerpolation in pure div]]
+
+增加 ~createVNode~ helper
+#+begin_src js
+
+  function genVNodeCall(node, context) {
+    const { push, helper, pure } = context;
+
+    const {
+      tag,
+      props,
+      children,
+      patchFlag,
+      dynamicProps,
+      directives,
+      isBlock,
+      isForBlock,
+    } = node;
+
+    // TODO directives start
+
+    // TODO isblock start
+
+    if (pure) {
+      push(PURE_ANNOTATION);
+    }
+
+    push(helper(isBlock ? CREATE_BLOCK : CREATE_VNODE) + `(`, node);
+
+    // TODO genNodeList
+
+    push(`)`);
+
+    // TODO isblock end
+
+    // TODO directives end
+  }
+#+end_src
+*** genCallExpression(node, context) 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-gencallexpression
+:END: 
+
+#+begin_src js
+  function genCallExpression(node, context) {
+    const { push, helper, pure } = context;
+    const callee =
+          typeof node.callee === "string" ? node.callee : helper(node.callee);
+    if (pure) {
+      push(PURE_ANNOTATION);
+    }
+    push(callee + `(`, node);
+    genNodeList(node.arguments, context);
+    push(`)`);
+  }
+#+end_src
+*** genConditionalExpression(node, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genconditionalexpression
+:END: 
+*** genHoists(ast.hoists, context)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: codegen-genhoists
+:END: 
+
+1. scope id 处理
+2. 静态提升 ~const _hoisted_i = xxx~
+
+#+begin_src js
+
+  function genHoists(hoists, context) {
+    if (!hoists.length) {
+      return;
+    }
+    context.pure = true;
+    const { push, newline, helper, scopeId, mode } = context;
+    const genScopeId = !__BROWSER__ && scopeId != null && mode !== "function";
+    newline();
+
+    // 先 push scope id 在初始化 hoisted vnodes 之前，从而这些节点能获取到适当的 scopeId
+    if (genScopeId) {
+      push(`${helper(PUSH_SCOPE_ID)}("${scopeId}")`);
+      newline();
+    }
+
+    hoists.forEach((exp, i) => {
+      if (exp) {
+        push(`const _hoisted_${i + 1} = `);
+        genNode(exp, context);
+        newline();
+      }
+    });
+
+    if (genScopeId) {
+      push(`${helper(POP_SCOPE_ID)}()`);
+      newline();
+    }
+    context.pure = false;
+  }
+#+end_src
+** 虚拟节点创建函数
+
+| name              | transform     | desc             |
+|-------------------+---------------+------------------|
+| ~createTextVNode~ | [[#transform-transformtext][transformText]] | 创建文本虚拟节点 |
+|                   |               |                  |

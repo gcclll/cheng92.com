@@ -23,7 +23,8 @@
 3. https://rgoswami.me/dotdoom/config.html
 4. https://github.com/hlissner/doom-emacs-private
 5. https://github.com/sunnyhasija/Academic-Doom-Emacs-Config
-6. 主题：https://github.com/hlissner/emacs-doom-themes
+6. https://emacs.nasy.moe/
+7. 主题：https://github.com/hlissner/emacs-doom-themes
 
 ** Base Configuration/Operation
 *** 重新加载配置
@@ -36,16 +37,75 @@
 
 ** packages
 *** web-mode
+hydra:
 
+#+begin_src emacs-lisp
+(defhydra hydra-web-mode (:color blue :quit-key "q" :hint nil :columns 4)
+  "
+^Element^                       ^Element^                       ^Attribute^             ^Block&Other
+^^^^^^^^---------------------------------------------------------------------------------------------
+_a_ : Select content            _r_ : Rename                    _0_ : Start             _<_ : Begin 
+_b_ : Start                     _s_ : Select                    _9_ : End               _>_ : End
+_C_ : Clone                     _t_ : Move Down                 _*_ : Insert            _-_ : Select
+_e_ : End                       _u_ : Parent                    _N_ : Next                   
+_f_ : Fold/unfold children      _v_ : Delete without content    _P_ : Previous                
+_i_ : Insert                    _w_ : Wrap Element              _S_ : Select 
+_I_ : Insert cursor             _t_ : Last(open/close)          _K_ : Delete
+_k_ : Delete                    _T_ : Next(open/close)           
+_n_ : Next                      _._ : Wrap Markup 
+_p_ : Previous                  
+"
+ ("a" web-mode-element-content-select)
+ ("b" web-mode-element-beginning)
+ ("e" web-mode-element-end)
+ ("f" web-mode-element-children-fold-or-unfold)
+ ("F" web-mode-fold-unfold)
+ ("i" web-mode-element-insert)
+ ("I" web-mode-element-insert-at-point)
+ ("k" web-mode-element-kill)
+ ("m" web-mode-element-mute-blanks)
+ ("n" web-mode-element-next :exit nil :color "pink")
+ ("p" web-mode-element-previous :exit nil :color "pink")
+ ("r" web-mode-element-rename)
+ ("s" web-mode-element-select)
+ ("t" web-mode-element-transpose)
+ ("u" web-mode-element-parent :exit nil :color "pink")
+ ("v" web-mode-element-vanish)
+ ("w" web-mode-element-wrap)
+ ("t" web-mode-tag-previous :exit nil :color "pink")
+ ("T" web-mode-tag-next :exit nil :color "pink")
+ ("." emmet-wrap-with-markup)
+ ;; attribute
+ ("0" web-mode-attribute-beginning)
+ ("9" web-mode-attribute-end)
+ ("*" web-mode-attribute-insert)
+ ("K" web-mode-attribute-kill)
+ ("N" web-mode-attribute-next :exit nil :color "pink")
+ ("P" web-mode-attribute-previous :exit nil :color "pink")
+ ("S" web-mode-attribute-select)
+ ;; block
+ ("<" web-mode-block-next :exit nil :color "pink")
+ (">" web-mode-block-previous :exit nil :color "pink")
+ ("-" web-mode-block-select)
+  )
+#+end_src
+
+#+CAPTION: web-mode Keybindings
 |    key    | functions                                  | desc                                                             |
 |    <c>    |                                            |                                                                  |
 |-----------+--------------------------------------------+------------------------------------------------------------------|
 |   ~[t~    | ~web-mode-tag-previous~                    | 上一个标签(包含开闭标签)                                         |
 |   ~]t~    | ~web-mode-tag-next~                        | 下一个标签(包含开闭标签)                                         |
-|           |                                            |                                                                  |
 |-----------+--------------------------------------------+------------------------------------------------------------------|
 |    *z*    |                                            |                                                                  |
 |   ~z.~    | ~emmet-wrap-with-markup~                   |                                                                  |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+|   *C-c*   |                                            |                                                                  |
+|   ~C-s~   | ~web-mode-snippet-insert~                  | 插入snippets                                                     |
+|   ~C-f~   | ~web-mode-fold-or-unfold~                  | -                                                                |
+|-----------+--------------------------------------------+------------------------------------------------------------------|
+| *C-c C-d* | DOM 操作                                   |                                                                  |
+|    ~d~    | ~web-mode-dom-errors-show~                 | 显示DOM错误信息，标签是否闭合等等                                |
 |-----------+--------------------------------------------+------------------------------------------------------------------|
 | *C-c C-e* | element操作                                |                                                                  |
 |    ~a~    | ~web-mode-element-content-select~          | 选择标签内容                                                     |
@@ -79,7 +139,6 @@
 |    ~p~    | ~web-mode-attribute-previous~              |                                                                  |
 |    ~s~    | ~web-mode-attribute-select~                |                                                                  |
 |    ~t~    | ~web-mode-attribute-transpose~             |                                                                  |
-
 
 *** lsp-mode
 *** leetcode
@@ -320,6 +379,8 @@ key 绑定函数：
 |        | ~c e~             | ~+eval/buffer-or-region~           |            | -                            |
 |        | ~l m~             | ~lsp-ui-imenu~                     |            | -                            |
 |        | ~l t~             | ~treemacs~                         |            | -                            |
+|        | ~n n~             | ~org-capture~                      |            |                              |
+|        | ~n N~             | ~org-goto-capture~                 |            |                              |
 |        | ~m r~             | ~intant-rename-tag~                | *web-mode* | 同步修改标签名               |
 |        | ~w -~             | ~evil-window-split~                |            | 水平分割                     |
 |        | ~w v~             | ~evil-window-vsplit~               |            | 垂直分割                     |

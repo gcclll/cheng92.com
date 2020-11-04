@@ -279,7 +279,7 @@ alias: {
     npm config delete proxy
     npm config delete https-proxy
    #+end_src
-5. 下载 MacOS 工具： iTerm, oh-my-zsh
+5. 下载 MacOS 工具： iTerm, oh-my-zsh, [[https://app.diagrams.net/][drawer.io]] [[https://github.com/jgraph/drawio-desktop][drawer.io.pp]]
 6. 安装其他 shell 命令工具： *fasd, autojump, n, ag, rg*
 
    均可以通过 *brew/port* 安装

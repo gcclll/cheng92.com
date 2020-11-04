@@ -638,7 +638,7 @@ CLOSED: [2020-10-04 Sun 12:47]
 
 [[/img/vue3/compiler-core/key/key-05-how-gen-if-branches.svg]]
 
-** TODO 6. transform 阶段如何转换 v-else-if 指令？
+** DONE 6. transform 阶段如何转换 v-else-if 指令？
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-06-how-transform-v-else-if
@@ -655,7 +655,7 @@ CLOSED: [2020-10-04 Sun 12:47]
 #+end_src
 
 [[/img/vue3/compiler-core/key/key-02-transform-if.svg]]
-** TODO 7. Block 和 VNode 的处理逻辑有什么不一样？
+** TODO 7. 什么时候用 createVNode 什么时候用 createBlock ？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-07-diff-block-vnode
@@ -666,23 +666,117 @@ CLOSED: [2020-10-04 Sun 12:47]
 孩子节点有多个的时候会进入 VNode 流程，这里相当于创建了一个虚拟节点来将多个孩子
 包起来去生成 render 函数。
 
-示例：
+
+虚拟节点创建有这么几个函数： ~createVNode, createCommentVNode, createTextVNode~
+这些函数什么时候使用？和 ~openBlock, createBlock~ 区别在哪？
+
+对比两个示例：
+
+vnode 版 v1:
 #+begin_src html
-  <div>
-    <div class="block">
-      <p>use openBlock + createBlock api</p>
-    </div>
-    <div class="vnode">
-      <p>use createVNode api</p>
-      <p>use createVNode api</p>
-    </div>
-  </div>
+<div id="foo" :class="bar.baz">
+    {{ world.burn() }}
+    <div v-if="ok">yes</div>
+</div>
 #+end_src
+
+非 vnode 版 v2:
+#+begin_src html
+<div id="foo" :class="bar.baz">
+    {{ world.burn() }}
+</div>
+#+end_src
+
+区别：插值 ~{{world.burn()}}~ 有一个兄弟节点 ~<div v-if="ok">yes</div>~ 此时插值
+节点的处理会不一样，先看结果：
+
+1. v1 结果(*这个结果是有问题的，这也是我们要解决的问题*)：
+   
+   问题： ~_createTextVNode(, 1 /* TEXT */)~ 这里少了个参数，应该是那个插值表达式。
+
+   解决方法：加上 ~genNode: COMPOUND_EXPRESSION~ 分支处理。
+   
+   处理之后： ~_createTextVNode(_toDisplayString(world.burn()) + " ", 1 /* TEXT */)~
+   
+    #+begin_src js
+    const _Vue = Vue;
+    const {
+    createVNode: _createVNode,
+    createCommentVNode: _createCommentVNode,
+    createTextVNode: _createTextVNode,
+    } = _Vue;
+
+    const _hoisted_1 = { key: 0 };
+
+    return function render(_ctx, _cache) {
+        with (_ctx) {
+            const {
+            toDisplayString: _toDisplayString,
+            createVNode: _createVNode,
+            openBlock: _openBlock,
+            createBlock: _createBlock,
+            createCommentVNode: _createCommentVNode,
+            createTextVNode: _createTextVNode,
+            } = _Vue;
+
+            return (
+            _openBlock(),
+            _createBlock(
+                "div",
+                {
+                id: "foo",
+                class: bar.baz,
+                },
+                [
+                _createTextVNode(, 1 /* TEXT */),
+                ok
+                    ? (_openBlock(), _createBlock("div", _hoisted_1, "yes"))
+                    : _createCommentVNode("v-if", true),
+                ],
+                2 /* CLASS */
+            )
+            );
+        }
+    };
+    #+end_src
+
+2. v2 结果：
+    #+begin_src js
+    (function anonymous() {
+        const _Vue = Vue;
+
+        return function render(_ctx, _cache) {
+            with (_ctx) {
+            const {
+                toDisplayString: _toDisplayString,
+                createVNode: _createVNode,
+                openBlock: _openBlock,
+                createBlock: _createBlock,
+            } = _Vue;
+
+            return (
+                _openBlock(),
+                _createBlock(
+                "div",
+                {
+                    id: "foo",
+                    class: bar.baz,
+                },
+                _toDisplayString(world.burn()),
+                3 /* TEXT, CLASS */
+                )
+            );
+            }
+        };
+    });
+    #+end_src
+
 ** TODO 8. transform 阶段如何做静态提升？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-08-how-hoist-static
 :END: 
+
 
 静态提升检测在 transform 阶段， traverseNode 遍历完 ast 树之后，会调用
 ~hoistStatic(root, context)~ 对所有 codegenNode 进行递归，将需要静态提升的节点提取
@@ -707,7 +801,6 @@ function transform(root, options) {
 
 源码脑图：
 [[/img/vue3/compiler-core/key/key-08-how-hoist-static.svg]]
-
 * ☁ compiler-core: parser
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
