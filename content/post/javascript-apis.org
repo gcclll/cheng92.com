@@ -19,6 +19,19 @@
 ** Document.execCommand()
 * Array
 *** [[#es2016-includes][Array.prototype.includes]]
+* Map
+*** Map([iterable])
+*** Map.prototype.clear()
+*** Map.prototype.constructor
+*** Map.prototype.delete(key)
+*** Map.prototype.entries()
+*** Map.prototype.forEach(callback)
+*** Map.prototype.get(key)
+*** Map.prototype.has(key)
+*** Map.prototype.keys()
+*** Map.prototype.set(key,value)
+*** Map.prototype.size
+*** Map.prototype.values()
 * TODO ES2017
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
