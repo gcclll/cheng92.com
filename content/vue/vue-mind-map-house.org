@@ -35,7 +35,7 @@
 4. <2020-09-28 Mon> 所有脑图修改为 svg 格式，建议通过新 tab 打开，有些节点可能包含链
    接。
 
-* 🌩 实例列表
+* 🌩 功能特性分析(parser->transform->codegen)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg
@@ -48,12 +48,7 @@
 
 属性是如何解析的，最后在 render 函数中又是什么？
 
-插值？ ~v-if, v-else, v-for~ 等指令？
-
-又是如何解析的，了解了这些之后剩下的就是将所有需要的过程拼凑起来而已，后面也会看
-情况增加几个复杂或全的模板解析流程图。
-
-所以这一章节就很有必要了:dog::dog::dog::dog::dog: !!!
+插值？ ~v-if, v-else, v-for, v-once~ 等指令又是如何处理的？
 
 #+begin_quote
 这一章节的所有脑图，绘制分为以下阶段，如果流程简单多个阶段可能会在同一张脑图上
@@ -62,11 +57,25 @@
 3. *generate* 阶段利用 ~codegenNode~ 组装成 render 函数
 4. 待续......
 #+end_quote
-** 纯标签 ~<div></div>~
+
+章节预览：
+| 功能                | 简述                                   |
+|---------------------+----------------------------------------|
+| [[#pcg-div][div]]                 | ~<div></div>~                          |
+| [[#pcg-prop][attributes,静态属性]] | ~<div id="foo"></div>~                 |
+| [[#pcg-v-bind][v-bind]]              | ~<div :class="bar.baz"></div>~         |
+| [[#pcg-interpolation][interpolation]]       | ~<div>{{ world.burn() }}</div>~        |
+| [[#pcg-v-if][v-if]]                | ~<div><div v-if="ok">yes</div></div>~  |
+| [[#pcg-v-once][v-once]]              | ~<div><p v-once>test v-once</p></div>~ |
+
+
+** div, 纯标签
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-01
+:CUSTOM_ID: pcg-div
 :END:
+
+~<div></div>~
 
 结果：
 #+begin_src js
@@ -89,7 +98,6 @@
 1. parser 阶段， [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parseelement][parseElement]] -> [[/vue/vue3-source-code-compiler-core-parse_ts/#parse-parsetag][parseTag]]
 
    [[/img/vue3/compiler-core/pcg/pcg-01-1-parser-pure-div.svg]]
-
 2. compiler 阶段， [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-transform][transform]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversenode][traverseNode]] -> [[/vue/vue3-source-code-compiler-core-compile_ts/#transform-traversechildren][traverseChildren]] ，只有 ~0,ROOT~
    和 ~1,ELEMENT~ 两个类型分支处理。
 
@@ -97,11 +105,14 @@
 3. codegen 阶段，只有 div 的 block 处理(~_openBlock(), _createBlock("div")~)
 
    [[/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg]]
-** 静态属性 ~<div id="foo"></div>~
+   
+** attributes, 静态属性
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-02
+:CUSTOM_ID: pcg-prop
 :END:
+
+~<div id="foo"></div>~
 
 1. *parser 阶段* ：
 
@@ -140,11 +151,13 @@
    [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpression][genExpression(value, ctx)]] 生成属性值 ~{ id: "foo"~
 
    [[/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg]]
-** v-bind 指令 ~<div :class="bar.baz"></div>~
+** v-bind 指令
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-03
+:CUSTOM_ID: pcg-v-bind
 :END:
+
+~<div :class="bar.baz"></div>~
 
 结果预览：
 #+begin_src js
@@ -173,11 +186,13 @@
 3. *codegen 阶段：*
 
    [[/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg]]
-** 插值 ~<div>{{ world.burn() }}</div>~
+** interpolation, 插值
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-04
+:CUSTOM_ID: pcg-interpolation
 :END:
+
+~<div>{{ world.burn() }}</div>~
 
 #+begin_src js
   (function anonymous(
@@ -205,11 +220,13 @@
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg]]
-** v-if 指令 ~<div><div v-if="ok">yes</div></div>~
+** v-if 指令 
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: pcg-05
+:CUSTOM_ID: pcg-v-if
 :END:
+
+~<div><div v-if="ok">yes</div></div>~
 
 vue.global:
 #+begin_src js
@@ -378,7 +395,32 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
 
    [[/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg]]
 
+** 含 v-once 指令模板 
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-v-once
+:END: 
+
+~<div><p v-once>test v-once</p></div>~
+
+流程图：
+[[/img/vue3/compiler-core/parser-test-v-once.svg]]
+
+1. parser 阶段没什么不同，最终都是生成指令类型的 ast 树
+2. 重点在 transform 阶段，先 [[/vue/vue3-source-code-function-list/#transform-transformtext][transformText]] -> [[/vue/vue3-source-code-function-list/#transform-transformelement][transformElement]] -> [[/vue/vue3-source-code-function-list/#transform-transformonce][transformOnce]]
+   处理
+
+   经过 ~transformOnce~ 之后 codegenNode结果变化，从 *13,VNODE_CALL* 类型变成了
+   *20,JS_CACHE_EXPRESSION* 类型。
+
+3. codegen 阶段的处理，生成 Render 函数，对于 v-once 处理原理是利用缓存机制，第
+   一次创建节点存储到对应的 ~context.cache[]~ 中，后面更新节点时候直接取对应缓存。
 * ☀ 关键功能
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: mmh-key
+:END: 
+
 这一章节是针对整个 vue3 源码解构过程中遇到的问题或一些重要或关键的一些功能，进
 行提取解读。
 ** DONE 1. buildProps(node, context) 如何构建 props ?
@@ -808,6 +850,10 @@ function transform(root, options) {
 源码脑图：
 [[/img/vue3/compiler-core/key/key-08-how-hoist-static.svg]]
 * ☁ compiler-core: parser
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: mmh-cc-parser
+:END: 
 
 vue3.0 的解析器模块，将 html 模板解析成 AST 对象。
 
@@ -1038,6 +1084,10 @@ html 语义符号之后返回给 ~parseText:content~ 组织文本节点结构返
 [[/img/vue3/compiler-core/parser-test-simple-text.png]]
 
 * 🌙 compiler-core: compiler
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: mmh-cc-compiler
+:END: 
 
 vu3.0 编译器模块，将 parser 解析得到的 AST 对象编译成对应的 render 函数。
 

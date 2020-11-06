@@ -27,6 +27,24 @@
 *** Map.prototype.entries()
 *** Map.prototype.forEach(callback)
 *** Map.prototype.get(key)
+
+#+begin_src js
+function get(key) {
+  let M = this
+
+  RequireInternalSlot(M, [[MapData]])
+
+  let entries = M.[[MapData]] // list
+
+  for (let { [[Key]], [[Value]] }p of entries) {
+    if (p.[[Key]] && SameValueZero(p.[[Key]], key)) return p.[[Value]]
+  }
+
+  return undefined
+}
+#+end_src
+
+取出Map 数据列表，遍历找到满足条件的值。
 *** Map.prototype.has(key)
 *** Map.prototype.keys()
 *** Map.prototype.set(key,value)
