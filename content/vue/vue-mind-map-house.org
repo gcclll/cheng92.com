@@ -220,13 +220,15 @@
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg]]
-** v-if 指令 
+** v-if 指令([[https://github.com/gcclll/vue-next-code-read/commit/0a591b62d6961526b333afeb5f77c532b3992e31][git:0a591b6]])
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-v-if
 :END:
 
 ~<div><div v-if="ok">yes</div></div>~
+
+*git commit: [[https://github.com/gcclll/vue-next-code-read/commit/0a591b62d6961526b333afeb5f77c532b3992e31][0a591b62d6961526b333afeb5f77c532b3992e31]]*
 
 vue.global:
 #+begin_src js
@@ -395,7 +397,7 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
 
    [[/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg]]
 
-** 含 v-once 指令模板 
+** 含 v-once 指令模板([[http://localhost:1313/vue/vue-mind-map-house/#pcg-interpolation][git:2d0bab4]])
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-v-once
@@ -406,6 +408,8 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
 流程图：
 [[/img/vue3/compiler-core/parser-test-v-once.svg]]
 
+*git commit: [[https://github.com/gcclll/vue-next-code-read/commit/2d0bab4cfbf3408afe93270d7e9dc8ecd511dbe0][2d0bab4cfbf3408afe93270d7e9dc8ecd511dbe0]]*
+
 1. parser 阶段没什么不同，最终都是生成指令类型的 ast 树
 2. 重点在 transform 阶段，先 [[/vue/vue3-source-code-function-list/#transform-transformtext][transformText]] -> [[/vue/vue3-source-code-function-list/#transform-transformelement][transformElement]] -> [[/vue/vue3-source-code-function-list/#transform-transformonce][transformOnce]]
    处理
@@ -413,8 +417,21 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
    经过 ~transformOnce~ 之后 codegenNode结果变化，从 *13,VNODE_CALL* 类型变成了
    *20,JS_CACHE_EXPRESSION* 类型。
 
+   - 更新 [[/vue/vue3-source-code-function-list/#transform-getbasetransformpreset][getBaseTransformPreset]]
+
+   - 实现 [[/vue/vue3-source-code-function-list/#transform-vonce][transforms/vOnce->transformOnce]]
+
+   - [[/vue/vue3-source-code-function-list/#transform-buildprops][buildProps(node, ctx props = node.props, ssr=false) ]]中忽略属性 ~v-once~ 处理，
+     交给 ~transformOnce()~ 处理
+
 3. codegen 阶段的处理，生成 Render 函数，对于 v-once 处理原理是利用缓存机制，第
    一次创建节点存储到对应的 ~context.cache[]~ 中，后面更新节点时候直接取对应缓存。
+
+   实现关键函数:
+
+   - [[/vue/vue3-source-code-function-list/#codegen-gennode][genNode]]
+
+   - [[/vue/vue3-source-code-function-list/#codegen-gencacheexpression][genCacheExpression]]
 * ☀ 关键功能
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
