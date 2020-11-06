@@ -432,6 +432,7 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
    - [[/vue/vue3-source-code-function-list/#codegen-gennode][genNode]]
 
    - [[/vue/vue3-source-code-function-list/#codegen-gencacheexpression][genCacheExpression]]
+** TODO v-for 指令
 * ☀ 关键功能
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
