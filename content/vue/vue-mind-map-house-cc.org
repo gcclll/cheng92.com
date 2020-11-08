@@ -1,5 +1,5 @@
-#+TITLE: Vue3 源码的头脑风暴(脑图仓库)
-#+DATE: <2020-08-28 16:35:34>
+#+TITLE: Vue3 源码头脑风暴之☞compiler-core
+#+DATE: <2020-11-07 08:35:34>
 #+TAGS[]: vue, vue3, compiler-core, parser, compiler
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
@@ -68,8 +68,8 @@
 | [[#pcg-v-if][v-if]]                | ~<div><div v-if="ok">yes</div></div>~  |
 | [[#pcg-v-once][v-once]]              | ~<div><p v-once>test v-once</p></div>~ |
 
-
-** div, 纯标签
+ 
+** DONE 01 div, 纯标签
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-div
@@ -106,7 +106,7 @@
 
    [[/img/vue3/compiler-core/pcg/pcg-01-3-codegen-pure-div.svg]]
    
-** attributes, 静态属性
+** DONE 02 attributes, 静态属性
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-prop
@@ -151,7 +151,7 @@
    [[/vue/vue3-source-code-compiler-core-compile_ts/#codegen-genexpression][genExpression(value, ctx)]] 生成属性值 ~{ id: "foo"~
 
    [[/img/vue3/compiler-core/pcg/pcg-02-3-codegen-div-with-id.svg]]
-** v-bind 指令
+** DONE 03 v-bind 指令
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-v-bind
@@ -186,7 +186,7 @@
 3. *codegen 阶段：*
 
    [[/img/vue3/compiler-core/pcg/pcg-03-3-codegen-div-with-bind.svg]]
-** interpolation, 插值
+** DONE 04 interpolation, 插值
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-interpolation
@@ -220,7 +220,7 @@
 3. *codegen 阶段*
 
    [[/img/vue3/compiler-core/pcg/pcg-04-3-codegen-div-with-interpolation.svg]]
-** v-if 指令([[https://github.com/gcclll/vue-next-code-read/commit/0a591b62d6961526b333afeb5f77c532b3992e31][git:0a591b6]])
+** DONE 05 v-if 指令([[https://github.com/gcclll/vue-next-code-read/commit/0a591b62d6961526b333afeb5f77c532b3992e31][git:0a591b6]])
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-v-if
@@ -397,7 +397,7 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
 
    [[/img/vue3/compiler-core/pcg/pcg-05-02-3-codegen-div-with-if-eif-else.svg]]
 
-** 含 v-once 指令模板([[http://localhost:1313/vue/vue-mind-map-house/#pcg-interpolation][git:2d0bab4]])
+** DONE 06 含 v-once 指令模板([[http://localhost:1313/vue/vue-mind-map-house/#pcg-interpolation][git:2d0bab4]])
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: pcg-v-once
@@ -406,7 +406,7 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
 ~<div><p v-once>test v-once</p></div>~
 
 流程图：
-[[/img/vue3/compiler-core/parser-test-v-once.svg]]
+[[/img/vue3/compiler-core/pcg/pcg-06-v-once.svg]]
 
 *git commit: [[https://github.com/gcclll/vue-next-code-read/commit/2d0bab4cfbf3408afe93270d7e9dc8ecd511dbe0][2d0bab4cfbf3408afe93270d7e9dc8ecd511dbe0]]*
 
@@ -432,7 +432,22 @@ traverseNode 中的 exitFns 收集阶段，调用 transformIf 取 transform 函�
    - [[/vue/vue3-source-code-function-list/#codegen-gennode][genNode]]
 
    - [[/vue/vue3-source-code-function-list/#codegen-gencacheexpression][genCacheExpression]]
-** TODO v-for 指令
+** TODO 07 v-for 指令
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pcg-vfor
+:END: 
+
+脑图：
+[[/img/vue3/compiler-core/pcg/pcg-07-v-for.svg]]
+
+这里将三个阶段合并在一起了， transform 阶段的解析单独放在了 [[#key-09-how-transform-vfor][9. transform 阶段如
+何转换 v-for 指令？]] 这部分和 v-if 解析一样比较复杂，且属于特定的指令解析作为关键
+功能进行分析。
+
+所以对于 transform 阶段详细实现和脑图请点击上面链接查看内容。
+
+
 * ☀ 关键功能
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -836,13 +851,11 @@ vnode 版 v1:
 
 [[/img/vue3/compiler-core/key/key-07-diff-block-vnode.svg]]
 
-
-** TODO 8. transform 阶段如何做静态提升？
+** DONE 8. transform 阶段如何做静态提升？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-08-how-hoist-static
 :END: 
-
 
 静态提升检测在 transform 阶段， traverseNode 遍历完 ast 树之后，会调用
 ~hoistStatic(root, context)~ 对所有 codegenNode 进行递归，将需要静态提升的节点提取
@@ -867,6 +880,216 @@ function transform(root, options) {
 
 源码脑图：
 [[/img/vue3/compiler-core/key/key-08-how-hoist-static.svg]]
+** TODO 9. transform 阶段如何转换 v-for 指令？
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-09-how-transform-vfor
+:END: 
+
+这里和 [[#key-06-how-transform-v-else-if][transform 如何转换 v-else-if]] 一样复杂，这里将单独进行分析绘出对应脑图，示
+例来源于 [[#pcg-vfor][v-for 指令]] 且保持同步。
+
+[[/img/vue3/compiler-core/key/key-09-how-transform-vfor.svg]]
+
+测试用例：
+
+#+begin_src html
+<ul class="list">
+  <li v-for="user in users">{{user.name}}</li>
+</ul>`
+#+end_src
+
+transform 阶段前后 ast 对比：
+
+1. transform 之前的 ~<li>~ ast:
+    #+begin_src js
+    // ast.children[0]/*<ul>*/.children[0]/*<li>*/
+    var before = {
+    type: 1,
+    tag: 'li',
+    props: [
+        {
+        type: 7,
+        name: 'for',
+        exp: {
+            type: 4,
+            content: 'user in users',
+            isStatic: false,
+            isConstant: false,
+        },
+        loc: { source: "v-for='user in users'" },
+        },
+    ],
+    isSelfClosing: false,
+    children: [
+        {
+        type: 5,
+        content: {
+            type: 4,
+            isStatic: false,
+            isConstant: false,
+            content: 'user.name',
+        },
+        loc: { source: '{{user.name}}' },
+        },
+    ]
+    #+end_src
+
+2. tranform 之后的 ~<li>~ ast:
+    #+begin_src js
+    // ast.children[0]/*<ul>*/.children[0]/*<li>*/
+    var after = {
+    type: 11, // FOR
+    source: {
+        // 源数据
+        type: 4,
+        isConstant: false,
+        content: 'users',
+        isStatic: false,
+    },
+    valueAlias: {
+        // 迭代过程中的值
+        type: 4,
+        isConstant: false,
+        content: 'user',
+        isStatic: false,
+    },
+    parseResult: {
+        source: '...' /*对应外面的source*/,
+        value: '...' /*对应外面的 valueAlias*/,
+    },
+    children: [
+        {
+        type: 1,
+        tag: 'li',
+        props: [],
+        children: [
+            {
+            // {{user.name}}
+            type: 5,
+            content: {
+                type: 4,
+                isStatic: false,
+                isConstant: false,
+                content: 'user.name',
+            },
+            },
+        ],
+        codegenNode: {/*...见 li 的 codegenNode */},
+        },
+    ],
+    codegenNode: {/*...*/},
+    }
+    #+end_src
+
+   - *type*: 11, FOR 类型
+
+   - *source*: 渲染列表的数据来源，这里是 ~users~
+
+   - *valueAlias*: 渲染列表项需要的数据 ~user~
+3. transform 之后生成的 ~<li>~ codegenNode:
+    #+begin_src js
+    node.codegenNode = {
+    type: 11, // FOR
+    codegenNode: {
+        type: 13, // VNODE_CALL
+        children: {
+        type: 14, // JS_CALL_EXPRESSION
+        arguments: [ // 将作为 callee: _renderList 的参数
+            { 
+            type: 4,
+            isConstant: false,
+            content: 'users',
+            isStatic: false,
+            },
+            { // 用来生成函数的 (user) => { retrun `解析后的returns` }
+            type: 18, // JS_FUNCTION_EXPRESSION
+            params: [ // 这个作为 _renderList 第二个函数的参数
+                {
+                type: 4,
+                isConstant: false,
+                content: 'user',
+                isStatic: false,
+                },
+            ],
+            returns: { // _renderList 第二个参数函数的返回值
+                type: 13,
+                tag: '"li"',
+                children: {
+                type: 5, // INTERPOLATION
+                content: {
+                    type: 4,
+                    isStatic: false,
+                    isConstant: false,
+                    content: 'user.name',
+                },
+                },
+                patchFlag: '1 /* TEXT */',
+                isBlock: true,
+                disableTracking: false,
+            },
+            newline: true, // 这个结合 body 决定是否是 (user) => xx 还是 (user) => { return xxx }
+            isSlot: false,
+            },
+        ],
+        },
+        patchFlag: '256 /* UNKEYED_FRAGMENT */',
+        isBlock: true,
+        disableTracking: true,
+    },
+    #+end_src
+
+    ~const children = codegenNode.children~
+    
+   - *children*: 生成 ~_renderList(~ 函数
+
+     ~_renderList(~
+
+   - *children.arguments*: 生成 ~_renderList(users, fn)~ 函数的
+     两个参数 ~users~ 和 ~fn~
+
+   - *children.arguments[0]*: 将生成第一个参数 users
+     
+     ~_renderList(users,~
+   - *children.arguments[1]*: 将生成 fn 函数
+
+     ~_renderList(users, fn~
+   - *children.arguments[1].type*: 18，表示是 ~JS_FUNCTION_EXPRESSION~ 类型，用
+     来生成函数的
+
+   - *children.arguments[1].params*: 作为 fn 函数的参数
+
+     ~_renderList(users, (user) =>~
+     
+   - *children.arguments[1].returns*: 作为 fn函数的返回值
+
+     ~_renderList(users, (user) => { return (_openBlock(), _createBlock("li", null,
+     _toDisplayString(user.name), 1 /*TEXT*/)) })~
+从结构可以看出， v-for 指令最后会被替换成下面的结构：
+
+~{ type:11, valueAlias:/*这里是迭代当前的数据 user */, source: /* 这里是数据源，如：users*/}~
+
+生成的 li codegenNode 结构：
+
+~{type: 13, children: {/*...*/}~
+
+~renderList(users, (user)=> {return xx})~ 最终由 children 内数据呈现：
+
+~{type: 14, arguments: [{...}, {...}]~
+
+arguments: 
+
+~[{ type: 4, content: "users" }, { type: 18, params: {...} returns: {...} }}]~
+
+第二个参数成员表(生成： ~_renderList(users, fn)~)
+| memeber   | type                      | value                           | description                                                            |
+|-----------+---------------------------+---------------------------------+------------------------------------------------------------------------|
+| ~type~    | 18,JS_FUNCTION_EXPRESSION | 18                              | 生成函数 fn 的类型                                                     |
+| ~params~  | 4,SIMPLE_EXPRESSION       | ~{type:4, content: "user"}~     | fn 第一个参数 user, ~(user) => xxx~                                    |
+| ~returns~ | 13,VNODECALL              | ~{type:13, tag: "\"li\"", ...}~ | fn 函数的返回值                                                        |
+| ~body~    | -                         | -                               | fn 的函数体， ~() => body~, 和 returns 相冲突，二选一，且 returns 优先 |
+
+
 * ☁ compiler-core: parser
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
