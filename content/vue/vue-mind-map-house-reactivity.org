@@ -3,7 +3,7 @@
 #+TAGS[]: vue, vue3, compiler-core, parser, compiler
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
-#+STARTUP: indent
+#+STARTUP: indent shrink
 
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
@@ -15,6 +15,10 @@
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]
+
+* TODO Proxy & Reflect 功能回顾
+
+[[/post/javascript-apis/#api-proxy-reflect][Proxy 和 Reflect 相关的 Apis 伪码和说明连接 🛫]]
 
 * Reactivity
 :PROPERTIES:
@@ -122,6 +126,62 @@ function createReactiveObject(
   proxyMap.set(target, proxy)
   return proxy
 #+end_src
+* mutableHandlers
+
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hm
+:END:
+
+针对非集合型对象而言，结合 ~Reflect~ 构建 Proxy 的 handlers。
+
+** get handler
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hm-get
+:END:
+
+*** only get proxy
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hm-get-proxy
+:END:
+
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][598e047407fe52183468037beb45328878431a55]]
+
+主要更新代码：
+#+begin_src typescript
+
+function createGetter(isReadonly = false, shallow = false) {
+  // target: 被取值的对象，key: 取值的属性，receiver: this 的值
+  return function get(target: Target, key: string | symbol, receiver: object) {
+    // TODO 1. key is reactive
+    // TODO 2. key is readonly
+    // TODO 3. key is the raw target
+
+    // TODO 4. target is array
+
+    const res = Reflect.get(target, key, receiver)
+
+    // TODO 5. key is symbol, or `__protot__ | __v_isRef`
+
+    // TODO 6. not readonly, need to track and collect deps
+
+    // 是否只需要 reactive 一级属性(不递归 reactive)
+    if (shallow) {
+      return res
+    }
+
+    // TODO 6. res isRef
+
+    // TODO 7. res is object -> reactive recursivly
+
+    return res
+  }
+#+end_src
+
+这里值保留的最简单的代理部分。
 * 完整脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

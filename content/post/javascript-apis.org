@@ -3,7 +3,7 @@
 #+TAGS[]: javascript, api
 #+CATEGORIES[]: javascript
 #+LANGUAGE: zh-cn
-#+STARTUP: indent
+#+STARTUP: indent ^:{}
 
 #+begin_quote
 1. *regenerator*: ~npm install -g renerator~ 将 es6+ 语法编译成 es5 语法
@@ -18,8 +18,16 @@
 * Document
 ** Document.execCommand()
 * Array
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-array
+:END:
 *** [[#es2016-includes][Array.prototype.includes]]
 * Map
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-map
+:END:
 *** Map([iterable])
 *** Map.prototype.clear()
 *** Map.prototype.constructor
@@ -50,6 +58,150 @@ function get(key) {
 *** Map.prototype.set(key,value)
 *** Map.prototype.size
 *** Map.prototype.values()
+* Proxy & Reflect
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-proxy-reflect
+:END:
+
+可被代理的接口列表:
+
+| 内部方法                                  | 代理handler方法            | 原子操作                                                       | Reflect 方法                                       |
+| <12>                                      | <20>                       | <12>                                                           | <12>                                               |
+|-------------------------------------------+----------------------------+----------------------------------------------------------------+----------------------------------------------------|
+| ~[[GetProtoypeOf]]~                       | ~getPrototypeOf~           | ~Object.getPrototypeOf(target)~                                | ~Reflect.getPrototypeOf(obj)~                      |
+| ~[[SetPrototypeOf]]~                      | ~setPrototypeOf~           | ~Object.setPrototypeOf(target, proto)~                         | ~Reflect.setPrototypeOf(obj, protoObj)~            |
+| ~[[IsExtensible]]~                        | ~isExtensible~             | ~Object.isExtensible(proxy)~                                   | ~Reflect.isExtensible(obj)~                        |
+| ~[[PreventExtensions]]~                   | ~preventExtensions~        | ~Object.preventExtensions(obj)~                                | ~Reflect.preventExtensions(obj)~                   |
+| ~[[GetOwnProperty]](P)~                   | ~getOwnPropertyDescriptor~ | ~Object.getOwnPropertyDescriptor~                              | ~Reflect.getOwnPropertyDescriptor(obj, 'prop')~    |
+| ~[[DefineOwnProperty]](P, desc)~          | ~defineProperty~           | 属性定义函数: ~Object.defineProperty(obj, key, value)~         | ~Reflect.defineProperty(obj, 'prop', descriptors)~ |
+| ~[[HasProperty]](P)~                      | ~has~                      | 属性检测操作符： ~name in obj~                                 | ~Reflect.has(obj, 'prop')~                         |
+| ~[[Get]](P, Receiver)~                    | ~get~                      | 取值操作，如： ~obj.name~                                      | ~Reflect.get(obj, prop)~                           |
+| ~[[Set]](P, V, Receiver)~                 | ~set~                      | 赋值操作，如： ~obj.name = 1~                                  | ~Reflect.set(obj, prop, value)~                    |
+| ~[[Delete]](P)~                           | ~deleteProperty~           | 属性删除操作，如： ~delete obj.name~                           | ~Reflect.deleteProperty(obj.prop)~                 |
+| ~[[OwnPropertyKeys]]()~                   | ~ownKeys~                  | ~Object.getOwnPropertyNames~ 和 ~Object.getOwnPropertySymbols~ | ~Reflect.ownKeys(obj)~                             |
+| ~[[Call(thisArgument, argumentsList)]]~   | ~apply~                    | 函数调用 ~proxy1(1, 2)~ 操作触发                               | ~Reflect.apply(target, thisArg, argumentsList)~    |
+| ~[[Construct]](argumentsList, newTarget)~ | ~construct~                | ~new Func()~ 操作                                              | ~Reflect.construct(fn, args)~                      |
+
+** ProxyCreate(target, handler)^{abstract}
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-pr-proxycreate
+:END:
+
+1. 创建基本对象 P
+2. 设置内部函数 -> handler 函数映射
+3. Callable(target) 单独处理
+4. Construct(target) 单独处理
+5. 设置 ~P.[[ProxyHandler]] = handler~
+6. 设置 ~P.[[ProxyTarget]] = target~
+
+#+begin_src js
+function ProxyCreate(target, handler) {
+  if (Type(target) !== 'object') {
+    throw new TypeError('target required object.')
+  }
+
+  if (Type(handler) !== 'object') {
+    throw new TypeError('handler required object.')
+  }
+
+  let P = MakeBasicObject(<<[[ProxyHandler]], [[ProxyTarget]]>>)
+
+  // 设置 P 除了 [[Call]] 和 [[Construct]] 之外的主要内部方法
+
+  // Internal Method -> Handler Method
+  // [[GetPrototypeOf]] -> getPrototypeOf
+  // [[SetPrototypeOf]] -> setPrototypeOf
+  // [[IsExtensible]] -> isExtensible
+  // [[PreventExtensions]] -> preventExtensions
+  // [[GetOwnProperty]] -> getOwnPropertyDescriptor
+  // [[DefineOwnProperty]] -> defineProperty
+  // [[HasProperty]] -> has
+  // [[Get]] -> get
+  // [[Set]] -> set
+  // [[Delete]] -> deleteProperty
+  // [[OwnPropertyKeys]] -> ownKeys
+  // [[Call]] -> apply
+  // [[Construct]] -> construct
+
+  if (IsCallable(target)) {
+    // set P.[[Call]]
+    if (IsConstructor(target)) {
+      // set P.[[Construct]]
+    }
+  }
+
+  P.[[ProxyTarget]] = target
+  P.[[ProxyHandler]] = handler
+
+  return P
+}
+#+end_src
+
+** ~[[Construct(argumentsList, newTarget)]]~ ^{abstract}
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-pr-consturct
+:END:
+
+#+begin_src js
+function [[Construct]](argumentsList, newTarget) {
+  let handler = O.[[ProxyHandler]]
+  if (!handler) {
+    throw new TypeError('handler is null')
+  }
+
+  assert(Type(handler) === 'object')
+
+  let target = O.[[ProxyTarget]]
+
+  assert(IsConstructor(target) === true)
+
+  let trap = GetMethod(handler, 'construct')
+
+  if (trap === undefined) {
+    return Construct(target, argumentsList, newTarget)
+  }
+
+  let argArray = CreateArrayFromList(argumentsList)
+  let newObj = Call(trap, handler, <<target, argArray, newTarget>>)
+
+  if (Type(newObj) !== 'object') {
+    throw new TypeError('create new object error')
+  }
+
+  return newObj
+}
+#+end_src
+** ~[[Call]](thisArgument, arugmentList)~ ^{abstract}
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-pr-call
+:END:
+
+#+begin_src js
+function [[Call]](thisArgument, argumentsList) {
+  let handler = O.[[ProxyHandler]]
+
+  if (!handler) {
+    throw new TypeError('no handler.')
+  }
+
+  assert(Type(handler) === 'object')
+
+  let target = O.[[ProxyTarget]]
+  let trap = GetMethod(handler, 'apply')
+
+  if (!trap) {
+    return Call(target, thisArgument, argumentsList)
+  }
+
+  let argArray = CreateArrayFromList(argumentsList)
+
+  return Call(trap, handler, <<target, thisArgument, argArray>>)
+}
+#+end_src
 * TODO ES2017
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
