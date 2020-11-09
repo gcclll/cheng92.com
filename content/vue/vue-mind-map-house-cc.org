@@ -730,7 +730,7 @@ CLOSED: [2020-10-04 Sun 12:47]
 #+end_src
 
 [[/img/vue3/compiler-core/key/key-02-transform-if.svg]]
-** TODO 7. 什么时候用 createVNode 什么时候用 createBlock ？
+** DONE 7. 什么时候用 createVNode 什么时候用 createBlock ？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-07-diff-block-vnode
@@ -880,7 +880,7 @@ function transform(root, options) {
 
 源码脑图：
 [[/img/vue3/compiler-core/key/key-08-how-hoist-static.svg]]
-** TODO 9. transform 阶段如何转换 v-for 指令？
+** DONE 9. transform 阶段如何转换 v-for 指令？
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: key-09-how-transform-vfor
@@ -1071,11 +1071,11 @@ transform 阶段前后 ast 对比：
 
 生成的 li codegenNode 结构：
 
-~{type: 13, children: {/*...*/}~
+~{type: 13, children: {/*...*/}}~
 
 ~renderList(users, (user)=> {return xx})~ 最终由 children 内数据呈现：
 
-~{type: 14, arguments: [{...}, {...}]~
+~{type: 14, arguments: [{...}, {...}]}~
 
 arguments: 
 

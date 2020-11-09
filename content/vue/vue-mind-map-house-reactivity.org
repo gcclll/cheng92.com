@@ -1,0 +1,131 @@
+#+TITLE: Vue3 源码头脑风暴之☞reactivity
+#+DATE: <2020-11-09 11:45:36>
+#+TAGS[]: vue, vue3, compiler-core, parser, compiler
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+* Reactivity
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: rt
+:END:
+
+vue-next 最新的响应式原理 ~Proxy + Reflect~ 。
+
+[[#while-mind-map][由于完整脑图会比较全而大所以放到文字最后去。。。]]
+
+[[/img/vue3/reactivity/reactivity.svg][也可以点击该链接直接新窗口打开，效果更佳。]]
+
+* reactivity(target)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-rt
+:END:
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][cb3470d7c3f2944fd23e9155fc8a6afb7a51a732]]
+
+该函数是作为响应式模块的入口函数，一个非常简单的处理函数：
+
+1. 只读代理，直接返回该对象
+2. 否则调用 [[#rt-cro][createReactiveObject(...args)]]
+
+[[/img/vue3/reactivity/reactivity-reactive.svg]]
+
+#+begin_src typescript
+export function reactive(target: object) {
+  // 如果试图 observe 一个只读 proxy，返回只读版本
+  if (target && (target as Target)[ReactiveFlags.IS_READONLY]) {
+    return target
+  }
+
+  return createReactiveObject(
+    target,
+    false,
+    {},
+    // mutableHandlers,
+    {}
+    // mutableCollectionHandlers
+  )
+#+end_src
+
+*mutableHandlers*: 普通对象类型的 proxy handlers
+
+*mutableCollectionHandlers*: 集合类型的 proxy handlers，因为 ~Reflect~ 并没有对集
+合类型做底层映射，所以需要特殊处理。
+* createReactiveObject(...args)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-cro
+:END:
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][443a0b5920efaf714de08b0975c17f1d652815e4]]
+
+脑图：
+[[/img/vue3/reactivity/reactivity-create-reactive-object.svg]]
+
+#+begin_src typescript
+
+function createReactiveObject(
+  target: Target,
+  isReadonly: boolean,
+  baseHandlers: ProxyHandler<any>,
+  collectionHandlers: ProxyHandler<any>
+) {
+  if (!isObject(target)) {
+    if (__DEV__) {
+      console.warn(`value cannot be made reactive: ${String(target)}`)
+    }
+
+    return target
+  }
+
+  // target 已经是 Proxy，不用重复代理
+  // 异常情况：在一个 reactive object 上调用 readonly()
+  if (
+    target[ReactiveFlags.RAW] &&
+    !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
+  ) {
+    return target
+  }
+
+  // 代理缓存中有，直接取已缓存的
+  const proxyMap = isReadonly ? readonlyMap : reactiveMap
+  const existingProxy = proxyMap.get(target)
+  if (existingProxy) {
+    return existingProxy
+  }
+
+  // 只有合法的类型(Object|Array|[Weak]Map|[Weak]Set)才能被代理
+  const targetType = getTargetType(target)
+  if (targetType === TargetType.INVALID) {
+    return target
+  }
+
+  const proxy = new Proxy(
+    target,
+    targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers
+  )
+
+  // 缓存代理映射关系
+  proxyMap.set(target, proxy)
+  return proxy
+#+end_src
+* 完整脑图
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: whole-mind-map
+:END:
+
+[[/img/vue3/reactivity/reactivity.svg]]

@@ -5,7 +5,16 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+* reactivity
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fns-r
+:END:
 * compiler-core
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fns-cc
+:END:
 ** compile.ts
 *** baseCompile
 :PROPERTIES:
