@@ -219,6 +219,8 @@ observed.count // trigger get handler
 :CUSTOM_ID: hm-get-track
 :END:
 
+commit: [[https://github.com/gcclll/stb-vue-next/commit/6c50273e3225761c2b1da63ce19c773603dbd523][6c50273e3225761c2b1da63ce19c773603dbd523]]
+
 1. [[#fn-effect-track][track(target, type, key)]] 执行依赖收集：
 2. [[#fn-effect-effect][effect(fn, options)]] 封装依赖函数，并立即执行 fn(~options.lazy = false~, 时)
 
