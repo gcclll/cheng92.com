@@ -12,6 +12,7 @@
   诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
+<script src="/js/vue/reactivity.global.prod.js"></script>
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]
@@ -147,8 +148,15 @@ function createReactiveObject(
 :CUSTOM_ID: hm-get-proxy
 :END:
 
+本节只实现对象的 ~get proxy handler~ ，对象属性被访问的时候会触发代理，比如下面
+实例中，当访问 ~observed.count~ 时候会触发 ~console.log({ res }, "get")~ 执行。
 
 commit: [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][598e047407fe52183468037beb45328878431a55]]
+
+最简单 proxy get handler 脑图：
+[[/img/vue3/reactivity/reactivity-basehd-get-01.svg]]
+1. 调用 ~Reflect.get(target, key, receiver)~ 执行原子操作
+2. 返回执行结果
 
 主要更新代码：
 #+begin_src typescript
@@ -177,11 +185,236 @@ function createGetter(isReadonly = false, shallow = false) {
 
     // TODO 7. res is object -> reactive recursivly
 
+    console.log({ res }, "get")
     return res
   }
 #+end_src
 
-这里值保留的最简单的代理部分。
+这里只保留的最简单的代理部分。
+
+测试代码：
+#+begin_src js
+var counter = { count: 0 }
+var observed = VueReactivity.reactive(counter)
+
+observed.count // trigger get handler
+// 打开控制台会发现有输出: {res: 0} "get"
+#+end_src
+
+#+begin_export html
+<script type="text/javascript">
+var counter = { count: 0 }
+var observed = VueReactivity.reactive(counter)
+
+observed.count // trigger get handler
+// 这里会输出 {res: 0} "get"
+</script>
+#+end_export
+
+进行到这一步，对于测试并不是很方便，不能只管的看到输出结果，所以接下来我们将实现
+~effect()~ 来收集依赖，这样我们就可以很方便的通过依赖更新 DOM 。
+*** track get operation(追踪 get 操作，收集依赖)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hm-get-track
+:END:
+
+1. [[#fn-effect-track][track(target, type, key)]] 执行依赖收集：
+2. [[#fn-effect-effect][effect(fn, options)]] 封装依赖函数，并立即执行 fn(~options.lazy = false~, 时)
+
+[[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
+
+对于 ~effect()~ 相对比较独立的一个函数，目前阶段是需要手动去调用的，所以脑图就单
+独去绘制。
+* 函数列表
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-list
+:END:
+** effect.ts
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-effect
+:END:
+*** track(target, type, key)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-effect-track
+:END:
+
+*参数列表* ：
+    - ~target~ : 被代理的对象
+    - ~type~ : 代理操作类型(~get/has/iterate~)
+    - ~key~ : 取值操作时对应的属性名
+
+*主要功能* ：实现依赖收集
+
+*实现原理* ：结合 [[#fn-effect-effect][effect(fn, options)]]触发 /get proxy handler/ 里面执
+行 ~track(target, type, key)~ 将当前的 ~activeEffect~ 收集到 ~depsMap~ , 所
+以 ~activeEffect~ 是链接依赖函数和属性操作的桥梁，这将是未来设置值的时候触发依赖
+的命脉。
+
+
+ #+begin_src typescript
+    export function track(target: object, type: TrackOpTypes, key: unknown) {
+    if (!shouldTrack || activeEffect === undefined) {
+        return
+    }
+
+    // Map< obj -> Map<key, Set[...deps]> >
+    let depsMap = targetMap.get(target)
+    if (!depsMap) {
+        // 初始化
+        targetMap.set(target, (depsMap = new Map()))
+    }
+
+    let dep = depsMap.get(key)
+    if (!dep) {
+        depsMap.set(key, (dep = new Set()))
+    }
+
+    // 正在请求收集的 effect ，是初次出现
+    if (!dep.has(activeEffect)) {
+        dep.add(activeEffect)
+        // 自身保存一份被依赖者名单
+        activeEffect.deps.push(dep)
+        if (__DEV__ && activeEffect.options.onTrack) {
+        activeEffect.options.onTrack({
+            effect: activeEffect,
+            target,
+            type,
+            key
+        })
+        }
+    }
+#+end_src
+
+- targetMap 保存所以依赖关系，存储形式： ~Map<target -> Map<key,
+     Set[...deps]>>~
+
+- 前面两个 if 检测依赖是否有缓存，避免重复
+
+- 最后两个 ~add~ 操作，一个是手机依赖，一个让当前的 ~effect~ 持有自己身的被依赖
+  者名单
+*** effect(fn, options)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-effect-effect
+:END:
+
+*参数列表* ：
+
+    - ~fn~ ：依赖函数，该函数中对对象取值，触发 track 将它封装后的
+      ~ReactiveEffect~ 收集到取值属性对应的 ~depsMap~ 中
+    - ~options~ : 允许使用者提供外部选项，控制 effect 行为，比如： ~lazy: true~
+      可以控制 effect 是否会立即执行，立即触发 track 等一系列操作。
+
+*主要功能* : 封装依赖函数，并立即执行它，触发 track 收集依赖，主要实现还是在
+~createReactiveEffect(fn, options)~ 中
+
+#+begin_src typescript
+export function effect<T = any>(
+  fn: () => T,
+  options: ReactiveEffectOptions = EMPTY_OBJ
+): ReactiveEffect<T> {
+  if (isEffect(fn)) {
+    fn = fn.raw // 取出原始的函数，封装之前的
+  }
+
+  // 封装成 ReactiveEffect
+  const effect = createReactiveEffect(fn, options)
+
+  if (!options.lazy) {
+    // 如果并没指定 lazy: true 选项，则立即执行 effect 收集依赖
+    // 因为 effect 一般都会有取值操作，此时会触发 proxy get handler
+    // 然后执行 track() 结合当前的 activeEffect 即 effect() 执行时候的这个
+    // effect，这样取值操作就和当前取值作用域下的依赖函数建立的依赖关系
+    effect()
+  }
+  return effect
+
+#+end_src
+
+*** createReactiveEffect(fn, options)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-effect-createReactiveEffect
+:END:
+
+*参数列表* ：沿用 [[#fn-effect-effect][effect(fn, options)]]
+
+*主要功能* ：将 fn 封装成 ~ReactiveEffect~ 函数
+
+    #+begin_src typescript
+    export interface ReactiveEffect<T = any> {
+        (): T // effect函数主题
+        _isEffect: true // 标记自身是不是一个 ReactiveEffect 类型
+        id: number // uid++ 而来，全局的一个相对唯一的 id
+        active: boolean // 记录当前的 effect 是不是激活状态
+        raw: () => T // 封装之前的那个 fn
+        deps: Array<Dep> // fn 的被依赖者列表
+        options: ReactiveEffectOptions // 额外选项，如：lazy
+        allowRecurse: boolean // ???
+    }
+    #+end_src
+
+*解决问题* :
+
+    1. fn 封装之后，执行 fn 过程中使用 try...finally ，防止 fn 执行异常导致
+       effect 进程中断
+    2. 结合 shouldTrack, activeEffect 和 track() 函数，有效的避免了在 fn 中执行
+       obj.value++ 导致 effect 死循环问题，因为 try...finally 确保了只有 fn 函数
+       完成之后才会进入 finally 恢复 effect 状态(~shouldTrack = true,
+       activeEffect = last || null~)。
+
+#+begin_src typescript
+function createReactiveEffect<T = any>(
+  fn: () => T,
+  options: ReactiveEffectOptions
+): ReactiveEffect<T> {
+  // 将 fn 执行封装成  ReactiveEffect 类型的函数
+  const effect = function reactiveEffect(): unknown {
+    if (!effect.active) {
+      // 非激活状态，可能是手动调用了 stop
+      // 那么执行的时候就需要考虑调用 stop 者是否提供了手动调度该 effect
+      // 的函数 scheduler ? 也就是说你停止你可以重新启动
+      return options.scheduler ? undefined : fn()
+    }
+
+    if (!effectStack.includes(effect)) {
+      // 1. cleanup, 保持纯净
+      cleanup(effect)
+      try {
+        // 2. 使其 tracking 状态有效，track() 中有用
+        enableTracking() // track() 可以执行收集操作
+        effectStack.push(effect) // effect 入栈
+        // 3. 保存为当前的 activeEffect, track() 中有用
+        activeEffect = effect // 记录当前的 effect -> track/trigger
+        // 4. 执行 fn 并返回结果
+        return fn() // 返回执行结果
+      } finally {
+        // 始终都会执行，避免出现异常将 effect 进程卡死
+        // 5. 如果执行异常，丢弃当前的 effect ，并将状态重置为上一个 effect
+        //   由一个 effect 栈来维护。
+
+        effectStack.pop()
+        resetTracking()
+        activeEffect = effectStack[effectStack.length - 1]
+      }
+    }
+  } as ReactiveEffect
+
+  effect.id = uid++
+  effect.allowRecurse = !!options.allowRecurse
+  effect._isEffect = true
+  effect.active = true
+  effect.raw = fn // 这里保存原始函数引用
+  effect.deps = []
+  effect.options = options
+
+  return effect
+
+#+end_src
 * 完整脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
