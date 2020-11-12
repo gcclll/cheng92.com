@@ -69,6 +69,7 @@ https://www.bilibili.com/video/BV1zK4y1C7vE/
 * 前端开发
 不错的前端学习路线网站：https://objtube.github.io/front-end-roadmap/#/ 脑图方式
 展示。
+
 ** 插件列表
 *** jsmind 一款 js 脑图工具。
 #+begin_export html
@@ -501,6 +502,9 @@ https://github.com/PicGo
    | http://fonts.lug.ustc.edu.cn | 中科大        | 66ms    |
    | http://fonts.css.network     | 捷速网络 香港 | 160ms   |
    | http://fonts.gmirror.org     | 七牛          | timeout |
+3. IE8 解决 ~Object.defineProperty~ 兼容性问题
+
+   http://lpsjj.cn/thread-222-1-1.html
 
 ** 其他
 

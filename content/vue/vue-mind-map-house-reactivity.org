@@ -33,7 +33,7 @@ vue-next 最新的响应式原理 ~Proxy + Reflect~ 。
 
 [[/img/vue3/reactivity/reactivity.svg][也可以点击该链接直接新窗口打开，效果更佳。]]
 
-* reactivity(target)
+* reactive(target)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn-rt
@@ -128,7 +128,6 @@ function createReactiveObject(
   return proxy
 #+end_src
 * mutableHandlers
-
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: hm
@@ -221,23 +220,44 @@ observed.count // trigger get handler
 
 commit: [[https://github.com/gcclll/stb-vue-next/commit/6c50273e3225761c2b1da63ce19c773603dbd523][6c50273e3225761c2b1da63ce19c773603dbd523]]
 
-1. [[#fn-effect-track][track(target, type, key)]] 执行依赖收集：
-2. [[#fn-effect-effect][effect(fn, options)]] 封装依赖函数，并立即执行 fn(~options.lazy = false~, 时)
+1. [[#effect-track][track(target, type, key)]] 执行依赖收集：
+2. [[#effect-effect][effect(fn, options)]] 封装依赖函数，并立即执行 fn(~options.lazy = false~, 时)
 
 [[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
 
 对于 ~effect()~ 相对比较独立的一个函数，目前阶段是需要手动去调用的，所以脑图就单
 独去绘制。
-* 函数列表
+* effect.ts
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-list
+:CUSTOM_ID: file-effect
 :END:
-** effect.ts
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-effect
-:END:
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][3fc963486868ca3583b02852f07a5aa5969ac354]]
+
+函数及变量列表
+| name                                | type             | desc                                                                              |
+|-------------------------------------+------------------+-----------------------------------------------------------------------------------|
+| ~activeEffect~                      | /ReactiveEffect/ | 当前正在处理的 Effect，fn 还未执行完成，finally 还没结束                          |
+| ~effectStack~                       | /Array, []/      | 缓存所有状态还没完成的 Effect                                                     |
+| ~shouldTrack~                       | /boolean, true/  | track() 中用来检测当前 effect 是否结束，从而判定是否可以继续执行 track() 收集依赖 |
+| ~trackStack~                        | /Array, []/      | 保存着所有 Effect 的 shouldTrack 值                                               |
+| ~effect()~                          | /function/       | 封装 fn成 ReactiveEffect 结构                                                     |
+| ~track(target, type, key)~          | /function/       | 收集依赖，并且响应式递归                                                          |
+| ~trigger(...)~                      | /function/       | 当值更新时触发所有依赖更新                                                        |
+| ~createReactiveEffect(fn, options)~ | /function/       | effect() 函数主题功能分离出来                                                     |
+| ~cleanup(effect: ReactiveEffect)~   | /function/       | 清空所有 fn 的依赖 effect.deps[]                                                  |
+| ~enableTracking()~                  | /function/       | 使能 Effect ，shouldTrack = true, 并将其加入 trackStack                           |
+| ~resetTracking()~                   | /function/       | 重置 Effect, shouldTrack = 上一个 Effect 的 shouldTrack 值或 true                 |
+
+[[/img/vue3/reactivity/reactivity-effect.svg]]
+
+依赖和属性变更发生联系的桥梁模块。
+
+1. ~effect(fn, options)~ 封装执行 fn，触发取值操作 ->
+2. ~track(target, type, key)~ 收集对象及属性所有依赖 ->
+3. fn 中设值操作触发 ~trigger(...)~ 执行所有 deps，更新 DOM。
+   
 *** track(target, type, key)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -417,6 +437,13 @@ function createReactiveEffect<T = any>(
   return effect
 
 #+end_src
+*** effect -> track -> trigger 关系图
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: effect-track-trigger
+:END: 
+
+[[/img/vue3/reactivity/reactivity-effect-track-trigger.svg]]
 * 完整脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
