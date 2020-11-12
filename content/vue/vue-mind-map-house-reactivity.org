@@ -258,7 +258,7 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852
 2. ~track(target, type, key)~ 收集对象及属性所有依赖 ->
 3. fn 中设值操作触发 ~trigger(...)~ 执行所有 deps，更新 DOM。
    
-*** track(target, type, key)
+** track(target, type, key)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn-effect-track
@@ -318,7 +318,7 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852
 
 - 最后两个 ~add~ 操作，一个是手机依赖，一个让当前的 ~effect~ 持有自己身的被依赖
   者名单
-*** effect(fn, options)
+** effect(fn, options)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn-effect-effect
@@ -357,7 +357,7 @@ export function effect<T = any>(
 
 #+end_src
 
-*** createReactiveEffect(fn, options)
+** createReactiveEffect(fn, options)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn-effect-createReactiveEffect
@@ -437,13 +437,111 @@ function createReactiveEffect<T = any>(
   return effect
 
 #+end_src
-*** effect -> track -> trigger 关系图
+** effect -> track -> trigger 关系图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: effect-track-trigger
 :END: 
 
 [[/img/vue3/reactivity/reactivity-effect-track-trigger.svg]]
+** 测试
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: effect-test
+:END: 
+
+*** effect + track 完成依赖收集
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: effect-test-01
+:END: 
+
+上面示例演示了如何 ~reactive~ 一个对象，然后通过 ~effect~ 来封装执行一个函数，在这个
+函数里面去取值和设值操作，从而分别触发 [[#fn-effect-track][track()]] 和 [[#fn-effect-trigger][trigger()]] 收集依赖和触发更新。
+
+~trigger()~ 还没完成，所以这里只能演示 track 和 effect 功能。
+
+#+begin_src js
+var effect = VueReactivity.effect
+var reactive = VueReactivity.reactive
+var counter = reactive({ count: 0 })
+
+var $el = $("#_effect_test_01")
+
+var exec = effect(
+    function fn() {
+    var c = counter.count++
+    $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
+    }, { lazy: true }
+)
+$el.children(".getval").click(function() {
+    exec()
+})
+$el.children(".reset").click(function() {
+    $el.children(".result").html('')
+})
+
+#+end_src
+为了更直观的看到收集动作，可以通过增加按钮来结合 effect options 的 lazy 选项，来手动触发 ~effect()~
+
+#+begin_export html
+<body>
+<div id="_effect_test_01">
+<button class="getval">点我触发取值操作！</button>
+<button class="reset">重置</button>
+<div class="result"></div>
+<code></code>
+</div>
+</body>
+<script>
+setTimeout(function test() {
+    if (typeof $ === 'undefined') return
+    
+    var effect = VueReactivity.effect
+    var reactive = VueReactivity.reactive
+    var counter = reactive({ count: 0 })
+    
+    var $el = $("#_effect_test_01")
+    
+    var exec = effect(
+      function fn() {
+        var c = counter.count++
+        $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
+      }, { lazy: true }
+    )
+    $el.children(".getval").click(function() {
+      exec()
+    })
+    $el.children(".reset").click(function() {
+      $el.children(".result").html('')
+    })
+
+}, 1000)
+    
+</script>
+#+end_export
+
+debugger:
+#+begin_example
+e: {count: 0} // counter 对象
+i: Set(1) // "count" 属性的依赖函数 targetMap -> depsMap -> deps
+    > [[Entries]]
+        // 0 -> effect(fn) -> fn 被封装之后的结果
+        > 0: function(){if(!n.active)return t.scheduler?void 0:e();if(!i.includes(n)){!function(e){const{deps:t}=e;if(t.length){for(let n=0;n<t.length;n++)t[n].delete(e);t.length=0}}(n);try{return f(),i.push(n),o=n,e()}finally{i.pop(),l(),o=i[i.length-1]}}}
+        > size: 1
+depsMap: Map(1) // counter 对象的属性依赖对应关系 targetMap -> depsMap { key => Set[...deps] }
+    > [[Entries]]
+        > 0: {"count" => Set(1)}
+        > size: 1
+
+// Closure 部分
+targetMaps: WeakMap
+   > [[Entries]]
+   > 0: {Object => Map(1)}
+        > key: {count: 0}
+        > value: Map(1) {"count" => Set(1)}
+#+end_example
+
 * 完整脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
