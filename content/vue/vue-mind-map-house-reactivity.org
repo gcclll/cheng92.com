@@ -13,6 +13,11 @@
 </font>
 </kbd><br><br>
 <script src="/js/vue/reactivity.global.prod.js"></script>
+<script>
+function _log(el, content) {
+  $(el).children('.result').append('<p>' + content + '</p>')
+}
+</script>
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]
@@ -437,6 +442,12 @@ function createReactiveEffect<T = any>(
   return effect
 
 #+end_src
+** trigger(target, type, key?, newValue?, oldValue?, oldTarget?)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-effect-trigger
+:END: 
+
 ** effect -> track -> trigger 关系图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -470,12 +481,22 @@ var $el = $("#_effect_test_01")
 
 var exec = effect(
     function fn() {
-    var c = counter.count++
-    $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
+      var c = counter.count++
+      $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
     }, { lazy: true }
 )
+// options.lazy = true，所以这个 fn 不会立即执行
+// 点击取值按钮，手动执行 effect() -> fn() 执行，从而对于 count 属性会收集
+// 到 fn 到自己的依赖列表 deps中，所以后续点击
+
+var hasExec = false
 $el.children(".getval").click(function() {
+  if (!hasExec) {
+    hasExec = true
     exec()
+  } else {
+    counter.count;
+  }
 })
 $el.children(".reset").click(function() {
     $el.children(".result").html('')
@@ -509,8 +530,15 @@ setTimeout(function test() {
         $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
       }, { lazy: true }
     )
+
+    var hasExec = false
     $el.children(".getval").click(function() {
-      exec()
+        if (!hasExec) {
+            hasExec = true
+            exec()
+        } else {
+            console.log(counter.count, ' get value....')
+        }
     })
     $el.children(".reset").click(function() {
       $el.children(".result").html('')
@@ -541,6 +569,106 @@ targetMaps: WeakMap
         > key: {count: 0}
         > value: Map(1) {"count" => Set(1)}
 #+end_example
+
+*** effect + track + trigger 完整实现响应式基本操作(get/set)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: effect-test-02
+:END: 
+
+部分测试源码：
+#+begin_src js
+var ins = VueReactivity
+var effect = ins.effect
+var reactive = ins.reactive
+var target = { count: 0 }
+var counter = reactive(target)
+
+var lazyEffect = effect(
+    function fn() {
+        var c = counter.count
+    }, {
+        lazy: true
+    }
+)
+#+end_src
+
+1. lazy: true 标识 effect fn 不会立即执行
+2. 点击 set 操作，此时并没有依赖，所以只会触发 count++
+3. 当点击 get 操作，触发 ~track()~ 收集依赖 fn -> deps
+4. 再点击 set 操作，此时已经有依赖，所以会 ~trigger()~ 所有依赖更新
+
+#+begin_export html
+<body>
+<div id="_effect_test_02">
+<button class="getval">点我触发 get操作！</button>
+<button class="setval">点我触发 set操作！</button>
+<button class="code">点击查看测试源码</button>
+<button class="reset">重置</button>
+<div class="result"></div>
+<code></code>
+</div>
+</body>
+<script id="GW0MDx">
+setTimeout(function test() {
+    if (typeof $ === 'undefined') return
+
+    var ins = VueReactivity
+    var effect = ins.effect
+    var reactive = ins.reactive
+    var target = { count: 0 }
+    var counter = reactive(target)
+    
+    var $el = $("#_effect_test_02")
+    
+    var lazyEffect = effect(
+      function fn() {
+        var c = counter.count
+        _log($el, '正在执行 effect fn..., counter.count = ' + counter.count)
+      }, {
+        lazy: true
+      }
+    )
+
+    var effected = false
+    var getDeps = function () {
+      if (!ins.targetMap) return new Set()
+      const depsMap = ins.targetMap.get(target) || new Map()
+      return depsMap.get('count') || new Set()
+    }
+    $el.children(".setval").click(function() {
+      counter.count++
+      var size = getDeps().size
+      if (size === 0) {
+        _log($el, 'target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
+      }
+    })
+    $el.children(".reset").click(function() {
+      ins.cleanup(lazyEffect)
+      $el.children(".result").html('')
+      effected = false
+      counter.count = 0
+      _log($el, 'target.count deps.size = ' + getDeps().size)
+    })
+    $el.children(".getval").click(function() {
+      if (!effected) {
+        effected = true
+        lazyEffect() // 手动执行 effect
+        _log($el, '手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
+      }
+      _log($el, '取值操作(target.count 的 deps 数)：'
+        + ins.targetMap.get(target).get('count').size
+        + ', counter.count = ' + counter.count)
+    })
+
+    $el.children('.code').click(function() {
+      console.log($("#GW0MDx").html())
+      _log($el, '源码已输出到控制台(F12-console)....')
+    })
+}, 1000)
+    
+</script>
+#+end_export
 
 * 完整脑图
 :PROPERTIES:
