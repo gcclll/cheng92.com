@@ -12,7 +12,7 @@
   诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
-<script src="/js/vue/reactivity.global.prod.js"></script>
+<script src="/js/vue/reactivity.global.js"></script>
 <script>
 function _log(el, content) {
   $(el).children('.result').append('<p>' + content + '</p>')
@@ -456,16 +456,17 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e
 :END: 
 
 [[/img/vue3/reactivity/reactivity-effect-track-trigger.svg]]
-** 测试
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: effect-test
-:END: 
 
-*** effect + track + trigger 完整实现响应式基本操作(get/set)
+* 功能测试
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: effect-test-01
+:CUSTOM_ID: test
+:END:
+
+** effect + track + trigger 响应式基本操作(get/set)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-01
 :END: 
 
 commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
@@ -512,90 +513,6 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e
 <code></code>
 </div>
 #+end_export
-
-lazy 选项测试代码：
-#+begin_src js
-var ins = VueReactivity
-var effect = ins.effect
-var reactive = ins.reactive
-var target = { count: 0 }
-var counter = reactive(target)
-
-var LOG = function (msg) {
-    _log($el, msg)
-}
-
-var lazyEffect = effect(
-    function fn() {
-        var c = counter.count
-        LOG('正在执行 effect fn..., counter.count = ' + counter.count)
-    }, {
-        lazy: true
-    }
-)
-
-var effected = false
-var getDeps = function () {
-    if (!ins.targetMap) return new Set()
-    const depsMap = ins.targetMap.get(target) || new Map()
-    return depsMap.get('count') || new Set()
-}
-$el.find(".setval").click(function() {
-    counter.count++
-    var size = getDeps().size
-    if (size === 0) {
-        LOG('target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
-    }
-})
-$el.find(".reset").click(function() {
-    ins.cleanup(lazyEffect)
-    $el.children(".result").html('')
-    effected = false
-    counter.count = 0
-    dummy = 0
-    runner = undefined
-    times = 0
-    LOG('target.count deps.size = ' + getDeps().size)
-})
-$el.find(".getval").click(function() {
-    if (!effected) {
-        effected = true
-        lazyEffect() // 手动执行 effect
-        LOG('手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
-    }
-    LOG('取值操作(target.count 的 deps 数)：'
-    + ins.targetMap.get(target).get('count').size
-    + ', counter.count = ' + counter.count)
-})
-
-#+end_src
-
-scheduler 选项测试代码：
-#+begin_src js
-var dummy = 0, runner
-var counter1 = reactive({ count: 0 })
-var times = 0
-var schedulerEffect = effect(function fn() {
-    dummy = counter1.count
-}, {
-    scheduler: function(_effect) {
-        LOG('scheduler 执行次数 ' + ++times + ', dummy = ' + dummy)
-        runner = function() {
-            _effect()
-        }
-    }
-})
-
-LOG('scheduler effect fn 第一次会被执行， dummy = ' + dummy)
-$el.find('.before-scheduler').click(function() {
-    LOG('scheduler 不会被执行, dummy = ' + dummy)
-})
-
-$el.find('.after-scheduler').click(function() {
-    counter1.count++
-    runner()
-})
-#+end_src
 
 #+begin_export html
 <script id="GW0MDx">
@@ -689,6 +606,55 @@ setTimeout(function test() {
 </script>
 #+end_export
 
+-----
+
+相关用例：
+1. 立即执行一次 fn，观察基本属性(一个或多个)
+
+   #+begin_src js
+    const { effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    const ob = reactive({ n1: 0, n2: 10 })
+    let times = 0, dummy = 0
+    effect(() => {
+    console.log('effect fn 被执行 ' + ++times + ' 次')
+    dummy = ob.n1 + ob.n2
+    })
+
+    console.log('before set: dummy = ' + dummy)
+    ob.n1 = ob.n2 = 10
+    console.log('after set: dummy = ' + dummy)
+   #+end_src
+
+   +RESULTS:
+   : effect fn 被执行 1 次
+   : before set: dummy = 10
+   : effect fn 被执行 2 次
+   : after set: dummy = 20
+
+2. 给同一个属性绑定多个 effects，值变更触发多个 effect
+
+   #+begin_src  js
+    const { effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    let d1, d2
+    const ob = reactive({ count: 0 })
+    effect(() => (d1 = ob.count))
+    effect(() => (d2 = ob.count))
+
+    console.log('before set: d1 = ' + d1 + ', d2 = ' + d2)
+    ob.count = 3
+    console.log('after set: d1 = ' + d1 + ', d2 = ' + d2)
+   #+end_src
+
+   +RESULTS:
+   : before set: d1 = 0, d2 = 0
+   : after set: d1 = 3, d2 = 3
+** 支持对象嵌套
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-02
+:END:
 
 * 完整脑图
 :PROPERTIES:
