@@ -22,36 +22,34 @@ function _log(el, content) {
 
 [[/img/bdx/yiyeshu-001.jpg]]
 
-* TODO Proxy & Reflect 功能回顾
+@@html:<kbd>@@
+*stb-vue-next 完成拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的学习及尝试应用于机顶盒环境。*
+@@html:</kbd>@@
 
-[[/post/javascript-apis/#api-proxy-reflect][Proxy 和 Reflect 相关的 Apis 伪码和说明连接 🛫]]
+@@html:<kbd>@@ *本文依据 commit 进程进行记录* @@html:</kbd>@@
 
-* Reactivity
+* init project
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: rt
+:CUSTOM_ID: init
 :END:
 
-vue-next 最新的响应式原理 ~Proxy + Reflect~ 。
+初始化项目：[[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][feat: reactive-fn · gcclll/stb-vue-next@cb3470d]]
 
 [[#while-mind-map][由于完整脑图会比较全而大所以放到文字最后去。。。]]
 
 [[/img/vue3/reactivity/reactivity.svg][也可以点击该链接直接新窗口打开，效果更佳。]]
-
-* reactive(target)
+** [[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][4a6ac0e]] add: createReactiveObject
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-rt
+:CUSTOM_ID: fn cro
 :END:
 
-commit: [[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][cb3470d7c3f2944fd23e9155fc8a6afb7a51a732]]
-
-该函数是作为响应式模块的入口函数，一个非常简单的处理函数：
-
-1. 只读代理，直接返回该对象
-2. 否则调用 [[#rt-cro][createReactiveObject(...args)]]
+[[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][feat: reactive-fn · gcclll/stb-vue-next@cb3470d]]
 
 [[/img/vue3/reactivity/reactivity-reactive.svg]]
+
+仅增加函数声明:
 
 #+begin_src typescript
 export function reactive(target: object) {
@@ -63,151 +61,72 @@ export function reactive(target: object) {
   return createReactiveObject(
     target,
     false,
-    {},
-    // mutableHandlers,
+    mutableHandlers,
     {}
     // mutableCollectionHandlers
   )
-#+end_src
-
-*mutableHandlers*: 普通对象类型的 proxy handlers
-
-*mutableCollectionHandlers*: 集合类型的 proxy handlers，因为 ~Reflect~ 并没有对集
-合类型做底层映射，所以需要特殊处理。
-* createReactiveObject(...args)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-cro
-:END:
-
-commit: [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][443a0b5920efaf714de08b0975c17f1d652815e4]]
-
-脑图：
-[[/img/vue3/reactivity/reactivity-create-reactive-object.svg]]
-
-#+begin_src typescript
+}
 
 function createReactiveObject(
   target: Target,
   isReadonly: boolean,
   baseHandlers: ProxyHandler<any>,
   collectionHandlers: ProxyHandler<any>
-) {
-  if (!isObject(target)) {
-    if (__DEV__) {
-      console.warn(`value cannot be made reactive: ${String(target)}`)
-    }
-
-    return target
-  }
-
-  // target 已经是 Proxy，不用重复代理
-  // 异常情况：在一个 reactive object 上调用 readonly()
-  if (
-    target[ReactiveFlags.RAW] &&
-    !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
-  ) {
-    return target
-  }
-
-  // 代理缓存中有，直接取已缓存的
-  const proxyMap = isReadonly ? readonlyMap : reactiveMap
-  const existingProxy = proxyMap.get(target)
-  if (existingProxy) {
-    return existingProxy
-  }
-
-  // 只有合法的类型(Object|Array|[Weak]Map|[Weak]Set)才能被代理
-  const targetType = getTargetType(target)
-  if (targetType === TargetType.INVALID) {
-    return target
-  }
-
-  const proxy = new Proxy(
-    target,
-    targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers
-  )
-
-  // 缓存代理映射关系
-  proxyMap.set(target, proxy)
-  return proxy
+) {}
 #+end_src
-* mutableHandlers
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: hm
-:END:
 
-针对非集合型对象而言，结合 ~Reflect~ 构建 Proxy 的 handlers。
+*mutableHandlers*: 普通对象类型的 proxy handlers
 
-** get handler
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: hm-get
-:END:
+*mutableCollectionHandlers*: 集合类型的 proxy handlers，因为 ~Reflect~ 并没有对集
+合类型做底层映射，所以需要特殊处理。
 
-*** only get proxy
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: hm-get-proxy
-:END:
+** [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][c0f0b7c]] feat: createReactiveObject
 
-本节只实现对象的 ~get proxy handler~ ，对象属性被访问的时候会触发代理，比如下面
+[[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][feat: createReactiveObject · gcclll/stb-vue-next@443a0b5]]
+
+[[/img/vue3/reactivity/reactivity-create-reactive-object.svg]]
+
+1. 重点： ~new Proxy(target, collection)~
+2. 被代理类型必须是对象(引用类型)
+3. target 本身已经是 proxy 了
+4. target 代理有缓存不用重复创建
+5. 必须是合法的类型(~Object|Array|[Weak]Map|[Weak]Set~)才能被代理
+6. 记得缓存新创建的代理关系(~proxyMap~ 全局变量)
+
+** [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][443a0b5]] basic proxy get handler(createGetter)
+
+[[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][feat: reactive proxy get handler · gcclll/stb-vue-next@598e047]]
+
+commit: 只实现对象的 ~get proxy handler~ ，对象属性被访问的时候会触发代理，比如下面
 实例中，当访问 ~observed.count~ 时候会触发 ~console.log({ res }, "get")~ 执行。
-
-commit: [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][598e047407fe52183468037beb45328878431a55]]
 
 最简单 proxy get handler 脑图：
 [[/img/vue3/reactivity/reactivity-basehd-get-01.svg]]
+
 1. 调用 ~Reflect.get(target, key, receiver)~ 执行原子操作
 2. 返回执行结果
 
-主要更新代码：
+
 #+begin_src typescript
 function createGetter(isReadonly = false, shallow = false) {
   // target: 被取值的对象，key: 取值的属性，receiver: this 的值
   return function get(target: Target, key: string | symbol, receiver: object) {
-    // TODO 1. key is reactive
-    // TODO 2. key is readonly
-    // TODO 3. key is the raw target
-    if (
-      key === ReactiveFlags.RAW &&
-      receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
-    ) {
-      return target
-    }
-    // TODO 4. target is array
-
     const res = Reflect.get(target, key, receiver)
-
-    // TODO 5. key is symbol, or `__protot__ | __v_isRef`
-
-    // DONE 6. not readonly, need to track and collect deps
-    if (!isReadonly) {
-      track(target, TrackOpTypes.GET, key)
-    }
 
     // 是否只需要 reactive 一级属性(不递归 reactive)
     if (shallow) {
       return res
     }
 
-    // TODO 6. res isRef
-
-    // TODO 7. res is object -> reactive recursivly
-    if (isObject(res)) {
-      // 递归 reactive 嵌套对象，feat: b2143f9
-      return isReadonly ? null /* TODO */ : reactive(res)
-    }
-
     return res
   }
 }
+export const mutableHandlers: ProxyHandler<object> = {
+  get
+}
 #+end_src
 
-这里只保留的最简单的代理部分。
-
-测试代码：
+测试：
 #+begin_src js
 const { effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
 
@@ -234,137 +153,46 @@ Map(1) {
   }
 }
 #+end_example
+** [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][6c50273]] add track() and effect()
 
-*** track get operation(追踪 get 操作，收集依赖)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: hm-get-track
-:END:
+[[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][feat: track+effect · gcclll/stb-vue-next@3fc9634]]
 
-commit: [[https://github.com/gcclll/stb-vue-next/commit/6c50273e3225761c2b1da63ce19c773603dbd523][6c50273e3225761c2b1da63ce19c773603dbd523]]
+为了完成观察属性，通过属性的取值操作来收集依赖过程，这里同时实现了 ~track()~ 和
+~effect()~ 函数。
 
-1. [[#effect-track][track(target, type, key)]] 执行依赖收集：
-2. [[#effect-effect][effect(fn, options)]] 封装依赖函数，并立即执行 fn(~options.lazy = false~, 时)
+*** track(target, type, key) 监听取值收集依赖：
 
-[[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
+   [[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
 
-对于 ~effect()~ 相对比较独立的一个函数，目前阶段是需要手动去调用的，所以脑图就单
-独去绘制。
-*** observe object recursivly(递归观察对象)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: hm-get-oor
-:END:
+*** effect(fn, options)
 
-commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f?branch=b2143f9e35af77ee43792a6110ea70c4caf9a54f&diff=split][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
+- *参数列表* ：
 
-[[/img/vue3/reactivity/reactivity-basehd-get-03-track-recursively.svg]]
-* effect.ts
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: file-effect
-:END:
+    fn - 被封装的函数，里面可对对象执行 get/set 操作。
 
-commit: [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][3fc963486868ca3583b02852f07a5aa5969ac354]]
+- *主要功能* ：将 fn 封装成 ~ReactiveEffect~ 函数
 
-函数及变量列表
-| name                                | type             | desc                                                                              |
-|-------------------------------------+------------------+-----------------------------------------------------------------------------------|
-| ~activeEffect~                      | /ReactiveEffect/ | 当前正在处理的 Effect，fn 还未执行完成，finally 还没结束                          |
-| ~effectStack~                       | /Array, []/      | 缓存所有状态还没完成的 Effect                                                     |
-| ~shouldTrack~                       | /boolean, true/  | track() 中用来检测当前 effect 是否结束，从而判定是否可以继续执行 track() 收集依赖 |
-| ~trackStack~                        | /Array, []/      | 保存着所有 Effect 的 shouldTrack 值                                               |
-| ~effect()~                          | /function/       | 封装 fn成 ReactiveEffect 结构                                                     |
-| ~track(target, type, key)~          | /function/       | 收集依赖，并且响应式递归                                                          |
-| ~trigger(...)~                      | /function/       | 当值更新时触发所有依赖更新                                                        |
-| ~createReactiveEffect(fn, options)~ | /function/       | effect() 函数主题功能分离出来                                                     |
-| ~cleanup(effect: ReactiveEffect)~   | /function/       | 清空所有 fn 的依赖 effect.deps[]                                                  |
-| ~enableTracking()~                  | /function/       | 使能 Effect ，shouldTrack = true, 并将其加入 trackStack                           |
-| ~resetTracking()~                   | /function/       | 重置 Effect, shouldTrack = 上一个 Effect 的 shouldTrack 值或 true                 |
-
-[[/img/vue3/reactivity/reactivity-effect.svg]]
-
-依赖和属性变更发生联系的桥梁模块。
-
-1. ~effect(fn, options)~ 封装执行 fn，触发取值操作 ->
-2. ~track(target, type, key)~ 收集对象及属性所有依赖 ->
-3. fn 中设值操作触发 ~trigger(...)~ 执行所有 deps，更新 DOM。
-   
-** track(target, type, key)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-effect-track
-:END:
-
-*参数列表* ：
-    - ~target~ : 被代理的对象
-    - ~type~ : 代理操作类型(~get/has/iterate~)
-    - ~key~ : 取值操作时对应的属性名
-
-*主要功能* ：实现依赖收集
-
-*实现原理* ：结合 [[#fn-effect-effect][effect(fn, options)]]触发 /get proxy handler/ 里面执
-行 ~track(target, type, key)~ 将当前的 ~activeEffect~ 收集到 ~depsMap~ , 所
-以 ~activeEffect~ 是链接依赖函数和属性操作的桥梁，这将是未来设置值的时候触发依赖
-的命脉。
-
-
- #+begin_src typescript
-    export function track(target: object, type: TrackOpTypes, key: unknown) {
-    if (!shouldTrack || activeEffect === undefined) {
-        return
+    #+begin_src typescript
+    export interface ReactiveEffect<T = any> {
+        (): T // effect函数主题
+        _isEffect: true // 标记自身是不是一个 ReactiveEffect 类型
+        id: number // uid++ 而来，全局的一个相对唯一的 id
+        active: boolean // 记录当前的 effect 是不是激活状态
+        raw: () => T // 封装之前的那个 fn
+        deps: Array<Dep> // fn 的被依赖者列表
+        options: ReactiveEffectOptions // 额外选项，如：lazy
+        allowRecurse: boolean // ???
     }
+    #+end_src
 
-    // Map< obj -> Map<key, Set[...deps]> >
-    let depsMap = targetMap.get(target)
-    if (!depsMap) {
-        // 初始化
-        targetMap.set(target, (depsMap = new Map()))
-    }
+- *解决问题* :
 
-    let dep = depsMap.get(key)
-    if (!dep) {
-        depsMap.set(key, (dep = new Set()))
-    }
-
-    // 正在请求收集的 effect ，是初次出现
-    if (!dep.has(activeEffect)) {
-        dep.add(activeEffect)
-        // 自身保存一份被依赖者名单
-        activeEffect.deps.push(dep)
-        if (__DEV__ && activeEffect.options.onTrack) {
-        activeEffect.options.onTrack({
-            effect: activeEffect,
-            target,
-            type,
-            key
-        })
-        }
-    }
-#+end_src
-
-- targetMap 保存所以依赖关系，存储形式： ~Map<target -> Map<key,
-     Set[...deps]>>~
-
-- 前面两个 if 检测依赖是否有缓存，避免重复
-
-- 最后两个 ~add~ 操作，一个是手机依赖，一个让当前的 ~effect~ 持有自己身的被依赖
-  者名单
-** effect(fn, options)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-effect-effect
-:END:
-
-*参数列表* ：
-
-    - ~fn~ ：依赖函数，该函数中对对象取值，触发 track 将它封装后的
-      ~ReactiveEffect~ 收集到取值属性对应的 ~depsMap~ 中
-    - ~options~ : 允许使用者提供外部选项，控制 effect 行为，比如： ~lazy: true~
-      可以控制 effect 是否会立即执行，立即触发 track 等一系列操作。
-
-*主要功能* : 封装依赖函数，并立即执行它，触发 track 收集依赖，主要实现还是在
-~createReactiveEffect(fn, options)~ 中
+    1. fn 封装之后，执行 fn 过程中使用 try...finally ，防止 fn 执行异常导致
+       effect 进程中断
+    2. 结合 shouldTrack, activeEffect 和 track() 函数，有效的避免了在 fn 中执行
+       obj.value++ 导致 effect 死循环问题，因为 try...finally 确保了只有 fn 函数
+       完成之后才会进入 finally 恢复 effect 状态(~shouldTrack = true,
+       activeEffect = last || null~)。
 
 #+begin_src typescript
 export function effect<T = any>(
@@ -386,42 +214,10 @@ export function effect<T = any>(
     effect()
   }
   return effect
+}
 
-#+end_src
+let uid = 0
 
-** createReactiveEffect(fn, options)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-effect-createReactiveEffect
-:END:
-
-*参数列表* ：沿用 [[#fn-effect-effect][effect(fn, options)]]
-
-*主要功能* ：将 fn 封装成 ~ReactiveEffect~ 函数
-
-    #+begin_src typescript
-    export interface ReactiveEffect<T = any> {
-        (): T // effect函数主题
-        _isEffect: true // 标记自身是不是一个 ReactiveEffect 类型
-        id: number // uid++ 而来，全局的一个相对唯一的 id
-        active: boolean // 记录当前的 effect 是不是激活状态
-        raw: () => T // 封装之前的那个 fn
-        deps: Array<Dep> // fn 的被依赖者列表
-        options: ReactiveEffectOptions // 额外选项，如：lazy
-        allowRecurse: boolean // ???
-    }
-    #+end_src
-
-*解决问题* :
-
-    1. fn 封装之后，执行 fn 过程中使用 try...finally ，防止 fn 执行异常导致
-       effect 进程中断
-    2. 结合 shouldTrack, activeEffect 和 track() 函数，有效的避免了在 fn 中执行
-       obj.value++ 导致 effect 死循环问题，因为 try...finally 确保了只有 fn 函数
-       完成之后才会进入 finally 恢复 effect 状态(~shouldTrack = true,
-       activeEffect = last || null~)。
-
-#+begin_src typescript
 function createReactiveEffect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions
@@ -467,29 +263,160 @@ function createReactiveEffect<T = any>(
   effect.options = options
 
   return effect
+}
 
 #+end_src
-** trigger(target, type, key?, newValue?, oldValue?, oldTarget?)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-effect-trigger
-:END: 
 
-commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8?branch=b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8&diff=unified][b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8]]
+函数及变量列表
+| name                                | type             | desc                                                                              |
+|-------------------------------------+------------------+-----------------------------------------------------------------------------------|
+| ~activeEffect~                      | /ReactiveEffect/ | 当前正在处理的 Effect，fn 还未执行完成，finally 还没结束                          |
+| ~effectStack~                       | /Array, []/      | 缓存所有状态还没完成的 Effect                                                     |
+| ~shouldTrack~                       | /boolean, true/  | track() 中用来检测当前 effect 是否结束，从而判定是否可以继续执行 track() 收集依赖 |
+| ~trackStack~                        | /Array, []/      | 保存着所有 Effect 的 shouldTrack 值                                               |
+| ~effect()~                          | /function/       | 封装 fn成 ReactiveEffect 结构                                                     |
+| ~track(target, type, key)~          | /function/       | 收集依赖，并且响应式递归                                                          |
+| ~trigger(...)~                      | /function/       | 当值更新时触发所有依赖更新                                                        |
+| ~createReactiveEffect(fn, options)~ | /function/       | effect() 函数主题功能分离出来                                                     |
+| ~cleanup(effect: ReactiveEffect)~   | /function/       | 清空所有 fn 的依赖 effect.deps[]                                                  |
+| ~enableTracking()~                  | /function/       | 使能 Effect ，shouldTrack = true, 并将其加入 trackStack                           |
+| ~resetTracking()~                   | /function/       | 重置 Effect, shouldTrack = 上一个 Effect 的 shouldTrack 值或 true                 |
+
+[[/img/vue3/reactivity/reactivity-effect.svg]]
+
+依赖和属性变更发生联系的桥梁模块。
+
+1. ~effect(fn, options)~ 封装执行 fn，触发取值操作 ->
+2. ~track(target, type, key)~ 收集对象及属性所有依赖 ->
+3. fn 中设值操作触发 ~trigger(...)~ 执行所有 deps，更新 DOM。
+** [[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][736de7c]] add trigger() proxy set handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][feat: proxy set and trigger operation · gcclll/stb-vue-next@20afde9]]
+
+*** proxy set handler(createSetter)
+
+#+begin_src typescript
+
+function createSetter(shallow = false) {	function createSetter(shallow = false) {
+  // TODO	  return function set(
+    target: object,
+    key: string | symbol,
+    value: unknown,
+    receiver: object
+  ): boolean {
+    const oldValue = (target as any)[key]
+    // TODO shallow or not, or ref ?
+    //
+
+    const hadKey =
+      isArray(target) && isIntegerKey(key)
+        ? Number(key) < target.length
+        : hasOwn(target, key)
+
+    const result = Reflect.set(target, key, value, receiver)
+
+    if (target === toRaw(receiver)) {
+      if (!hadKey) {
+        // TODO ADD
+      } else if (hasChanged(value, oldValue)) {
+        trigger(target, TriggerOpTypes.SET, key, value, oldValue)
+      }
+    }
+
+    return result
+  }
+}
+#+end_src
+*** trigger()
+
+#+begin_src typescript
+
+
+export function trigger(
+  target: object,
+  type: TriggerOpTypes,
+  key?: unknown,
+  newValue?: unknown,
+  oldValue?: unknown,
+  oldTarget?: Map<unknown, unknown> | Set<unknown>
+) {
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    return
+  }
+
+  const effects = new Set<ReactiveEffect>()
+  const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
+    if (effectsToAdd) {
+      effectsToAdd.forEach(effect => {
+        if (effect !== activeEffect || effect.allowRecurse) {
+          effects.add(effect)
+        }
+      })
+    }
+  }
+
+  if (type === TriggerOpTypes.CLEAR) {
+    // TODO collection clear operation
+  } else if (key === 'length' && isArray(target)) {
+    // TODO array change operation
+  } else {
+    // SET | ADD | DELETE operation
+    if (key !== void 0) {
+      add(depsMap.get(key))
+    }
+
+    // TODO 迭代器 key，for...of, 使用迭代器是对数据的监听变化
+  }
+
+  const run = (effect: ReactiveEffect) => {
+    if (__DEV__ && effect.options.onTrigger) {
+      effect.options.onTrigger({
+        effect,
+        target,
+        key,
+        type,
+        newValue,
+        oldValue,
+        oldTarget
+      })
+    }
+
+    if (effect.options.scheduler) {
+      effect.options.scheduler(effect)
+    } else {
+      effect()
+    }
+  }
+
+  effects.forEach(run)
+}
+#+end_src
+** b5f97b4 observe object recursively
+
+[[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
+
+针对嵌套对象进行递归 Reactive 。
+
+[[/img/vue3/reactivity/reactivity-basehd-get-03-track-recursively.svg]]
 ** effect -> track -> trigger 关系图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: effect-track-trigger
 :END: 
 
+到此 effect + track + trigger 完成了最简单的响应式代码。
+
 [[/img/vue3/reactivity/reactivity-effect-track-trigger.svg]]
 
+1. effect 封装注册函数
+2. track 取值触发收集依赖函数
+3. trigger 设值触发所有依赖函数执行
 * 功能测试
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test
 :END:
-
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -685,6 +612,7 @@ setTimeout(function test() {
 
 commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f?branch=b2143f9e35af77ee43792a6110ea70c4caf9a54f&diff=split][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
 
+测试：
 * 完整脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
