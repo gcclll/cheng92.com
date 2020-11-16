@@ -39,7 +39,7 @@ function _log(el, content) {
 [[#while-mind-map][由于完整脑图会比较全而大所以放到文字最后去。。。]]
 
 [[/img/vue3/reactivity/reactivity.svg][也可以点击该链接直接新窗口打开，效果更佳。]]
-** [[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][4a6ac0e]] add: createReactiveObject
+* [[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][4a6ac0e]] add: createReactiveObject
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn cro
@@ -80,7 +80,7 @@ function createReactiveObject(
 *mutableCollectionHandlers*: 集合类型的 proxy handlers，因为 ~Reflect~ 并没有对集
 合类型做底层映射，所以需要特殊处理。
 
-** [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][c0f0b7c]] feat: createReactiveObject
+* [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][c0f0b7c]] feat: reactive(target)
 
 [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][feat: createReactiveObject · gcclll/stb-vue-next@443a0b5]]
 
@@ -93,7 +93,201 @@ function createReactiveObject(
 5. 必须是合法的类型(~Object|Array|[Weak]Map|[Weak]Set~)才能被代理
 6. 记得缓存新创建的代理关系(~proxyMap~ 全局变量)
 
-** [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][443a0b5]] basic proxy get handler(createGetter)
+*** 用例一：普通对象
+
+#+begin_src js
+const { effect, reactive, targetMap, isReactive } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const original = { foo: 1 }
+const observed = reactive(original)
+
+console.log('observed is not orignial,' + original !== observed)
+console.log('observed is reactive, ' + isReactive(observed))
+console.log('original is reactive, ' + isReactive(original))
+console.log('observed.foo === 1, ' + observed.foo === 1)
+console.log('`foo` in observed, ' + (`foo` in observed))
+console.log(`Object.keys(observed) == ['foo'], ` + (Object.keys(observed).toString() === 'foo'))
+#+end_src
+
++RESULTS:
+: true
+: observed is reactive, true
+: original is reactive, false
+: false
+: `foo` in observed, true
+: Object.keys(observed) == ['foo'], true
+: undefined
+
+[[https://github.com/gcclll/stb-vue-next/commit/1005ef30d5367fe306a4cfeb7e00c1cd56b1c691][b2143f9]] FIX: ~isReactive(observed): false~
+
+[[https://github.com/gcclll/stb-vue-next/commit/1005ef30d5367fe306a4cfeb7e00c1cd56b1c691][fix: get object's __v_isReactive prop · gcclll/stb-vue-next@1005ef3]]
+
+在 ~createGetter~ 中增加判断，如果来取的属性为 ~__v_isReactive~ 则直接返回
+~!isReadonly~ 。
+*** 用例二：原型
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+const obj = {}
+const reactiveObj = reactive(obj)
+console.log('reactiveObj is reactive, ' + isReactive(reactiveObj))
+const prototype = reactiveObj['__proto__']
+const otherObj = { data: ['a'] }
+console.log('otherObj is reactive, ' + isReactive(otherObj))
+const reactiveOther = reactive(otherObj)
+console.log('reactiveOther is reactive, ' + isReactive(reactiveOther))
+console.log('reactiveOther.data[0] is `a`, ' + ( reactiveOther.data[0] === 'a' ))
+console.log(`__proto__, ` + prototype)
+#+end_src
+
++RESULTS:
+: reactiveObj is reactive, true
+: otherObj is reactive, false
+: reactiveOther is reactive, true
+: reactiveOther.data[0] is `a`, true
+: __proto__, [object Object]
+: undefined
+
+FIX: [[https://github.com/gcclll/stb-vue-next/commit/1e2a3fef77b4a2b5f4dc3c497296b30b4ff06883][1005ef3]] 当取值时属性名为 ~__proto__~ 时：直接返回取值结果。
+
+[[https://github.com/gcclll/stb-vue-next/commit/1e2a3fef77b4a2b5f4dc3c497296b30b4ff06883][feat: get key is symbol or __proto__ or __v_isRef · gcclll/stb-vue-next@1e2a3fe]]
+*** 用例三：嵌套对象
+
+#+begin_src js
+const {isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+const original = {
+  nested: {
+    foo: 1
+  },
+  array: [{ bar: 2 }]
+}
+
+const observed = reactive(original)
+console.log(`observed.nested is reactive ${isReactive(observed.nested)}`)
+console.log(`observed.array is reactive ${isReactive(observed.array)}`)
+console.log(`observed.array[0] is reactive ${isReactive(observed.array[0])}`)
+#+end_src
+
++RESULTS:
+: observed.nested is reactive true
+: observed.array is reactive true
+: observed.array[0] is reactive true
+
+*** 用例四：代理后的对象操作也会体现在原对象上
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } =
+      require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const or = { foo: 1 }
+const ob = reactive(or)
+ob.bar = 1
+console.log(`ob.bar = ${ob.bar}, or.bar = ${or.bar}`)
+delete ob.foo
+console.log(`'foo' in ob: ${'foo' in ob}, 'foo' in or: ${'foo' in or}`)
+#+end_src
+
++RESULTS:
+: ob.bar = 1, or.bar = 1
+: 'foo' in ob: false, 'foo' in or: false
+
+结果删除后，依旧在，需要实现 delete proxy handler。
+*** 用例五：原始对象上的操作也要能在代理后对象有所体现
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const original = { foo: 1 }
+const observed = reactive(original)
+
+original.bar = 1
+console.log(`observed.bar = ${observed.bar}, original.bar = ${original.bar}`)
+delete original.foo
+console.log(`'foo' in original: ${'foo' in original}, 'foo' in observed: ${'foo' in observed}`)
+#+end_src
+
++RESULTS:
+: observed.bar = 1, original.bar = 1
+: 'foo' in original: false, 'foo' in observed: false
+
+*** 用例六：被设置的值如果是对象，该对象也会被 Reactive
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const observed = reactive({})
+const raw = {}
+observed.foo = raw // #0
+console.log(`observed.foo === faw, ${observed.foo === raw}`) // #1
+console.log(`observed.foo is reactive, ${isReactive(observed.foo)}`)
+#+end_src
+
++RESULTS:
+: observed.foo === faw, false
+: observed.foo is reactive, true
+
+访问 raw 之前(*#1* 之前)它还不是 reactive，因为递归 reactive 发生在 track() 中，即取值阶段。
+
+如：控制台测试输出
+#+begin_example
+var ob = reactive({})
+var raw = {}
+ob.foo = raw
+ob
+    Proxy {foo: {…}}
+        [[Handler]]: Object
+            deleteProperty: ƒ deleteProperty(target, key)
+            get: ƒ (target, key, receiver)
+            set: ƒ (target, key, value, receiver)
+        [[Target]]: Object
+            foo: {} // 注意这里
+        [[IsRevoked]]: false
+#+end_example
+
+进行一次取值：
+#+begin_example
+ob.foo
+    Proxy {}
+        [[Handler]]: Object
+        [[Target]]: Object
+        [[IsRevoked]]: false
+#+end_example
+*** 用例七：不该重复 proxy，返回第一个 proxy 结果
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const original = { foo: 1 } // #1
+const observed1 = reactive(original) // #2
+const observed2 = reactive(observed1) // #3
+console.log(`observed2 === observed1, ${observed2 === observed1}`)
+#+end_src
+
+#+RESULTS:
+: observed2 === observed1, true
+: undefined
+
+因为 ~reactive()~ 实现中组了检测，如果自身是个 proxy 就直接返回，所以 *#3* 中实
+际直接将 ~observed1~ 返回了。
+*** 用例八：不应该用 proxies 污染原始对象？
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const original = { foo: 1 }
+const original2 = { bar: 2 }
+const observed = reactive(original)
+const observed2 = reactive(original2)
+observed.bar = observed2
+console.log(`observed.bar === observed2, ${observed.bar === observed2}`)
+console.log(`original.bar === original2, ${original.bar === original2}`)
+#+end_src
+
++RESULTS:
+: observed.bar === observed2, true
+: original.bar === original2, false
+
+* [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][443a0b5]] basic proxy get handler(createGetter)
 
 [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][feat: reactive proxy get handler · gcclll/stb-vue-next@598e047]]
 
@@ -153,18 +347,18 @@ Map(1) {
   }
 }
 #+end_example
-** [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][6c50273]] add track() and effect()
+* [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][6c50273]] add track() and effect()
 
 [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][feat: track+effect · gcclll/stb-vue-next@3fc9634]]
 
 为了完成观察属性，通过属性的取值操作来收集依赖过程，这里同时实现了 ~track()~ 和
 ~effect()~ 函数。
 
-*** track(target, type, key) 监听取值收集依赖：
+** track(target, type, key) 监听取值收集依赖：
 
    [[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
 
-*** effect(fn, options)
+** effect(fn, options)
 
 [[/img/vue3/reactivity/reactivity-effect.svg]]
 
@@ -290,16 +484,16 @@ function createReactiveEffect<T = any>(
 1. ~effect(fn, options)~ 封装执行 fn，触发取值操作 ->
 2. ~track(target, type, key)~ 收集对象及属性所有依赖 ->
 3. fn 中设值操作触发 ~trigger(...)~ 执行所有 deps，更新 DOM。
-** [[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][736de7c]] add trigger() proxy set handler
+* [[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][736de7c]] add trigger() proxy set handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][feat: proxy set and trigger operation · gcclll/stb-vue-next@20afde9]]
 
-*** proxy set handler(createSetter)
+** proxy set handler(createSetter)
 
 #+begin_src typescript
 
-function createSetter(shallow = false) {	function createSetter(shallow = false) {
-  // TODO	  return function set(
+function createSetter(shallow = false) {
+  return function set(
     target: object,
     key: string | symbol,
     value: unknown,
@@ -325,10 +519,10 @@ function createSetter(shallow = false) {	function createSetter(shallow = false) 
     }
 
     return result
-  }
 }
 #+end_src
-*** trigger()
+
+** trigger()
 
 #+begin_src typescript
 
@@ -393,14 +587,14 @@ export function trigger(
   effects.forEach(run)
 }
 #+end_src
-** b5f97b4 observe object recursively
+* [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f][b5f97b4]] observe object recursively
 
 [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
 
 针对嵌套对象进行递归 Reactive 。
 
 [[/img/vue3/reactivity/reactivity-basehd-get-03-track-recursively.svg]]
-** effect -> track -> trigger 关系图
+* effect -> track -> trigger 关系图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: effect-track-trigger
@@ -413,11 +607,35 @@ export function trigger(
 1. effect 封装注册函数
 2. track 取值触发收集依赖函数
 3. trigger 设值触发所有依赖函数执行
-* 功能测试
+* [[https://github.com/gcclll/stb-vue-next/commit/05b98c571560d2c1806d29cdda7b500b4b2bdeac][05b98c5]] add delete(*deleteProperty*) proxy handler
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: test
-:END:
+:CUSTOM_ID: c-delete
+:END: 
+
+[[https://github.com/gcclll/stb-vue-next/commit/05b98c571560d2c1806d29cdda7b500b4b2bdeac][feat: delete proxy handler · gcclll/stb-vue-next@05b98c5]]
+
+#+begin_src typescript
+function deleteProperty(target: object, key: string | symbol): boolean {
+  const hadKey = hasOwn(target, key)
+  const oldValue = (target as any)[key]
+  const result = Reflect.deleteProperty(target, key)
+  if (result && hadKey) {
+    // 删除成功，触发 DELETE
+    trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
+  }
+  return result
+}
+
+export const mutableHandlers: ProxyHandler<object> = {
+  get,	  get,
+  set	  set,
+  deleteProperty
+}
+#+end_src
+
+删除成功调用 ~trigger()~ 触发 *DELETE* 。
+* 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -561,9 +779,7 @@ setTimeout(function test() {
 </script>
 #+end_export
 
------
-
-相关用例：
+** 相关用例：
 1. 立即执行一次 fn，观察基本属性(一个或多个)
 
    #+begin_src js

@@ -7,6 +7,7 @@ var VueReactivity = (function (exports) {
   const hasOwn = (val, key) => hasOwnProperty.call(val, key);
   const isArray = Array.isArray;
   const isString = (val) => typeof val === "string";
+  const isSymbol = (val) => typeof val === "symbol";
   const isObject = (val) => val !== null && typeof val === "object";
   const objectToString = Object.prototype.toString;
   const toTypeString = (value) => objectToString.call(value);
@@ -196,6 +197,11 @@ var VueReactivity = (function (exports) {
     effects.forEach(run);
   }
 
+  const builtInSymbols = new Set(
+    Object.getOwnPropertyNames(Symbol)
+      .map((key) => Symbol[key])
+      .filter(isSymbol)
+  );
   const get = /*#__PURE__*/ createGetter();
   const set = /*#__PURE__*/ createSetter();
   /**
@@ -207,6 +213,10 @@ var VueReactivity = (function (exports) {
     // target: 被取值的对象，key: 取值的属性，receiver: this 的值
     return function get(target, key, receiver) {
       // TODO 1. key is reactive
+      if (key === "__v_isReactive" /* IS_REACTIVE */) {
+        // 读取对象的 __v_isReactive
+        return !isReadonly;
+      }
       // TODO 2. key is readonly
       // TODO 3. key is the raw target
       if (
@@ -217,9 +227,15 @@ var VueReactivity = (function (exports) {
       }
       // TODO 4. target is array
       const res = Reflect.get(target, key, receiver);
-      // TODO 5. key is symbol, or `__protot__ | __v_isRef`
-      // DONE 6. not readonly, need to track and collect deps
+      if (
+        isSymbol(key)
+          ? builtInSymbols.has(key)
+          : key === `__proto__` || key === `__v_isRef`
+      ) {
+        return res;
+      }
       if (!isReadonly) {
+        // DONE 6. not readonly, need to track and collect deps
         track(target, "get" /* GET */, key);
       }
       // 是否只需要 reactive 一级属性(不递归 reactive)
@@ -228,6 +244,10 @@ var VueReactivity = (function (exports) {
       }
       // TODO 6. res isRef
       // TODO 7. res is object -> reactive recursivly
+      if (isObject(res)) {
+        // 递归 reactive 嵌套对象，feat: b2143f9
+        return isReadonly ? null /* TODO */ : reactive(res);
+      }
       return res;
     };
   }
@@ -250,9 +270,20 @@ var VueReactivity = (function (exports) {
       return result;
     };
   }
+  function deleteProperty(target, key) {
+    const hadKey = hasOwn(target, key);
+    const oldValue = target[key];
+    const result = Reflect.deleteProperty(target, key);
+    if (result && hadKey) {
+      // 删除成功，触发 DELETE
+      trigger(target, "delete" /* DELETE */, key, undefined, oldValue);
+    }
+    return result;
+  }
   const mutableHandlers = {
     get,
     set,
+    deleteProperty,
   };
 
   const reactiveMap = new WeakMap();
@@ -369,7 +400,6 @@ var VueReactivity = (function (exports) {
 
   return exports;
 })({});
-
 try {
   if (module) {
     module.exports = VueReactivity;
