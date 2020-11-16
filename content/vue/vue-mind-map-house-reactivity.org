@@ -164,21 +164,28 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037b
 
 主要更新代码：
 #+begin_src typescript
-
 function createGetter(isReadonly = false, shallow = false) {
   // target: 被取值的对象，key: 取值的属性，receiver: this 的值
   return function get(target: Target, key: string | symbol, receiver: object) {
     // TODO 1. key is reactive
     // TODO 2. key is readonly
     // TODO 3. key is the raw target
-
+    if (
+      key === ReactiveFlags.RAW &&
+      receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
+    ) {
+      return target
+    }
     // TODO 4. target is array
 
     const res = Reflect.get(target, key, receiver)
 
     // TODO 5. key is symbol, or `__protot__ | __v_isRef`
 
-    // TODO 6. not readonly, need to track and collect deps
+    // DONE 6. not readonly, need to track and collect deps
+    if (!isReadonly) {
+      track(target, TrackOpTypes.GET, key)
+    }
 
     // 是否只需要 reactive 一级属性(不递归 reactive)
     if (shallow) {
@@ -188,35 +195,46 @@ function createGetter(isReadonly = false, shallow = false) {
     // TODO 6. res isRef
 
     // TODO 7. res is object -> reactive recursivly
+    if (isObject(res)) {
+      // 递归 reactive 嵌套对象，feat: b2143f9
+      return isReadonly ? null /* TODO */ : reactive(res)
+    }
 
-    console.log({ res }, "get")
     return res
   }
+}
 #+end_src
 
 这里只保留的最简单的代理部分。
 
 测试代码：
 #+begin_src js
-var counter = { count: 0 }
-var observed = VueReactivity.reactive(counter)
+const { effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
 
-observed.count // trigger get handler
-// 打开控制台会发现有输出: {res: 0} "get"
+const target = { count: 0 }
+const ob = reactive(target)
+effect(() => ob.count) // ob.count 属性 收集 effect fn
+
+console.log(targetMap.get(target))
 #+end_src
 
-#+begin_export html
-<script type="text/javascript">
-var counter = { count: 0 }
-var observed = VueReactivity.reactive(counter)
++RESULTS: effect 会立即执行 fn， ~ob.count~ 取值触发 get proxy 收集 fn -> count => deps<Set>
+#+begin_example
+Map(1) {
+  'count' => Set(1) {
+    [Function: reactiveEffect] {
+      id: 0,
+      allowRecurse: false,
+      _isEffect: true,
+      active: true,
+      raw: [Function (anonymous)],
+      deps: [Array],
+      options: {}
+    }
+  }
+}
+#+end_example
 
-observed.count // trigger get handler
-// 这里会输出 {res: 0} "get"
-</script>
-#+end_export
-
-进行到这一步，对于测试并不是很方便，不能只管的看到输出结果，所以接下来我们将实现
-~effect()~ 来收集依赖，这样我们就可以很方便的通过依赖更新 DOM 。
 *** track get operation(追踪 get 操作，收集依赖)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -232,6 +250,15 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/6c50273e3225761c2b1da63c
 
 对于 ~effect()~ 相对比较独立的一个函数，目前阶段是需要手动去调用的，所以脑图就单
 独去绘制。
+*** observe object recursivly(递归观察对象)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hm-get-oor
+:END:
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f?branch=b2143f9e35af77ee43792a6110ea70c4caf9a54f&diff=split][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
+
+[[/img/vue3/reactivity/reactivity-basehd-get-03-track-recursively.svg]]
 * effect.ts
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -655,6 +682,8 @@ setTimeout(function test() {
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-02
 :END:
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f?branch=b2143f9e35af77ee43792a6110ea70c4caf9a54f&diff=split][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
 
 * 完整脑图
 :PROPERTIES:
