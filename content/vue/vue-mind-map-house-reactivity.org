@@ -448,6 +448,7 @@ function createReactiveEffect<T = any>(
 :CUSTOM_ID: fn-effect-trigger
 :END: 
 
+commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8?branch=b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8&diff=unified][b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8]]
 ** effect -> track -> trigger 关系图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -575,6 +576,8 @@ targetMaps: WeakMap
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: effect-test-02
 :END: 
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
 
 部分测试源码：
 #+begin_src js
