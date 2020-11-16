@@ -462,124 +462,58 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e
 :CUSTOM_ID: effect-test
 :END: 
 
-*** effect + track 完成依赖收集
+*** effect + track + trigger 完整实现响应式基本操作(get/set)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: effect-test-01
 :END: 
 
-上面示例演示了如何 ~reactive~ 一个对象，然后通过 ~effect~ 来封装执行一个函数，在这个
-函数里面去取值和设值操作，从而分别触发 [[#fn-effect-track][track()]] 和 [[#fn-effect-trigger][trigger()]] 收集依赖和触发更新。
+commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
 
-~trigger()~ 还没完成，所以这里只能演示 track 和 effect 功能。
+#+RESULTS:
 
-#+begin_src js
-var effect = VueReactivity.effect
-var reactive = VueReactivity.reactive
-var counter = reactive({ count: 0 })
+1. lazy: true 标识 effect fn 不会立即执行
+2. 点击 set 操作，此时并没有依赖，所以只会触发 count++
+3. 当点击 get 操作，触发 ~track()~ 收集依赖 fn -> deps
+4. 再点击 set 操作，此时已经有依赖，所以会 ~trigger()~ 所有依赖更新
+5. options.scheduler 选项作用
 
-var $el = $("#_effect_test_01")
-
-var exec = effect(
-    function fn() {
-      var c = counter.count++
-      $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
-    }, { lazy: true }
-)
-// options.lazy = true，所以这个 fn 不会立即执行
-// 点击取值按钮，手动执行 effect() -> fn() 执行，从而对于 count 属性会收集
-// 到 fn 到自己的依赖列表 deps中，所以后续点击
-
-var hasExec = false
-$el.children(".getval").click(function() {
-  if (!hasExec) {
-    hasExec = true
-    exec()
-  } else {
-    counter.count;
-  }
-})
-$el.children(".reset").click(function() {
-    $el.children(".result").html('')
-})
-
-#+end_src
-为了更直观的看到收集动作，可以通过增加按钮来结合 effect options 的 lazy 选项，来手动触发 ~effect()~
+   如果 options 有 scheduler 选项， ~trigger()~ 的时候不会立即执行 effects 而是
+   调用 scheduler 并将当前需要被执行的 effect 当做参数给 scheduler，由使用者决定
+   何时去执行 effect，比如需要在 dummy 更新之前做点什么。
 
 #+begin_export html
-<body>
-<div id="_effect_test_01">
-<button class="getval">点我触发取值操作！</button>
-<button class="reset">重置</button>
+<style>
+#_effect_test_02>.box {
+  display: flex;
+  justify-content: space-around;
+}
+#_effect_test_02>.box>button{
+  border: none;
+  width: 250px;
+}
+</style>
+<div id="_effect_test_02">
+<div class="box">
+    <button class="getval">点我触发 get操作！</button>
+    <button class="setval">点我触发 set操作！</button>
+</div>
+<br>
+<div class="box">
+    <button class="before-scheduler">手动调用 scheduler 之前</button>
+    <button class="after-scheduler">手动调用 scheduler 之后</button>
+</div>
+<br>
+<div class="box">
+    <button class="code">点击查看测试源码</button>
+    <button class="reset">重置</button>
+</div>
 <div class="result"></div>
 <code></code>
 </div>
-</body>
-<script>
-setTimeout(function test() {
-    if (typeof $ === 'undefined') return
-    
-    var effect = VueReactivity.effect
-    var reactive = VueReactivity.reactive
-    var counter = reactive({ count: 0 })
-    
-    var $el = $("#_effect_test_01")
-    
-    var exec = effect(
-      function fn() {
-        var c = counter.count++
-        $el.find(".result").append('<p>第 ' + c + ' 次取值操作...</p>')
-      }, { lazy: true }
-    )
-
-    var hasExec = false
-    $el.children(".getval").click(function() {
-        if (!hasExec) {
-            hasExec = true
-            exec()
-        } else {
-            console.log(counter.count, ' get value....')
-        }
-    })
-    $el.children(".reset").click(function() {
-      $el.children(".result").html('')
-    })
-
-}, 1000)
-    
-</script>
 #+end_export
 
-debugger:
-#+begin_example
-e: {count: 0} // counter 对象
-i: Set(1) // "count" 属性的依赖函数 targetMap -> depsMap -> deps
-    > [[Entries]]
-        // 0 -> effect(fn) -> fn 被封装之后的结果
-        > 0: function(){if(!n.active)return t.scheduler?void 0:e();if(!i.includes(n)){!function(e){const{deps:t}=e;if(t.length){for(let n=0;n<t.length;n++)t[n].delete(e);t.length=0}}(n);try{return f(),i.push(n),o=n,e()}finally{i.pop(),l(),o=i[i.length-1]}}}
-        > size: 1
-depsMap: Map(1) // counter 对象的属性依赖对应关系 targetMap -> depsMap { key => Set[...deps] }
-    > [[Entries]]
-        > 0: {"count" => Set(1)}
-        > size: 1
-
-// Closure 部分
-targetMaps: WeakMap
-   > [[Entries]]
-   > 0: {Object => Map(1)}
-        > key: {count: 0}
-        > value: Map(1) {"count" => Set(1)}
-#+end_example
-
-*** effect + track + trigger 完整实现响应式基本操作(get/set)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: effect-test-02
-:END: 
-
-commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
-
-部分测试源码：
+lazy 选项测试代码：
 #+begin_src js
 var ins = VueReactivity
 var effect = ins.effect
@@ -587,31 +521,83 @@ var reactive = ins.reactive
 var target = { count: 0 }
 var counter = reactive(target)
 
+var LOG = function (msg) {
+    _log($el, msg)
+}
+
 var lazyEffect = effect(
     function fn() {
         var c = counter.count
+        LOG('正在执行 effect fn..., counter.count = ' + counter.count)
     }, {
         lazy: true
     }
 )
+
+var effected = false
+var getDeps = function () {
+    if (!ins.targetMap) return new Set()
+    const depsMap = ins.targetMap.get(target) || new Map()
+    return depsMap.get('count') || new Set()
+}
+$el.find(".setval").click(function() {
+    counter.count++
+    var size = getDeps().size
+    if (size === 0) {
+        LOG('target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
+    }
+})
+$el.find(".reset").click(function() {
+    ins.cleanup(lazyEffect)
+    $el.children(".result").html('')
+    effected = false
+    counter.count = 0
+    dummy = 0
+    runner = undefined
+    times = 0
+    LOG('target.count deps.size = ' + getDeps().size)
+})
+$el.find(".getval").click(function() {
+    if (!effected) {
+        effected = true
+        lazyEffect() // 手动执行 effect
+        LOG('手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
+    }
+    LOG('取值操作(target.count 的 deps 数)：'
+    + ins.targetMap.get(target).get('count').size
+    + ', counter.count = ' + counter.count)
+})
+
 #+end_src
 
-1. lazy: true 标识 effect fn 不会立即执行
-2. 点击 set 操作，此时并没有依赖，所以只会触发 count++
-3. 当点击 get 操作，触发 ~track()~ 收集依赖 fn -> deps
-4. 再点击 set 操作，此时已经有依赖，所以会 ~trigger()~ 所有依赖更新
+scheduler 选项测试代码：
+#+begin_src js
+var dummy = 0, runner
+var counter1 = reactive({ count: 0 })
+var times = 0
+var schedulerEffect = effect(function fn() {
+    dummy = counter1.count
+}, {
+    scheduler: function(_effect) {
+        LOG('scheduler 执行次数 ' + ++times + ', dummy = ' + dummy)
+        runner = function() {
+            _effect()
+        }
+    }
+})
+
+LOG('scheduler effect fn 第一次会被执行， dummy = ' + dummy)
+$el.find('.before-scheduler').click(function() {
+    LOG('scheduler 不会被执行, dummy = ' + dummy)
+})
+
+$el.find('.after-scheduler').click(function() {
+    counter1.count++
+    runner()
+})
+#+end_src
 
 #+begin_export html
-<body>
-<div id="_effect_test_02">
-<button class="getval">点我触发 get操作！</button>
-<button class="setval">点我触发 set操作！</button>
-<button class="code">点击查看测试源码</button>
-<button class="reset">重置</button>
-<div class="result"></div>
-<code></code>
-</div>
-</body>
 <script id="GW0MDx">
 setTimeout(function test() {
     if (typeof $ === 'undefined') return
@@ -623,11 +609,14 @@ setTimeout(function test() {
     var counter = reactive(target)
     
     var $el = $("#_effect_test_02")
+    var LOG = function (msg) {
+      _log($el, msg)
+    }
     
     var lazyEffect = effect(
       function fn() {
         var c = counter.count
-        _log($el, '正在执行 effect fn..., counter.count = ' + counter.count)
+        LOG('正在执行 effect fn..., counter.count = ' + counter.count)
       }, {
         lazy: true
       }
@@ -639,39 +628,67 @@ setTimeout(function test() {
       const depsMap = ins.targetMap.get(target) || new Map()
       return depsMap.get('count') || new Set()
     }
-    $el.children(".setval").click(function() {
+    $el.find(".setval").click(function() {
       counter.count++
       var size = getDeps().size
       if (size === 0) {
-        _log($el, 'target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
+        LOG('target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
       }
     })
-    $el.children(".reset").click(function() {
+    $el.find(".reset").click(function() {
       ins.cleanup(lazyEffect)
       $el.children(".result").html('')
       effected = false
       counter.count = 0
-      _log($el, 'target.count deps.size = ' + getDeps().size)
+      dummy = 0
+      runner = undefined
+      times = 0
+      LOG('target.count deps.size = ' + getDeps().size)
     })
-    $el.children(".getval").click(function() {
+    $el.find(".getval").click(function() {
       if (!effected) {
         effected = true
         lazyEffect() // 手动执行 effect
-        _log($el, '手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
+        LOG('手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
       }
-      _log($el, '取值操作(target.count 的 deps 数)：'
+      LOG('取值操作(target.count 的 deps 数)：'
         + ins.targetMap.get(target).get('count').size
         + ', counter.count = ' + counter.count)
     })
 
-    $el.children('.code').click(function() {
+    $el.find('.code').click(function() {
       console.log($("#GW0MDx").html())
-      _log($el, '源码已输出到控制台(F12-console)....')
+      LOG('源码已输出到控制台(F12-console)....')
+    })
+
+    var dummy = 0, runner
+    var counter1 = reactive({ count: 0 })
+    var times = 0
+    var schedulerEffect = effect(function fn() {
+      dummy = counter1.count
+    }, {
+      scheduler: function(_effect) {
+        LOG('scheduler 执行次数 ' + ++times + ', dummy = ' + dummy)
+        runner = function() {
+          _effect()
+        }
+      }
+    })
+
+    LOG('scheduler effect fn 第一次会被执行， dummy = ' + dummy)
+    $el.find('.before-scheduler').click(function() {
+      LOG('scheduler 不会被执行, dummy = ' + dummy)
+    })
+
+    $el.find('.after-scheduler').click(function() {
+      counter1.count++
+      runner()
     })
 }, 1000)
     
 </script>
 #+end_export
+
 
 * 完整脑图
 :PROPERTIES:
