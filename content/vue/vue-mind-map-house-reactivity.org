@@ -716,6 +716,12 @@ function createGetter(isReadonly = false, shallow = false) {
 }
 #+end_src
 
+索引操作(~includes, lastIndexOf, indexOf~)处理：确保索引取值的时候，能使用 track() 正确收集对应索引的依赖列表。
+
+可改变原数组长度操作(~push, pop, shift, unshift, splice~) 因为这些函数内部实现都
+需要访问及改变原数组的长度，因此这里需要左一层保护，它们执行之前 ~shouldTrack =
+false~ ，执行完成之后 ~shouldTrack = true~ ，避免 ~track()~ 死循环。
+
 *** 测试一
 
 #+begin_src js
