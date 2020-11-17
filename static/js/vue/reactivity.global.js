@@ -35,6 +35,7 @@ var VueReactivity = (function (exports) {
   // effect 任务队列
   const effectStack = [];
   let activeEffect;
+  const ITERATE_KEY = Symbol("iterate");
   // fn 是不是经过封装之后的 ReactiveEffect
   function isEffect(fn) {
     return fn && fn._isEffect === true;
@@ -108,6 +109,10 @@ var VueReactivity = (function (exports) {
   // 当前 effect 没有完成情况下不接受下一个动作
   let shouldTrack = true;
   const trackStack = [];
+  function pauseTracking() {
+    trackStack.push(shouldTrack);
+    shouldTrack = false;
+  }
   function enableTracking() {
     trackStack.push(shouldTrack);
     shouldTrack = true;
@@ -203,7 +208,32 @@ var VueReactivity = (function (exports) {
       .filter(isSymbol)
   );
   const get = /*#__PURE__*/ createGetter();
-  const set = /*#__PURE__*/ createSetter();
+  // 数组内置方法处理
+  const arrayInstrumentations = {};
+  ["includes", "indexOf", "lastIndexOf"].forEach((key) => {
+    const method = Array.prototype[key];
+    arrayInstrumentations[key] = function (...args) {
+      const arr = toRaw(this);
+      for (let i = 0, l = this.length; i < l; i++) {
+        track(arr, "get" /* GET */, i + "");
+      }
+      const res = method.apply(arr, args);
+      if (res === -1 || res === false) {
+        return method.apply(arr, args.map(toRaw));
+      } else {
+        return res;
+      }
+    };
+  });
+  ["push", "pop", "shift", "unshift", "splice"].forEach((key) => {
+    const method = Array.prototype[key];
+    arrayInstrumentations[key] = function (...args) {
+      pauseTracking();
+      const res = method.apply(this, args);
+      resetTracking();
+      return res;
+    };
+  });
   /**
    * 创建取值函数@param {boolean} isReadonly 是不是只读，将决定是否代理 set 等改变
    * 对象操作@param {boolean} shallow 指定是否对对象进行浅 reactive(类似浅复制)，
@@ -225,7 +255,11 @@ var VueReactivity = (function (exports) {
       ) {
         return target;
       }
-      // TODO 4. target is array
+      // 4. target is array
+      const targetIsArray = isArray(target);
+      if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+        return Reflect.get(arrayInstrumentations, key, receiver);
+      }
       const res = Reflect.get(target, key, receiver);
       if (
         isSymbol(key)
@@ -251,6 +285,7 @@ var VueReactivity = (function (exports) {
       return res;
     };
   }
+  const set = /*#__PURE__*/ createSetter();
   function createSetter(shallow = false) {
     return function set(target, key, value, receiver) {
       const oldValue = target[key];
@@ -280,10 +315,27 @@ var VueReactivity = (function (exports) {
     }
     return result;
   }
+  function has(target, key) {
+    const result = Reflect.has(target, key);
+    if (!isSymbol(key) || !builtInSymbols.has(key)) {
+      track(target, "has" /* HAS */, key);
+    }
+    return result;
+  }
+  function ownKeys(target) {
+    track(
+      target,
+      "iterate" /* ITERATE */,
+      isArray(target) ? "length" : ITERATE_KEY
+    );
+    return Reflect.ownKeys(target);
+  }
   const mutableHandlers = {
     get,
     set,
     deleteProperty,
+    has,
+    ownKeys,
   };
 
   const reactiveMap = new WeakMap();

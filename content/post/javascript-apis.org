@@ -23,6 +23,69 @@
 :CUSTOM_ID: api-array
 :END:
 *** [[#es2016-includes][Array.prototype.includes]]
+*** Array.prototype.slice(start, end)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-array-slice
+:END:
+
+#+begin_src js
+function slice(start, end) {
+  let O = ToObject(this)
+
+  let len = LengthOfArrayLike(O)
+  let relativeStart = ToIntegerOrInfinity(start)
+  let k
+  // 最终目的是取 start 索引
+  if (relativeStart === -Infinity) {
+    k = 0
+  } else if (relativeStart < 0) {
+    k = max(len + relativeStart, 0)
+  } else {
+    k = min(relativeStart, len)
+  }
+
+  let relativeEnd
+  // 取结束索引
+  if (end === undefined) {
+    relativeEnd = len
+  } else {
+    relativeEnd = ToIntegerOrInfinity(end)
+  }
+
+  // 和 relativeStart 一样做一遍索引处理
+  let final
+  if (relativeEnd === -Infinity) {
+    final = 0
+  } else if (relativeEnd < 0) {
+    final = max(len + relativeEnd, 0)
+  } else {
+    final = min(relativeEnd, len)
+  }
+
+  let count = max(final - k, 0)
+  // 创建个空数组
+  let A = ArraySpeciesCreate(O, count)
+  let n = 0 // 数组长度
+  while (k < final) {
+    let Pk = ToString((k))
+    let kPresent = HasProperty(O, count)
+    if (kPresent) {
+      // 已经存在
+      let kValue = Get(O, Pk)
+      // 创建新属性
+      CreateDataPropertyOrThrow(A, ToString(n), kValue)
+    }
+
+    k++
+    n++
+  }
+
+  Set(A, 'length', n, true)
+  return A
+}
+#+end_src
+
 * Map
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

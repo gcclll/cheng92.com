@@ -524,8 +524,6 @@ function createSetter(shallow = false) {
 ** trigger()
 
 #+begin_src typescript
-
-
 export function trigger(
   target: object,
   type: TriggerOpTypes,
@@ -634,6 +632,146 @@ export const mutableHandlers: ProxyHandler<object> = {
 #+end_src
 
 删除成功调用 ~trigger()~ 触发 *DELETE* 。
+* [[https://github.com/gcclll/stb-vue-next/commit/ab69fe9eecb274f836bf19163636bd8f464b84d1][05b98c5]] add has, ownKeys proxy handlers
+
+[[https://github.com/gcclll/stb-vue-next/commit/ab69fe9eecb274f836bf19163636bd8f464b84d1][feat: has + ownKeys proxy handler · gcclll/stb-vue-next@ab69fe9]]
+
+增加 has, ownKeys proxy handlers.
+
+#+begin_src typescript
+function has(target: object, key: string | symbol): boolean {
+  const result = Reflect.has(target, key)
+  if (!isSymbol(key) || !builtInSymbols.has(key)) {
+    track(target, TrackOpTypes.HAS, key)
+  }
+  return result
+}
+
+function ownKeys(target: object): (string | num | symbol)[] {
+  track(target, TrackOpTypes.ITERATE, isArray(target) ? 'length' : ITERATE_KEY)
+  return Reflect.ownKeys(target)
+}
+#+end_src
+
+测试：
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const obj = reactive({ n: 0 })
+let dummy = false
+const runner = effect(() => (dummy = 'n' in obj), { lazy: true })
+
+console.log(`before run effect, dummy = ${dummy}`)
+runner()
+console.log(`after run effect, dummy = ${dummy}`)
+#+end_src
+
++RESULTS:
+: before run effect, dummy = false
+: after run effect, dummy = true
+* [[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][9aeb678]] add array support
+
+[[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][feat: array support · gcclll/stb-vue-next@9aeb678]]
+
+修改点：
+#+begin_src typescript
+// 数组内置方法处理
+const arrayInstrumentations: Record<string, Function> = {}
+;(['includes', 'indexOf', 'lastIndexOf'] as const).forEach(key => {
+  const method = Array.prototype[key] as any
+  arrayInstrumentations[key] = function(this: unknown[], ...args: unknown[]) {
+    const arr = toRaw(this)
+    for (let i = 0, l = this.length; i < l; i++) {
+      track(arr, TrackOpTypes.GET, i + '')
+    }
+
+    const res = method.apply(arr, args)
+    if (res === -1 || res === false) {
+      return method.apply(arr, args.map(toRaw))
+    } else {
+      return res
+    }
+  }
+})
+;(['push', 'pop', 'shift', 'unshift', 'splice'] as const).forEach(key => {
+  const method = Array.prototype[key] as any
+  arrayInstrumentations[key] = function(this: unknown[], ...args: unknown[]) {
+    pauseTracking()
+    const res = method.apply(this, args)
+    resetTracking()
+    return res
+  }
+})
+
+// createGetter
+function createGetter(isReadonly = false, shallow = false) {
+  // ...
+  // 4. target is array
+  const targetIsArray = isArray(target)
+  if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+    return Reflect.get(arrayInstrumentations, key, receiver)
+  }
+  // ...
+}
+#+end_src
+
+*** 测试一
+
+#+begin_src js
+const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const original = [{ foo: 1 }, { bar: 2 }]
+const observed = reactive(original)
+console.log(`#01 original !== observed, ${original !== observed}`)
+console.log(`#02 original is reactive, ${isReactive(original)}`)
+console.log(`#03 observed is reactive, ${isReactive(observed)}`)
+console.log(`#04 observed[0] is reactive, ${isReactive(observed[0])}`)
+
+const clone = observed.slice()
+console.log(`#05 clone[0] is reactive, ${isReactive(clone[0])}`)
+console.log(`#06 clone[0] !== original[0], ${clone[0] !== original[0]}`)
+console.log(`#07 clone[0] === observed[0], ${clone[0] === observed[0]}`)
+
+const value = { baz: 3 }
+const reactiveValue = reactive(value)
+observed[0] = value
+console.log(`#08 observed[0] === reactiveValue, ${observed[0] === reactiveValue}`)
+console.log(`#09 original[0] === value, ${original[0] === value}`)
+delete observed[0]
+console.log(`#10 observed[0] === undefined, ${observed[0] === undefined}`)
+console.log(`#11 original[0] === undefined, ${original[0] === undefined}`)
+observed.push(value)
+console.log(`#12 observed[2] === reactiveValue, ${observed[2] === reactiveValue}`)
+console.log(`#12 original[2] === value, ${original[2] === value}`)
+#+end_src
+
+分析：
+- *#01* 因为 Proxy [[https://tc39.es/ecma262/#sec-proxycreate][内部实现]]实际会创建新对象
+- *#02* 读取 ~__v_isReactive~ 在 ~createGetter()~ 里面会直接返回 ~!isReadonly~
+- *#03* 同上
+- *#04* 取值的时候返回结果之前会检测当前是不是对象如果是会执行递归 reactive
+- *#05* slice [[/post/javascript-apis/#api-array-slice][实现过程]]并非深拷贝
+- *#06* 和 ~observed[0] !== original[0]~ 一个原因
+- *#07* [[/post/javascript-apis/#api-array-slice][浅拷贝问题]]
+- *#08* 先 ~observed[0]~ 对 value 取值操作，此时 Reactive value 对象时，发现该对
+  象已经有映射了(proxyMap 中已存在 value -> reactiveValue 关系。)
+- *#09* proxy 的改变也会体现在 original 对象上。
+
+  #+begin_src js
+  const target = {  }
+  const ob = new Proxy(target, {})
+  ob.value = { test: 1 }
+  console.log(target)
+  #+end_src
+
+  +RESULTS:
+  : { value: { test: 1 } }
+- *#10* 同上
+- *#11* 同上
+- *#12* 同 *#08* ~proxyMap~ 中有缓存了
+- *#13* 同上
+
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:
