@@ -24,6 +24,10 @@
 
 [[https://tc39.es/ecma262/#sec-returnifabrupt][ReturnIfAbrupt]]
 
+[[https://tc39.es/ecma262/#sec-ispropertyreference][IsPropertyReference ( V )]]: ~Type(V.[[Base]])~ 是 ~Boolean,String,Symbol,BigInt,
+Number, Object~ 返回 true, 否则 false.
+
+[[https://tc39.es/ecma262/#sec-issuperreference][IsSuperReference ( V )]]: ~V.[[ThisValue]]~ 非空返回 true，否则 false 。
 #+begin_src js
 let ref = UnaryExpression
 
