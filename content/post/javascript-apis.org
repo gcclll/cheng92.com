@@ -15,6 +15,46 @@
 | [[http://ecma-international.org/ecma-262][ecma262]]       | 官方标准文档    |
 | [[https://tc39.es/ecma262][ecma262]]       | 官方标准文档    |
 
+* 操作符
+** delete
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-op-delete
+:END:
+
+[[https://tc39.es/ecma262/#sec-returnifabrupt][ReturnIfAbrupt]]
+
+#+begin_src js
+let ref = UnaryExpression
+
+ReturnIfAbrupt(ref)
+
+if (ref is not ReferenceRecord) {
+  return true
+}
+
+if (IsUnresolvableReference(ref)) {
+  assert(ref.[[Strict]] === false)
+  return true
+}
+
+if (IsPropertyReference(ref)) {
+  if (IsSuperReference(ref)) {
+    throw new ReferenceError()
+  }
+  let baseObj = ToObject(ref.[[Base]])
+  let deleteStatus = baseObj.[[Delete]](ref.[[ReferencedName]])
+  if (deleteStatus === false && ref.[[Strict]]) {
+    throw new TypeError()
+  }
+  return deleteStatus
+} else {
+  let base = ref.[[Base]]
+  assert(base is EnvironmentRecord)
+
+  return base.DeleteBinding(ref.[[ReferencedName]])
+}
+#+end_src
 * Document
 ** Document.execCommand()
 * Array
@@ -85,7 +125,54 @@ function slice(start, end) {
   return A
 }
 #+end_src
+*** Array.prototype.reverse()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-array-reverse
+:END:
 
+#+begin_src js
+function revers() {
+  const O = ToObject(this)
+
+  let len = LengthOfArrayLike(O)
+  let middle = floor(len / 2)
+  let lower = 0
+
+  while (lower !== middle) {
+    let upper = len - lower - 1 // 对称的最后面那个
+    let upperP = ToString(upper)
+    let lowerP = ToString(lower)
+    let lowerExists = HasProperty(O, lowerP)
+    let lowerValue, upperValue
+    if (lowerExists) {
+      lowerValue = Get(O, lowerP)
+    }
+    let upperExists = HasProperty(O, upperP)
+    if (upperExists) {
+      upperValue = Get(O, upperP)
+    }
+
+    if (lowerExists && upperExists) {
+      // 值互换
+      set(O, lowerP, upperValue, true)
+      set(O, upperP, lowerValue, true)
+    } else if (!lowerExists && upperExists) {
+      set(O, lowerP, upperValue, true)
+      DeletePropertyOrThrow(O, upperP) // 因为左侧没值，所以将右侧位置删除
+    } else if (lowerExists && !upperExists) {
+      DeletePropertyOrThrow(O, lowerP) // 因为右侧没值，所以将左侧位置删除
+      set(O, upperP, lowerValue, true)
+    } else {
+      assert(!lowerExists && !upperExists)
+    }
+
+    lower++
+  }
+
+  return O
+}
+#+end_src
 * Map
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

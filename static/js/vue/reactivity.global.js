@@ -173,8 +173,14 @@ var VueReactivity = (function (exports) {
       }
     };
     if (type === "clear" /* CLEAR */);
-    else if (key === "length" && isArray(target));
-    else {
+    else if (key === "length" && isArray(target)) {
+      // TODO array change operation
+      depsMap.forEach((dep, key) => {
+        if (key === "length" || key >= newValue) {
+          add(dep);
+        }
+      });
+    } else {
       // SET | ADD | DELETE operation
       if (key !== void 0) {
         add(depsMap.get(key));
@@ -242,17 +248,18 @@ var VueReactivity = (function (exports) {
   function createGetter(isReadonly = false, shallow = false) {
     // target: 被取值的对象，key: 取值的属性，receiver: this 的值
     return function get(target, key, receiver) {
-      // TODO 1. key is reactive
+      // 1. key is reactive
       if (key === "__v_isReactive" /* IS_REACTIVE */) {
         // 读取对象的 __v_isReactive
         return !isReadonly;
-      }
-      // TODO 2. key is readonly
-      // TODO 3. key is the raw target
-      if (
+      } else if (key === "__v_isReadonly" /* IS_READONLY */) {
+        // 2. key is readonly
+        return isReadonly;
+      } else if (
         key === "__v_raw" /* RAW */ &&
         receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
       ) {
+        // 3. key is the raw target
         return target;
       }
       // 4. target is array

@@ -1,5 +1,4 @@
-#+TITLE: Vue3 源码头脑风暴之☞reactivity
-#+DATE: <2020-11-09 11:45:36>
+ATE: <2020-11-09 11:45:36>
 #+TAGS[]: vue, vue3, compiler-core, parser, compiler
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
@@ -670,7 +669,7 @@ console.log(`after run effect, dummy = ${dummy}`)
 +RESULTS:
 : before run effect, dummy = false
 : after run effect, dummy = true
-* [[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][9aeb678]] add array support
+* TODO [[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][9aeb678]] add array support
 
 [[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][feat: array support · gcclll/stb-vue-next@9aeb678]]
 
@@ -716,85 +715,178 @@ function createGetter(isReadonly = false, shallow = false) {
 }
 #+end_src
 
-索引操作(~includes, lastIndexOf, indexOf~)处理：确保索引取值的时候，能使用 track() 正确收集对应索引的依赖列表。
+1. 索引操作(~includes, lastIndexOf, indexOf~)处理
 
-可改变原数组长度操作(~push, pop, shift, unshift, splice~) 因为这些函数内部实现都
-需要访问及改变原数组的长度，因此这里需要左一层保护，它们执行之前 ~shouldTrack =
-false~ ，执行完成之后 ~shouldTrack = true~ ，避免 ~track()~ 死循环。
+   确保索引取值的时候，能使用 track() 正确收集对应索引的依赖列表。
 
-*** 测试一
+2. 可改变原数组长度操作(~push, pop, shift, unshift, splice~)
 
-#+begin_src js
-const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+   因为这些函数内部实现都需要访问及改变原数组的长度，因此这里需要做一层保护，它
+   们执行之前 ~shouldTrack = false~ ，执行完成之后 ~shouldTrack = true~ ，避免
+   ~track()~ 死循环。
 
-const original = [{ foo: 1 }, { bar: 2 }]
-const observed = reactive(original)
-console.log(`#01 original !== observed, ${original !== observed}`)
-console.log(`#02 original is reactive, ${isReactive(original)}`)
-console.log(`#03 observed is reactive, ${isReactive(observed)}`)
-console.log(`#04 observed[0] is reactive, ${isReactive(observed[0])}`)
 
-const clone = observed.slice()
-console.log(`#05 clone[0] is reactive, ${isReactive(clone[0])}`)
-console.log(`#06 clone[0] !== original[0], ${clone[0] !== original[0]}`)
-console.log(`#07 clone[0] === observed[0], ${clone[0] === observed[0]}`)
+下面均为 vue-next 源码中用例分析。
+- [X] T1: 读写操作
 
-const value = { baz: 3 }
-const reactiveValue = reactive(value)
-observed[0] = value
-console.log(`#08 observed[0] === reactiveValue, ${observed[0] === reactiveValue}`)
-console.log(`#09 original[0] === value, ${original[0] === value}`)
-delete observed[0]
-console.log(`#10 observed[0] === undefined, ${observed[0] === undefined}`)
-console.log(`#11 original[0] === undefined, ${original[0] === undefined}`)
-observed.push(value)
-console.log(`#12 observed[2] === reactiveValue, ${observed[2] === reactiveValue}`)
-console.log(`#13 original[2] === value, ${original[2] === value}`)
-#+end_src
+    #+begin_src js
+    const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
 
-+RESULTS:
-#+begin_example
-#01 original !== observed, true
-#02 original is reactive, false
-#03 observed is reactive, true
-#04 observed[0] is reactive, true
-#05 clone[0] is reactive, true
-#06 clone[0] !== original[0], true
-#07 clone[0] === observed[0], true
-#08 observed[0] === reactiveValue, true
-#09 original[0] === value, true
-#10 observed[0] === undefined, true
-#11 original[0] === undefined, true
-#12 observed[2] === reactiveValue, true
-#13 original[2] === value, true
-#+end_example
+    const original = [{ foo: 1 }, { bar: 2 }]
+    const observed = reactive(original)
+    console.log(`#01 original !== observed, ${original !== observed}`)
+    console.log(`#02 original is reactive, ${isReactive(original)}`)
+    console.log(`#03 observed is reactive, ${isReactive(observed)}`)
+    console.log(`#04 observed[0] is reactive, ${isReactive(observed[0])}`)
 
-分析：
-- *#01* 因为 Proxy [[https://tc39.es/ecma262/#sec-proxycreate][内部实现]]实际会创建新对象
-- *#02* 读取 ~__v_isReactive~ 在 ~createGetter()~ 里面会直接返回 ~!isReadonly~
-- *#03* 同上
-- *#04* 取值的时候返回结果之前会检测当前是不是对象如果是会执行递归 reactive
-- *#05* slice [[/post/javascript-apis/#api-array-slice][实现过程]]并非深拷贝
-- *#06* 和 ~observed[0] !== original[0]~ 一个原因
-- *#07* [[/post/javascript-apis/#api-array-slice][浅拷贝问题]]
-- *#08* 先 ~observed[0]~ 对 value 取值操作，此时 Reactive value 对象时，发现该对
+    const clone = observed.slice()
+    console.log(`#05 clone[0] is reactive, ${isReactive(clone[0])}`)
+    console.log(`#06 clone[0] !== original[0], ${clone[0] !== original[0]}`)
+    console.log(`#07 clone[0] === observed[0], ${clone[0] === observed[0]}`)
+
+    const value = { baz: 3 }
+    const reactiveValue = reactive(value)
+    observed[0] = value
+    console.log(`#08 observed[0] === reactiveValue, ${observed[0] === reactiveValue}`)
+    console.log(`#09 original[0] === value, ${original[0] === value}`)
+    delete observed[0]
+    console.log(`#10 observed[0] === undefined, ${observed[0] === undefined}`)
+    console.log(`#11 original[0] === undefined, ${original[0] === undefined}`)
+    observed.push(value)
+    console.log(`#12 observed[2] === reactiveValue, ${observed[2] === reactiveValue}`)
+    console.log(`#13 original[2] === value, ${original[2] === value}`)
+    #+end_src
+
+    +RESULTS:
+    #+begin_example
+    #01 original !== observed, true
+    #02 original is reactive, false
+    #03 observed is reactive, true
+    #04 observed[0] is reactive, true
+    #05 clone[0] is reactive, true
+    #06 clone[0] !== original[0], true
+    #07 clone[0] === observed[0], true
+    #08 observed[0] === reactiveValue, true
+    #09 original[0] === value, true
+    #10 observed[0] === undefined, true
+    #11 original[0] === undefined, true
+    #12 observed[2] === reactiveValue, true
+    #13 original[2] === value, true
+    #+end_example
+
+    分析：
+  - *#01* 因为 Proxy [[https://tc39.es/ecma262/#sec-proxycreate][内部实现]]实际会创建新对象
+  - *#02* 读取 ~__v_isReactive~ 在 ~createGetter()~ 里面会直接返回 ~!isReadonly~
+  - *#03* 同上
+  - *#04* 取值的时候返回结果之前会检测当前是不是对象如果是会执行递归 reactive
+  - *#05* slice [[/post/javascript-apis/#api-array-slice][实现过程]]并非深拷贝
+  - *#06* 和 ~observed[0] !== original[0]~ 一个原因
+  - *#07* [[/post/javascript-apis/#api-array-slice][浅拷贝问题]]
+  - *#08* 先 ~observed[0]~ 对 value 取值操作，此时 Reactive value 对象时，发现该对
   象已经有映射了(proxyMap 中已存在 value -> reactiveValue 关系。)
-- *#09* proxy 的改变也会体现在 original 对象上。
+  - *#09* proxy 的改变也会体现在 original 对象上。
+
+    #+begin_src js
+    const target = {  }
+    const ob = new Proxy(target, {})
+    ob.value = { test: 1 }
+    console.log(target)
+    #+end_src
+
+    +RESULTS:
+    : { value: { test: 1 } }
+  - *#10* 同上
+  - *#11* 同上
+  - *#12* 同 *#08* ~proxyMap~ 中有缓存了
+  - *#13* 同上
+- [X] T2：索引方法(includes, lastIndexOf, indexOf)
+
+    #+begin_src js
+    const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    const raw = {}
+    const arr = reactive([{}, {}])
+    arr.push(raw)
+    console.log(`arr.indexOf(raw), ${arr.indexOf(raw)}`)
+    console.log(`arr.indexOf(raw, 3), ${arr.indexOf(raw, 3)}`)
+    console.log(`arr.includes(raw), ${arr.includes(raw)}`)
+    console.log(`arr.includes(raw, 3), ${arr.includes(raw, 3)}`)
+    console.log(`arr.lastIndexOf(raw), ${arr.lastIndexOf(raw)}`)
+    console.log(`arr.lastIndexOf(raw, 1), ${arr.lastIndexOf(raw, 1)}`)
+    #+end_src
+
+    +RESULTS:
+    : arr.indexOf(raw), 2
+    : arr.indexOf(raw, 3), -1
+    : arr.includes(raw), true
+    : arr.includes(raw, 3), false
+    : arr.lastIndexOf(raw), 2
+    : arr.lastIndexOf(raw, 1), -1
+- [X] T3：数组元素本身已经是 Proxy
 
   #+begin_src js
-  const target = {  }
-  const ob = new Proxy(target, {})
-  ob.value = { test: 1 }
-  console.log(target)
+  const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+  const raw = []
+  const obj = reactive({})
+  raw.push(obj)
+  const arr = reactive(raw)
+  console.log(`arr.includes(obj), ${arr.includes(obj)}`)
   #+end_src
 
-  +RESULTS:
-  : { value: { test: 1 } }
-- *#10* 同上
-- *#11* 同上
-- *#12* 同 *#08* ~proxyMap~ 中有缓存了
-- *#13* 同上
-*** 测试二
+  +RESULTS: 这个应该很好理解，对象已经是 proxy 之后不会再继续代理，而是返回
+  proxyMap 中缓存过的代理结果。
+  : arr.includes(obj), true
+- [-] T4: [[/post/javascript-apis/#api-array-reverse][reverse]] 方法也应该是 reactive 的
+
+  *TODO*: reverse 之后找不到(~indexOf~)原始对象了？
+
+  根据 [[/post/javascript-apis/#api-array-reverse][reverse()]] 的实现原理，本质上是元素之间的替换操作，因此并不会改变数组或元
+  素本身是 proxy 性质，且属于索引赋值操作，因此会触发索引的 reactive 相关操作。
+
+  #+begin_src js
+  const { isReactive, effect, reactive, targetMap, toRaw } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+  const obj = { a: 1 }
+  const arr = reactive([obj, { b: 2 }])
+  let index = -1
+  console.log(`#1 obj === arr[0], ${obj === toRaw(arr[0])}`)
+  effect(() => (index = arr.indexOf(obj))) // index = 0
+  console.log(`#2 before reverse, index = ${index}`)
+  arr.reverse() // #3
+  console.log(`#4 after reverse, index = ${index}`)
+  console.log(`#5 obj === arr[1], ${obj === toRaw(arr[1])}`)
+  #+end_src
+
+  #+RESULTS:
+  : #1 obj === arr[0], true
+  : #2 before reverse, index = 0
+  : #4 after reverse, index = -1
+  : #5 obj === arr[1], true
+  : undefined
+
+  +RESULTS: 失败
+  : before reverse, index = 0
+  : after reverse, index = -1
+  : [ { b: 2 }, { a: 1 } ]
+- [ ] T5: 使用 delete 删除数组元素时不应该触发 ~length~ 依赖
+
+  #+begin_src js
+  const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+  const arr = reactive([1,2,3])
+  let dummy = 0
+  effect(() => {
+    dummy = arr.length + 1
+  })
+
+  console.log(`before delete, dummy = ${dummy}, arr = ${arr}, len = ${arr.length}`)
+  delete arr[1]
+  console.log(`after delete, dummy = ${dummy}, arr = ${arr}, len = ${arr.length}`)
+  #+end_src
+
+  +RESULTS: 删除操作并不会改变数组长度
+  : before delete, dummy = 4, arr = 1,2,3, len = 3
+  : after delete, dummy = 4, arr = 1,,3, len = 3
+  : undefined
 
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
