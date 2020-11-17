@@ -743,8 +743,25 @@ console.log(`#10 observed[0] === undefined, ${observed[0] === undefined}`)
 console.log(`#11 original[0] === undefined, ${original[0] === undefined}`)
 observed.push(value)
 console.log(`#12 observed[2] === reactiveValue, ${observed[2] === reactiveValue}`)
-console.log(`#12 original[2] === value, ${original[2] === value}`)
+console.log(`#13 original[2] === value, ${original[2] === value}`)
 #+end_src
+
++RESULTS:
+#+begin_example
+#01 original !== observed, true
+#02 original is reactive, false
+#03 observed is reactive, true
+#04 observed[0] is reactive, true
+#05 clone[0] is reactive, true
+#06 clone[0] !== original[0], true
+#07 clone[0] === observed[0], true
+#08 observed[0] === reactiveValue, true
+#09 original[0] === value, true
+#10 observed[0] === undefined, true
+#11 original[0] === undefined, true
+#12 observed[2] === reactiveValue, true
+#13 original[2] === value, true
+#+end_example
 
 分析：
 - *#01* 因为 Proxy [[https://tc39.es/ecma262/#sec-proxycreate][内部实现]]实际会创建新对象
@@ -771,6 +788,7 @@ console.log(`#12 original[2] === value, ${original[2] === value}`)
 - *#11* 同上
 - *#12* 同 *#08* ~proxyMap~ 中有缓存了
 - *#13* 同上
+*** 测试二
 
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
