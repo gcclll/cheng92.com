@@ -269,7 +269,7 @@ console.log(`observed2 === observed1, ${observed2 === observed1}`)
 
 因为 ~reactive()~ 实现中组了检测，如果自身是个 proxy 就直接返回，所以 *#3* 中实
 际直接将 ~observed1~ 返回了。
-*** 用例八：不应该用 proxies 污染原始对象？
+*** TODO 用例八：不应该用 proxies 污染原始对象？
 
 #+begin_src js
 const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
@@ -286,7 +286,6 @@ console.log(`original.bar === original2, ${original.bar === original2}`)
 +RESULTS:
 : observed.bar === observed2, true
 : original.bar === original2, false
-
 * [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][443a0b5]] basic proxy get handler(createGetter)
 
 [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][feat: reactive proxy get handler · gcclll/stb-vue-next@598e047]]
