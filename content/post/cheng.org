@@ -158,6 +158,7 @@ https://www.bilibili.com/video/BV1zK4y1C7vE/
 #+end_export
 *** [[https://www.npmjs.com/package/xlsx-to-json][xlsx-to-json]]
 xlsx 文件转成 json 数据。
+** [[https://github.com/RubyLouvre/anu][anujs]]
 ** vue
 [[https://github.com/vitejs/vite][vite(vue-cli)]]
 

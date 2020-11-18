@@ -66,6 +66,118 @@ if (IsPropertyReference(ref)) {
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: api-array
 :END:
+*** Array.from(items[, mapfn[, thisArg]])
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-array-from
+:END:
+
+#+begin_src js
+let C = this
+let mapping
+if (mapfn === undefined) {
+  mapping = false
+} else {
+  if (!IsCallable(mapfn)) {
+    throw new TypeError()
+  }
+  mapping = true
+}
+
+let usingIterator = GetMthod(items, @@iterator)
+let A
+if (usingIterator) {
+  if (IsConstructor(C)) {
+    A = Construct(C)
+  } else {
+    // 可能是被借用了，如：Array.from.call(...)
+    A = ArrayCreate(0)
+  }
+
+  let iteratorRecord = GetIterator(items, sync, usingIterator)
+
+  let k = 0, error
+  while (true) {
+    if (k >= Math.pow(2, 53) - 1) {
+      // 溢出了
+      error = ThrowCompletion(new TypeError())
+      return IteratorClose(iteratorRecord, error)
+    }
+
+    let Pk = ToString(k)
+    let next = IteratorStep(iteratorRecord)
+
+    // 知道迭代器迭代结束，没有下一个元素了作为终止条件
+    if (!next) {
+      // 只有一个元素
+      Set(A, 'length', k, true)
+      return A
+    }
+
+    let nextValue = IteratorValue(next)
+
+    let mappedValue
+    if (mapping) {
+      mappedValue = Call(mapfn, thisArg, <<nextValue, k>>)
+      if (mappedValue is AbruptCompletion) {
+        // 终止迭代
+        return IteatorClose(iteratorRecord, mappedValue)
+      }
+      mappedValue = mappedValue.[[Value]]
+    } else {
+      mappedValue = nextValue
+    }
+
+    let defineStatus = CreateDataPropertyOrThrow(A, Pk, mappedValue)
+
+    if (defineStatus is AbruptCompletion) {
+      return IteratorClose(iteratorRecord, defineStatus)
+    }
+
+    k++
+  }
+
+  // NOTE: items 不是个 iterable 对象，可能是类数组对象
+  let arrayLike = ToObject(items)
+  let len = LengthOfArrayLike(arrayLike)
+  if (IsConstructor(C)) {
+    A = Construct(C, len)
+  } else {
+    A = ArrayCreate(len)
+  }
+
+  let k = 0
+  // 类数组对象，首先由自己的 length 属性
+  while (k < len) {
+    let Pk = ToString(k)
+    let kValue = Get(arrayLike, Pk)
+    if (mapping) {
+      mappedValue = Call(mapfn, thisArg, <<kValue, k>>)
+    } else {
+      mappedValue = kValue
+    }
+
+    CreateDataPropertyOrThrow(A, Pk, mappedValue)
+
+    k++
+  }
+
+  Set(A, 'length', len, true)
+
+   return A
+}
+#+end_src
+
+实现分两种情况：
+1. 数组类型，直接 while 循环取迭代器 next 下一个值
+2. 类数组类型，取 len while 循环对象取值设值操作
+
+两种情况设值操作都死调用的 [[#c-CreateDataPropertyOrThrow][CreateDataPropertyOrThrow]] 最终使用的是
+~O.[[DefineOwnProperty]](P, newDesc)~ 给对象追加属性。
+
+newDesc: ~{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true,
+[[Configurable]]: true}~
+
 *** [[#es2016-includes][Array.prototype.includes]]
 *** Array.prototype.slice(start, end)
 :PROPERTIES:
@@ -212,6 +324,8 @@ function get(key) {
 *** Map.prototype.set(key,value)
 *** Map.prototype.size
 *** Map.prototype.values()
+
+
 * Proxy & Reflect
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

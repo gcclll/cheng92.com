@@ -3,6 +3,7 @@ var VueReactivity = (function (exports) {
 
   const EMPTY_OBJ = Object.freeze({});
   const EMPTY_ARR = Object.freeze([]);
+  const extend = Object.assign;
   const hasOwnProperty = Object.prototype.hasOwnProperty;
   const hasOwn = (val, key) => hasOwnProperty.call(val, key);
   const isArray = Array.isArray;
@@ -186,6 +187,14 @@ var VueReactivity = (function (exports) {
         add(depsMap.get(key));
       }
       // TODO 迭代器 key，for...of, 使用迭代器是对数据的监听变化
+      switch (type) {
+        case "add" /* ADD */:
+          if (!isArray(target));
+          else if (isIntegerKey(key)) {
+            // 如果是数组添加元素，将 length 依赖添加到执行队列
+            add(depsMap.get("length"));
+          }
+      }
     }
     const run = (effect) => {
       if (effect.options.onTrigger) {
@@ -214,6 +223,7 @@ var VueReactivity = (function (exports) {
       .filter(isSymbol)
   );
   const get = /*#__PURE__*/ createGetter();
+  const shallowGet = /*#__PURE__*/ createGetter(false, true);
   // 数组内置方法处理
   const arrayInstrumentations = {};
   ["includes", "indexOf", "lastIndexOf"].forEach((key) => {
@@ -280,6 +290,7 @@ var VueReactivity = (function (exports) {
         track(target, "get" /* GET */, key);
       }
       // 是否只需要 reactive 一级属性(不递归 reactive)
+      // ADD
       if (shallow) {
         return res;
       }
@@ -293,6 +304,7 @@ var VueReactivity = (function (exports) {
     };
   }
   const set = /*#__PURE__*/ createSetter();
+  const shallowSet = /*#__PURE__*/ createSetter(true);
   function createSetter(shallow = false) {
     return function set(target, key, value, receiver) {
       const oldValue = target[key];
@@ -304,8 +316,9 @@ var VueReactivity = (function (exports) {
           : hasOwn(target, key);
       const result = Reflect.set(target, key, value, receiver);
       if (target === toRaw(receiver)) {
-        if (!hadKey);
-        else if (hasChanged(value, oldValue)) {
+        if (!hadKey) {
+          trigger(target, "add" /* ADD */, key, value);
+        } else if (hasChanged(value, oldValue)) {
           trigger(target, "set" /* SET */, key, value, oldValue);
         }
       }
@@ -344,6 +357,10 @@ var VueReactivity = (function (exports) {
     has,
     ownKeys,
   };
+  const shallowReactiveHandlers = extend({}, mutableHandlers, {
+    get: shallowGet,
+    set: shallowSet,
+  });
 
   const reactiveMap = new WeakMap();
   const readonlyMap = new WeakMap();
@@ -371,13 +388,12 @@ var VueReactivity = (function (exports) {
     if (target && target["__v_isReadonly" /* IS_READONLY */]) {
       return target;
     }
-    return createReactiveObject(
-      target,
-      false,
-      mutableHandlers,
-      {}
-      // mutableCollectionHandlers
-    );
+    // TODO mutableCollectionHandlers
+    return createReactiveObject(target, false, mutableHandlers, {});
+  }
+  function shallowReactive(target) {
+    // TODO shallowCollectionHandlers
+    return createReactiveObject(target, false, shallowReactiveHandlers, {});
   }
   function createReactiveObject(
     target,
@@ -450,6 +466,7 @@ var VueReactivity = (function (exports) {
   exports.markRaw = markRaw;
   exports.reactive = reactive;
   exports.resetTracking = resetTracking;
+  exports.shallowReactive = shallowReactive;
   exports.targetMap = targetMap;
   exports.toRaw = toRaw;
   exports.track = track;

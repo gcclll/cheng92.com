@@ -868,7 +868,7 @@ function createGetter(isReadonly = false, shallow = false) {
   : before reverse, index = 0
   : after reverse, index = -1
   : [ { b: 2 }, { a: 1 } ]
-- [ ] T5: 使用 delete 删除数组元素时不应该触发 ~length~ 依赖
+- [X] T5: 使用 [[/post/javascript-apis/#api-op-delete][delete]] 删除数组元素时不应该触发 ~length~ 依赖
 
   #+begin_src js
   const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
@@ -887,6 +887,147 @@ function createGetter(isReadonly = false, shallow = false) {
   : before delete, dummy = 4, arr = 1,2,3, len = 3
   : after delete, dummy = 4, arr = 1,,3, len = 3
   : undefined
+
+  #+begin_quote
+  PS: 赋值已有的下表元素值、添加非正整数类型的属性到数组上都不会触发 ~length~ 依
+  赖，本质上并没有改变数组长度。
+  #+end_quote
+- [X] T6: 在 effect fn 中使用 ~for ... in~ 迭代语句应该 /track length/
+
+  #+begin_src js
+  const { isReactive, effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+  const nums = [1]
+  const array = reactive(nums)
+  let len = ''
+  effect(() => {
+    len = ''
+    for (const key in array) {
+      len += key
+    }
+  })
+
+  console.log(`before push, len = ${len}`)
+  array.push(1)
+  console.log(`after push, len = ${len}`)
+  #+end_src
+
+  #+RESULTS:
+  : before push, len = 0
+  : after push, len = 01
+  : undefined
+
+  +RESULTS: 输出显示，length 依赖已经 track 到了，只是 Length 变化并没有触发
+  #+begin_example
+  Map(1) {
+    'length' => Set(1) {
+      [Function: reactiveEffect] {
+        id: 0,
+        allowRecurse: false,
+        _isEffect: true,
+        active: true,
+        raw: [Function (anonymous)],
+        deps: [Array],
+        options: {}
+      }
+    }
+  }
+  before push, len = 0
+  after push, len = 0
+  #+end_example
+
+  #+begin_quote
+    FIX: [[https://github.com/gcclll/stb-vue-next/commit/21b4881a906d5e6f2def3a7e486934af6009e93a][feat(add): array add element support · gcclll/stb-vue-next@21b4881]]
+  #+end_quote
+* [[https://github.com/gcclll/stb-vue-next/commit/21b4881a906d5e6f2def3a7e486934af6009e93a][21b4881]] array add element support
+
+[[https://github.com/gcclll/stb-vue-next/commit/21b4881a906d5e6f2def3a7e486934af6009e93a][feat(add): array add element support · gcclll/stb-vue-next@21b4881]]
+
+增加添加数组元素支持。
+
+#+begin_src typescript
+
+#+end_src
+1. ~createGetter -> get~ proxy handler 中增加属性添加 trigger 操作
+
+   ~trigger(target, TriggerOpTypes.ADD, key, value)~
+
+2. effect.ts -> ~trigger()~ 中增加数组长度变更依赖收集和 ~ADD~ 操作依赖收集
+
+   [[http://qiniu.ii6g.com/img/20201118105046.png]]
+* add shallow reactive
+
+正常 track 过程中会检测嵌套内的是不是对象，如果是对象会进行递归 reactive 让内部嵌套的对象也 reactive 化。
+
+shallow reactive 意思是当对象存在嵌套的时候，不进行递归 reactive 。
+
+这个通过在 track() 函数中做一次拦截处理。
+
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const props = shallowReactive({ n: { foo: 1} })
+
+console.log(`props.n is reactive, ${isReactive(props.n)}`)
+
+const props2 = shallowReactive({ n: reactive({ foo: 1 }) })
+props2.n = reactive({ foo: 2 })
+console.log(`props2.n is reactive, ${isReactive(props2.n)}`)
+
+// array test
+const shallowArray = shallowReactive([])
+const a = {}
+let size
+effect(() => {
+  size = shallowArray.length
+})
+
+console.log(`>> array`)
+console.log(`before push a, size = ${size}`)
+shallowArray.push(a)
+console.log(`after push a, size = ${size}`)
+shallowArray.pop()
+console.log(`after pop, size = ${size}`)
+
+console.log(`>> 迭代时不应观察`)
+shallowArray.push(a)
+const spreadA = [...shallowArray][0]
+// 迭代也有取值过程，shallow = true 不会递归 reactive
+console.log(`spreadA is reactive, ${isReactive(spreadA)}`)
+
+console.log(`>> onTrack`)
+const onTrackFn = () => console.log('on tracking...')
+let b
+effect(() => {
+  b = Array.from(shallowArray)
+}, {
+  onTrack: onTrackFn
+})
+#+end_src
+
++RESULTS: [[/post/javascript-apis/#api-array-from][Array.from]] 本质是迭代器操作，所以会触发迭代器 tracking 。
+#+begin_example
+props.n is reactive, false
+props2.n is reactive, true
+>> array
+before push a, size = 0
+after push a, size = 1
+after pop, size = 0
+>> 迭代时不应观察
+spreadA is reactive, false
+>> onTrack
+on tracking...
+on tracking...
+undefined
+#+end_example
+
 
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
