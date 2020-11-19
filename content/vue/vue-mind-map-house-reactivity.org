@@ -955,7 +955,9 @@ function createGetter(isReadonly = false, shallow = false) {
 2. effect.ts -> ~trigger()~ 中增加数组长度变更依赖收集和 ~ADD~ 操作依赖收集
 
    [[http://qiniu.ii6g.com/img/20201118105046.png]]
-* add shallow reactive
+* [[https://github.com/gcclll/stb-vue-next/commit/e85dfc630c3374aa6452891784cc58ffdc5895c6][e85dfc6]] add shallow reactive
+
+[[https://github.com/gcclll/stb-vue-next/commit/e85dfc630c3374aa6452891784cc58ffdc5895c6][feat(add): shallowReactive api · gcclll/stb-vue-next@e85dfc6]]
 
 正常 track 过程中会检测嵌套内的是不是对象，如果是对象会进行递归 reactive 让内部嵌套的对象也 reactive 化。
 
@@ -964,6 +966,7 @@ shallow reactive 意思是当对象存在嵌套的时候，不进行递归 react
 这个通过在 track() 函数中做一次拦截处理。
 
 
+测试：
 #+begin_src js
 const {
   isReactive,
@@ -1027,8 +1030,217 @@ on tracking...
 on tracking...
 undefined
 #+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/66e7903568bf7d5bce0faca2f85e80c36399bc66][66e7903]] add readonly reactive
+
+[[https://github.com/gcclll/stb-vue-next/commit/66e7903568bf7d5bce0faca2f85e80c36399bc66][feat(add): readonly reactive · gcclll/stb-vue-next@66e7903]]
+
+*** 测试(for ~Object~)：
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive,
+  readonly,
+  isProxy,
+  isReadonly
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+console.log(`>>> should make nested values readonly`)
+const original = { foo: 1, bar: { baz: 2 } }
+const wrapped = readonly(original)
+console.log(`wrapped !== original, ${wrapped !== original}`)
+console.log(`wrapped is proxy, ${isProxy(wrapped)}`)
+console.log(`wrapped is reactive, ${isReactive(wrapped)}`)
+console.log(`wrapped is readonly, ${isReadonly(wrapped)}`)
+console.log(`original is reactive, ${isReactive(original)}`)
+console.log(`original is readonly, ${isReadonly(original)}`)
+console.log(`wrapped.bar is reactive, ${isReactive(wrapped.bar)}`)
+console.log(`wrapped.bar is readonly, ${isReadonly(wrapped.bar)}`)
+console.log(`original.bar is reactive, ${isReactive(original.bar)}`)
+console.log(`original.bar is readonly, ${isReadonly(original.bar)}`)
+console.log(`>> get`)
+console.log(`wrapped.foo = ${wrapped.foo}`)
+console.log(`>> has`)
+console.log(`'foo' in wrapped, ${'foo' in wrapped}`)
+console.log(`>> ownKeys`)
+console.log(`Object.keys(wrapped), [${Object.keys(wrapped)}]`)
+
+console.log(`>> set or delete, should fail`)
+const qux = Symbol('qux')
+const original2 = {
+  foo: 1,
+  bar: {
+    baz: 2
+  },
+  [qux]: 3
+}
+
+const wrapped2 = readonly(original2)
+wrapped2.foo = 2 // fail
+console.log(`after 'wrapped2.foo = 2',  wrapped2.foo = ${wrapped2.foo}`)
+wrapped2.bar.baz = 3
+console.log(`after 'wrapped2.bar.baz = 3', wrapped2.bar.baz = ${wrapped2.bar.baz}`)
+wrapped2[qux] = 4
+console.log(`after 'wrapped2[qux] = 4',  wrapped2[qux] = ${wrapped2[qux]}`)
+
+delete wrapped2.foo
+console.log(`after 'delete wrapped2.foo', wrapped2.foo = ${wrapped2.foo}`)
+delete wrapped2.bar.baz
+console.log(`after 'delete wrapped2.bar.baz', wrapped2.bar.baz = ${wrapped2.bar.baz}`)
+delete wrapped2[qux]
+console.log(`after 'delete wrapped2[qux]', wrapped2[qux] = ${wrapped2[qux]}`)
+#+end_src
+
++RESULTS: readonly 会递归嵌套对象，所以它内部的对象都会是 readonly。
+#+begin_example
+>>> should make nested values readonly
+wrapped !== original, true
+wrapped is proxy, true
+wrapped is reactive, false
+wrapped is readonly, true
+original is reactive, false
+original is readonly, false
+wrapped.bar is reactive, false
+wrapped.bar is readonly, true
+original.bar is reactive, false
+original.bar is readonly, false
+>> get
+wrapped.foo = 1
+>> has
+'foo' in wrapped, true
+>> ownKeys
+Object.keys(wrapped), [foo,bar]
+>> set or delete, should fail
+after 'wrapped2.foo = 2',  wrapped2.foo = 1
+after 'wrapped2.bar.baz = 3', wrapped2.bar.baz = 2
+after 'wrapped2[qux] = 4',  wrapped2[qux] = 3
+after 'delete wrapped2.foo', wrapped2.foo = 1
+after 'delete wrapped2.bar.baz', wrapped2.bar.baz = 2
+after 'delete wrapped2[qux]', wrapped2[qux] = 3
+#+end_example
 
 
+*** 测试(for ~Array~):
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  readonly,
+  isReadonly,
+  reactive,
+  targetMap,
+  isProxy,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+console.log(`>>> should make nested values readonly`)
+const original = [{ foo: 1 }]
+const wrapped = readonly(original)
+console.log(`wrapped !== original`)
+console.log(`wrapped is proxy, ${isProxy(wrapped)}`)
+console.log(`wrapped is reactive, ${isReactive(wrapped)}`)
+console.log(`wrapped is readonly, ${isReadonly(wrapped)}`)
+console.log(`original is reactive, ${isReactive(original)}`)
+console.log(`original is readonly, ${isReadonly(original)}`)
+console.log(`wrapped[0] is reactive, ${isReactive(wrapped[0])}`)
+console.log(`wrapped[0] is readonly, ${isReadonly(wrapped[0])}`)
+console.log(`original[0] is reactive, ${isReactive(original[0])}`)
+console.log(`original[0] is readonly, ${isReadonly(original[0])}`)
+console.log(`> get`)
+console.log(`wrapped[0].foo = ${wrapped[0].foo}`)
+console.log(`> has`)
+console.log(`0 in wrapped, ${0 in wrapped}`)
+console.log(`> ownKeys`)
+console.log(`Object.keys(wrapped) = [${Object.keys(wrapped)}]`)
+
+const wrapped2 = readonly([{ foo: 1 }])
+wrapped2[0] = 1
+console.log(`after 'wrapped2[0] = 1', wrapped2[0] = ${wrapped2[0]}`)
+wrapped2[0].foo = 2
+console.log(`after 'wrapped2[0].foo = 2', wrapped2[0].foo = ${wrapped2[0].foo}`)
+wrapped2.length = 0
+console.log(`after 'wrapped2.length = 0', wrapped2.length = ${wrapped.length}`)
+console.log(`after 'wrapped2.length = 0', wrapped2[0].foo = ${wrapped2[0].foo}`)
+wrapped2.push(2)
+console.log(`after 'wrapped2.push(2)', wrapped2.length = ${wrapped2.length}`)
+#+end_src
+
++RESULTS:
+#+begin_example
+>>> should make nested values readonly
+wrapped !== original
+wrapped is proxy, true
+wrapped is reactive, false
+wrapped is readonly, true
+original is reactive, false
+original is readonly, false
+wrapped[0] is reactive, false
+wrapped[0] is readonly, true
+original[0] is reactive, false
+original[0] is readonly, false
+> get
+wrapped[0].foo = 1
+> has
+0 in wrapped, true
+> ownKeys
+Object.keys(wrapped) = [0]
+after 'wrapped2[0] = 1', wrapped2[0] = [object Object]
+after 'wrapped2[0].foo = 2', wrapped2[0].foo = 1
+after 'wrapped2.length = 0', wrapped2.length = 1
+after 'wrapped2.length = 0', wrapped2[0].foo = 1
+after 'wrapped2.push(2)', wrapped2.length = 1
+undefined
+#+end_example
+*** 测试(reactive, readonly 互撩)
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  readonly,
+  isReadonly,
+  targetMap,
+  toRaw,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const a = readonly({})
+const b = reactive(a)
+console.log(`*#1* isReadonly(b), ${isReadonly(b)}`)
+console.log(`*#2* toRaw(a) === toRaw(b), ${toRaw(a) === toRaw(b)}`)
+console.log(`*#3* a === b, ${ a === b }`)
+#+end_src
+
++RESULTS:
+: *#1* isReadonly(b), true
+: *#2* toRaw(a) === toRaw(b), true
+: *#3* a === b, true
+: undefined
+
+1. *#1* b is readonly: ~createReactive~ 中的处理
+
+   #+begin_src typescript
+   if (target[ReactiveFlags.Raw] && !(isReadonly && target[ReactiveFlags.IS_REACTIVE])) {
+     return target
+   }
+   #+end_src
+
+   上面的处理针对 ~b = reactive(a)~ 有：
+
+   a 满足 target[ReactiveFlags.Raw] 因为它是 readonly 的.
+
+   isReadonly = false
+
+   target[ReactiveFlags.IS_REACTIVE] 不满足
+
+   因此上面的判断满足 ~target[ReactiveFlags.RAW] &&
+   !target[ReactiveFlags.IS_REACTIVE]~ 直接返回 target 。
+
+2. *#2* ~toRaw(a) === toRaw(b)~ 这个结果为 true，因为 1 中的原因，直接返回了 target，
+   所以 b 实际上就是 a(如结果 *#3*)
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:

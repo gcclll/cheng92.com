@@ -224,6 +224,7 @@ var VueReactivity = (function (exports) {
   );
   const get = /*#__PURE__*/ createGetter();
   const shallowGet = /*#__PURE__*/ createGetter(false, true);
+  const readonlyGet = /*#__PURE__*/ createGetter(true);
   // 数组内置方法处理
   const arrayInstrumentations = {};
   ["includes", "indexOf", "lastIndexOf"].forEach((key) => {
@@ -298,7 +299,7 @@ var VueReactivity = (function (exports) {
       // TODO 7. res is object -> reactive recursivly
       if (isObject(res)) {
         // 递归 reactive 嵌套对象，feat: b2143f9
-        return isReadonly ? null /* TODO */ : reactive(res);
+        return isReadonly ? readonly(res) : reactive(res);
       }
       return res;
     };
@@ -357,6 +358,29 @@ var VueReactivity = (function (exports) {
     has,
     ownKeys,
   };
+  const readonlyHandlers = {
+    get: readonlyGet,
+    set(target, key) {
+      {
+        console.warn(
+          `Set operation on key "${String(key)}" failed: target is readonly.`,
+          target
+        );
+      }
+      return true;
+    },
+    deleteProperty(target, key) {
+      {
+        console.warn(
+          `Delete operation on key "${String(
+            key
+          )}" failed: target is readonly.`,
+          target
+        );
+      }
+      return true;
+    },
+  };
   const shallowReactiveHandlers = extend({}, mutableHandlers, {
     get: shallowGet,
     set: shallowSet,
@@ -394,6 +418,9 @@ var VueReactivity = (function (exports) {
   function shallowReactive(target) {
     // TODO shallowCollectionHandlers
     return createReactiveObject(target, false, shallowReactiveHandlers, {});
+  }
+  function readonly(target) {
+    return createReactiveObject(target, true, readonlyHandlers, {});
   }
   function createReactiveObject(
     target,
@@ -471,6 +498,7 @@ var VueReactivity = (function (exports) {
   exports.toRaw = toRaw;
   exports.track = track;
   exports.trigger = trigger;
+  exports.readonly = readonly;
 
   Object.defineProperty(exports, "__esModule", { value: true });
 

@@ -26,6 +26,12 @@
 6. https://emacs.nasy.moe/
 7. 主题：https://github.com/hlissner/emacs-doom-themes
 
+** 常用按键
+
+| key       | function                |
+|-----------+-------------------------|
+| ~SPC g .~ | ~+vc/gutter-hydra/body~ |
+| ~SPC g m~ | ~+vc/smerge-hydra/body~ |
 ** Base Configuration/Operation
 *** 重新加载配置
 
