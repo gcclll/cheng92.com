@@ -225,6 +225,7 @@ var VueReactivity = (function (exports) {
   const get = /*#__PURE__*/ createGetter();
   const shallowGet = /*#__PURE__*/ createGetter(false, true);
   const readonlyGet = /*#__PURE__*/ createGetter(true);
+  const shallowReadonlyGet = /*#__PURE__*/ createGetter(true, true);
   // 数组内置方法处理
   const arrayInstrumentations = {};
   ["includes", "indexOf", "lastIndexOf"].forEach((key) => {
@@ -385,6 +386,9 @@ var VueReactivity = (function (exports) {
     get: shallowGet,
     set: shallowSet,
   });
+  const shallowReadonlyHandlers = extend({}, readonlyHandlers, {
+    get: shallowReadonlyGet,
+  });
 
   const reactiveMap = new WeakMap();
   const readonlyMap = new WeakMap();
@@ -421,6 +425,9 @@ var VueReactivity = (function (exports) {
   }
   function readonly(target) {
     return createReactiveObject(target, true, readonlyHandlers, {});
+  }
+  function shallowReadonly(target) {
+    return createReactiveObject(target, true, shallowReadonlyHandlers, {});
   }
   function createReactiveObject(
     target,
@@ -492,13 +499,14 @@ var VueReactivity = (function (exports) {
   exports.isReadonly = isReadonly;
   exports.markRaw = markRaw;
   exports.reactive = reactive;
+  exports.readonly = readonly;
   exports.resetTracking = resetTracking;
   exports.shallowReactive = shallowReactive;
+  exports.shallowReadonly = shallowReadonly;
   exports.targetMap = targetMap;
   exports.toRaw = toRaw;
   exports.track = track;
   exports.trigger = trigger;
-  exports.readonly = readonly;
 
   Object.defineProperty(exports, "__esModule", { value: true });
 

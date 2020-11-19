@@ -1241,6 +1241,54 @@ console.log(`*#3* a === b, ${ a === b }`)
 
 2. *#2* ~toRaw(a) === toRaw(b)~ 这个结果为 true，因为 1 中的原因，直接返回了 target，
    所以 b 实际上就是 a(如结果 *#3*)
+* [[https://github.com/gcclll/stb-vue-next/commit/aaaf911eb88c75935970e51f843a88f6a3a3c6d6][aaaf911]] add shallow readonly reactive
+
+[[https://github.com/gcclll/stb-vue-next/commit/aaaf911eb88c75935970e51f843a88f6a3a3c6d6][feat(add): shallow readonly reactive · gcclll/stb-vue-next@aaaf911]]
+
+[[http://qiniu.ii6g.com/img/20201119153149.png]]
+
+测试:
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive,
+  shallowReadonly
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+// 嵌套对象不应该 reactive
+console.log(`>>> should not make non-reactive properties reactive`)
+let props = shallowReadonly({ n: {foo: 1} })
+console.log(`isReactive(props.n), ${isReactive(props.n)}`)
+
+// 根属性应该是 readonly
+console.log(`>>> should make root level properties readonly`)
+props = shallowReadonly({n : 1})
+props.n = 2
+console.log(`after 'props.n = 2', props.n = ${props.n}`)
+// 嵌套的属性不应该是 readonly ，因为是 shallow
+console.log(`>>> should NOT make nested properties readonly`)
+props = shallowReadonly({ n: { foo: 1 } })
+props.n.foo = 2
+console.log(`after 'props.n.foo = 2', props.n.foo = ${props.n.foo}`)
+#+end_src
+
++RESULTS:
+: >>> should not make non-reactive properties reactive
+: isReactive(props.n), false
+: >>> should make root level properties readonly
+: after 'props.n = 2', props.n = 1
+: >>> should NOT make nested properties readonly
+: after 'props.n.foo = 2', props.n.foo = 2
+: undefined
+
+这里的结果不难理解
+
+ 1. shallow 不会递归 reactive
+ 2. readonly 让属性只读，但是由于是 shallow 所以只有对象根属性才是只读
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:
