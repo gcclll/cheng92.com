@@ -889,7 +889,7 @@ function createGetter(isReadonly = false, shallow = false) {
   : undefined
 
   #+begin_quote
-  PS: 赋值已有的下表元素值、添加非正整数类型的属性到数组上都不会触发 ~length~ 依
+  PS: 赋值已有的下标元素值、添加非正整数类型的属性到数组上都不会触发 ~length~ 依
   赖，本质上并没有改变数组长度。
   #+end_quote
 - [X] T6: 在 effect fn 中使用 ~for ... in~ 迭代语句应该 /track length/
@@ -1288,6 +1288,50 @@ console.log(`after 'props.n.foo = 2', props.n.foo = ${props.n.foo}`)
 
  1. shallow 不会递归 reactive
  2. readonly 让属性只读，但是由于是 shallow 所以只有对象根属性才是只读
+* [[https://github.com/gcclll/stb-vue-next/commit/f1e5b3afb88d41d065f1c797f5db66ac7c65339f][f1e5b3a]] add effect stop
+
+[[https://github.com/gcclll/stb-vue-next/commit/f1e5b3afb88d41d065f1c797f5db66ac7c65339f][feat(add): effect stop · gcclll/stb-vue-next@f1e5b3a]]
+
+[[http://qiniu.ii6g.com/img/20201119162119.png]]
+
+
+* effect 测试
+
+#+begin_src js
+// 只执行一次 effect fn
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+// 基本的测试用例就不列出来了，这里只列出有疑问的
+// 1. effect fn 只执行一次
+// 2. observe 基本属性
+// 3. observe 多个属性(n1,n2...) -> effect(() => (dummy = obj.n1 + obj.n2))
+// 4. 同一个属性多个 effect，会将这多个 effects 收集到 prop 的 deps 中
+// 5. observe 属性删除
+let dummy, dummy1, dummy2
+const ob = reactive({ foo: { bar: 0 } })
+effect(() => (dummy = ob.foo.bar)) // effect -> ob, ob.foo, ob.foo.bar deps
+effect(() => (dummy1 = ob.foo.bar))
+console.log(`before set, dummy = ${dummy}, dummy1 = ${dummy1}`)
+ob.foo.bar = 8
+console.log(`after set, dummy = ${dummy}, dummy1 = ${dummy1}`)
+delete ob.foo.bar
+console.log(`after delete, dummy = ${dummy}, dummy1 = ${dummy1}`)
+#+end_src
+
+#+RESULTS:
+: before set, dummy = 0, dummy1 = 0
+: after set, dummy = 8, dummy1 = 8
+: after delete, dummy = undefined, dummy1 = undefined
+: undefined
+
+*
+
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:
