@@ -1121,7 +1121,6 @@ after 'delete wrapped2.bar.baz', wrapped2.bar.baz = 2
 after 'delete wrapped2[qux]', wrapped2[qux] = 3
 #+end_example
 
-
 *** 测试(for ~Array~):
 #+begin_src js
 const {
@@ -1239,7 +1238,7 @@ console.log(`*#3* a === b, ${ a === b }`)
    因此上面的判断满足 ~target[ReactiveFlags.RAW] &&
    !target[ReactiveFlags.IS_REACTIVE]~ 直接返回 target 。
 
-2. *#2* ~toRaw(a) === toRaw(b)~ 这个结果为 true，因为 1 中的原因，直接返回了 target，
+2. *#2* ~toRaw(a) === toRaw(b)~ 这个结果为 true，因为 *#1* 中的原因，直接返回了 target，
    所以 b 实际上就是 a(如结果 *#3*)
 * [[https://github.com/gcclll/stb-vue-next/commit/aaaf911eb88c75935970e51f843a88f6a3a3c6d6][aaaf911]] add shallow readonly reactive
 
