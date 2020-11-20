@@ -166,6 +166,7 @@ var VueReactivity = (function (exports) {
         });
       }
     }
+    console.log({ key, type, dep, x: "in track" });
   }
   function trigger(target, type, key, newValue, oldValue, oldTarget) {
     const depsMap = targetMap.get(target);
@@ -184,7 +185,6 @@ var VueReactivity = (function (exports) {
     };
     if (type === "clear" /* CLEAR */);
     else if (key === "length" && isArray(target)) {
-      // TODO array change operation
       depsMap.forEach((dep, key) => {
         if (key === "length" || key >= newValue) {
           add(dep);
@@ -399,6 +399,62 @@ var VueReactivity = (function (exports) {
     get: shallowReadonlyGet,
   });
 
+  function get$1(target, key, isReadonly = false, isShallow = false) {
+    // TODO
+    target = target["__v_raw" /* RAW */];
+    const rawTarget = toRaw(target);
+    // 下面处理是针对 key 可能是 proxy 类型
+    // 次数，proxy key 和对应的 raw key 都要收集当前依赖
+    const rawKey = toRaw(key); // key 有可能也是 proxy
+    console.log({ key, rawKey, eq: key === rawKey });
+    if (key !== rawKey) {
+      // proxy key
+      !isReadonly && track(rawTarget, "get" /* GET */, key);
+    }
+    // raw key
+    !isReadonly && track(rawTarget, "get" /* GET */, rawKey);
+    console.log({ key, target, x: "in global get" });
+    // FIX: 死循环
+    return 100;
+    // return target.get(key)
+  }
+  const mutableInstrumentations = {
+    // get proxy handler, this -> target
+    get(key) {
+      // collection get 执行期间
+      return get$1(this, key);
+    },
+  };
+  function createInstrumentationGetter(isReadonly, shallow) {
+    const instrumentations = mutableInstrumentations;
+    return (target, key, receiver) => {
+      if (key === "__v_isReactive" /* IS_REACTIVE */) {
+        return !isReadonly;
+      } else if (key === "__v_isReadonly" /* IS_READONLY */) {
+        return isReadonly;
+      } else if (key === "__v_raw" /* RAW */) {
+        return target;
+      }
+      // collection get 取值期间，这里只是负责将 get/set/... 方法取出来
+      // map.get() -> 分给两步: fn = map.get -> fn()
+      // 取 fn 在下面，fn() 执行实际在 mutableInstrumentation 里面
+      // 所以 mutableInstrumentations.get 的两个参数分别是：
+      // 1. this -> map
+      // 2. key -> map.get('foo') 的 'foo'
+      console.log({ key, target, x: "in createInstrumentationGetter" });
+      return Reflect.get(
+        hasOwn(instrumentations, key) && key in target
+          ? instrumentations
+          : target,
+        key,
+        receiver
+      );
+    };
+  }
+  const mutableCollectionHandlers = {
+    get: createInstrumentationGetter(false),
+  };
+
   const reactiveMap = new WeakMap();
   const readonlyMap = new WeakMap();
   function targetTypeMap(rawType) {
@@ -425,8 +481,12 @@ var VueReactivity = (function (exports) {
     if (target && target["__v_isReadonly" /* IS_READONLY */]) {
       return target;
     }
-    // TODO mutableCollectionHandlers
-    return createReactiveObject(target, false, mutableHandlers, {});
+    return createReactiveObject(
+      target,
+      false,
+      mutableHandlers,
+      mutableCollectionHandlers
+    );
   }
   function shallowReactive(target) {
     // TODO shallowCollectionHandlers

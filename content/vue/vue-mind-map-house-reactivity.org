@@ -594,7 +594,7 @@ export function trigger(
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: effect-track-trigger
-:END: 
+:END:
 
 到此 effect + track + trigger 完成了最简单的响应式代码。
 
@@ -607,7 +607,7 @@ export function trigger(
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: c-delete
-:END: 
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/05b98c571560d2c1806d29cdda7b500b4b2bdeac][feat: delete proxy handler · gcclll/stb-vue-next@05b98c5]]
 
@@ -1294,6 +1294,303 @@ console.log(`after 'props.n.foo = 2', props.n.foo = ${props.n.foo}`)
 
 [[http://qiniu.ii6g.com/img/20201119162119.png]]
 
+stop() 函数操作：
+1. 清空所有 effect 上的 deps，同时将当前的 effect 从所有依赖它的 dep 中删除
+
+   ~effect.deps[i].delete(effect)~ , 这一步是将 ~targetMap > depsMap > deps~ 中
+   的 effect 删除。
+
+   ~effect.deps.length = 0~
+2. 将 effect.active 置为 false
+
+
+执行 ~stop()~ 之后，只能手动调用 ~runner()~ 来触发 effect fn(前提是没有提供
+~options.scheduler~ ，否则永远不会被执行) 。
+
+被 stopped 的 effect 可以当做另一个正常的 effect 的 fn。
+* [[https://github.com/gcclll/stb-vue-next/commit/521f755fd403d5f0431bcafd1737f1d988ce0825][521f755]] add collection handlers
+
+[[https://github.com/gcclll/stb-vue-next/commit/521f755fd403d5f0431bcafd1737f1d988ce0825][feat(add): mutable collection handlers · gcclll/stb-vue-next@521f755]]
+
+[[#whole-collection][collection proxy handlers 脑图链接]]
+
+因为 Reflect 没有集合操作的对应接口，所以针对集合类型需要通过 ~get proxy~ 来中转
+做特殊处理。
+
+#+begin_src typescript
+function createInstrumentationGetter(isReadonly: boolean, shallow: boolean) {
+  // TODO
+}
+export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = {
+  // get: createInstrumentationGetter(false, false)
+}
+#+end_src
+
+添加集合类型的 handlers。
+* [[https://github.com/gcclll/stb-vue-next/commit/a5e8e062658d458081ce1bb499b8041f6175689e][a5e8e06]] add collection get proxy handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/a5e8e062658d458081ce1bb499b8041f6175689e][feat(add): collection get proxy · gcclll/stb-vue-next@a5e8e06]]
+
+针对集合的所有操作代理都是通过 get proxy 变相完成的，所以搞懂这里是至关重要的。
+
+collection proxy handler:
+
+#+begin_src typescript
+export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = {
+  get: createInstrumentationGetter(false, false)
+}
+#+end_src
+
+简单吧，别被假🐘给迷惑了！！！
+
+这里的原理如果想通了也简单。
+
+试想下，我们调用集合类型的方法是怎么调用的？？？
+
+~map.get()~, ~map.set()~, ~map.delete()~, ~...~
+
+都是通过点语法使用的，点语法前提也必须是先取出值来进行操作，即要调用方法之前，先
+将方法取出来，因此这里就是取值操作。
+
+从这一个层级上去理解去实现，就可以通过集合的 ~proxy get~ 来变相实现所有集合的方
+法和属性代理。
+
+注意 ~Reflect.get(target, key, receiver)~ 第一个传的是什么？
+
+~boolean ? instrumentations : target~ 即封装后的 ~instrumentations~ 啊 !
+
+如： ~map.get()~ -> ~target: map, key: get~ -> ~target: instumentations, key:
+get~ -> ~get(target, key, isReadonly, isShallow)~
+
+集合的操作最终 -----> 转变成 instrumentations 对象上的操作。
+
+#+begin_quote
+去掉暂时不需要的代码([[https://github.com/gcclll/stb-vue-next/commit/65ea709dac46e4310eb2ac95cb19984d9b921d88][65ea709]])：
+
+[[https://github.com/gcclll/stb-vue-next/commit/65ea709dac46e4310eb2ac95cb19984d9b921d88][feat: add get proxy handler · gcclll/stb-vue-next@65ea709]]
+#+end_quote
+
+** 实现顺序(原理)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-collection-proxy-get
+:END: 
+
+#+begin_src typescript
+// 1. 对外的 handlers
+export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = {
+  get: createInstrumentationGetter(false, false)
+}
+
+
+// 2. 封装 get proxy 所有 collection 操作的入口
+function createInstrumentationGetter(isReadonly: boolean, shallow: boolean) {
+  const instrumentations = mutableInstrumentations
+
+  return (
+    target: CollectionTypes,
+    key: string | symbol,
+    receiver: CollectionTypes
+  ) => {
+    if (key === ReactiveFlags.IS_REACTIVE) {
+      return !isReadonly
+    } else if (key === ReactiveFlags.IS_READONLY) {
+      return isReadonly
+    } else if (key === ReactiveFlags.RAW) {
+      return target
+    }
+
+    // 将集合操作代理到 instrumentations 对象上
+    return Reflect.get(
+      hasOwn(instrumentations, key) && key in target
+        ? instrumentations
+        : target,
+      key,
+      receiver
+    )
+  }
+}
+
+// 3. map -> instrumentations -> proxy 中间对象
+const mutableInstrumentations: Record<string, Function> = {
+  // get proxy handler, this -> target
+  get(this: MapTypes, key: unknown) {
+    return get(this, key)
+  }
+}
+
+
+// 4. 最终执行操作得到结果的函数
+function get(
+  target: MapTypes,
+  key: unknown,
+  isReadonly = false,
+  isShallow = false
+) {
+  // TODO
+
+  console.log({ target, key })
+  return target.get(key)
+}
+#+end_src
+
+#+begin_quote
+理解过程：
+
+首先要理解执行这一句 ~map.get('foo')~ 发生了什么
+1. 首先是 ~map.get~ 取值操作，即 ~createInstrumentationGetter()~ 最后 return 的
+   那一句
+
+   其实是针对 ~map.get~ 操作的代理，将 "get" 方法从 *map* 对象中取出来的代理。
+
+   所以 ~Reflect.get(target, key, receiver)~ 这里的 ~key = "foo"~
+
+2. 经过 *#1* 之后，需要立即执行 "get" 方法即 ~()~ 操作
+
+   此时执行的是 ~mutableInstrumentations.get(this, key)~ 方法
+
+   所以这里的 ~key = 'foo'~ , ~this~ 就是调用 ~get()~ 方法的对象 *map* 。 
+
+3. 最后 get 操作会被模块全局函数 ~get(target, key, isReadonly, isShallow)~ 代替，
+   做了许多特殊处理，收集依赖。
+   
+#+end_quote
+
+** [[https://github.com/gcclll/stb-vue-next/commit/12bc4da85edd0bfee3785ef3dfb77c3f52ef33cd][12bc4da]] add get handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/12bc4da85edd0bfee3785ef3dfb77c3f52ef33cd][feat(add): get function for collection proxy · gcclll/stb-vue-next@12bc4da]]
+
+*FIX*: [[https://github.com/gcclll/stb-vue-next/commit/edc1d3f701e744a2b33e9ad5352597519cc06106][edc1d3f]] 死循环问题(直接放回 target.get(key) 又会触发 get -> ...)
+[[https://github.com/gcclll/stb-vue-next/commit/edc1d3f701e744a2b33e9ad5352597519cc06106][fix: infinite loop · gcclll/stb-vue-next@edc1d3f]]
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map([['foo', 1]])
+const observed = reactive(map)
+
+const res = observed.get('foo')
+console.log({ res })
+#+end_src
+
++RESULTS:
+: {
+:   key: 'get',
+:   target: Map(1) { 'foo' => 1 },
+:   x: 'in createInstrumentationsGetter'
+: }
+: { key: 'foo', target: Map(1) { 'foo' => 1 }, x: 'in get' }
+: { res: 100 }
+
+结果如上(参见.[[#key-collection-proxy-get][原理详细分析]])
+1. reactive(map) -> 将 map 代理给 ~instrumentations{ get }~
+2. observed.get -> 得到 instrumentations 里面的 "get" 方法
+3. ('foo') -> 执行 ~instrumentations.get(this, key)~, /key = 'foo'/
+4. 返回结果
+
+
+#+begin_quote
+至此，完成 collection get proxy handler 的完整流程。
+#+end_quote
+** [[https://github.com/gcclll/stb-vue-next/commit/0b3fd712f72ddeda7c4bf5252624545650c1601b][0b3fd71]] add get handler track
+
+[[https://github.com/gcclll/stb-vue-next/commit/0b3fd712f72ddeda7c4bf5252624545650c1601b][feat(add): collection proxy get -> global get · gcclll/stb-vue-next@0b3fd71]]
+
+新增get 操作，track 添加依赖。
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map([['foo', 1]])
+const observed = reactive(map)
+
+let dummy
+effect(() => {
+  dummy = observed.get('foo')
+})
+
+console.log(`dummy = ${dummy}`)
+
+#+end_src
+
++RESULTS:
+#+begin_example
+{
+  key: 'get',
+  target: Map(1) { 'foo' => 1 },
+  x: 'in createInstrumentationGetter'
+}
+{
+  key: 'foo',
+  type: 'get',
+  dep: Set(1) {
+    [Function: reactiveEffect] {
+      id: 0,
+      allowRecurse: false,
+      _isEffect: true,
+      active: true,
+      raw: [Function (anonymous)],
+      deps: [Array],
+      options: {}
+    }
+  },
+  x: 'in track'
+}
+{ key: 'foo', target: Map(1) { 'foo' => 1 }, x: 'in global get' }
+dummy = 100
+#+end_example
+
+分为三个阶段
+1. collection proxy handler 取  map.get 方法, ~key = 'get'~
+2. ~('prop')~ 执行期触发 ~instrumentations.get(this, key), key = 'foo'~
+3. 执行 global get 触发 ~track~ 收集依赖，返回结果值
+
+
+假设 ~map.get(key)~ 的 key 也是个 proxy :
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const objAsKey = { name: 'key' }
+const proxyKey = reactive(objAsKey)
+const map = new Map([[proxyKey, 1]])
+const observed = reactive(map)
+
+let dummy
+effect(() => {
+  dummy = map.get(proxyKey)
+})
+
+console.log(`dummy = ${dummy}`)
+console.log(`> proxyKey deps`)
+
+console.log(targetMap.get(proxyKey))
+#+end_src
+
+#+RESULTS:
+: dummy = 1
+: > proxyKey deps
+: undefined
+: undefined
+
 * effect 测试
 *** 测试1(base, prototype)
 
@@ -1591,7 +1888,7 @@ undefined
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-01
-:END: 
+:END:
 
 commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
 
@@ -1648,12 +1945,12 @@ setTimeout(function test() {
     var reactive = ins.reactive
     var target = { count: 0 }
     var counter = reactive(target)
-    
+
     var $el = $("#_effect_test_02")
     var LOG = function (msg) {
       _log($el, msg)
     }
-    
+
     var lazyEffect = effect(
       function fn() {
         var c = counter.count
@@ -1726,7 +2023,7 @@ setTimeout(function test() {
       runner()
     })
 }, 1000)
-    
+
 </script>
 #+end_export
 
@@ -1788,3 +2085,11 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a61
 :END:
 
 [[/img/vue3/reactivity/reactivity.svg]]
+
+** collection proxy handlers 脑图
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: while-collection
+:END:
+
+[[/img/vue3/reactivity/reactivity-collection-proxy.svg]]
