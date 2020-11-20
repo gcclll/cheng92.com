@@ -1294,8 +1294,17 @@ console.log(`after 'props.n.foo = 2', props.n.foo = ${props.n.foo}`)
 
 [[http://qiniu.ii6g.com/img/20201119162119.png]]
 
-
 * effect 测试
+*** 测试1(base, prototype)
+
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: effect-test-01
+:END:
+
+测试内容：
+1. effect 基本使用
+2. effect 作用域原型链
 
 #+begin_src js
 // 只执行一次 effect fn
@@ -1322,16 +1331,261 @@ ob.foo.bar = 8
 console.log(`after set, dummy = ${dummy}, dummy1 = ${dummy1}`)
 delete ob.foo.bar
 console.log(`after delete, dummy = ${dummy}, dummy1 = ${dummy1}`)
+console.log(`>>> 原型链`)
+
+const obj1 = { num: 0 }, obj2 = { num: 2 }
+const counter = reactive(obj1)
+const parentCounter = reactive(obj2)
+// 取值原理： 先自身再往上找原型链，所有只要
+Object.setPrototypeOf(counter, parentCounter)
+effect(() => (dummy = counter.num))
+console.log(`dummy = ${dummy}`)
+console.log(`> #1 obj1.num 的依赖`)
+console.log(targetMap.get(obj1).get('num'))
+console.log(`> #2 obj2.num 的依赖, delete 之前`)
+console.log(targetMap.get(obj2))
+delete counter.num // 这里删除了属性，触发 effect fn 里面取值操作发现没有属性了
+// 往原型链找，找到 parentCounter.num ，此时 parentCounter.num 收集 effect fn 进自己的 deps
+// 所以后面的 parentCounter.num 上的操作同样会触发 effect fn
+console.log(`after delete, dummy = ${dummy}`)
+console.log(`> #3 obj2.num 的依赖, delete 之后`)
+console.log(targetMap.get(obj2).get('num'))
+parentCounter.num = 4
+console.log(`#4 after 'parentCounter.num = 4', dummy = ${dummy}`)
+counter.num = 3
+console.log(`#5 after counter.num = 3', dummy = ${dummy}`)
 #+end_src
 
-#+RESULTS:
-: before set, dummy = 0, dummy1 = 0
-: after set, dummy = 8, dummy1 = 8
-: after delete, dummy = undefined, dummy1 = undefined
-: undefined
+结果分析：
+- *#1* obj1.num 依赖是在 effect 第一次执行的时候收集的
+- *#2* obj2.num 在执行 ~delete counter.num~ 之前是没有任何依赖
 
-*
+  因为此时并没有任何 ~parentCounter~ 上的操作
+- *#3* obj2.num 有了自己的依赖
 
+  此时，执行了 ~delete counter.num~ 逻辑如下：
+
+  对 counter.num 执行删除会触发 ~num~ 上的所有依赖 deps，即执行 effect fn，
+
+  在 effect fn 里面有 ~counter.num~ 的取值操作，但是发现属性被删除，根据取值查找
+  原理，会在对象的原型链上逐级往上查找(~parentCounter~)，找到
+  ~parentCounter.num~ 随机进行取值操作，所以删除操作之后的 ~dummy = 2~ ，且取值
+  操作触发 tracking 因此此时 ~parentCounter.num~ 就有了自己的依赖 effect fn。
+- *#4* 给 parentCounter 设值触发 effect fn，查找原型链 , 所以 dummy = 4
+- *#5* 给 counter 设值触发 effect fn，不查找原型链(自身属性)，所以 dummy = 3
+
++RESULTS:
+#+begin_example
+before set, dummy = 0, dummy1 = 0
+after set, dummy = 8, dummy1 = 8
+after delete, dummy = undefined, dummy1 = undefined
+>>> 原型链
+dummy = 0
+> #1 obj1.num 的依赖
+<ref *1> Set(1) {
+  [Function: reactiveEffect] {
+    id: 2,
+    allowRecurse: false,
+    _isEffect: true,
+    active: true,
+    raw: [Function (anonymous)],
+    deps: [ [Circular *1] ],
+    options: {}
+  }
+}
+> #2 obj2.num 的依赖, delete 之前
+undefined
+after delete, dummy = 2
+> #3 obj2.num 的依赖, delete 之后
+<ref *1> Set(1) {
+  [Function: reactiveEffect] {
+    id: 2,
+    allowRecurse: false,
+    _isEffect: true,
+    active: true,
+    raw: [Function (anonymous)],
+    deps: [ [Circular *1], [Set] ],
+    options: {}
+  }
+}
+#4 after 'parentCounter.num = 4', dummy = 4
+#5 after counter.num = 3', dummy = 3
+undefined
+#+end_example
+*** 测试2(stop, ...)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: effect-test-02
+:END:
+
+1. *stop* :
+
+   #+begin_src js
+    const {
+        isReactive,
+        effect,
+        reactive,
+        targetMap,
+        shallowReactive,
+        stop
+    } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    console.log(`>>> stop effect`)
+    let dummy
+    const obj = reactive({ prop: 1 })
+    const runner = effect(() => {
+        dummy = obj.prop
+    })
+    obj.prop = 2
+    console.log(`#1, after 'obj.prop = 2', dummy = ${dummy}`)
+    console.log(`> prop deps, before stop`)
+    console.log(targetMap.get(obj.__v_raw).get('prop'))
+    // 清空了所有依赖
+    stop(runner) // stop the effect, set effect.active = false
+    console.log(`> prop deps, after stop`)
+    console.log(targetMap.get(obj.__v_raw).get('prop'))
+    obj.prop = 3
+    console.log(`#2, after stop, 'obj.prop = 3', dummy = ${dummy}`)
+    obj.prop = 4
+    console.log(`#3, after stop, 'obj.prop = 4', dummy = ${dummy}`)
+    runner()
+    console.log(`#4, after run runner, dummy = ${dummy}, runner.active = ${runner.active}`)
+    #+end_src
+
+    +RESULTS:
+    #+begin_example
+    >>> stop effect
+    #1, after 'obj.prop = 2', dummy = 2
+    > prop deps, before stop
+    <ref *1> Set(1) {
+    [Function: reactiveEffect] {
+        id: 0,
+        allowRecurse: false,
+        _isEffect: true,
+        active: true,
+        raw: [Function (anonymous)],
+        deps: [ [Circular *1] ],
+        options: {}
+    }
+    }
+    > prop deps, after stop
+    Set(0) {}
+    #2, after stop, 'obj.prop = 3', dummy = 2
+    #3, after stop, 'obj.prop = 4', dummy = 2
+    #4, after run runner, dummy = 4, runner.active = false
+    undefined
+    #+end_example
+
+   - stop 干了两件事(a. 清空所有 effect.deps, b. 将 effect.active 置为 false)
+   - stop 之后 trigger 时没有 deps 可执行，所以无论如何 effect fn 不会被执行
+   - 手动执行 runner() 之后执行effect fn 重新收集依赖(此时 active 依旧为 ~false~)
+
+2. *stop + scheduler* :
+
+   #+begin_src js
+    const {
+        isReactive,
+        effect,
+        reactive,
+        targetMap,
+        stop,
+        shallowReactive
+    } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    let dummy
+    const obj = reactive({ prop : 1 })
+    const queue = []
+    const runner = effect(() => (dummy = obj.prop), { scheduler: e => queue.push(e) })
+    obj.prop = 2
+    console.log(`#1 after 'obj.prop = 2', dummy = ${dummy}`)
+    console.log(`#2 after 'obj.prop = 2', queue.length = ${queue.length}`)
+    stop(runner)
+
+    queue.forEach(e => e())
+    console.log(`#3 after stop, queue forEach, dummy = ${dummy}`)
+    #+end_src
+
+    +RESULTS:
+    : #1 after 'obj.prop = 2', dummy = 1
+    : #2 after 'obj.prop = 2', queue.length = 1
+    : #3 after stop, queue forEach, dummy = 1
+
+    提供了 scheduler 选项的 effect 永远不会被执行，源码：
+
+    #+begin_src js
+    if (!effect.active) {
+        return options.scheduler ? undefined : fn()
+    }
+    #+end_src
+
+3. *onStop* :
+
+   #+begin_src js
+    const {
+        isReactive,
+        effect,
+        reactive,
+        targetMap,
+        stop,
+        shallowReactive
+    } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    let n = 0
+    const runner = effect(() => {}, {
+        onStop() {
+            console.log(`stopped ${++n} times`)
+        }
+    })
+
+    stop(runner)
+    stop(runner)
+    stop(runner)
+    #+end_src
+
+    +RESULTS:
+    : stopped 1 times
+
+    只会被执行一次，因为 ~effect.active = true~ 时才可以被 stop 。
+
+4. *stop: 一个 stopped 的 effect 在一个正常的 effect 中调用*
+
+   #+begin_src js
+    const {
+        isReactive,
+        effect,
+        reactive,
+        targetMap,
+        stop,
+        shallowReactive
+    } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+   let dummy
+   const obj = reactive({ prop: 1 })
+   const runner = effect(() => {
+     dummy = obj.prop
+   })
+
+   stop(runner)
+   obj.prop = 2
+   console.log(`#1 after stop runner, dummy = ${dummy}`)
+
+   // 这里等于是手动执行了 runner effect `dummy = obj.prop`
+   // 所以下面的 effect 被 obj.prop 收集进 deps<Set>
+   effect(() => {
+     runner()
+   })
+   obj.prop = 3
+   console.log(`#2 after runner in effect, dummy = ${dummy}`)
+   #+end_src
+
+   +RESULTS:
+   : #1 after stop runner, dummy = 1
+   : #2 after runner in effect, dummy = 3
+
+   1. *#1* 值依旧是 1 ，是因为 stop 了
+
+   2. *#2* 值为 3，是因为 effect 执行 runner() 使得 ~obj.prop~ 收集到第二个
+      effect fn 。
 * 阶段测试一
 ** effect + track + trigger 响应式基本操作(get/set)
 :PROPERTIES:

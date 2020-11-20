@@ -56,6 +56,15 @@ var VueReactivity = (function (exports) {
     }
     return effect;
   }
+  function stop(effect) {
+    if (effect.active) {
+      cleanup(effect);
+      if (effect.options.onStop) {
+        effect.options.onStop();
+      }
+      effect.active = false;
+    }
+  }
   let uid = 0;
   function createReactiveEffect(fn, options) {
     // 将 fn 执行封装成  ReactiveEffect 类型的函数
@@ -503,6 +512,7 @@ var VueReactivity = (function (exports) {
   exports.resetTracking = resetTracking;
   exports.shallowReactive = shallowReactive;
   exports.shallowReadonly = shallowReadonly;
+  exports.stop = stop;
   exports.targetMap = targetMap;
   exports.toRaw = toRaw;
   exports.track = track;
