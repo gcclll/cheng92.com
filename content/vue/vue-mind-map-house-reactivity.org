@@ -1837,30 +1837,6 @@ console.log(`after add, get set size -> dummy = ${dummy}`)
 
 * [[https://github.com/gcclll/stb-vue-next/commit/b3c5087095ace7797cf6c38bd45b99700d4b6059][b3c5087]] add collection delete,clear proxy handler
 
-delete:
-#+begin_src typescript
-function deleteEntry(this: CollectionTypes, key: unknown) {
-  const target = toRaw(this)
-  const { has, get } = getProto(target)
-  let hadKey = has.call(target, key)
-  if (!hadKey) {
-    key = toRaw(key)
-    hadKey = has.call(target, key)
-  } else if (__DEV__) {
-    checkIdentityKeys(target, has, key)
-  }
-
-  const oldValue = get ? get.call(target, key) : undefined
-  // 在队列响应之前先执行删除操作
-  const result = target.delete(key)
-  if (hadKey) {
-    trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
-  }
-  return result
-}
-#+end_src
-
-
 [[https://github.com/gcclll/stb-vue-next/commit/b3c5087095ace7797cf6c38bd45b99700d4b6059][feat(add): collection delete and clear · gcclll/stb-vue-next@b3c5087]]
 
 delete:
