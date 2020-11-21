@@ -1569,27 +1569,400 @@ const {
   shallowReactive
 } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
 
-const objAsKey = { name: 'key' }
-const proxyKey = reactive(objAsKey)
-const map = new Map([[proxyKey, 1]])
-const observed = reactive(map)
-
 let dummy
-effect(() => {
-  dummy = map.get(proxyKey)
-})
+const key = reactive({ k: 1 })
+const value = reactive({ v: 2 })
+const map = reactive(new Map([[key, value]]))
+
+effect( () => {
+  dummy = map.get(key)
+} )
 
 console.log(`dummy = ${dummy}`)
-console.log(`> proxyKey deps`)
-
-console.log(targetMap.get(proxyKey))
 #+end_src
 
-#+RESULTS:
-: dummy = 1
-: > proxyKey deps
-: undefined
-: undefined
++RESULTS:
+#+begin_example
+{ #1
+  key: 'get',
+  target: Map(1) { { k: 1 } => { v: 2 } },
+  x: 'in createInstrumentationGetter'
+}
+#2
+{ key: { k: 1 }, rawKey: { k: 1 }, eq: false }
+{ #3
+  key: { k: 1 },
+  type: 'get',
+  dep: Set(1) {
+    [Function: reactiveEffect] {
+      id: 0,
+      allowRecurse: false,
+      _isEffect: true,
+      active: true,
+      raw: [Function (anonymous)],
+      deps: [Array],
+      options: {}
+    }
+  },
+  x: 'in track'
+}
+{ #4
+  key: { k: 1 },
+  type: 'get',
+  dep: Set(1) {
+    [Function: reactiveEffect] {
+      id: 0,
+      allowRecurse: false,
+      _isEffect: true,
+      active: true,
+      raw: [Function (anonymous)],
+      deps: [Array],
+      options: {}
+    }
+  },
+  x: 'in track'
+}
+{ #5
+  key: { k: 1 },
+  target: Map(1) { { k: 1 } => { v: 2 } },
+  x: 'in global get'
+}
+dummy = 100
+#+end_example
+
+1. *#1* proxy collection get handler
+2. *#2* global get 函数里调用 track 之前输出，显示 ~key~ 和 ~rawKey~ 是不同的
+   (~eq = false~)，因为前者是个 proxy 后者是 key proxy 的 rawValue 。
+3. *#3* track() 调用时的输出，显示的是需要收集依赖的是 ~proxy key{k: 1}~ 
+4. *#4* track() 调用时的输出，显示的是需要收集依赖的是 ~raw key{k: 1}~
+
+
+从 *#3*, *#4* 可知如果 key 本身已经是 proxy 那么它及其对应的 rawKey 同时也会收集
+当前的 effect 。
+** [[https://github.com/gcclll/stb-vue-next/commit/77b14ef019cd320bc04f1c861424db79bcc82f9f][77b14ef]] add get handler return value
+
+[[https://github.com/gcclll/stb-vue-next/commit/77b14ef019cd320bc04f1c861424db79bcc82f9f][feat(add): collection proxy get with value return · gcclll/stb-vue-next@77b14ef]]
+
+[[http://qiniu.ii6g.com/img/20201121095654.png]]
+
+这里处理分为两部分：
+
+1. 取出 ~has~ 方法检测存在性
+2. 根据 ~isReadonly~ 和 ~isShallow~ 决定对返回值做什么处理，如：递归 reactive/readonly
+3. 使用 target.get(key) 取出结果值返回
+* [[https://github.com/gcclll/stb-vue-next/commit/7b680df94e359c208697111319eda9ee75560b11][7b680df]] add collection set proxy handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/7b680df94e359c208697111319eda9ee75560b11][feat(add): collection set proxy handler · gcclll/stb-vue-next@7b680df]]
+
+set proxy handler 处理
+
+1. 设值的时候可能有两种情况 a) set, b) add
+2. 需要考虑 proxy key 和 raw key 问题
+3. 最后 trigger 触发依赖
+
+#+begin_src typescript
+
+function set(this: MapTypes, key: unknown, value: unknown) {
+  value = toRaw(value)
+  const target = toRaw(this)
+  const { has, get } = getProto(target)
+
+  let hadKey = has.call(target, key)
+  // 考虑 key 可能是 proxy
+  if (!hadKey) {
+    // to add
+    key = toRaw(key)
+    hadKey = has.call(target, key)
+  } else if (__DEV__) {
+    checkIdentityKeys(target, has, key)
+  }
+
+  const oldValue = get.call(target, key)
+  // 设值结果
+  const result = target.set(key, value)
+  if (!hadKey) {
+    // 添加操作
+    trigger(target, TriggerOpTypes.ADD, key, value)
+  } else {
+    // 设值操作
+    trigger(target, TriggerOpTypes.SET, key, value, oldValue)
+  }
+
+  return result
+}
+#+end_src
+
+测试
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+
+const map = new Map()
+const observed = reactive(map)
+
+console.log(`> before get, deps`)
+console.log(targetMap.get(map))
+let dummy
+effect(() => {
+  dummy = observed.get('foo')
+})
+
+console.log(`> after get, deps`)
+console.log(targetMap.get(map).get('foo'))
+
+console.log(`#1 before set, dummy = ${dummy}`)
+observed.set('foo', 1)
+console.log(`#2 after set, dummy = ${dummy}`)
+#+end_src
+
++RESULTS:
+#+begin_example
+> before get, deps
+undefined
+> after get, deps
+<ref *1> Set(1) {
+  [Function: reactiveEffect] {
+    id: 0,
+    allowRecurse: false,
+    _isEffect: true,
+    active: true,
+    raw: [Function (anonymous)],
+    deps: [ [Circular *1] ],
+    options: {}
+  }
+}
+#1 before set, dummy = undefined
+#2 after set, dummy = 1
+#+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/73fa5ebf7f0dcdaa11bbf42df89c7f7c1ab88385][73fa5eb]] add collection size,has,add proxy handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/73fa5ebf7f0dcdaa11bbf42df89c7f7c1ab88385][feat(add): size, has, add collection proxy handlers · gcclll/stb-vue-next@73fa5eb]]
+
+has: proxy key, raw key 都需要 track has 操作依赖
+#+begin_src typescript
+function has(this: CollectionTypes, key: unknown, isReadonly = false): boolean {
+  const target = (this as any)[ReactiveFlags.RAW]
+  const rawTarget = toRaw(target)
+  const rawKey = toRaw(key)
+  if (key !== rawKey) {
+    !isReadonly && track(rawTarget, TrackOpTypes.HAS, key)
+  }
+  !isReadonly && track(rawTarget, TrackOpTypes.HAS, rawKey)
+
+  return key === rawKey
+    ? target.has(key)
+    : target.has(key) || target.has(rawKey)
+}
+#+end_src
+
+size: 取size 内部实现过程中是需要对 collection 进行迭代操作的，所以 track 用的是 ~ITERATE_KEY~
+#+begin_src typescript
+function size(target: IterableCollections, isReadonly = false) {
+  target = (target as any)[ReactiveFlags.RAW]
+  !isReadonly && track(toRaw(target), TrackOpTypes.ITERATE, ITERATE_KEY)
+  return Reflect.get(target, 'size', target)
+}
+#+end_src
+
+add: set.add 操作，根据 set 特性，key,value 都是同一个且元素是不重复的，所以只需
+要检测是不是新增，新增就需要 trigger ADD 。
+#+begin_src typescript
+function add(this: SetTypes, value: unknown) {
+  value = toRaw(value)
+  const target = toRaw(this)
+  const proto = getProto(target)
+  const hadKey = proto.has.call(target, value)
+  const result = target.add(value)
+  // 因为 set 是不会存在重复元素的，所以只会在没有当前 key 的情况下才会执行
+  // 添加操作
+  if (!hadKey) {
+    trigger(target, TriggerOpTypes.ADD, value, value)
+  }
+  return result
+}
+#+end_src
+
+trigger 处理：[[https://github.com/gcclll/stb-vue-next/commit/838b4023b61bc0fede67e94aa7fd857a4950c29e][838b402]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/838b4023b61bc0fede67e94aa7fd857a4950c29e][feat(add): collection trigger cases · gcclll/stb-vue-next@838b402]]
+
+测试：
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map()
+const observed = reactive(map)
+let dummy
+effect(() => {
+  dummy = observed.size
+})
+
+console.log(`before set, get map size -> dummy = ${dummy}`)
+observed.set('foo', 1)
+console.log(`after set, get map size -> dummy = ${dummy}`)
+
+effect(() => {
+  dummy = observed.has('foo')
+})
+console.log(`observed has 'foo' -> dummy = ${dummy}`)
+
+const set = new Set()
+const observedSet = reactive(set)
+effect(() => {
+  dummy = observedSet.size
+})
+console.log(`before add, get set size -> dummy = ${dummy}`)
+observedSet.add(1)
+console.log(`after add, get set size -> dummy = ${dummy}`)
+#+end_src
+
++RESULTS:
+: before set, get map size -> dummy = 0
+: after set, get map size -> dummy = 1
+: observed has 'foo' -> dummy = true
+: before add, get set size -> dummy = 0
+: after add, get set size -> dummy = 1
+
+* [[https://github.com/gcclll/stb-vue-next/commit/b3c5087095ace7797cf6c38bd45b99700d4b6059][b3c5087]] add collection delete,clear proxy handler
+
+delete:
+#+begin_src typescript
+function deleteEntry(this: CollectionTypes, key: unknown) {
+  const target = toRaw(this)
+  const { has, get } = getProto(target)
+  let hadKey = has.call(target, key)
+  if (!hadKey) {
+    key = toRaw(key)
+    hadKey = has.call(target, key)
+  } else if (__DEV__) {
+    checkIdentityKeys(target, has, key)
+  }
+
+  const oldValue = get ? get.call(target, key) : undefined
+  // 在队列响应之前先执行删除操作
+  const result = target.delete(key)
+  if (hadKey) {
+    trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
+  }
+  return result
+}
+#+end_src
+
+
+[[https://github.com/gcclll/stb-vue-next/commit/b3c5087095ace7797cf6c38bd45b99700d4b6059][feat(add): collection delete and clear · gcclll/stb-vue-next@b3c5087]]
+
+delete:
+#+begin_src typescript
+function deleteEntry(this: CollectionTypes, key: unknown) {
+  const target = toRaw(this)
+  const { has, get } = getProto(target)
+  let hadKey = has.call(target, key)
+  if (!hadKey) {
+    key = toRaw(key)
+    hadKey = has.call(target, key)
+  } else if (__DEV__) {
+    checkIdentityKeys(target, has, key)
+  }
+
+  const oldValue = get ? get.call(target, key) : undefined
+  const result = target.delete(key)
+  if (hadKey) {
+    trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
+  }
+  return result
+}
+#+end_src
+
+clear:
+#+begin_src typescript
+function clear(this: IterableCollections) {
+  const target = toRaw(this)
+  const hadItems = target.size !== 0
+  const oldTarget = __DEV__
+    ? isMap(target)
+      ? new Map(target)
+      : new Set(target)
+    : undefined
+
+  const result = target.clear()
+  if (hadItems) {
+    trigger(target, TriggerOpTypes.CLEAR, undefined, undefined, oldTarget)
+  }
+  return result
+}
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map()
+const observedMap = reactive(map)
+let dummy
+effect(() => {
+  dummy = observedMap.size
+})
+
+console.log(`>>> map`)
+observedMap.set('foo', 1)
+console.log(`before delete, dummy = ${dummy}`)
+observedMap.delete('foo')
+console.log(`after delete, dummy = ${dummy}`)
+observedMap.set('foo', 1)
+observedMap.set('bar', 1)
+console.log(`before clear, dummy = ${dummy}`)
+observedMap.clear()
+console.log(`after clear, dummy = ${dummy}`)
+console.log(`>>> set`)
+
+const set = new Set()
+const observedSet = reactive(set)
+effect(() => {
+  dummy = observedSet.size
+})
+observedSet.add(1)
+console.log(`before delete, dummy = ${dummy}`)
+observedSet.delete(1)
+console.log(`after delete, dummy = ${dummy}`)
+observedSet.add(1)
+observedSet.add(2)
+observedSet.add(3)
+console.log(`before clear, dummy = ${dummy}`)
+observedSet.clear()
+console.log(`after clear, dummy = ${dummy}`)
+#+end_src
+
++RESULTS:
+#+begin_example
+>>> map
+before delete, dummy = 1
+after delete, dummy = 0
+before clear, dummy = 2
+after clear, dummy = 0
+>>> set
+before delete, dummy = 1
+after delete, dummy = 0
+before clear, dummy = 3
+after clear, dummy = 0
+#+end_example
 
 * effect 测试
 *** 测试1(base, prototype)

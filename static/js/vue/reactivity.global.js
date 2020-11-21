@@ -7,6 +7,7 @@ var VueReactivity = (function (exports) {
   const hasOwnProperty = Object.prototype.hasOwnProperty;
   const hasOwn = (val, key) => hasOwnProperty.call(val, key);
   const isArray = Array.isArray;
+  const isMap = (val) => toTypeString(val) === "[object Map]";
   const isString = (val) => typeof val === "string";
   const isSymbol = (val) => typeof val === "symbol";
   const isObject = (val) => val !== null && typeof val === "object";
@@ -37,6 +38,7 @@ var VueReactivity = (function (exports) {
   const effectStack = [];
   let activeEffect;
   const ITERATE_KEY = Symbol("iterate");
+  const MAP_KEY_ITERATE_KEY = Symbol("Map key iterate");
   // fn 是不是经过封装之后的 ReactiveEffect
   function isEffect(fn) {
     return fn && fn._isEffect === true;
@@ -166,7 +168,6 @@ var VueReactivity = (function (exports) {
         });
       }
     }
-    console.log({ key, type, dep, x: "in track" });
   }
   function trigger(target, type, key, newValue, oldValue, oldTarget) {
     const depsMap = targetMap.get(target);
@@ -183,8 +184,9 @@ var VueReactivity = (function (exports) {
         });
       }
     };
-    if (type === "clear" /* CLEAR */);
-    else if (key === "length" && isArray(target)) {
+    if (type === "clear" /* CLEAR */) {
+      depsMap.forEach(add);
+    } else if (key === "length" && isArray(target)) {
       depsMap.forEach((dep, key) => {
         if (key === "length" || key >= newValue) {
           add(dep);
@@ -195,14 +197,29 @@ var VueReactivity = (function (exports) {
       if (key !== void 0) {
         add(depsMap.get(key));
       }
-      // TODO 迭代器 key，for...of, 使用迭代器是对数据的监听变化
+      // 迭代器 key，for...of, 使用迭代器是对数据的监听变化
       switch (type) {
         case "add" /* ADD */:
-          if (!isArray(target));
-          else if (isIntegerKey(key)) {
+          if (!isArray(target)) {
+            add(depsMap.get(ITERATE_KEY));
+          } else if (isIntegerKey(key)) {
             // 如果是数组添加元素，将 length 依赖添加到执行队列
             add(depsMap.get("length"));
           }
+          break;
+        case "delete" /* DELETE */:
+          if (!isArray(target)) {
+            add(depsMap.get(ITERATE_KEY));
+            if (isMap(target)) {
+              add(depsMap.get(MAP_KEY_ITERATE_KEY));
+            }
+          }
+          break;
+        case "set" /* SET */:
+          if (isMap(target)) {
+            add(depsMap.get(ITERATE_KEY));
+          }
+          break;
       }
     }
     const run = (effect) => {
@@ -399,24 +416,113 @@ var VueReactivity = (function (exports) {
     get: shallowReadonlyGet,
   });
 
+  const toReactive = (value) => (isObject(value) ? reactive(value) : value);
+  const toReadonly = (value) => (isObject(value) ? readonly(value) : value);
+  const toShallow = (value) => value;
+  const getProto = (v) => Reflect.getPrototypeOf(v);
   function get$1(target, key, isReadonly = false, isShallow = false) {
-    // TODO
     target = target["__v_raw" /* RAW */];
     const rawTarget = toRaw(target);
     // 下面处理是针对 key 可能是 proxy 类型
     // 次数，proxy key 和对应的 raw key 都要收集当前依赖
     const rawKey = toRaw(key); // key 有可能也是 proxy
-    console.log({ key, rawKey, eq: key === rawKey });
     if (key !== rawKey) {
       // proxy key
       !isReadonly && track(rawTarget, "get" /* GET */, key);
     }
     // raw key
     !isReadonly && track(rawTarget, "get" /* GET */, rawKey);
-    console.log({ key, target, x: "in global get" });
-    // FIX: 死循环
-    return 100;
-    // return target.get(key)
+    const { has } = getProto(rawTarget);
+    // 递归处理对象类型
+    const wrap = isReadonly ? toReadonly : isShallow ? toShallow : toReactive;
+    // 取值考虑到 rawKey 和 key 不同的情况
+    if (has.call(rawTarget, key)) {
+      return wrap(target.get(key));
+    } else if (has.call(rawTarget, rawKey)) {
+      return wrap(target.get(rawKey));
+    }
+  }
+  function has$1(key, isReadonly = false) {
+    const target = this["__v_raw" /* RAW */];
+    const rawTarget = toRaw(target);
+    const rawKey = toRaw(key);
+    if (key !== rawKey) {
+      !isReadonly && track(rawTarget, "has" /* HAS */, key);
+    }
+    !isReadonly && track(rawTarget, "has" /* HAS */, rawKey);
+    return key === rawKey
+      ? target.has(key)
+      : target.has(key) || target.has(rawKey);
+  }
+  function size(target, isReadonly = false) {
+    target = target["__v_raw" /* RAW */];
+    !isReadonly && track(toRaw(target), "iterate" /* ITERATE */, ITERATE_KEY);
+    return Reflect.get(target, "size", target);
+  }
+  function add(value) {
+    value = toRaw(value);
+    const target = toRaw(this);
+    const proto = getProto(target);
+    const hadKey = proto.has.call(target, value);
+    const result = target.add(value);
+    // 因为 set 是不会存在重复元素的，所以只会在没有当前 key 的情况下才会执行
+    // 添加操作
+    if (!hadKey) {
+      trigger(target, "add" /* ADD */, value, value);
+    }
+    return result;
+  }
+  function set$1(key, value) {
+    value = toRaw(value);
+    const target = toRaw(this);
+    const { has, get } = getProto(target);
+    let hadKey = has.call(target, key);
+    // 考虑 key 可能是 proxy
+    if (!hadKey) {
+      // to add
+      key = toRaw(key);
+      hadKey = has.call(target, key);
+    } else {
+      checkIdentityKeys(target, has, key);
+    }
+    const oldValue = get.call(target, key);
+    // 设值结果
+    const result = target.set(key, value);
+    if (!hadKey) {
+      // 添加操作
+      trigger(target, "add" /* ADD */, key, value);
+    } else {
+      // 设值操作
+      trigger(target, "set" /* SET */, key, value, oldValue);
+    }
+    return result;
+  }
+  function deleteEntry(key) {
+    const target = toRaw(this);
+    const { has, get } = getProto(target);
+    let hadKey = has.call(target, key);
+    if (!hadKey) {
+      key = toRaw(key);
+      hadKey = has.call(target, key);
+    } else {
+      checkIdentityKeys(target, has, key);
+    }
+    const oldValue = get ? get.call(target, key) : undefined;
+    const result = target.delete(key);
+    if (hadKey) {
+      trigger(target, "delete" /* DELETE */, key, undefined, oldValue);
+    }
+    return result;
+  }
+  function clear() {
+    const target = toRaw(this);
+    const hadItems = target.size !== 0;
+    const oldTarget = isMap(target) ? new Map(target) : new Set(target);
+    const result = target.clear();
+    if (hadItems) {
+      trigger(target, "clear" /* CLEAR */, undefined, undefined, oldTarget);
+    }
+    return result;
   }
   const mutableInstrumentations = {
     // get proxy handler, this -> target
@@ -424,6 +530,14 @@ var VueReactivity = (function (exports) {
       // collection get 执行期间
       return get$1(this, key);
     },
+    get size() {
+      return size(this);
+    },
+    has: has$1,
+    add,
+    set: set$1,
+    delete: deleteEntry,
+    clear,
   };
   function createInstrumentationGetter(isReadonly, shallow) {
     const instrumentations = mutableInstrumentations;
@@ -441,7 +555,6 @@ var VueReactivity = (function (exports) {
       // 所以 mutableInstrumentations.get 的两个参数分别是：
       // 1. this -> map
       // 2. key -> map.get('foo') 的 'foo'
-      console.log({ key, target, x: "in createInstrumentationGetter" });
       return Reflect.get(
         hasOwn(instrumentations, key) && key in target
           ? instrumentations
@@ -454,6 +567,20 @@ var VueReactivity = (function (exports) {
   const mutableCollectionHandlers = {
     get: createInstrumentationGetter(false),
   };
+  function checkIdentityKeys(target, has, key) {
+    // 同时有 key 和 proxy key 存在的情况
+    const rawKey = toRaw(key);
+    if (rawKey !== key && has.call(target, rawKey)) {
+      const type = toRawType(target);
+      console.warn(
+        `Reactive ${type} contains both the raw and reactive ` +
+          `versions of the same object${type === `Map` ? ` as keys` : ``}, ` +
+          `which can lead to inconsistencies. ` +
+          `Avoid differentiating between the raw and reactive versions ` +
+          `of an object and only use the reactive version if possible.`
+      );
+    }
+  }
 
   const reactiveMap = new WeakMap();
   const readonlyMap = new WeakMap();
