@@ -1939,6 +1939,143 @@ after delete, dummy = 0
 before clear, dummy = 3
 after clear, dummy = 0
 #+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/77a02224b107c9f6a2d5101affa861c7b4c8b392][77a0222]] add collection forEach proxy handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/77a02224b107c9f6a2d5101affa861c7b4c8b392][feat(add): collection forEach proxy handler · gcclll/stb-vue-next@77a0222]]
+
+#+begin_src typescript
+function createForEach(isReadonly: boolean, isShallow: boolean) {
+  return function forEach(
+    this: IterableCollections,
+    callback: Function,
+    thisArg?: unknown
+  ) {
+    const observed = this as any
+    const target = observed[ReactiveFlags.RAW]
+    const rawTarget = toRaw(target)
+    const wrap = isReadonly ? toReadonly : isShallow ? toShallow : toReactive
+    !isReadonly && track(rawTarget, TrackOpTypes.ITERATE, ITERATE_KEY)
+    return target.forEach((value: unknown, key: unknown) => {
+      // 重要：确保回调
+      // 1. 在 reactive map 作用域下被执行(this, 和第三个参数)
+      // 2. 接受的 value 值应该是个 reactive/readonly 类型
+      return callback.call(thisArg, wrap(value), wrap(key), observed)
+    })
+  }
+}
+#+end_src
+
+将 forEach 封装了一层，对传递给回调的值 reactive 化，使用 ~ITERATE_KEY~ 收集调用
+该方法的依赖。
+
+测试：
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map()
+const ob = reactive(map)
+let dummy = 0
+effect(() => {
+  ob.forEach((value) => (dummy += value || 0))
+})
+
+console.log(`#1 before set 1, dummy = ${dummy}`)
+ob.set('foo', 1)
+console.log(`#2 before set 2, dummy = ${dummy}`)
+ob.set('bar', 2)
+console.log(`#3 after set, dummy = ${dummy}`)
+#+end_src
+
++RESULTS:
+: #1 before set 1, dummy = 0
+: #2 before set 2, dummy = 1
+: #3 after set, dummy = 4
+
+*#1* effect 会立即执行一次，但是此时 map 没数据
+*#2* 添加 ~foo => 1~ 之后执行 effect fn forEach 迭代器进行累加操作的结果
+*#3* 添加 ~bar => 2~ 结果是 4，原因是到这一步的时候 ~dummy = 1~ 的，所以再累加之
+后就是 4
+
+* TODO add collection iterators methods proxy handler
+#+begin_src typescript
+
+interface Iterable {
+  [Symbol.iterator](): Iterator
+}
+
+interface Iterator {
+  next(value?: any): IterationResult
+}
+
+interface IterationResult {
+  value: any
+  done: boolean
+}
+
+function createIterableMethod(
+  method: string | symbol,
+  isReadonly: boolean,
+  isShallow: boolean
+) {
+  return function(
+    this: IterableCollections,
+    ...args: unknown[]
+  ): Iterable & Iterator {
+    const target = (this as any)[ReactiveFlags.RAW]
+    const rawTarget = toRaw(target)
+    const targetIsMap = isMap(rawTarget)
+    const isPair =
+      method === 'entries' || (method === Symbol.iterator && targetIsMap)
+    const isKeyOnly = method === 'keys' && targetIsMap
+    const innerIterator = target[method](...args)
+    const wrap = isReadonly ? toReadonly : isShallow ? toShallow : toReactive
+    !isReadonly &&
+      track(
+        rawTarget,
+        TrackOpTypes.ITERATE,
+        isKeyOnly ? MAP_KEY_ITERATE_KEY : ITERATE_KEY
+      )
+
+    // 重写迭代器，让其返回的对象也是 reactive/readonly 类型
+    return {
+      next() {
+        const { value, done } = innerIterator.next()
+        return done
+          ? { value, done }
+          : {
+              value: isPair ? [wrap(value[0]), wrap(value[1])] : wrap(value),
+              done
+            }
+      },
+      [Symbol.iterator]() {
+        return this
+      }
+    }
+  }
+}
+#+end_src
+* TODO add readonly collection proxy handlers
+
+#+begin_src typescript
+function createReadonlyMethod(type: TriggerOpTypes): Function {
+  return function(this: CollectionTypes, ...args: unknown[]) {
+    if (__DEV__) {
+      const key = args[0] ? `on key "${args[0]}"` : ``
+      console.warn(
+        `${capitalize(type)} operation ${key} failed: target is readonly.`,
+        toRaw(this)
+      )
+    }
+    return type === TriggerOpTypes.DELETE ? false : this
+  }
+}
+#+end_src
 
 * effect 测试
 *** 测试1(base, prototype)

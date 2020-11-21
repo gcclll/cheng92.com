@@ -524,6 +524,21 @@ var VueReactivity = (function (exports) {
     }
     return result;
   }
+  function createForEach(isReadonly, isShallow) {
+    return function forEach(callback, thisArg) {
+      const observed = this;
+      const target = observed["__v_raw" /* RAW */];
+      const rawTarget = toRaw(target);
+      const wrap = isReadonly ? toReadonly : isShallow ? toShallow : toReactive;
+      !isReadonly && track(rawTarget, "iterate" /* ITERATE */, ITERATE_KEY);
+      return target.forEach((value, key) => {
+        // 重要：确保回调
+        // 1. 在 reactive map 作用域下被执行(this, 和第三个参数)
+        // 2. 接受的 value 值应该是个 reactive/readonly 类型
+        return callback.call(thisArg, wrap(value), wrap(key), observed);
+      });
+    };
+  }
   const mutableInstrumentations = {
     // get proxy handler, this -> target
     get(key) {
@@ -538,6 +553,7 @@ var VueReactivity = (function (exports) {
     set: set$1,
     delete: deleteEntry,
     clear,
+    forEach: createForEach(false, false),
   };
   function createInstrumentationGetter(isReadonly, shallow) {
     const instrumentations = mutableInstrumentations;
