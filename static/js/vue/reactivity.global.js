@@ -8,6 +8,7 @@ var VueReactivity = (function (exports) {
   const hasOwn = (val, key) => hasOwnProperty.call(val, key);
   const isArray = Array.isArray;
   const isMap = (val) => toTypeString(val) === "[object Map]";
+  const isFunction = (val) => typeof val === "function";
   const isString = (val) => typeof val === "string";
   const isSymbol = (val) => typeof val === "symbol";
   const isObject = (val) => val !== null && typeof val === "object";
@@ -22,6 +23,19 @@ var VueReactivity = (function (exports) {
     key !== "NaN" &&
     key[0] !== "-" &&
     "" + parseInt(key, 10) === key;
+  const cacheStringFunction = (fn) => {
+    const cache = Object.create(null);
+    return (str) => {
+      const hit = cache[str];
+      return hit || (cache[str] = fn(str));
+    };
+  };
+  /**
+   * @private
+   */
+  const capitalize = cacheStringFunction(
+    (str) => str.charAt(0).toUpperCase() + str.slice(1)
+  );
   // compare whether a value has changed, accounting for NaN.
   const hasChanged = (value, oldValue) =>
     value !== oldValue && (value === value || oldValue === oldValue);
@@ -561,7 +575,7 @@ var VueReactivity = (function (exports) {
           return done
             ? { value, done }
             : {
-                value: isPair ? [wrap(value[0]), wrap(value[1])] : wrap(value),
+                value: isPair ? [wrap(value(0)), wrap(value[1])] : wrap(value),
                 done,
               };
         },
@@ -569,6 +583,18 @@ var VueReactivity = (function (exports) {
           return this;
         },
       };
+    };
+  }
+  function createReadonlyMethod(type) {
+    return function (...args) {
+      {
+        const key = args[0] ? `on key "${args[0]}"` : ``;
+        console.warn(
+          `${capitalize(type)} operation ${key} failed: target is readonly.`,
+          toRaw(this)
+        );
+      }
+      return type === "delete" /* DELETE */ ? false : this;
     };
   }
   const mutableInstrumentations = {
@@ -587,6 +613,36 @@ var VueReactivity = (function (exports) {
     clear,
     forEach: createForEach(false, false),
   };
+  const readonlyInstrumentations = {
+    get(key) {
+      return get$1(this, key, true);
+    },
+    get size() {
+      return size(this, true);
+    },
+    has(key) {
+      return has$1.call(this, key, true);
+    },
+    add: createReadonlyMethod("add" /* ADD */),
+    set: createReadonlyMethod("set" /* SET */),
+    delete: createReadonlyMethod("delete" /* DELETE */),
+    clear: createReadonlyMethod("clear" /* CLEAR */),
+    forEach: createForEach(true, false),
+  };
+  const shallowInstrumentations = {
+    get(key) {
+      return get$1(this, key, false, true);
+    },
+    get size() {
+      return size(this);
+    },
+    has: has$1,
+    add,
+    set: set$1,
+    delete: deleteEntry,
+    clear,
+    forEach: createForEach(false, true),
+  };
   const iteratorMethods = ["keys", "values", "entries", Symbol.iterator];
   iteratorMethods.forEach((method) => {
     mutableInstrumentations[method] = createIterableMethod(
@@ -596,7 +652,11 @@ var VueReactivity = (function (exports) {
     );
   });
   function createInstrumentationGetter(isReadonly, shallow) {
-    const instrumentations = mutableInstrumentations;
+    const instrumentations = shallow
+      ? shallowInstrumentations
+      : isReadonly
+      ? readonlyInstrumentations
+      : mutableInstrumentations;
     return (target, key, receiver) => {
       if (key === "__v_isReactive" /* IS_REACTIVE */) {
         return !isReadonly;
@@ -621,7 +681,13 @@ var VueReactivity = (function (exports) {
     };
   }
   const mutableCollectionHandlers = {
-    get: createInstrumentationGetter(false),
+    get: createInstrumentationGetter(false, false),
+  };
+  const shallowCollectionHandlers = {
+    get: createInstrumentationGetter(false, true),
+  };
+  const readonlyCollectionHandlers = {
+    get: createInstrumentationGetter(true, false),
   };
   function checkIdentityKeys(target, has, key) {
     // 同时有 key 和 proxy key 存在的情况
@@ -672,11 +738,20 @@ var VueReactivity = (function (exports) {
     );
   }
   function shallowReactive(target) {
-    // TODO shallowCollectionHandlers
-    return createReactiveObject(target, false, shallowReactiveHandlers, {});
+    return createReactiveObject(
+      target,
+      false,
+      shallowReactiveHandlers,
+      shallowCollectionHandlers
+    );
   }
   function readonly(target) {
-    return createReactiveObject(target, true, readonlyHandlers, {});
+    return createReactiveObject(
+      target,
+      true,
+      readonlyHandlers,
+      readonlyCollectionHandlers
+    );
   }
   function shallowReadonly(target) {
     return createReactiveObject(target, true, shallowReadonlyHandlers, {});
@@ -743,7 +818,56 @@ var VueReactivity = (function (exports) {
     return value;
   }
 
+  // 计算属性模板
+  class ComputedRefImpl {
+    constructor(getter, _setter, isReadonly) {
+      this._setter = _setter;
+      this._dirty = true;
+      this.__v_isRef = true;
+      this.effect = effect(getter, {
+        lazy: true,
+        scheduler: () => {
+          if (!this._dirty) {
+            this._dirty = true;
+            trigger(toRaw(this), "set" /* SET */, "value");
+          }
+        },
+      });
+      this["__v_isReadonly" /* IS_READONLY */] = isReadonly;
+    }
+    get value() {
+      if (this._dirty) {
+        this._value = this.effect();
+        this._dirty = false;
+      }
+      track(toRaw(this), "get" /* GET */, "value");
+      return this._value;
+    }
+    set value(newValue) {
+      this._setter(newValue);
+    }
+  }
+  function computed(getterOrOptions) {
+    let getter;
+    let setter;
+    if (isFunction(getterOrOptions)) {
+      getter = getterOrOptions;
+      setter = () => {
+        console.warn("Write operation failed: computed value is readonly");
+      };
+    } else {
+      getter = getterOrOptions.get;
+      setter = getterOrOptions.set;
+    }
+    return new ComputedRefImpl(
+      getter,
+      setter,
+      isFunction(getterOrOptions) || !getterOrOptions.set
+    );
+  }
+
   exports.cleanup = cleanup;
+  exports.computed = computed;
   exports.effect = effect;
   exports.enableTracking = enableTracking;
   exports.isProxy = isProxy;

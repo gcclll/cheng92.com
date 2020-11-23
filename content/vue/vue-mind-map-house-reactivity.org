@@ -28,6 +28,9 @@ function _log(el, content) {
 
 @@html:<kbd>@@ *本文依据 commit 进程进行记录* @@html:</kbd>@@
 
+* 关键知识点
+- [-] [[#test-computed-01][计算属性是如何实现结果缓存的？]]
+
 * init project
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -2188,6 +2191,134 @@ const readonlyInstrumentations: Recor<string, Function> = {
 [[https://github.com/gcclll/stb-vue-next/commit/676bc70fe9a6535b85ada4754fb6a683bec50f5f][feat(add): shallow collection handlers · gcclll/stb-vue-next@676bc70]]
 
 不会递归 reactive 版本。
+* [[https://github.com/gcclll/stb-vue-next/commit/e9e53a16dcaffd35aa519b3251e4bcb4ad4e9342][e9e53a1]] add computed types definitions
+
+[[https://github.com/gcclll/stb-vue-next/commit/e9e53a16dcaffd35aa519b3251e4bcb4ad4e9342][feat(add): computed type definitions · gcclll/stb-vue-next@e9e53a1]]
+
+computed 计算属性的一些类型定义。
+
+#+begin_src typescript
+import { Ref } from './ref'
+
+export interface ComputedRef<T = any> extends WritableComputedRef<T> {}
+
+export interface WritableComputedRef<T> extends Ref<T> {}
+
+export type ComputedGetter<T> = (ctx?: any) => T
+
+export type ComputedSetter<T> = (v: T) => void
+
+export interface WritableComputedOptions<T> {}
+#+end_src
+
+computed 函数重载([[https://github.com/gcclll/stb-vue-next/commit/315e0d91869dd4332c740e56d4e385f04b6009e9][315e0d9]])：
+[[https://github.com/gcclll/stb-vue-next/commit/315e0d91869dd4332c740e56d4e385f04b6009e9][feat(add): computed function reloads · gcclll/stb-vue-next@315e0d9]]
+
+#+begin_src typescript
+export function computed<T>(getter: ComputedGetter<T>): ComputedRef<T>
+export function computed<T>(
+  options: WritableComputedOptions<T>
+): WritableComputedRef<T>
+export function computed<T>(
+  getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>
+) {}
+#+end_src
+* [[https://github.com/gcclll/stb-vue-next/commit/64d380dfea9da6a78f10fe2de9ef95fbd253d3f0][64d380d]] add computed implementation
+
+[[https://github.com/gcclll/stb-vue-next/commit/64d380dfea9da6a78f10fe2de9ef95fbd253d3f0][feat(add): computed tpl and computed function · gcclll/stb-vue-next@64d380d]]
+
+计算属性实现全在 ~ComputedRefImpl<T>~ 类的实现中，实现关键点
+
+1. 使用 effect 封装 getter 函数，收集所有依赖，在特定时候执行 effect
+2. _dirty 标记，一旦 ~_dirty = true~ 表示数据有更新，下次取值的时候就要立即执行
+   effect 取最新值
+
+
+class ~ComputedRefImpl~
+#+begin_src typescript
+// 计算属性模板
+class ComputedRefImpl<T> {
+  private _value!: T
+  private _dirty = true
+
+  public readonly effect: ReactiveEffect<T>
+
+  public readonly __v_isRef = true;
+  public readonly [ReactiveFlags.IS_READONLY]: boolean
+
+  constructor(
+    getter: ComputedGetter<T>,
+    private readonly _setter: ComputedSetter<T>,
+    isReadonly: boolean
+  ) {
+    this.effect = effect(getter, {
+      lazy: true,
+      scheduler: () => {
+        if (!this._dirty) {
+          this._dirty = true
+          trigger(toRaw(this), TriggerOpTypes.SET, 'value')
+        }
+      }
+    })
+
+    this[ReactiveFlags.IS_READONLY] = isReadonly
+  }
+
+  get value() {
+    if (this._dirty) {
+      this._value = this.effect()
+      this._dirty = false
+    }
+    track(toRaw(this), TrackOpTypes.GET, 'value')
+    return this._value
+  }
+
+  set value(newValue: T) {
+    this._setter(newValue)
+  }
+}
+#+end_src
+
+computed 函数:
+#+begin_src typescript
+
+export function computed<T>(getter: ComputedGetter<T>): ComputedRef<T>
+export function computed<T>(
+  options: WritableComputedOptions<T>
+): WritableComputedRef<T>
+export function computed<T>(
+  getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>
+) {
+  let getter: ComputedGetter<T>
+  let setter: ComputedSetter<T>
+
+  if (isFunction(getterOrOptions)) {
+    getter = getterOrOptions
+    setter = __DEV__
+      ? () => {
+          console.warn('Write operation failed: computed value is readonly')
+        }
+      : NOOP
+  } else {
+    getter = getterOrOptions.get
+    setter = getterOrOptions.set
+  }
+
+  return new ComputedRefImpl(
+    getter,
+    setter,
+    isFunction(getterOrOptions) || !getterOrOptions.set
+  ) as any
+}
+#+end_src
+
+computed 函数的 options 可以是函数或一个对象，可以用外部自定义 setter 函数，比如
+在更新之前记录当前状态，就可以在 options.set 中去实现。
+
+测试请移步“[[#test-computed][计算属性测试用例]]”
+
+脑图请直接查看“[[#whole-mind-map][完整脑图 computed 部分]]”
+
 * 用例分析
 ** Map.spec.ts
 - [X] instanceof
@@ -2288,6 +2419,222 @@ console.log(map, ob)
 - [ ] should observe mutations with observed value as key
 
   将 reactive 类型的值作为 key 的时候也应该能被观察变化。
+** computed.spec.ts
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-computed
+:END:
+*** should return updated value
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-computed-01
+:END:
+
+#+begin_src typescript
+it('should return updated value', () => {
+    const value = reactive<{ foo?: number }>({})
+    const cValue = computed(() => value.foo)
+    expect(cValue.value).toBe(undefined)
+    value.foo = 1
+    expect(cValue.value).toBe(1)
+})
+#+end_src
+
+测试：
+#+begin_src js
+const {
+    isReactive,
+    effect,
+    reactive,
+    targetMap,
+    shallowReactive,
+    computed
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const value = reactive({})
+const cValue = computed(() => value.foo)
+console.log(`#1 before set value.foo, cValue.value = ${cValue.value}`)
+value.foo = 1
+console.log(`#2 after set value.foo, cValue.value = ${cValue.value}`)
+#+end_src
+
++RESULTS:
+: #1 before set value.foo, cValue.value = undefined
+: #2 after set value.foo, cValue.value = 1
+
+分析结果
+
+*#1* : 因为 computed 默认是 effect lazy 的，所以不会立即执行 effect，所以 cValue 也就不会有值
+
+*#2* : 此时值为 1，并不是因为 ~value.foo = 1~ 触发的 effect 执行，
+
+而是因为 ~_dirty~ 默认是 ~true~ 的，所以在 *#1* 处取值的时候触发了
+~effect()~ 执行， ~_dirty = false~ 了，值结果已出。
+
+#+begin_src typescript
+get value() {
+    if (this._dirty) {
+        this._value = this.effect()
+        this._dirty = false
+    }
+    track(toRaw(this), TrackOpTypes.GET, 'value')
+    return this._value
+}
+#+end_src
+
+也正是由于 ~effect~ 的执行，让 ~value.foo~ 收集到了这个依赖。
+
+随后设置 ~value.foo~ 也会将 computed effect 执行，由于 options 中提供了
+scheduler，所以会执行置 ~_dirty = true~ ，但是此时计算属性值并不会立即计算得出
+结果(因为它的计算操作始终是在 ~get value()~ 里面发生的)，所有当下次取值操作(即
+*#2* 行执行时)，检测到 ~_dirty = true~ 了才会重新计算返回最新结果。
+
+用例脑图：
+
+[[/img/vue3/reactivity/reactivity-computed-test-01.svg]]
+** effect.ts
+*** effect + track + trigger
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-01
+:END:
+
+commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
+
+#+RESULTS:
+
+1. lazy: true 标识 effect fn 不会立即执行
+2. 点击 set 操作，此时并没有依赖，所以只会触发 count++
+3. 当点击 get 操作，触发 ~track()~ 收集依赖 fn -> deps
+4. 再点击 set 操作，此时已经有依赖，所以会 ~trigger()~ 所有依赖更新
+5. options.scheduler 选项作用
+
+   如果 options 有 scheduler 选项， ~trigger()~ 的时候不会立即执行 effects 而是
+   调用 scheduler 并将当前需要被执行的 effect 当做参数给 scheduler，由使用者决定
+   何时去执行 effect，比如需要在 dummy 更新之前做点什么。
+
+#+begin_export html
+<style>
+#_effect_test_02>.box {
+  display: flex;
+  justify-content: space-around;
+}
+#_effect_test_02>.box>button{
+  border: none;
+  width: 250px;
+}
+</style>
+<div id="_effect_test_02">
+<div class="box">
+    <button class="getval">点我触发 get操作！</button>
+    <button class="setval">点我触发 set操作！</button>
+</div>
+<br>
+<div class="box">
+    <button class="before-scheduler">手动调用 scheduler 之前</button>
+    <button class="after-scheduler">手动调用 scheduler 之后</button>
+</div>
+<br>
+<div class="box">
+    <button class="code">点击查看测试源码</button>
+    <button class="reset">重置</button>
+</div>
+<div class="result"></div>
+<code></code>
+</div>
+#+end_export
+
+#+begin_export html
+<script id="GW0MDx">
+setTimeout(function test() {
+    if (typeof $ === 'undefined') return
+
+    var ins = VueReactivity
+    var effect = ins.effect
+    var reactive = ins.reactive
+    var target = { count: 0 }
+    var counter = reactive(target)
+
+    var $el = $("#_effect_test_02")
+    var LOG = function (msg) {
+      _log($el, msg)
+    }
+
+    var lazyEffect = effect(
+      function fn() {
+        var c = counter.count
+        LOG('正在执行 effect fn..., counter.count = ' + counter.count)
+      }, {
+        lazy: true
+      }
+    )
+
+    var effected = false
+    var getDeps = function () {
+      if (!ins.targetMap) return new Set()
+      const depsMap = ins.targetMap.get(target) || new Map()
+      return depsMap.get('count') || new Set()
+    }
+    $el.find(".setval").click(function() {
+      counter.count++
+      var size = getDeps().size
+      if (size === 0) {
+        LOG('target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
+      }
+    })
+    $el.find(".reset").click(function() {
+      ins.cleanup(lazyEffect)
+      $el.children(".result").html('')
+      effected = false
+      counter.count = 0
+      dummy = 0
+      runner = undefined
+      times = 0
+      LOG('target.count deps.size = ' + getDeps().size)
+    })
+    $el.find(".getval").click(function() {
+      if (!effected) {
+        effected = true
+        lazyEffect() // 手动执行 effect
+        LOG('手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
+      }
+      LOG('取值操作(target.count 的 deps 数)：'
+        + ins.targetMap.get(target).get('count').size
+        + ', counter.count = ' + counter.count)
+    })
+
+    $el.find('.code').click(function() {
+      console.log($("#GW0MDx").html())
+      LOG('源码已输出到控制台(F12-console)....')
+    })
+
+    var dummy = 0, runner
+    var counter1 = reactive({ count: 0 })
+    var times = 0
+    var schedulerEffect = effect(function fn() {
+      dummy = counter1.count
+    }, {
+      scheduler: function(_effect) {
+        LOG('scheduler 执行次数 ' + ++times + ', dummy = ' + dummy)
+        runner = function() {
+          _effect()
+        }
+      }
+    })
+
+    LOG('scheduler effect fn 第一次会被执行， dummy = ' + dummy)
+    $el.find('.before-scheduler').click(function() {
+      LOG('scheduler 不会被执行, dummy = ' + dummy)
+    })
+
+    $el.find('.after-scheduler').click(function() {
+      counter1.count++
+      runner()
+    })
+}, 1000)
+
+</script>
+#+end_export
 
 * effect 测试
 *** 测试1(base, prototype)
@@ -2581,201 +2928,6 @@ undefined
 
    2. *#2* 值为 3，是因为 effect 执行 runner() 使得 ~obj.prop~ 收集到第二个
       effect fn 。
-* 阶段测试一
-** effect + track + trigger 响应式基本操作(get/set)
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: test-01
-:END:
-
-commit: [[https://github.com/gcclll/stb-vue-next/commit/b5f97b413d4628f4ec8fcf4e859d387ebfac3ad8][feat: effect-trigger · gcclll/stb-vue-next@b5f97b4]]
-
-#+RESULTS:
-
-1. lazy: true 标识 effect fn 不会立即执行
-2. 点击 set 操作，此时并没有依赖，所以只会触发 count++
-3. 当点击 get 操作，触发 ~track()~ 收集依赖 fn -> deps
-4. 再点击 set 操作，此时已经有依赖，所以会 ~trigger()~ 所有依赖更新
-5. options.scheduler 选项作用
-
-   如果 options 有 scheduler 选项， ~trigger()~ 的时候不会立即执行 effects 而是
-   调用 scheduler 并将当前需要被执行的 effect 当做参数给 scheduler，由使用者决定
-   何时去执行 effect，比如需要在 dummy 更新之前做点什么。
-
-#+begin_export html
-<style>
-#_effect_test_02>.box {
-  display: flex;
-  justify-content: space-around;
-}
-#_effect_test_02>.box>button{
-  border: none;
-  width: 250px;
-}
-</style>
-<div id="_effect_test_02">
-<div class="box">
-    <button class="getval">点我触发 get操作！</button>
-    <button class="setval">点我触发 set操作！</button>
-</div>
-<br>
-<div class="box">
-    <button class="before-scheduler">手动调用 scheduler 之前</button>
-    <button class="after-scheduler">手动调用 scheduler 之后</button>
-</div>
-<br>
-<div class="box">
-    <button class="code">点击查看测试源码</button>
-    <button class="reset">重置</button>
-</div>
-<div class="result"></div>
-<code></code>
-</div>
-#+end_export
-
-#+begin_export html
-<script id="GW0MDx">
-setTimeout(function test() {
-    if (typeof $ === 'undefined') return
-
-    var ins = VueReactivity
-    var effect = ins.effect
-    var reactive = ins.reactive
-    var target = { count: 0 }
-    var counter = reactive(target)
-
-    var $el = $("#_effect_test_02")
-    var LOG = function (msg) {
-      _log($el, msg)
-    }
-
-    var lazyEffect = effect(
-      function fn() {
-        var c = counter.count
-        LOG('正在执行 effect fn..., counter.count = ' + counter.count)
-      }, {
-        lazy: true
-      }
-    )
-
-    var effected = false
-    var getDeps = function () {
-      if (!ins.targetMap) return new Set()
-      const depsMap = ins.targetMap.get(target) || new Map()
-      return depsMap.get('count') || new Set()
-    }
-    $el.find(".setval").click(function() {
-      counter.count++
-      var size = getDeps().size
-      if (size === 0) {
-        LOG('target 此时无任何依赖，deps.size = ' + size + ', counter.count = ' + counter.count)
-      }
-    })
-    $el.find(".reset").click(function() {
-      ins.cleanup(lazyEffect)
-      $el.children(".result").html('')
-      effected = false
-      counter.count = 0
-      dummy = 0
-      runner = undefined
-      times = 0
-      LOG('target.count deps.size = ' + getDeps().size)
-    })
-    $el.find(".getval").click(function() {
-      if (!effected) {
-        effected = true
-        lazyEffect() // 手动执行 effect
-        LOG('手动执行 effect()，开始收集依赖 fn -> deps<Set>, size: ' + getDeps().size)
-      }
-      LOG('取值操作(target.count 的 deps 数)：'
-        + ins.targetMap.get(target).get('count').size
-        + ', counter.count = ' + counter.count)
-    })
-
-    $el.find('.code').click(function() {
-      console.log($("#GW0MDx").html())
-      LOG('源码已输出到控制台(F12-console)....')
-    })
-
-    var dummy = 0, runner
-    var counter1 = reactive({ count: 0 })
-    var times = 0
-    var schedulerEffect = effect(function fn() {
-      dummy = counter1.count
-    }, {
-      scheduler: function(_effect) {
-        LOG('scheduler 执行次数 ' + ++times + ', dummy = ' + dummy)
-        runner = function() {
-          _effect()
-        }
-      }
-    })
-
-    LOG('scheduler effect fn 第一次会被执行， dummy = ' + dummy)
-    $el.find('.before-scheduler').click(function() {
-      LOG('scheduler 不会被执行, dummy = ' + dummy)
-    })
-
-    $el.find('.after-scheduler').click(function() {
-      counter1.count++
-      runner()
-    })
-}, 1000)
-
-</script>
-#+end_export
-
-** 相关用例：
-1. 立即执行一次 fn，观察基本属性(一个或多个)
-
-   #+begin_src js
-    const { effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
-
-    const ob = reactive({ n1: 0, n2: 10 })
-    let times = 0, dummy = 0
-    effect(() => {
-    console.log('effect fn 被执行 ' + ++times + ' 次')
-    dummy = ob.n1 + ob.n2
-    })
-
-    console.log('before set: dummy = ' + dummy)
-    ob.n1 = ob.n2 = 10
-    console.log('after set: dummy = ' + dummy)
-   #+end_src
-
-   +RESULTS:
-   : effect fn 被执行 1 次
-   : before set: dummy = 10
-   : effect fn 被执行 2 次
-   : after set: dummy = 20
-
-2. 给同一个属性绑定多个 effects，值变更触发多个 effect
-
-   #+begin_src  js
-    const { effect, reactive, targetMap } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
-
-    let d1, d2
-    const ob = reactive({ count: 0 })
-    effect(() => (d1 = ob.count))
-    effect(() => (d2 = ob.count))
-
-    console.log('before set: d1 = ' + d1 + ', d2 = ' + d2)
-    ob.count = 3
-    console.log('after set: d1 = ' + d1 + ', d2 = ' + d2)
-   #+end_src
-
-   +RESULTS:
-   : before set: d1 = 0, d2 = 0
-   : after set: d1 = 3, d2 = 3
-** 支持对象嵌套
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: test-02
-:END:
-
-commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f?branch=b2143f9e35af77ee43792a6110ea70c4caf9a54f&diff=split][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
-
-测试：
 * 完整脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -2787,7 +2939,15 @@ commit: [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a61
 ** collection proxy handlers 脑图
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: while-collection
+:CUSTOM_ID: mind-collection
 :END:
 
 [[/img/vue3/reactivity/reactivity-collection-proxy.svg]]
+** effect 脑图
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: mind-effect
+:END:
+
+[[/img/vue3/reactivity/reactivity-effect.svg]]
+
