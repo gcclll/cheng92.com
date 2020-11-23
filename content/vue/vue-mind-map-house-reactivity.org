@@ -2004,6 +2004,10 @@ console.log(`#3 after set, dummy = ${dummy}`)
 后就是 4
 
 * [[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][e5497be]] add collection iterators methods proxy handler
+
+[[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][feat(add): collection iterable methods · gcclll/stb-vue-next@e5497be]]
+
+add code:
 #+begin_src typescript
 interface Iterable {
   [Symbol.iterator](): Iterator
@@ -2061,15 +2065,15 @@ function createIterableMethod(
 }
 #+end_src
 
-[[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][feat(add): collection iterable methods · gcclll/stb-vue-next@e5497be]]
-
+test:
 #+begin_src js
 const {
   isReactive,
   effect,
   reactive,
   targetMap,
-  shallowReactive
+  shallowReactive,
+  toRaw
 } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
 
 const map = new Map()
@@ -2086,23 +2090,61 @@ effect(() => {
   }
 })
 
+console.log(`>>> #1 set`)
 console.log(`before set, dummy = ${dummy}`)
-map.set('baz', 3)
+observed.set('baz', 3)
 console.log(`after set, dummy = ${dummy}`)
 console.log(`obj in map is reactive ${isReactive(observed.get("dax"))}`)
+effect(() => {
+  dummy = observed.size
+})
+console.log(`>>> #2 clear`)
+console.log(`before clear, dummy = ${dummy}`)
+observed.clear()
+console.log(`after clear, dummy = ${dummy}`)
+console.log(`>>> #3 should not observe custom property`)
+effect(() => (dummy = observed.customProp))
+console.log(`before set cumstom prop, dummy = ${dummy}`)
+observed.customProp = 'Hello World'
+console.log(`after set cumstom prop, dummy = ${dummy}`)
+console.log(`>>> #4 不应该使 Proxies 污染原来的 Map 对象`)
+const map2 = new Map()
+const observed2 = reactive(map2)
+const value = reactive({})
+observed2.set('key', value)
+console.log(`map2.get('key') !== value, ${map2.get('key') !== value}`)
+console.log(`map2.get('key') === toRaw(value), ${map2.get('key') === toRaw(value)}`)
 #+end_src
 
 +RESULTS:
-: { value: [ 'foo', 1 ], done: false }
-: { value: [ 'bar', 2 ], done: false }
-: { value: [ 'dax', { name: 'dax' } ], done: false }
-: { value: undefined, done: true }
-: before set, dummy = foo,1,bar,2,dax,[object Object]
-: after set, dummy = foo,1,bar,2,dax,[object Object]
-: obj in map is reactive true
+#+begin_example
+>>> #1 set
+before set, dummy = foo,1,bar,2,dax,[object Object]
+after set, dummy = foo,1,bar,2,dax,[object Object],foo,1,bar,2,dax,[object Object],baz,3
+obj in map is reactive true
+>>> #2 clear
+before clear, dummy = 4
+after clear, dummy = 0
+>>> #3 should not observe custom property
+before set cumstom prop, dummy = undefined
+after set cumstom prop, dummy = undefined
+>>> #4 不应该使 Proxies 污染原来的 Map 对象
+map2.get('key') !== value, true
+map2.get('key') === toRaw(value), true
+#+end_example
 
-* add readonly collection proxy handlers
+- *#1* 在遍历过程中 get -> track -> 递归 reactive，所以 obj 是
+  ~obsreved.get('dax')~ 结果是 reactive 。
+- *#2* clear 内部实现会取迭代器进行迭代删除，并且改变最终 size 值。
+- *#3* collectionHandlers.ts 中的方法都是针对集合本身元素进行操作的，对于自定义
+  属性是不在响应式 Map/Set 之列的。
+- *#4* set proxy handler 里面的实现会先取  ~toRaw(value)~ 再进行设置操作。
+* [[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][fa2636d]] add readonly collection proxy handlers
 
+[[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][feat(add): readonly collection handlers · gcclll/stb-vue-next@fa2636d]]
+
+创建几个设置型的方法(~add,set,delete,clear~)
+create readonly method for settable handlers(~add,set,delete,clear~)
 #+begin_src typescript
 function createReadonlyMethod(type: TriggerOpTypes): Function {
   return function(this: CollectionTypes, ...args: unknown[]) {
@@ -2118,6 +2160,27 @@ function createReadonlyMethod(type: TriggerOpTypes): Function {
 }
 #+end_src
 
+readonly instrumentations:
+#+begin_src typescript
+const readonlyInstrumentations: Recor<string, Function> = {
+  get(this: MapTypes, key: unknown) {
+    return get(this, key, true)
+  },
+  get size() {
+    return size((this as unknown) as IterableCollections, true)
+  },
+  has(this: MapTypes, key: unknown) {
+    return has.call(this, key, true)
+  },
+  add: createReadonlyMethod(TriggerOpTypes.ADD),
+  set: createReadonlyMethod(TriggerOpTypes.SET),
+  delete: createReadonlyMethod(TriggerOpTypes.DELETE),
+  clear: createReadonlyMethod(TriggerOpTypes.CLEAR),
+  forEach: createForEach(true, false)
+}
+#+end_src
+
+测试：
 * effect 测试
 *** 测试1(base, prototype)
 

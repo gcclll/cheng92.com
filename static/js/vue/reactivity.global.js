@@ -558,7 +558,6 @@ var VueReactivity = (function (exports) {
       return {
         next() {
           const { value, done } = innerIterator.next();
-          console.log({ value, done });
           return done
             ? { value, done }
             : {
