@@ -539,6 +539,39 @@ var VueReactivity = (function (exports) {
       });
     };
   }
+  function createIterableMethod(method, isReadonly, isShallow) {
+    return function (...args) {
+      const target = this["__v_raw" /* RAW */];
+      const rawTarget = toRaw(target);
+      const targetIsMap = isMap(rawTarget);
+      const isPair =
+        method === "entries" || (method === Symbol.iterator && targetIsMap);
+      const isKeyOnly = method === "keys" && targetIsMap;
+      const innerIterator = target[method](...args);
+      const wrap = isReadonly ? toReadonly : isShallow ? toShallow : toReactive;
+      !isReadonly &&
+        track(
+          rawTarget,
+          "iterate" /* ITERATE */,
+          isKeyOnly ? MAP_KEY_ITERATE_KEY : ITERATE_KEY
+        );
+      return {
+        next() {
+          const { value, done } = innerIterator.next();
+          console.log({ value, done });
+          return done
+            ? { value, done }
+            : {
+                value: isPair ? [wrap(value[0]), wrap(value[1])] : wrap(value),
+                done,
+              };
+        },
+        [Symbol.iterator]() {
+          return this;
+        },
+      };
+    };
+  }
   const mutableInstrumentations = {
     // get proxy handler, this -> target
     get(key) {
@@ -555,6 +588,14 @@ var VueReactivity = (function (exports) {
     clear,
     forEach: createForEach(false, false),
   };
+  const iteratorMethods = ["keys", "values", "entries", Symbol.iterator];
+  iteratorMethods.forEach((method) => {
+    mutableInstrumentations[method] = createIterableMethod(
+      method,
+      false,
+      false
+    );
+  });
   function createInstrumentationGetter(isReadonly, shallow) {
     const instrumentations = mutableInstrumentations;
     return (target, key, receiver) => {

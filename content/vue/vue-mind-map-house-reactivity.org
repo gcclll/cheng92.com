@@ -2003,9 +2003,8 @@ console.log(`#3 after set, dummy = ${dummy}`)
 - *#2* 添加 ~bar => 2~ 结果是 4，原因是到这一步的时候 ~dummy = 1~ 的，所以再累加之
 后就是 4
 
-* TODO add collection iterators methods proxy handler
+* [[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][e5497be]] add collection iterators methods proxy handler
 #+begin_src typescript
-
 interface Iterable {
   [Symbol.iterator](): Iterator
 }
@@ -2061,6 +2060,47 @@ function createIterableMethod(
   }
 }
 #+end_src
+
+[[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][feat(add): collection iterable methods · gcclll/stb-vue-next@e5497be]]
+
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map()
+
+const obj = { name: 'dax' }
+map.set("foo", 1)
+map.set("bar", 2)
+map.set('dax', obj)
+const observed = reactive(map)
+let dummy = []
+effect(() => {
+  for (let key of observed.entries()) {
+    dummy.push(key)
+  }
+})
+
+console.log(`before set, dummy = ${dummy}`)
+map.set('baz', 3)
+console.log(`after set, dummy = ${dummy}`)
+console.log(`obj in map is reactive ${isReactive(observed.get("dax"))}`)
+#+end_src
+
++RESULTS:
+: { value: [ 'foo', 1 ], done: false }
+: { value: [ 'bar', 2 ], done: false }
+: { value: [ 'dax', { name: 'dax' } ], done: false }
+: { value: undefined, done: true }
+: before set, dummy = foo,1,bar,2,dax,[object Object]
+: after set, dummy = foo,1,bar,2,dax,[object Object]
+: obj in map is reactive true
+
 * add readonly collection proxy handlers
 
 #+begin_src typescript
