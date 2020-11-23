@@ -1309,6 +1309,8 @@ stop() 函数操作：
 ~options.scheduler~ ，否则永远不会被执行) 。
 
 被 stopped 的 effect 可以当做另一个正常的 effect 的 fn。
+* 集合类型代理(proxy handlers)脑图
+[[/img/vue3/reactivity/reactivity-collection-proxy.svg]]
 * [[https://github.com/gcclll/stb-vue-next/commit/521f755fd403d5f0431bcafd1737f1d988ce0825][521f755]] add collection handlers
 
 [[https://github.com/gcclll/stb-vue-next/commit/521f755fd403d5f0431bcafd1737f1d988ce0825][feat(add): mutable collection handlers · gcclll/stb-vue-next@521f755]]
@@ -2139,7 +2141,7 @@ map2.get('key') === toRaw(value), true
 - *#3* collectionHandlers.ts 中的方法都是针对集合本身元素进行操作的，对于自定义
   属性是不在响应式 Map/Set 之列的。
 - *#4* set proxy handler 里面的实现会先取  ~toRaw(value)~ 再进行设置操作。
-* [[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][fa2636d]] add readonly collection proxy handlers
+* [[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][fa2636d]] add collection readonly proxy handlers
 
 [[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][feat(add): readonly collection handlers · gcclll/stb-vue-next@fa2636d]]
 
@@ -2181,6 +2183,112 @@ const readonlyInstrumentations: Recor<string, Function> = {
 #+end_src
 
 测试：
+* [[https://github.com/gcclll/stb-vue-next/commit/676bc70fe9a6535b85ada4754fb6a683bec50f5f][676bc70]] add collection shallow proxy handlers
+
+[[https://github.com/gcclll/stb-vue-next/commit/676bc70fe9a6535b85ada4754fb6a683bec50f5f][feat(add): shallow collection handlers · gcclll/stb-vue-next@676bc70]]
+
+不会递归 reactive 版本。
+* 用例分析
+** Map.spec.ts
+- [X] instanceof
+
+  #+begin_src typescript
+  test('instanceof', () => {
+      const original = new Map()
+      const observed = reactive(original)
+      expect(isReactive(observed)).toBe(true)
+      expect(original instanceof Map).toBe(true)
+      expect(observed instanceof Map).toBe(true)
+    })
+  #+end_src
+
+  测试：
+  #+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const map = new Map()
+const ob = reactive(map)
+console.log(`#1 ob is reactive, ${isReactive(ob)}`)
+console.log(`#2 ${map instanceof Map}`)
+console.log(`#3 ${ob instanceof Map}`)
+console.log(map, ob)
+  #+end_src
+
+  +RESULTS:
+  : #1 ob is reactive, true
+  : #2 true
+  : #3 true
+  : Map(0) {} Map(0) {}
+- [X] should observe mutations(应该观察变化)
+
+    #+begin_src typescript
+
+    it('should observe mutations', () => {
+      let dummy
+      const map = reactive(new Map())
+      effect(() => {
+        dummy = map.get('key')
+      })
+
+      expect(dummy).toBe(undefined)
+      map.set('key', 'value')
+      expect(dummy).toBe('value')
+      map.set('key', 'value2')
+      expect(dummy).toBe('value2')
+      map.delete('key')
+      expect(dummy).toBe(undefined)
+    })
+    #+end_src
+
+    测试:
+    #+begin_src js
+    const {
+        isReactive,
+        effect,
+        reactive,
+        targetMap,
+        shallowReactive
+    } = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+    let dummy
+    const map = reactive(new Map())
+    effect(() => {
+        dummy = map.get('key')
+    })
+
+    console.log(`#1 dummy = ${dummy}`)
+    map.set('key', 'value')
+    console.log(`#2 dummy = ${dummy}`)
+    map.set('key', 'value2')
+    console.log(`#3 dummy = ${dummy}`)
+    map.delete('key')
+    console.log(`#4 dummy = ${dummy}`)
+    #+end_src
+
+    +RESULTS:
+    : #1 dummy = undefined
+    : #2 dummy = value // set 触发 trigger effect fn
+    : #3 dummy = value2 // 同上
+    : #4 dummy = undefined // 删除触发 DELETE trigger 与该
+
+    *#4* 属性的 ADD | DELETE | SET 操作首先会将所有与该 key 有关的依赖添加到将执行序列。
+
+    #+begin_src typescript
+      // SET | ADD | DELETE operation
+      if (key !== void 0) {
+          add(depsMap.get(key))
+      }
+    #+end_src
+- [ ] should observe mutations with observed value as key
+
+  将 reactive 类型的值作为 key 的时候也应该能被观察变化。
+
 * effect 测试
 *** 测试1(base, prototype)
 
