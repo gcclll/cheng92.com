@@ -1,6 +1,24 @@
 var VueCompilerCore = (function (exports) {
   "use strict";
 
+  /**
+   * Make a map and return a function for checking if a key
+   * is in that map.
+   * IMPORTANT: all calls of this function must be prefixed with
+   * \/\*#\_\_PURE\_\_\*\/
+   * So that rollup can tree-shake them if necessary.
+   */
+  function makeMap(str, expectsLowerCase) {
+    const map = Object.create(null);
+    const list = str.split(",");
+    for (let i = 0; i < list.length; i++) {
+      map[list[i]] = true;
+    }
+    return expectsLowerCase
+      ? (val) => !!map[val.toLowerCase()]
+      : (val) => !!map[val];
+  }
+
   const EMPTY_OBJ = Object.freeze({});
   const EMPTY_ARR = Object.freeze([]);
   /**
@@ -9,6 +27,20 @@ var VueCompilerCore = (function (exports) {
   const NO = () => false;
   const extend = Object.assign;
   const isArray = Array.isArray;
+  const cacheStringFunction = (fn) => {
+    const cache = Object.create(null);
+    return (str) => {
+      const hit = cache[str];
+      return hit || (cache[str] = fn(str));
+    };
+  };
+  const hyphenateRE = /\B([A-Z])/g;
+  /**
+   * @private
+   */
+  const hyphenate = cacheStringFunction((str) =>
+    str.replace(hyphenateRE, "-$1").toLowerCase()
+  );
 
   // AST Utilities ---------------------------------------------------------------
   // Some expressions, e.g. sequence and conditional expressions, are never
@@ -107,6 +139,35 @@ var VueCompilerCore = (function (exports) {
     [48 /* X_SCOPE_ID_NOT_SUPPORTED */]: `"scopeId" option is only supported in module mode.`,
   };
 
+  const TELEPORT = Symbol(`Teleport`);
+  const SUSPENSE = Symbol(`Suspense`);
+  const KEEP_ALIVE = Symbol(`KeepAlive`);
+  const BASE_TRANSITION = Symbol(`BaseTransition`);
+
+  const isBuiltInType = (tag, expected) =>
+    tag === expected || tag === hyphenate(expected);
+  function isCoreComponent(tag) {
+    if (isBuiltInType(tag, "Teleport")) {
+      return TELEPORT;
+    } else if (isBuiltInType(tag, "Suspense")) {
+      return SUSPENSE;
+    } else if (isBuiltInType(tag, "KeepAlive")) {
+      return KEEP_ALIVE;
+    } else if (isBuiltInType(tag, "BaseTransition")) {
+      return BASE_TRANSITION;
+    }
+  }
+  function advancePositionWithClone(
+    pos,
+    source,
+    numberOfCharacters = source.length
+  ) {
+    return advancePositionWithMutation(
+      extend({}, pos),
+      source,
+      numberOfCharacters
+    );
+  }
   // advance by mutation without cloning (for performance reasons), since this
   // gets called a lot in the parser
   function advancePositionWithMutation(
@@ -180,16 +241,16 @@ var VueCompilerCore = (function (exports) {
     };
   }
   function parseChildren(context, mode, ancestors) {
-    // const parent = last(ancestors)
-    // const ns = parent ? parent.ns : Namespaces.HTML
+    const parent = last(ancestors);
+    const ns = parent ? parent.ns : 0; /* HTML */
     const nodes = [];
-    // TODO while is end
     while (!isEnd(context, mode, ancestors)) {
       const s = context.source;
       let node = undefined;
       if (mode === 0 /* DATA */ || mode === 1 /* RCDATA */) {
-        if (!context.inVPre && startsWith(s, context.options.delimiters[0]));
-        else if (mode === 0 /* DATA */ && s[0] === "<") {
+        if (!context.inVPre && startsWith(s, context.options.delimiters[0])) {
+          node = parseInterpolation(context, mode);
+        } else if (mode === 0 /* DATA */ && s[0] === "<") {
           if (s.length === 1) {
             emitError(context, 5 /* EOF_BEFORE_TAG_NAME */, 1);
           } else if (s[1] === "!") {
@@ -197,7 +258,53 @@ var VueCompilerCore = (function (exports) {
             if (startsWith(s, "<!--")) {
               // 注释
               node = parseComment(context);
+            } else if (startsWith(s, "<!DOCTYPE")) {
+              node = parseBogusComment(context);
+            } else if (startsWith(s, "<![CDATA[")) {
+              if (ns !== 0 /* HTML */);
+              else {
+                emitError(context, 1 /* CDATA_IN_HTML_CONTENT */);
+                node = parseBogusComment(context);
+              }
+            } else {
+              emitError(context, 11 /* INCORRECTLY_OPENED_COMMENT */);
+              node = parseBogusComment(context);
             }
+          } else if (s[1] === "/") {
+            // end tag, </
+            if (s.length === 2) {
+              emitError(context, 5 /* EOF_BEFORE_TAG_NAME */, 2);
+            } else if (s[2] === ">") {
+              // </>
+              emitError(context, 14 /* MISSING_END_TAG_NAME */, 2);
+              advanceBy(context, 3);
+              continue;
+            } else if (/[a-z]/i.test(s[2])) {
+              // 非法结束标签，因为结束标签会直接在 parseElement 解析完成
+              emitError(context, 23 /* X_INVALID_END_TAG */);
+              // TODO parseTag(context, TagType.End, parent)
+              continue;
+            } else {
+              // 无效的标签名称
+              emitError(
+                context,
+                12 /* INVALID_FIRST_CHARACTER_OF_TAG_NAME */,
+                2
+              );
+              node = parseBogusComment(context);
+            }
+          } else if (/[a-z]/i.test(s[1])) {
+            // 开始标签
+            node = parseElement(context, ancestors);
+          } else if (s[1] === "?") {
+            emitError(
+              context,
+              21 /* UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME */,
+              1
+            );
+            node = parseBogusComment(context);
+          } else {
+            emitError(context, 12 /* INVALID_FIRST_CHARACTER_OF_TAG_NAME */, 1);
           }
         }
         // TODO
@@ -275,6 +382,393 @@ var VueCompilerCore = (function (exports) {
       loc: getSelection(context, start),
     };
   }
+  function parseBogusComment(context) {
+    const start = getCursor(context);
+    const contentStart = context.source[1] === "?" ? 1 : 2;
+    let content;
+    // 结束
+    const closeIndex = context.source.indexOf(">");
+    if (closeIndex === -1) {
+      content = context.source.slice(contentStart);
+      advanceBy(context, context.source.length);
+    } else {
+      content = context.source.slice(contentStart, closeIndex);
+      advanceBy(context, closeIndex + 1);
+    }
+    return {
+      type: 3 /* COMMENT */,
+      content,
+      loc: getSelection(context, start),
+    };
+  }
+  function parseElement(context, ancestors) {
+    const wasInPre = context.inPre;
+    const wasInVPre = context.inVPre;
+    const parent = last(ancestors);
+    // 解析出开始标签
+    const element = parseTag(context, 0 /* Start */, parent);
+    const isPreBoundray = context.inPre && !wasInPre;
+    const isVPreBoundray = context.inVPre && !wasInVPre;
+    if (element.isSelfClosing || context.options.isVoidTag(element.tag)) {
+      return element;
+    }
+    ancestors.push(element);
+    const mode = context.options.getTextMode(element, parent);
+    const children = parseChildren(context, mode, ancestors);
+    // 要将孩子节点解析完成的 parent element pop 掉，待处理下一个 parent 的 children
+    ancestors.pop();
+    if (startsWithEndTagOpen(context.source, element.tag)) {
+      // 结束标签
+      parseTag(context, 1 /* End */, parent);
+    } else {
+      emitError(context, 24 /* X_MISSING_END_TAG */, 0, element.loc.start);
+      if (
+        context.source.length === 0 &&
+        element.tag.toLowerCase() === "script"
+      ) {
+        const first = children[0];
+        if (first && startsWith(first.loc.source, "<!--")) {
+          emitError(context, 8 /* EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT */);
+        }
+      }
+    }
+    element.loc = getSelection(context, element.loc.start);
+    if (isPreBoundray) {
+      context.inPre = false;
+    }
+    if (isVPreBoundray) {
+      context.inVPre = false;
+    }
+    return element;
+  }
+  const isSpecialTemplateDirective = /*#__PURE__*/ makeMap(
+    `if,else,else-if,for,slot`
+  );
+  function parseTag(context, type, parent) {
+    // 开始标签
+    const start = getCursor(context);
+    const match = /^<\/?([a-z][^\t\r\n\f />]*)/i.exec(context.source);
+    const tag = match[1];
+    const ns = context.options.getNamespace(tag, parent);
+    advanceBy(context, match[0].length);
+    advanceSpaces(context);
+    // 保存当前状态，待会需要回过头来解析属性
+    const cursor = getCursor(context);
+    const currentSource = context.source;
+    // 解析属性
+    let props = parseAttributes(context, type);
+    if (context.options.isPreTag(tag)) {
+      context.inPre = true;
+    }
+    // v-pre 指令, 需要有上面的属性解析步骤
+    if (
+      !context.inVPre &&
+      props.some((p) => p.type === 7 /* DIRECTIVE */ && p.name === "pre")
+    ) {
+      context.inVPre = true;
+      extend(context, cursor);
+      context.source = currentSource;
+      // 重新解析属性并且将 v-pre 过滤出来
+      props = parseAttributes(context, type).filter((p) => p.name !== "v-pre");
+    }
+    // 结束标签
+    let isSelfClosing = false;
+    if (context.source.length === 0) {
+      emitError(context, 9 /* EOF_IN_TAG */);
+    } else {
+      // <div ... />
+      isSelfClosing = startsWith(context.source, "/>");
+      // 到这里不应该是 End 标签
+      if (type === 1 /* End */ && isSelfClosing) {
+        emitError(context, 4 /* END_TAG_WITH_TRAILING_SOLIDUS */);
+      }
+      advanceBy(context, isSelfClosing ? 2 : 1);
+    }
+    let tagType = 0; /* ELEMENT */
+    const options = context.options;
+    // 标签类型解析，非 v-pre 元素且不是自定义类型
+    if (!context.inVPre && !options.isCustomElement(tag)) {
+      // v-is
+      const hasVIs = props.some(
+        (p) => p.type === 7 /* DIRECTIVE */ && p.name === "is"
+      );
+      if (options.isNativeTag && !hasVIs) {
+        if (!options.isNativeTag(tag)) {
+          tagType = 1 /* COMPONENT */;
+        }
+      } else if (
+        hasVIs ||
+        isCoreComponent(tag) ||
+        (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
+        /^[A-Z].test(tag)/ ||
+        tag === "component"
+      ) {
+        tagType = 1 /* COMPONENT */;
+      }
+      if (tag === "slot") {
+        tagType = 2 /* SLOT */;
+      } else if (
+        tag === "template" &&
+        props.some((p) => {
+          return (
+            p.type === 7 /* DIRECTIVE */ && isSpecialTemplateDirective(p.name)
+          );
+        })
+      ) {
+        tagType = 3 /* TEMPLATE */;
+      }
+    }
+    return {
+      type: 1 /* ELEMENT */,
+      ns,
+      tag,
+      tagType,
+      props,
+      isSelfClosing,
+      children: [],
+      loc: getSelection(context, start),
+      codegenNode: undefined,
+    };
+  }
+  function parseAttributes(context, type) {
+    const props = [];
+    const attributeNames = new Set();
+    while (
+      context.source.length > 0 &&
+      !startsWith(context.source, ">") &&
+      !startsWith(context.source, "/>")
+    ) {
+      if (startsWith(context.source, "/")) {
+        emitError(context, 22 /* UNEXPECTED_SOLIDUS_IN_TAG */);
+        advanceBy(context, 1);
+        advanceSpaces(context);
+        continue;
+      }
+      if (type === 1 /* End */) {
+        emitError(context, 3 /* END_TAG_WITH_ATTRIBUTES */);
+      }
+      const attr = parseAttribute(context, attributeNames);
+      if (type === 0 /* Start */) {
+        props.push(attr);
+      }
+      // 必须有空格分割属性
+      if (/^[^\t\r\n\f />]/.test(context.source)) {
+        emitError(context, 15 /* MISSING_WHITESPACE_BETWEEN_ATTRIBUTES */);
+      }
+      advanceSpaces(context);
+    }
+    return props;
+  }
+  function parseAttribute(context, nameSet) {
+    // 属性名
+    const start = getCursor(context);
+    // 匹配等号前的内容，属性名
+    const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source);
+    const name = match[0];
+    if (nameSet.has(name)) {
+      emitError(context, 2 /* DUPLICATE_ATTRIBUTE */);
+    }
+    nameSet.add(name);
+    if (name[0] === "=") {
+      // 不能用 `=` 做属性名
+      emitError(context, 19 /* UNEXPECTED_EQUALS_SIGN_BEFORE_ATTRIBUTE_NAME */);
+    }
+    {
+      const pattern = /["'<]/g;
+      let m;
+      // 属性名中不能有 ", ', <
+      while ((m = pattern.exec(name))) {
+        emitError(
+          context,
+          17 /* UNEXPECTED_CHARACTER_IN_ATTRIBUTE_NAME */,
+          m.index
+        );
+      }
+    }
+    advanceBy(context, name.length);
+    let value = undefined;
+    if (/^[\t\r\n\f ]*=/.test(context.source)) {
+      advanceSpaces(context);
+      advanceBy(context, 1); // =
+      advanceSpaces(context); // = 后面的空格
+      // 解析出属性值
+      value = parseAttributeValue(context);
+      if (!value) {
+        emitError(context, 13 /* MISSING_ATTRIBUTE_VALUE */);
+      }
+    }
+    const loc = getSelection(context, start);
+    if (!context.inVPre && /^(v-|:|@|#)/.test(name)) {
+      // 指令匹配，四个捕获组含义
+      // 1. v-bind,v-for,v-if
+      // 2. :, @, # 指令缩写
+      // 3. [name] 动态属性名
+      // 4. name.modifier 修饰符
+      const match = /(?:^v-([a-z0-9]+))?(?:(?::|^@|^#)(\[[^\]]+\]|[^\.]+))?(.+)?$/i.exec(
+        name
+      );
+      // 缩写指令替换成指令单词
+      const dirName =
+        match[1] ||
+        (startsWith(name, ":")
+          ? "bind"
+          : startsWith(name, "@")
+          ? "on"
+          : "slot");
+      let arg;
+      if (match[2]) {
+        const isSlot = dirName === "slot";
+        const startOffset = name.indexOf(match[2]);
+        const loc = getSelection(
+          context,
+          getNewPosition(context, start, startOffset),
+          getNewPosition(
+            context,
+            start,
+            startOffset + match[2].length + ((isSlot && match[3]) || "").length
+          )
+        );
+        let content = match[2];
+        let isStatic = true;
+        if (content.startsWith("[")) {
+          isStatic = false;
+          if (!content.endsWith("]")) {
+            emitError(
+              context,
+              26 /* X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END */
+            );
+          }
+          content = content.substr(1, content.length - 2);
+        } else if (isSlot) {
+          // #1241 special case for v-slot: vuetify relies extensively on slot
+          // names containing dots. v-slot doesn't have any modifiers and Vue 2.x
+          // supports such usage so we are keeping it consistent with 2.x.
+          content += match[3] || "";
+        }
+        arg = {
+          type: 4 /* SIMPLE_EXPRESSION */,
+          content,
+          isStatic,
+          isConstant: isStatic,
+          loc,
+        };
+      }
+      if (value && value.isQuoted) {
+        const valueLoc = value.loc;
+        valueLoc.start.offset++;
+        valueLoc.start.column++;
+        valueLoc.end = advancePositionWithClone(valueLoc.start, value.content);
+        valueLoc.source = valueLoc.source.slice(1, -1);
+      }
+      return {
+        type: 7 /* DIRECTIVE */,
+        name: dirName,
+        exp: value && {
+          type: 4 /* SIMPLE_EXPRESSION */,
+          content: value.content,
+          isStatic: false,
+          // Treat as non-constant by default. This can be potentially set to
+          // true by `transformExpression` to make it eligible for hoisting.
+          isConstant: false,
+          loc: value.loc,
+        },
+        arg,
+        modifiers: match[3] ? match[3].substr(1).split(".") : [],
+        loc,
+      };
+    }
+    return {
+      type: 6 /* ATTRIBUTE */,
+      name,
+      value: value && {
+        type: 2 /* TEXT */,
+        content: value.content,
+        loc: value.loc,
+      },
+      loc,
+    };
+  }
+  function parseAttributeValue(context) {
+    const start = getCursor(context);
+    let content;
+    const quote = context.source[0];
+    const isQuoted = quote === `"` || quote === `'`;
+    if (isQuoted) {
+      // Quoted value.
+      advanceBy(context, 1);
+      const endIndex = context.source.indexOf(quote);
+      if (endIndex === -1) {
+        content = parseTextData(
+          context,
+          context.source.length,
+          4 /* ATTRIBUTE_VALUE */
+        );
+      } else {
+        content = parseTextData(context, endIndex, 4 /* ATTRIBUTE_VALUE */);
+        advanceBy(context, 1);
+      }
+    } else {
+      // Unquoted
+      const match = /^[^\t\r\n\f >]+/.exec(context.source);
+      if (!match) {
+        return undefined;
+      }
+      const unexpectedChars = /["'<=`]/g;
+      let m;
+      while ((m = unexpectedChars.exec(match[0]))) {
+        emitError(
+          context,
+          18 /* UNEXPECTED_CHARACTER_IN_UNQUOTED_ATTRIBUTE_VALUE */,
+          m.index
+        );
+      }
+      content = parseTextData(
+        context,
+        match[0].length,
+        4 /* ATTRIBUTE_VALUE */
+      );
+    }
+    return { content, isQuoted, loc: getSelection(context, start) };
+  }
+  function parseInterpolation(context, mode) {
+    const [open, close] = context.options.delimiters;
+    const closeIndex = context.source.indexOf(close, open.length);
+    if (closeIndex === -1) {
+      emitError(context, 25 /* X_MISSING_INTERPOLATION_END */);
+      return undefined;
+    }
+    const start = getCursor(context);
+    advanceBy(context, open.length);
+    const innerStart = getCursor(context);
+    const innerEnd = getCursor(context);
+    // 插值内容长度
+    const rawContentLength = closeIndex - open.length;
+    const rawContent = context.source.slice(0, rawContentLength);
+    // html 语义化符号替换
+    const preTrimContent = parseTextData(context, rawContentLength, mode);
+    // 去掉前后空格
+    const content = preTrimContent.trim();
+    // 去掉空格后的内容所在的索引位置
+    const startOffset = preTrimContent.indexOf(content);
+    if (startOffset > 0) {
+      advancePositionWithMutation(innerStart, rawContent, startOffset);
+    }
+    const endOffset =
+      rawContentLength - (preTrimContent.length - content.length - startOffset);
+    advancePositionWithMutation(innerEnd, rawContent, endOffset);
+    advanceBy(context, close.length);
+    return {
+      type: 5 /* INTERPOLATION */,
+      content: {
+        type: 4 /* SIMPLE_EXPRESSION */,
+        isStatic: false,
+        isConstant: false,
+        content,
+        loc: getSelection(context, innerStart, innerEnd),
+      },
+      loc: getSelection(context, start),
+    };
+  }
   function parseText(context, mode) {
     const endTokens = ["<", context.options.delimiters[0]];
     if (mode === 3 /* CDATA */) {
@@ -339,6 +833,19 @@ var VueCompilerCore = (function (exports) {
     const { source } = context;
     advancePositionWithMutation(context, source, numberOfCharacters);
     context.source = source.slice(numberOfCharacters);
+  }
+  function advanceSpaces(context) {
+    const match = /^[\t\r\n\f ]+/.exec(context.source);
+    if (match) {
+      advanceBy(context, match[0].length);
+    }
+  }
+  function getNewPosition(context, start, numberOfCharacters) {
+    return advancePositionWithClone(
+      start,
+      context.originalSource.slice(start.offset, numberOfCharacters),
+      numberOfCharacters
+    );
   }
   function emitError(context, code, offset, loc = getCursor(context)) {
     if (offset) {

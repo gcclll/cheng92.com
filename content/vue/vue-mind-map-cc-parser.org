@@ -61,7 +61,7 @@
 
 [[https://github.com/gcclll/stb-vue-next/commit/870343cf5165be6cb7e24c413b128eee2e4f8c9a][feat(init): parseChildren function · gcclll/stb-vue-next@870343c]]
 
-** [[https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816][4c6009d]] add pure text parser(parseText, parseTextData)
+* [[https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816][4c6009d]] add pure text parser(parseText, parseTextData)
 
 [[https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816][feat(add): parseText, parseTextData · gcclll/stb-vue-next@4c6009d]]
 
@@ -180,7 +180,7 @@ console.log(ast)
 }
 undefined
 #+end_example
-** [[https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c][d7dbc28]] add comment parser(parseComment)
+* [[https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c][d7dbc28]] add comment parser(parseComment)
 
 [[https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c][feat(add): comment parser · gcclll/stb-vue-next@d7dbc28]]
 
@@ -243,7 +243,7 @@ function parseComment(context: ParserContext): CommentNode {
 }
 #+end_src
 
-1. 通过 ~/--(\!)?/~ 匹配注释的结束
+1. 通过 ~/--(\!)?>/~ 匹配注释的结束
 2. 如果无法匹配到，说明是非法注释，如： ~<!-- xxx ->~
 3. 匹配到之后的非法情况(~match.index <= 3~)： ~<!-->~ 或 ~<!--->~
 4. 捕获组(~(\!)~)也匹配到了，非法结束： ~<!-- --!>~
@@ -287,5 +287,556 @@ Unexpected '<!--' in comment.
   type: 0,
   children: [ { type: 3, content: ' xx ', loc: [Object] } ],
   // ...
+}
+#+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/7d5f9c4910979b2439d2bc5deed4572afd56080d][7d5f9c4]] add bogus comment parser(parseBogusComment)
+
+[[https://github.com/gcclll/stb-vue-next/commit/7d5f9c4910979b2439d2bc5deed4572afd56080d][feat(add): bogus comment parser · gcclll/stb-vue-next@7d5f9c4]]
+
+匹配正则： ~/^<(?:[\!\?]|\/[^a-z>])/i~
+
+[[http://qiniu.ii6g.com/img/20201124185249.png]]
+
+
+1. ~<!DOCTYPE~ 注释
+2. ~<![[CDATA>~ 类型
+
+
+#+begin_src typescript
+function parseBogusComment(context: ParserContext): CommentNode | undefined {
+  // <?... or <!... or </.... 形式注释 ???
+  __TEST__ && assert(/^<(?:[\!\?]|\/[^a-z>])/i.test(context.source))
+
+  const start = getCursor(context)
+  const contentStart = context.source[1] === '?' ? 1 : 2
+  let content: string
+
+  // 结束
+  const closeIndex = context.source.indexOf('>')
+  if (closeIndex === -1) {
+    content = context.source.slice(contentStart)
+    advanceBy(context, context.source.length)
+  } else {
+    content = context.source.slice(contentStart, closeIndex)
+    advanceBy(context, closeIndex + 1)
+  }
+
+  return {
+    type: NodeTypes.COMMENT,
+    content,
+    loc: getSelection(context, start)
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const catchError = fn => {
+  let res
+  try { res = fn() } catch (e) { console.log(e.message) }
+  res && console.log(res)
+}
+
+// html 中使用 <![CDATA[ 注释
+catchError(() => baseParse(`<![CDATA[ xxx ]]`))
+catchError(() => baseParse(`<!DOCTYPE xxx >`))
+#+end_src
+
++RESULTS:
+#+begin_example
+CDATA section is allowed only in XML context.
+{
+  type: 0,
+  children: [ { type: 3, content: 'DOCTYPE xxx ', loc: [Object] } ],
+}
+#+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/cef8485fcd883f19d3ac3591b0e0d9610161a626][cef8485]] add more error element situations
+
+[[https://github.com/gcclll/stb-vue-next/commit/cef8485fcd883f19d3ac3591b0e0d9610161a626][feat(add): more error element situations · gcclll/stb-vue-next@cef8485]]
+
+更多错误标签情况，以 ~</~ 开头的情况处理。
+
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const catchError = fn => {
+  let res
+  try { res = fn() } catch (e) { console.log(e.message) }
+  res && console.log(res)
+}
+
+catchError(() => baseParse(`</`))
+catchError(() => baseParse(`</>`))
+catchError(() => baseParse(`</xx>`))
+catchError(() => baseParse(`<?`))
+catchError(() => baseParse(`<*`))
+#+end_src
+
++RESULTS:
+: Unexpected EOF in tag.
+: End tag name was expected.
+: Invalid end tag.
+: '<?' is allowed only in XML context.
+: Illegal tag name. Use '&lt;' to print '<'.
+* [[https://github.com/gcclll/stb-vue-next/commit/b8cb8251ba739655a1ddd781f2d4724c7ec4c981][b8cb825]] add interpolation parser
+
+[[https://github.com/gcclll/stb-vue-next/commit/b8cb8251ba739655a1ddd781f2d4724c7ec4c981][feat(add): interpolation parser · gcclll/stb-vue-next@b8cb825]]
+
+插值解析。
+
+#+begin_src typescript
+function parseInterpolation(
+  context: ParserContext,
+  mode: TextModes
+): InterpolationNode | undefined {
+  const [open, close] = context.options.delimiters
+  __TEST__ && assert(startsWith(context.source, open))
+
+  const closeIndex = context.source.indexOf(close, open.length)
+  if (closeIndex === -1) {
+    emitError(context, ErrorCodes.X_MISSING_INTERPOLATION_END)
+    return undefined
+  }
+
+  const start = getCursor(context)
+  advanceBy(context, open.length)
+  const innerStart = getCursor(context)
+  const innerEnd = getCursor(context)
+  // 插值内容长度
+  const rawContentLength = closeIndex - open.length
+  const rawContent = context.source.slice(0, rawContentLength)
+  // html 语义化符号替换
+  const preTrimContent = parseTextData(context, rawContentLength, mode)
+  // 去掉前后空格
+  const content = preTrimContent.trim()
+  // 去掉空格后的内容所在的索引位置
+  const startOffset = preTrimContent.indexOf(content)
+  if (startOffset > 0) {
+    advancePositionWithMutation(innerStart, rawContent, startOffset)
+  }
+
+  const endOffset =
+    rawContentLength - (preTrimContent.length - content.length - startOffset)
+  advancePositionWithMutation(innerEnd, rawContent, endOffset)
+  advanceBy(context, close.length)
+
+  return {
+    type: NodeTypes.INTERPOLATION,
+    content: {
+      type: NodeTypes.SIMPLE_EXPRESSION,
+      isStatic: false,
+      isConstant: false,
+      content,
+      loc: getSelection(context, innerStart, innerEnd)
+    },
+    loc: getSelection(context, start)
+  }
+}
+#+end_src
+
+执行操作：
+1. 根据 ~{{~, ~}}~ 取出插值起始索引
+2. 截取插值内容，替换 html 语义字符，且去掉前后空格
+3. 组装插值结构
+
+
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const ast = baseParse(`{{ foo.value }}`)
+console.log(ast)
+console.log(`>>> 插值节点`)
+console.log(ast.children[0])
+#+end_src
+
++RESULTS:
+#+begin_example
+{
+  type: 0,
+  children: [ { type: 5, content: [Object], loc: [Object] } ],
+}
+>>> 插值节点
+{
+  type: 5,
+  content: {
+    type: 4,
+    isStatic: false,
+    isConstant: false,
+    content: 'foo.value',
+    loc: { start: [Object], end: [Object], source: 'foo.value' }
+  },
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 16, line: 1, offset: 15 },
+    source: '{{ foo.value }}'
+  }
+}
+undefined
+#+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/397da3875a944757bdc50b5ce7b53d725bae8687][397da38]] add element parser
+
+[[https://github.com/gcclll/stb-vue-next/commit/397da3875a944757bdc50b5ce7b53d725bae8687][feat(add): parse element function · gcclll/stb-vue-next@397da38]]
+
+解析元素标签的入口函数，实际详细解析在 ~parseTag()~ 函数中，所以这里需要结合
+~parseTag~ 的实现才能测试。
+
+代码：
+#+begin_src typescript
+
+function parseElement(
+  context: ParserContext,
+  ancestors: ElementNode[]
+): ElementNode | undefined {
+  __TEST__ && assert(/^<[a-z]/i.test(context.source))
+
+  const wasInPre = context.inPre
+  const wasInVPre = context.inVPre
+  const parent = last(ancestors)
+  // 解析出开始标签
+  const element = {} as any // parseTag(context, TagType.Start, parent)
+  const isPreBoundray = context.inPre && !wasInPre
+  const isVPreBoundray = context.inVPre && !wasInVPre
+
+  if (element.isSelfClosing || context.options.isVoidTag(elment.tag)) {
+    return element
+  }
+
+  ancestors.push(element)
+  const mode = context.options.getTextMode(element, parent)
+  const children = parseChildren(context, mode, ancestors)
+  // 要将孩子节点解析完成的 parent element pop 掉，待处理下一个 parent 的 children
+  ancestors.pop()
+
+  if (startsWithEndTagOpen(context.source, element.tag)) {
+    // 结束标签
+    // parseTag(context, TagType.End, parent)
+  } else {
+    emitError(context, ErrorCodes.X_MISSING_END_TAG, 0, element.loc.start)
+    if (context.source.length === 0 && element.tag.toLowerCase() === 'script') {
+      const first = children[0]
+      if (first && startsWith(first.loc.source, '<!--')) {
+        emitError(context, ErrorCodes.EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT)
+      }
+    }
+  }
+
+  element.loc = getSelection(context, element.loc.start)
+
+  if (isPreBoundray) {
+    context.inPre = false
+  }
+
+  if (isVPreBoundray) {
+    context.inVPre = false
+  }
+
+  return element
+}
+#+end_src
+
+源码分析：
+
+1. 通过调用 ~parseTag()~ 解析出标签元素结构
+2. 判断是不是自闭合标签(~<div/>~)，或者外部定义的空标签(不需要结束标签的，如： ~<my-tag>~
+   ，为合法标签)
+3. 调用 ~parseChildren()~ 递归解析该节点下子孙节点
+4. 结束标签解析
+5. ~<pre>~ 和 ~v-pre~ 检测
+* [[https://github.com/gcclll/stb-vue-next/commit/3b96a7452634d4b09f965243b99d56566db3f0c2][3b96a74]] add tag parser
+
+[[https://github.com/gcclll/stb-vue-next/commit/3b96a7452634d4b09f965243b99d56566db3f0c2][feat(add): tag parser · gcclll/stb-vue-next@3b96a74]]
+
+#+begin_src typescript
+
+
+function parseTag(
+  context: ParserContext,
+  type: TagType,
+  parent: ElementNode | undefined
+): ElementNode {
+  // 匹配 <div> 或 </div>
+  __TEST__ && assert(/^<\/?[a-z]/i.test(context.source))
+  __TEST__ &&
+    assert(
+      type === (startsWith(context.source, '</') ? TagType.End : TagType.Start)
+    )
+
+  // 开始标签
+  const start = getCursor(context)
+  const match = /^<\/?([a-z][^\t\r\n\f />]*)/i.exec(context.source)!
+  const tag = match[1]
+  const ns = context.options.getNamespace(tag, parent)
+
+  advanceBy(context, match[0].length)
+  advanceSpaces(context)
+
+  // 保存当前状态，待会需要回过头来解析属性
+  // const cursor = getCursor(context)
+  // const currentSource = context.source
+
+  // 解析属性
+  let props = [] as any[] // TODO parseAttributes(context, type)
+
+  // TODO <pre> 标签
+
+  // TODO v-pre 指令
+
+  // 结束标签
+  let isSelfClosing = false
+  if (context.source.length === 0) {
+    emitError(context, ErrorCodes.EOF_IN_TAG)
+  } else {
+    // <div ... />
+    isSelfClosing = startsWith(context.source, '/>')
+    // 到这里不应该是 End 标签
+    if (type === TagType.End && isSelfClosing) {
+      emitError(context, ErrorCodes.END_TAG_WITH_TRAILING_SOLIDUS)
+    }
+    advanceBy(context, isSelfClosing ? 2 : 1)
+  }
+
+  let tagType = ElementTypes.ELEMENT
+
+  // TODO 标签类型解析
+  return {
+    type: NodeTypes.ELEMENT,
+    ns,
+    tag,
+    tagType,
+    props,
+    isSelfClosing,
+    children: [],
+    loc: getSelection(context, start),
+    codegenNode: undefined
+  }
+}
+#+end_src
+
+1. 开始标签匹配正则： ~/^<\/?([a-z][^\t\r\n\f />]*)/i~
+
+  [[http://qiniu.ii6g.com/img/20201124230909.png]]
+2. ~<pre>~ 标签处理
+3. ~v-pre~ 指令处理
+4. 自闭合标签处理
+5. 组装元素结构 ~NodeTypes.ELEMENT~
+
+
+测试：
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+let ast = baseParse(`<div></div>`)
+console.log(`>>> 普通标签`)
+console.log(ast.children[0])
+ast = baseParse(`<img/>`)
+console.log(`>>> 自闭合标签`)
+console.log(ast.children[0])
+console.log(`>>> 自定义空标签 <mydiv>`)
+ast = baseParse(`<mydiv>`, {
+  isVoidTag: () => `mydiv`
+})
+console.log(ast.children[0])
+#+end_src
+
++RESULTS: 省略部分输出
+#+begin_example
+>>> 普通标签
+{
+  type: 1,
+  ns: 0,
+  tag: 'div',
+  tagType: 0,
+  props: [],
+  isSelfClosing: false,
+  children: [],
+}
+>>> 自闭合标签
+{
+  type: 1,
+  ns: 0,
+  tag: 'img',
+  tagType: 0,
+  props: [],
+  isSelfClosing: true,
+  children: [],
+}
+>>> 自定义空标签 <mydiv>
+{
+  type: 1,
+  ns: 0,
+  tag: 'mydiv',
+  tagType: 0,
+  props: [],
+  isSelfClosing: false,
+  children: [],
+}
+#+end_example
+* [[https://github.com/gcclll/stb-vue-next/commit/bf28a36b0f7f59c186b6108e5cab118a039903e0][bf28a36]] add tag parser of tag type
+
+[[https://github.com/gcclll/stb-vue-next/commit/bf28a36b0f7f59c186b6108e5cab118a039903e0][feat(add): parse tag for tag type · gcclll/stb-vue-next@bf28a36]]
+
+解析出标签的标签名(~component~ ? ~template~ ? ~slot~ ? ...)。
+
+1. ~if (options.isNativeTag && !hasVIs)~
+
+   ~!options.isNativeTag(tag)~ 如果不是原生标签，则视为 ~COMPONENT~
+
+2. 第二种为 ~COMPONENT~ 情况
+
+   #+begin_src typescript
+    else if (
+      hasVIs ||
+      isCoreComponent(tag) ||
+      (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
+      /^[A-Z].test(tag)/ ||
+      tag === 'component'
+    )
+   #+end_src
+
+   - 有 ~v-is~ 指令
+   - ~isCoreComponent()~ vue 内置标签(~Teleport~, ~Suspense~, ~KeepAlive~,
+      ~BaseTransition~)
+   - 选项中自定义的
+   - 标签名首字母大写的也视为 ~component~
+   - 标签名直接是 ~component~ 的
+
+3. ~if (tag === 'slot')~ 插槽标签
+4. ~<template>~ 标签，且带有指令
+
+   #+begin_src typescript
+    tag === 'template' &&
+      props.some(p => {
+        return (
+          p.type === NodeTypes.DIRECTIVE && isSpecialTemplateDirective(p.name)
+        )
+      })
+   #+end_src
+
+   特殊的模板指令：
+
+   #+begin_src typescript
+    const isSpecialTemplateDirective = /*#__PURE__*/ makeMap(
+        `if,else,else-if,for,slot`
+    )
+   #+end_src
+
+这个由于需要用到属性，所以需要结合 ~parseAttributes~ 实现才能进行测试。
+* 73fd01f add attribute name and value parser
+
+[[https://github.com/gcclll/stb-vue-next/commit/73fd01f98a4ba9b2eba4fa8861f4eed91f93dad7][feat(add): attribute name and value parser · gcclll/stb-vue-next@73fd01f]]
+
+这里新增了三个函数(代码较多，需要查看源码直接点击上面 commit 链接)
+
+1. ~parseAttributes(context, type)~ 属性解析入口，通过 while 循环解析出所有属性
+2. ~parseAttribute(context, nameSet)~ 解析单个属性，属性名用 nameSet 集合存储避
+   免重复
+3. ~parseAttributeValue(context)~ 解析属性值
+
+测试：
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const ast = baseParse(`<div class="app" :staticPropName="bar" @press.enter="pressKey" :[dynamicPropName]="foo"></div>`)
+const ele = ast.children[0]
+console.log(ele)
+console.log(`>>> 静态属性：class`)
+console.log(ele.props[0])
+console.log(`>>> 动态属性静态属性名：staticPropName`)
+console.log(ele.props[1])
+console.log(`>>> 带修饰符的属性：press.enter`)
+console.log(ele.props[2])
+console.log(`>>> 动态属性名：dynamicPropName`)
+console.log(ele.props[3])
+#+end_src
+
++RESULTS: 元素结构
+#+begin_example
+{
+  type: 1,
+  ns: 0,
+  tag: 'div',
+  tagType: 1,
+  props: [...], // 如下
+  isSelfClosing: false,
+  children: [],
+}
+#+end_example
+
++RESULTS: 属性列表， 省略 loc 位置数据
+#+begin_example
+>>> 静态属性：class
+{
+  type: 6,
+  name: 'class',
+  value: {
+    type: 2,
+    content: 'app',
+  }
+}
+>>> 动态属性静态属性名：staticPropName
+{
+  type: 7,
+  name: 'bind',
+  exp: {
+    type: 4,
+    content: 'bar',
+    isStatic: false,
+    isConstant: false,
+  },
+  arg: {
+    type: 4,
+    content: 'staticPropName',
+    isStatic: true,
+    isConstant: true,
+  },
+  modifiers: [],
+}
+>>> 带修饰符的属性：press.enter
+{
+  type: 7,
+  name: 'on',
+  exp: {
+    type: 4,
+    content: 'pressKey',
+    isStatic: false,
+    isConstant: false,
+  },
+  arg: {
+    type: 4,
+    content: 'press',
+    isStatic: true,
+    isConstant: true,
+  },
+  modifiers: [ 'enter' ],
+}
+>>> 动态属性名：dynamicPropName
+{
+  type: 7,
+  name: 'bind',
+  exp: {
+    type: 4,
+    content: 'foo',
+    isStatic: false,
+    isConstant: false,
+  },
+  arg: {
+    type: 4,
+    content: 'dynamicPropName',
+    isStatic: false,
+    isConstant: false,
+  },
+  modifiers: [],
 }
 #+end_example
