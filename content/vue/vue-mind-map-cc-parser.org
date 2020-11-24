@@ -840,3 +840,76 @@ console.log(ele.props[3])
   modifiers: [],
 }
 #+end_example
+* e32401e add combine whitespace nodes
+
+[[https://github.com/gcclll/stb-vue-next/commit/e32401ec78bcad14bd68ade90f556e650635e10a][feat(add): combine whitespace node · gcclll/stb-vue-next@e32401e]]
+
+合并删除空行或空字符串节点。
+
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const ast = baseParse(`
+<div>
+some text
+other text
+</div>`)
+console.log(ast.children[0].children[0])
+#+end_src
+
+*+RESULTS*: 正确结果
+#+begin_example
+{
+  type: 2,
+  content: ' some text other text ',
+  loc: {
+    start: { column: 6, line: 2, offset: 6 },
+    end: { column: 1, line: 5, offset: 28 },
+    source: '\nsome text\nother text\n'
+  }
+}
+#+end_example
+
+*+RESULTS*: 'sometextothertext' 空格都被删了？
+[[https://github.com/gcclll/stb-vue-next/commit/bb315097139965f5542715fdd37125827db19c02][fix: all whitespce removed · gcclll/stb-vue-next@bb31509]]
+#+begin_example
+{
+  type: 1,
+  ns: 0,
+  tag: 'div',
+  tagType: 1,
+  props: [],
+  isSelfClosing: false,
+  children: [ { type: 2, content: 'sometextothertext', loc: [Object] } ],
+  loc: {
+    start: { column: 1, line: 2, offset: 1 },
+    end: { column: 7, line: 5, offset: 34 },
+    source: '<div>\nsome text\nother text\n</div>'
+  },
+  codegenNode: undefined
+}
+undefined
+#+end_example
+
+*+RESULTS*: ~children = []~ ? [[https://github.com/gcclll/stb-vue-next/commit/66936f350e2d4e771341835b3c81054a42e83fad][fix: no children · gcclll/stb-vue-next@66936f3]]
+#+begin_example
+{
+  type: 1,
+  ns: 0,
+  tag: 'div',
+  tagType: 1,
+  props: [],
+  isSelfClosing: false,
+  children: [],
+  loc: {
+    start: { column: 1, line: 2, offset: 1 },
+    end: { column: 7, line: 5, offset: 34 },
+    source: '<div>\nsome text\nother text\n</div>'
+  },
+  codegenNode: undefined
+}
+undefined
+#+end_example
+

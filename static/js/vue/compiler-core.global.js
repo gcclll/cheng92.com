@@ -249,8 +249,10 @@ var VueCompilerCore = (function (exports) {
       let node = undefined;
       if (mode === 0 /* DATA */ || mode === 1 /* RCDATA */) {
         if (!context.inVPre && startsWith(s, context.options.delimiters[0])) {
+          // '{{'
           node = parseInterpolation(context, mode);
         } else if (mode === 0 /* DATA */ && s[0] === "<") {
+          // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
           if (s.length === 1) {
             emitError(context, 5 /* EOF_BEFORE_TAG_NAME */, 1);
           } else if (s[1] === "!") {
@@ -261,8 +263,9 @@ var VueCompilerCore = (function (exports) {
             } else if (startsWith(s, "<!DOCTYPE")) {
               node = parseBogusComment(context);
             } else if (startsWith(s, "<![CDATA[")) {
-              if (ns !== 0 /* HTML */);
-              else {
+              if (ns !== 0 /* HTML */) {
+                node = parseCDATA(context, ancestors);
+              } else {
                 emitError(context, 1 /* CDATA_IN_HTML_CONTENT */);
                 node = parseBogusComment(context);
               }
@@ -282,7 +285,7 @@ var VueCompilerCore = (function (exports) {
             } else if (/[a-z]/i.test(s[2])) {
               // 非法结束标签，因为结束标签会直接在 parseElement 解析完成
               emitError(context, 23 /* X_INVALID_END_TAG */);
-              // TODO parseTag(context, TagType.End, parent)
+              parseTag(context, 1 /* End */, parent);
               continue;
             } else {
               // 无效的标签名称
@@ -307,7 +310,6 @@ var VueCompilerCore = (function (exports) {
             emitError(context, 12 /* INVALID_FIRST_CHARACTER_OF_TAG_NAME */, 1);
           }
         }
-        // TODO
       }
       // 纯文本节点
       if (!node) {
@@ -321,8 +323,53 @@ var VueCompilerCore = (function (exports) {
         pushNode(nodes, node);
       }
     }
-    // TODO 空格和空字符串节点合并
-    return nodes;
+    let removedWhitespace = false;
+    // 空格和空字符串节点合并
+    if (mode !== 2 /* RAWTEXT */) {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        if (!context.inPre && node.type === 2 /* TEXT */) {
+          if (!/[^\t\r\n\f ]/.test(node.content)) {
+            const prev = nodes[i - 1];
+            const next = nodes[i + 1];
+            // If:
+            // - the whitespace is the first or last node, or:
+            // - the whitespace is adjacent to a comment, or:
+            // - the whitespace is between two elements AND contains newline
+            // Then the whitespace is ignored.
+            if (
+              !prev ||
+              !next ||
+              prev.type === 3 /* COMMENT */ ||
+              next.type === 3 /* COMMENT */ ||
+              (prev.type === 1 /* ELEMENT */ &&
+                next.type === 1 /* ELEMENT */ &&
+                /[\r\n]/.test(node.content))
+            ) {
+              removedWhitespace = true;
+              nodes[i] = null;
+            } else {
+              // Otherwise, condensed consecutive whitespace inside the text
+              // down to a single space
+              node.content = " ";
+            }
+          } else {
+            // 空格合并从一个
+            node.content = node.content.replace(/[\t\r\n\f ]+/g, " ");
+          }
+        }
+      }
+      if (context.inPre && parent && context.options.isPreTag(parent.tag)) {
+        // 删除首行空行
+        // remove leading newline per html spec
+        // https://html.spec.whatwg.org/multipage/grouping-content.html#the-pre-element
+        const first = nodes[0];
+        if (first && first.type === 2 /* TEXT */) {
+          first.content = first.content.replace(/^\r?\n/, "");
+        }
+      }
+    }
+    return removedWhitespace ? nodes.filter(Boolean) : nodes;
   }
   function pushNode(nodes, node) {
     if (node.type === 2 /* TEXT */) {
@@ -342,6 +389,16 @@ var VueCompilerCore = (function (exports) {
       }
     }
     nodes.push(node);
+  }
+  function parseCDATA(context, ancestors) {
+    advanceBy(context, 9);
+    const nodes = parseChildren(context, 3 /* CDATA */, ancestors);
+    if (context.source.length === 0) {
+      emitError(context, 6 /* EOF_IN_CDATA */);
+    } else {
+      advanceBy(context, 3);
+    }
+    return nodes;
   }
   function parseComment(context) {
     const start = getCursor(context);
@@ -417,6 +474,7 @@ var VueCompilerCore = (function (exports) {
     const children = parseChildren(context, mode, ancestors);
     // 要将孩子节点解析完成的 parent element pop 掉，待处理下一个 parent 的 children
     ancestors.pop();
+    element.children = children;
     if (startsWithEndTagOpen(context.source, element.tag)) {
       // 结束标签
       parseTag(context, 1 /* End */, parent);
