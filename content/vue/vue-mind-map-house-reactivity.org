@@ -2424,6 +2424,9 @@ console.log(map, ob)
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: test-computed
 :END:
+
+下面所有的用例都可以参考 [[#test-computed-01][用例 01]] 的脑图(原理图)
+
 *** should return updated value
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -2492,6 +2495,251 @@ scheduler，所以会执行置 ~_dirty = true~ ，但是此时计算属性值并
 用例脑图：
 
 [[/img/vue3/reactivity/reactivity-computed-test-01.svg]]
+*** should compute lazily
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-computed-02
+:END: 
+
+#+begin_src typescript
+
+  it('should compute lazily', () => {
+    const value = reactive<{ foo?: number }>({})
+    const getter = jest.fn(() => value.foo)
+    const cValue = computed(getter)
+
+    // lazy
+    expect(getter).not.toHaveBeenCalled()
+
+    expect(cValue.value).toBe(undefined)
+    expect(getter).toHaveBeenCalledTimes(1)
+
+    // should not compute again
+    cValue.value
+    expect(getter).toHaveBeenCalledTimes(1)
+
+    // should not compute until needed
+    value.foo = 1
+    expect(getter).toHaveBeenCalledTimes(1)
+
+    // now it should compute
+    expect(cValue.value).toBe(1)
+    expect(getter).toHaveBeenCalledTimes(2)
+
+    // should not compute again
+    cValue.value
+    expect(getter).toHaveBeenCalledTimes(2)
+  })
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive,
+  computed
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const value = reactive({})
+let n = 0
+const getter = () => {
+  ++n
+  return value.foo
+}
+const cValue = computed(getter)
+// lazy
+console.log(`#1 before get value, getter called ${n} times.`)
+console.log(`#2 get value(), cValue.value = ${cValue.value}`)
+console.log(`#3 after get value, getter called ${n} times`)
+
+// 不该重复计算，因为 _dirty 在 #3 之后值为 false
+cValue.value
+console.log(`#4 after get value 2, getter called ${n} times`)
+
+// 触发 cValue 的 effect 执行 scheduler，使得  _dirty = true
+value.foo = 1 // trigger effect
+// 因为上面赋值操作只是让 _dirty = true 了，并没有立即重新计算
+// 因为计算属性的结果总是在 get value() 操作中完成的
+console.log(`#5 after set 'value.foo = 1', getter called ${n} times`)
+
+// 这里进行取值操作，正式发起重新计算
+console.log(`#6 should re-compute value, getter called ${n} times, cValue.value = ${cValue.value}`)
+
+// #6 重新计算后 _dirty 又变成了 false，所以现在取值不会再重新计算
+cValue.value
+console.log(`#7 should not re-compute value, getter called ${n} times, cValue.value = ${cValue.value}`)
+#+end_src
+
++RESULTS: 分析如代码注释
+: #1 before get value, getter called 0 times.
+: #2 get value(), cValue.value = undefined
+: #3 after get value, getter called 1 times
+: #4 after get value 2, getter called 1 times
+: #5 after set 'value.foo = 1', getter called 1 times
+: #6 should re-compute value, getter called 1 times, cValue.value = 1
+: #7 should not re-compute value, getter called 2 times, cValue.value = 1
+
+#+begin_quote
+Tips: 总是记着计算属性重新计算的关键点：“_dirty = true 且随后的取值操作”。
+#+end_quote
+*** should no longer update when stopped
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-computed-03
+:END: 
+
+#+begin_src typescript
+
+  it('should no longer update when stopped', () => {
+    const value = reactive<{ foo?: number }>({})
+    const cValue = computed(() => value.foo)
+    let dummy
+    effect(() => {
+      dummy = cValue.value
+    })
+    expect(dummy).toBe(undefined)
+    value.foo = 1
+    expect(dummy).toBe(1)
+    stop(cValue.effect)
+    value.foo = 2
+    expect(dummy).toBe(1)
+  })
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  isReactive,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive,
+  computed,
+  stop
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const value = reactive({})
+const cValue = computed(() => value.foo)
+let dummy
+effect(() => {
+  dummy = cValue.value
+})
+
+console.log(`before set value, dummy = ${dummy}`)
+value.foo = 1
+console.log(`after set value, dummy = ${dummy}`)
+// 停止了 effect.active = false，在执行 effect fn 的时候
+// 会检测 active 如果是 false 会直接执行：
+// options.scheduler ? undefined : fn()
+// 而由于计算属性是默认提供了 scheduler 的，所以在 stop 之后
+// effect 就不会被执行
+stop(cValue.effect)
+value.foo = 2
+console.log(`after stop and set value, dummy = ${dummy}`)
+#+end_src
+
++RESULTS:
+: before set value, dummy = undefined
+: after set value, dummy = 1
+: after stop and set value, dummy = 1
+*** TODO should support setter
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-computed-04
+:END: 
+
+#+begin_src typescript
+
+  it('should support setter', () => {
+    const n = ref(1)
+    const plusOne = computed({
+      get: () => n.value + 1,
+      set: val => {
+        n.value = val - 1
+      }
+    })
+
+    expect(plusOne.value).toBe(2)
+    n.value++
+    expect(plusOne.value).toBe(3)
+
+    plusOne.value = 0
+    expect(n.value).toBe(-1)
+  })
+#+end_src
+*** should be readonly
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-computed-05
+:END: 
+
+只读版本，是有 computed 使用的时候传入的参数(~option~)决定的。
+
+1. 如果 option 是函数(~getter~) 那就是只读的
+2. 如果 option 是对象且提供了 ~option.set~ 那么是非只读
+3. 如果 option 是对象但是没有提供 ~option.set~ 那么也是只读的
+
+#+begin_src typescript
+
+  it('should be readonly', () => {
+    let a = { a: 1 }
+    const x = computed(() => a)
+    expect(isReadonly(x)).toBe(true)
+    expect(isReadonly(x.value)).toBe(false)
+    expect(isReadonly(x.value.a)).toBe(false)
+    const z = computed<typeof a>({
+      get() {
+        return a
+      },
+      set(v) {
+        a = v
+      }
+    })
+    expect(isReadonly(z)).toBe(false)
+    expect(isReadonly(z.value.a)).toBe(false)
+  })
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  isReactive,
+  isReadonly,
+  effect,
+  reactive,
+  targetMap,
+  shallowReactive,
+  computed
+} = require(process.env.PWD + '/../../static/js/vue/reactivity.global.js')
+
+const a = { a: 1 }
+const x = computed(() => a)
+console.log(`#1 x is readonly, ${isReadonly(x)}`) // true
+console.log(`#2 x.value is readonly, ${isReadonly(x.value)}`)
+console.log(`#3 x.value.a is readonly, ${isReadonly(x.value.a)}`)
+const z = computed({
+  get() {
+    return a
+  },
+  set(v) {
+    a = v
+  }
+})
+
+console.log(`#4 z is readonly, ${isReadonly(z)}`)
+console.log(`#5 z.value.a is readonly, ${isReadonly(z.value.a)}`)
+#+end_src
+
++RESULTS:
+: #1 x is readonly, true
+: #2 x.value is readonly, false
+: #3 x.value.a is readonly, false
+: #4 z is readonly, false
+: #5 z.value.a is readonly, false
+
 ** effect.ts
 *** effect + track + trigger
 :PROPERTIES:
