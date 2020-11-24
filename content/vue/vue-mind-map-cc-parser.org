@@ -1,0 +1,291 @@
+#+TITLE: Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser
+#+DATE: <2020-11-24 15:33:33>
+#+TAGS[]: vue, vue3, compiler-core, parser, compiler
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的学习及尝试应用于机顶盒环境。*
+@@html:</kbd>@@
+
+@@html:<kbd>@@ *本文依据 commit 进程进行记录* @@html:</kbd>@@
+
+* 脑图
+
+[[/img/vue3/compiler-core/compiler-core-parser.svg]]
+
+* compiler-core parser 初始化
+
+[[/vue/vue3-source-code-compiler-core-parse_ts/][Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts]]
+
+- [X] [[https://github.com/gcclll/stb-vue-next/commit/c0a03af10f286181f0618313bb319f1725708969][c0a03af]] add baseParse declaration
+
+     [[https://github.com/gcclll/stb-vue-next/commit/c0a03af10f286181f0618313bb319f1725708969][feat(add): baseParse declaration · gcclll/stb-vue-next@c0a03af]]
+
+    添加 ~baseParse()~ 函数声明：
+
+    #+begin_src typescript
+    export function baseParse(content: string, options: ParserOptions): RootNode {
+        return {} as RootNode
+    }
+    #+end_src
+- [X] [[https://github.com/gcclll/stb-vue-next/commit/cb2d452526ee77706e1bf27f22a6ff33c94e268c][cb2d452]] init baseParse function
+
+    [[https://github.com/gcclll/stb-vue-next/commit/cb2d452526ee77706e1bf27f22a6ff33c94e268c][feat: baseParse function · gcclll/stb-vue-next@cb2d452]]
+
+    增加 ~baseParse~ 函数实现，和涉及到的一些函数和类型声明。
+
+    #+begin_src typescript
+    export function baseParse(content: string, options: ParserOptions): RootNode {
+        const context = createParserContext(content, options)
+        const start = getCursor(context)
+        return createRoot(
+            parseChildren(context, TextModes.DATA, []),
+            getSelection(context, start)
+        )
+    }
+    #+end_src
+* [[https://github.com/gcclll/stb-vue-next/commit/870343cf5165be6cb7e24c413b128eee2e4f8c9a][870343c]] add parseChildren function
+
+[[https://github.com/gcclll/stb-vue-next/commit/870343cf5165be6cb7e24c413b128eee2e4f8c9a][feat(init): parseChildren function · gcclll/stb-vue-next@870343c]]
+
+** [[https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816][4c6009d]] add pure text parser(parseText, parseTextData)
+
+[[https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816][feat(add): parseText, parseTextData · gcclll/stb-vue-next@4c6009d]]
+
+fix lint errors: [[https://github.com/gcclll/stb-vue-next/commit/005c2612e37f2724d063fab4c239414a01fd8d14][005c261]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/005c2612e37f2724d063fab4c239414a01fd8d14][fix: lint errors · gcclll/stb-vue-next@005c261]]
+
+新增了三个函数：
+
+1. ~pushNode(nodes: TemplateChildNode[], node: TemplateChildNode): void~
+
+   遍历 while 解析后的 ast ，合并相邻的文本节点。
+
+   #+begin_src typescript
+    function pushNode(nodes: TemplateChildNode[], node: TemplateChildNode): void {
+        if (node.type === NodeTypes.TEXT) {
+            // 合并两个相邻的文本内容
+
+            const prev = last(nodes)
+            // Merge if both this and the previous node are text and those are
+            // consecutive. This happens for cases like "a < b".
+            if (
+            prev &&
+            prev.type === NodeTypes.TEXT &&
+            prev.loc.end.offset === node.loc.start.offset
+            ) {
+            prev.content += node.content
+            prev.loc.end = node.loc.end
+            prev.loc.source += node.loc.source
+            return
+            }
+        }
+
+        nodes.push(node)
+    }
+   #+end_src
+
+2. ~parseText(context: ParserContext, mode: TextModes): TextNode~
+
+   解析文本节点，文本节点结束标识： ~<~ 和 ~{{~ ，分别代表标签和插值开始符号。
+
+   如： ~some text<div>....~, ~some text{{ ... }}~
+
+   #+begin_src typescript
+    function parseText(context: ParserContext, mode: TextModes): TextNode {
+        __TEST__ && assert(context.source.length > 0)
+
+        const endTokens = ['<', context.options.delimiters[0]]
+        if (mode === TextModes.CDATA) {
+            endTokens.push(']]>')
+        }
+
+        let endIndex = context.source.length
+        // 找到遇到的第一个结束符 }}, <
+        for (let i = 0; i < endTokens.length; i++) {
+            const index = context.source.indexOf(endTokens[i], 1)
+            if (index !== -1 && endIndex > index) {
+            endIndex = index
+            }
+        }
+
+        __TEST__ && assert(endIndex > 0)
+
+        const start = getCursor(context)
+        const content = parseTextData(context, endIndex, mode)
+
+        return {
+            type: NodeTypes.TEXT,
+            content,
+            loc: getSelection(context, start)
+        }
+    }
+   #+end_src
+   
+3. ~function parseTextData(context: ParserContext, length: number, mode: TextModes): string~
+
+   处理 HTML 一些特殊符号，比如： ~a > b~ => ~a &lt; b~
+
+   #+begin_src typescript
+    const decodeRE = /&(gt|lt|amp|apos|quot);/g
+    const decodeMap: Record<string, string> = {
+        gt: '>',
+        lt: '<',
+        amp: '&',
+        apos: "'",
+        quot: '"'
+    }
+   #+end_src
+
+
+测试：
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+let ast = baseParse(`some text`)
+console.log(`>>> 普通文本 "some text"`)
+console.log(ast)
+console.log(`>>> 带 html 语义符号的文本 "a &lt; b"`)
+ast = baseParse(`a &lt; b`)
+console.log(ast)
+#+end_src
+
++RESULTS: 如结果显示 ~&lt;~, ~&gt;~ 等符号会被转成语义化符号。
+#+begin_example
+>>> 普通文本 "some text"
+{
+  type: 0,
+  children: [ { type: 2, content: 'some text', loc: [Object] } ],
+}
+>>> 带 html 语义符号的文本 "a &lt; b"
+{
+  type: 0,
+  children: [ { type: 2, content: 'a < b', loc: [Object] } ],
+}
+undefined
+#+end_example
+** [[https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c][d7dbc28]] add comment parser(parseComment)
+
+[[https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c][feat(add): comment parser · gcclll/stb-vue-next@d7dbc28]]
+
+修改 ~parseChildren()~:
+
+~else if s[0] === '<'~ 作为开始，可能是标签、html 注释等等。
+
+[[http://qiniu.ii6g.com/img/20201124181448.png]]
+
+代码：
+#+begin_src typescript
+function parseComment(context: ParserContext): CommentNode {
+  __TEST__ && assert(startsWith(context.source, '<!--'))
+
+  const start = getCursor(context)
+  let content: string
+
+  const match = /--(\!)?>/.exec(context.source)
+
+  if (!match) {
+    // 非法注释
+    content = context.source.slice(4)
+    advanceBy(context, context.source.length)
+    emitError(context, ErrorCodes.EOF_IN_COMMENT)
+  } else {
+    if (match.index <= 3) {
+      // 不满足 <!-- -->
+      emitError(context, ErrorCodes.ABRUPT_CLOSING_OF_EMPTY_COMMENT)
+    }
+
+    if (match[1]) {
+      // 非法结束 <!-- --!>
+      emitError(context, ErrorCodes.INCORRECTLY_CLOSED_COMMENT)
+    }
+
+    // 注释内容
+    content = context.source.slice(4, match.index)
+
+    // 嵌套注释
+    const s = context.source.slice(0, match.index)
+    let prevIndex = 1,
+      nestedIndex = 0
+
+    while ((nestedIndex = s.indexOf('<!--', prevIndex)) !== -1) {
+      advanceBy(context, nestedIndex - prevIndex + 1)
+      if (nestedIndex + 4 < s.length) {
+        emitError(context, ErrorCodes.NESTED_COMMENT)
+      }
+      prevIndex = nestedIndex + 1
+    }
+
+    advanceBy(context, match.index + match[0].length - prevIndex + 1)
+  }
+
+  return {
+    type: NodeTypes.COMMENT,
+    content,
+    loc: getSelection(context, start)
+  }
+}
+#+end_src
+
+1. 通过 ~/--(\!)?/~ 匹配注释的结束
+2. 如果无法匹配到，说明是非法注释，如： ~<!-- xxx ->~
+3. 匹配到之后的非法情况(~match.index <= 3~)： ~<!-->~ 或 ~<!--->~
+4. 捕获组(~(\!)~)也匹配到了，非法结束： ~<!-- --!>~
+5. 嵌套注释也视为非法
+
+测试：
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const catchError = fn => {
+  try { fn() } catch (e) { console.log(e.message) }
+}
+
+let ast = baseParse(`<!-- xx -->`)
+console.log(`>>> 非法注释："<!-- xxx ->"`)
+catchError( () => baseParse(`<!-- xxx ->`))
+console.log(`>>> 非法注释："<!--->"`)
+catchError(  () => baseParse(`<!--->`))
+console.log(`>>> 非法注释："<!-- xx --!>"`)
+catchError(  () => baseParse(`<!-- xx --!>`))
+console.log(`>>> 嵌套注释："<!-- <!-- -->"`)
+catchError(  () => baseParse(`<!-- <!-- -->`))
+console.log('>>> 有效注释')
+console.log(ast)
+#+end_src
+
++RESULTS:
+#+begin_example
+>>> 非法注释："<!-- xxx ->"
+Unexpected EOF in comment.
+>>> 非法注释："<!--->"
+Illegal comment.
+>>> 非法注释："<!-- xx --!>"
+Incorrectly closed comment.
+>>> 嵌套注释："<!-- <!-- -->"
+Unexpected '<!--' in comment.
+>>> 有效注释
+{
+  type: 0,
+  children: [ { type: 3, content: ' xx ', loc: [Object] } ],
+  // ...
+}
+#+end_example

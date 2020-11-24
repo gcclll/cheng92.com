@@ -1,4 +1,4 @@
-#+TITLE: Vue3 源码头脑风暴之☞reactivity
+#+TITLE: Vue3 源码头脑风暴之 1 ☞reactivity
 #+DATE: <2020-11-09 11:45:36>
 #+TAGS[]: vue, vue3, compiler-core, parser, compiler
 #+CATEGORIES[]: vue
@@ -2318,6 +2318,7 @@ computed 函数的 options 可以是函数或一个对象，可以用外部自�
 测试请移步“[[#test-computed][计算属性测试用例]]”
 
 脑图请直接查看“[[#whole-mind-map][完整脑图 computed 部分]]”
+* add ref
 
 * 用例分析
 ** Map.spec.ts
