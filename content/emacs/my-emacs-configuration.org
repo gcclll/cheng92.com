@@ -25,13 +25,30 @@
 5. https://github.com/sunnyhasija/Academic-Doom-Emacs-Config
 6. https://emacs.nasy.moe/
 7. 主题：https://github.com/hlissner/emacs-doom-themes
+8. https://github.com/tecosaur/emacs-config/blob/master/config.org
 
 ** 常用按键
 
-| key       | function                |
-|-----------+-------------------------|
-| ~SPC g .~ | ~+vc/gutter-hydra/body~ |
-| ~SPC g m~ | ~+vc/smerge-hydra/body~ |
+| key       | function                                      |
+|-----------+-----------------------------------------------|
+| ~<f12>~   | ~smerge-vc-next-conflict~                     |
+| ~<f11>~   | ~+vc/smerge-hydra/body~                       |
+| ~<f10>~   | ~ebuku~                                       |
+| ~C-s-,~   | parrot previous                               |
+| ~C-s-.~   | parrot next                                   |
+| ~SPC *~   | ~+default/search-project-for-symbol-at-point~ |
+| ~SPC '~   | ~ivy-resume~                                  |
+| ~SPC ,~   | ~+ivy/switch-workspace-buffer~                |
+| ~SPC .~   | ~counsel-find-file~, find file in current dir |
+| ~SPC /~   | ~+default/search-project~                     |
+| ~SPC <~   | ~ivy-switch-buffer~                           |
+| ~SPC RET~ | ~counsel-bookmark~                            |
+| ~SPC v o~ | ~ivy-pop-view~                                |
+| ~SPC v p~ | ~ivy-push-view~                               |
+| ~SPC a l~ | leetcode                                      |
+| ~SPC b m~ | set bookmark                                  |
+| ~SPC b M~ | delete bookmark                               |
+|           |                                               |
 ** Base Configuration/Operation
 *** 重新加载配置
 
@@ -42,6 +59,10 @@
 | ~SPC c e~ | -               | ~M-x +eval/buffer-or-region~ |
 
 ** packages
+*** [[https://github.com/flexibeast/ebuku][ebuku]], browser bookmarks management
+
+install buku: https://github.com/jarun/buku
+
 *** web-mode
 hydra:
 

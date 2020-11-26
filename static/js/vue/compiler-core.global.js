@@ -558,7 +558,7 @@ var VueCompilerCore = (function (exports) {
         hasVIs ||
         isCoreComponent(tag) ||
         (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
-        /^[A-Z].test(tag)/ ||
+        /^[A-Z]/.test(tag) ||
         tag === "component"
       ) {
         tagType = 1 /* COMPONENT */;
@@ -961,8 +961,9 @@ var VueCompilerCore = (function (exports) {
 
   return exports;
 })({});
+
 try {
   if (module) {
-    module.exports = VueCompilerCore;
+    module.exports = VueCompilerCode;
   }
 } catch (e) {}

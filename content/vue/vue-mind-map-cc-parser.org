@@ -20,7 +20,19 @@
 *[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的学习及尝试应用于机顶盒环境。*
 @@html:</kbd>@@
 
-@@html:<kbd>@@ *本文依据 commit 进程进行记录* @@html:</kbd>@@
+@@html:<kbd>@@ *本文依据 commit 进程进行记录，只要跟着下面的进程走，你将能完整实
+现 vue ast parser 哦 💃🏼💃🏼💃🏼* @@html:</kbd>@@
+
+#+begin_quote
+声明：该篇为 ts 源码(/commit/)版本，之前做过一遍完整的 js 版本，更详细，也可参考
+
+[[https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/][Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts - 若叶知秋]]
+
+#+end_quote
+
+#+begin_export html
+<script src="/js/vue/compiler-core.global.js"></script>
+#+end_export
 
 * 脑图
 
@@ -913,3 +925,410 @@ undefined
 undefined
 #+end_example
 
+
+* 用例测试
+
+~<f12>~ 打开控制台有惊喜哦╰(*°▽°*)╯ 👀👀👀👀👀👀👀👀。
+
+下面章节所有测试都是根据官方测试用例进行的：[[https://github.com/gcclll/stb-vue-next/blob/main/packages/compiler-core/__tests__/parse.spec.ts][parse.spec.ts]]
+
+#+begin_export html
+<script>
+try {
+let i = 0, j = 0
+const { baseParse } = VueCompilerCore
+const l1 = x => console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55')
+const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
+const log = (args) => console.log.apply(console, args)
+const parse = (content, option = {}) => log(baseParse(content, {
+  onError: (e) => console.warn(e.message),
+  ...option
+}).children)
+
+l1('Text, 文本测试')
+l2(`无效的结束标签("some text</div>")。`)
+parse(`some text</div>`)
+
+l2(`插值解析("some {{ foo + bar }} text")`)
+parse(`some {{ foo + bar }} text`)
+
+l2(`表达式包含 < 或 > 符号的差值("some {{ a<b && c>d }} text")`)
+log(['插值内的内容都会以 {{ 开始 }} 结束直接截取作为 content，所以这里面的 < 或 > 都是合法的存在'])
+parse(`some {{ a<b && c>d }} text`)
+
+l2(`标签 + 插值混合("some <span>{{ foo < bar + foo }} text</span>")`)
+parse(`some <span>{{ foo < bar + foo }} text</span>`)
+
+l2(`单个 < 符号不会分割节点("a < b")`)
+parse(`a < b`)
+
+l2(`单个 {{ 符号不会分割节点("a {{ b")`)
+parse(`a {{ b`)
+
+j = 0
+l1('Interpolation, 插值测试')
+l2(`simple interpolation("{{message}}")`)
+parse(`{{message}}`)
+
+l2(`{{ a<b }}`)
+parse(`{{ a <  b }}`)
+
+l2(`{{ a<b }}{{ c>d }}`)
+parse(`{{ a<b }}{{ c>d }}`)
+
+l2(`插值内部允许存在一些符合法标签('<div>{{ "</div>" }}</div>')`)
+parse(`<div>{{ "</div>" }}</div>`)
+
+l2(`可以自定义插值分隔符，如："{" 和 "}"`)
+parse(`<p>{msg}</p>`, {
+    delimiters: ['{', '}']
+})
+
+j = 0
+l1(`Comment, 注释`)
+l2(`空注释("<!---->")`)
+parse(`<!---->`)
+
+l2(`简单注释("<!--abc-->")`)
+parse(`<!--abc-->`)
+
+l2(`两个注释("<!--abc--><!--def-->")`)
+parse(`<!--abc--><!--def-->`)
+
+l2(`生成模式下 <pre> 中的注释应该被删除("<pre><p/><!-- foo --><p/></pre>")`)
+parse(`<pre><p/><!-- foo --><p/></pre>`)
+
+j = 0
+l1(`Element, 普通标签`)
+l2(`simple div("<div>hello</div>")`)
+parse(`<div>hello</div>`)
+
+l2(`empty div("<div></div>")`)
+parse(`<div></div>`)
+
+l2(`自闭合标签("<div/>after")`)
+parse(`<div/>after`)
+
+l2(`空标签("<img>after")`)
+parse(`<img>after`, {
+    isVoidTag: tag => tag === 'img'
+})
+
+l2(`带指令的 <template>("<template v-if="ok"></template>")`)
+parse(`<template v-if="ok"></template>`)
+
+l2(`不带指令的 <template>("<template></template>")`)
+parse(`<template></template>`)
+
+l2(`原生标签("<div></div><comp></comp><Comp></Comp>")`)
+parse(`<div></div><comp></comp><Comp></Comp>`, {
+  isNativeTag: tag => tag === 'div'
+})
+
+l2(`v-is with "isNativeTag"("<div></div><div v-is="'foo'"></div><Comp></Comp>")`)
+parse(`<div></div><div v-is="'foo'"></div><Comp></Comp>`, {
+  isNativeTag: tag => tag === 'div'
+})
+
+l2(`v-is without "isNativeTag"("<div></div><div v-is="'foo'"></div><Comp></Comp>")`)
+parse(`<div></div><div v-is="'foo'"></div><Comp></Comp>`)
+
+l2(`自定义元素("<div></div><comp></comp>")`)
+log([`自定义元素的类型为 0,ELEMENT`])
+parse(`<div></div><comp></comp>`, {
+  isNativeTag: tag => tag === 'div',
+  isCustomElement: tag => tag === 'comp'
+})
+
+l2(`内置组件("<div></div><comp></comp>")`)
+parse(`<div></div><comp></comp>`, {
+  isBuiltInComponent: tag => (tag === 'comp' ? Symbol() : void 0)
+})
+
+l2(`插槽元素("<slot></slot><Comp></Comp>")`)
+parse(`<slot></slot><Comp></Comp>`)
+
+l2(`没有值的属性("<div id></div>")`)
+parse(`<div id></div>`)
+
+l2(`空值属性，双引号("<div id=""></div>")`)
+parse(`<div id=""></div>`)
+
+l2(`空值属性，单引号("<div id=''></div>")`)
+parse(`<div id=''></div>`)
+
+l2(`有值属性，双引号("<div id=">\'"></div>")`)
+parse(`<div id=">\'"></div>`)
+
+l2(`有值属性，单引号("<div id='>\"'></div>")`)
+parse(`<div id='>\"'></div>`)
+
+l2(`有值属性，没有引号("<div id=a/></div>")`)
+log([`没有引号的情况，属性值会解析到 ">" 符号结束`])
+parse(`<div id=a/></div>`)
+
+l2(`多个属性("<div id=a class="c" inert style=\'\'></div>")`)
+parse(`<div id=a class="c" inert style=\'\'></div>`)
+
+l2(`无值指令("<div v-if/>")`)
+parse(`<div v-if/>`)
+
+l2(`有值指令("<div v-if="a"/>")`)
+log([`有值指令，值会解析到属性表达式上 prop.exp = {...}`])
+parse(`<div v-if="a"/>`)
+
+l2(`有参数指令("<div v-on:click/>")`)
+log([`参数会被解析到 prop.arg 上，isStatic = isConstant = true`])
+parse(`<div v-on:click/>`)
+
+l2(`有动态参数指令("<div v-on:[event]/>")`)
+log([`参数会被解析到 prop.arg 上， isStatic = isConstant = false`])
+parse(`<div v-on:[event]/>`)
+
+l2(`带修饰符的指令("<div v-on.enter/>")`)
+log([`修饰符会被解析到 prop.modifiers = [ 'enter' ] 中`])
+parse(`<div v-on.enter/>`)
+
+l2(`两个修饰符的指令("<div v-on.enter.exact/>")`)
+log([`修饰符会被解析到 prop.modifiers = [ 'enter', 'exact' ] 中`])
+parse(`<div v-on.enter.exact/>`)
+
+l2(`带参数和修饰符的指令("<div v-on:click.enter.exact/>")`)
+parse(`<div v-on:click.enter.exact/>`)
+
+l2(`带动态参数和修饰符的指令("<div v-on:[a.b].camel/>")`)
+parse(`<div v-on:[a.b].camel/>`)
+
+l2(`v-bind 缩写 ":"("<div :a=b />")`)
+parse(`<div :a=b />`)
+
+l2(`v-bind 缩写，带修饰符("<div :a.sync=b />")`)
+parse(`<div :a.sync=b />`)
+
+l2(`v-on 缩写("<div @a=b />")`)
+parse(`<div @a=b />`)
+
+l2(`v-on 缩写，带修饰符("<div @a.enter=b />")`)
+parse(`<div @a.enter=b />`)
+
+l2(`v-slot 缩写("<Comp #a="{ b }" />")`)
+parse(`<Comp #a="{ b }" />`)
+
+l2(`v-slot 包含点语法的("<Comp v-slot:foo.bar="{ a }" />")`)
+parse(`<Comp v-slot:foo.bar="{ a }" />`)
+
+l2(`v-pre 指令`)
+log([
+  `<div v-pre :id="foo"><Comp/>{{ bar }}</div>\n` +
+  `<div :id="foo"><Comp/>{{ bar }}</div>`
+])
+parse(
+  `<div v-pre :id="foo"><Comp/>{{ bar }}</div>\n` +
+  `<div :id="foo"><Comp/>{{ bar }}</div>`
+)
+
+l2(`结束标签大小写不敏感("<div>hello</DIV>after")`)
+parse(`<div>hello</DIV>after`)
+
+j = 0
+l1(`其他情况`)
+l2(`自闭合标签("<div :class="{ some: condition }" />")`)
+parse(`<div :class="{ some: condition }" />`)
+
+l2(`多个自闭合标签`)
+log([
+  `<div :class="{ some: condition }" />\n` +
+  `<p v-bind:style="{ color: 'red' }"/>`
+])
+parse(
+  `<div :class="{ some: condition }" />\n` +
+  `<p v-bind:style="{ color: 'red' }"/>`
+)
+
+l2(`复合类型标签组合`)
+log([
+`<div :class="{ some: condition }">\n` +
+`  <p v-bind:style="{ color: 'red' }"/>\n` +
+`  <!-- a comment with <html> inside it -->\n` +
+`</div>`
+])
+parse(
+ `<div :class="{ some: condition }">\n` +
+ `  <p v-bind:style="{ color: 'red' }"/>\n` +
+ `  <!-- a comment with <html> inside it -->\n` +
+ `</div>`
+)
+
+l2(`无效的复合类型标签组合("<div>\n<span>\n</div>\n</span>")`)
+parse(`<div>\n<span>\n</div>\n</span>`)
+
+l2(`正确的位置信息`)
+log([
+`
+foo
+ is {{ bar }} but {{ baz }}`
+])
+
+parse(`
+foo
+ is {{ bar }} but {{ baz }}`
+)
+
+j = 0
+l1("HTML Entities 解码")
+l2(`使用默认映射关系("&gt;&lt;&amp;&apos;&quot;&foo;")`)
+parse(`&gt;&lt;&amp;&apos;&quot;&foo;`)
+
+l2(`使用自定义映射关系("&amp;&cups;")`)
+parse(`&amp;&cups;`, {
+  decodeEntities: text => text.replace('&cups;', '\u222A\uFE00')
+})
+
+j = 0
+l1("空格管理")
+l2(`在标签内的空格应该删除("<div>   <span/>    </div>")`)
+parse(`<div>   <span/>    </div>`)
+
+l2(`标签之间的空格和换行符应该删除("<div/> \n <div/> \n <div/>")`)
+parse(`<div/> \n <div/> \n <div/>`)
+
+l2(`与注释相邻的空格应该删除("<div/> \n <!--foo--> <div/>")`)
+parse(`<div/> \n <!--foo--> <div/>`)
+
+l2(`注释与元素之间的空格应该删除("<div/> \n <!--foo--> \n <div/>")`)
+parse(`<div/> \n <!--foo--> \n <div/>`)
+
+l2(`插值之间的注释不应该删除("{{ foo }} \n {{ bar }}")`)
+parse(`{{ foo }} \n {{ bar }}`)
+
+l2(`元素之间的空格不应该删除("<div/> <div/> <div/>")`)
+parse(`<div/> <div/> <div/>`)
+
+l2(`文本之间的空格应该合并成一个("   foo  \n    bar     baz     ")`)
+parse('   foo  \n    bar     baz     ')
+
+l2(`<pre> 标签中的首行空格应该删除("<pre>\n  foo  bar  </pre>")`)
+parse(`<pre>\n  foo  bar  </pre>`)
+
+l2(`<pre> 在子元素后面的换行符不该删除("<pre><span></span>\n  foo  bar  </pre>")`)
+parse(`<pre><span></span>\n  foo  bar  </pre>`)
+
+j = 0
+const err = ( content, info ) => (l2(info ? `${info} ("${content}")` : content), parse(content))
+l1(`Errors, 错误`)
+err(`<template><!--></template>`)
+err(`<template><!---></template>`)
+err(`<template><!----></template>`)
+err(`<template><![CDATA[cdata]]></template>`)
+err(`<template><svg><![CDATA[cdata]]></svg></template>`, "不能在 HTML 中使用 CDATA")
+err(`<template><div id="" id=""></div></template>`, "重复属性")
+err(`<template><div></div id=""></template>`, "结束标签上不能有属性")
+err(`<template><div></div/></template>`, "结束标签最后多了个斜杠'/'")
+err(`<template><`, "非法结束 1")
+err(`<template></`, '非法结束 2')
+err(`<template><svg><![CDATA[cdata`, "CDATA 非法结束 1")
+err(`<template><svg><![CDATA[`, "CDATA 非法结束 2")
+err(`<template><!--comment`, "非法注释 1")
+err(`<template><!--`, "非法注释 2")
+err(`<template><!`, "非法注释 3")
+err(`<template><!-`, "非法注释 4")
+err(`<template><!abc`, "非法注释 5")
+err(`<script><!--console.log('hello')`, "<script> 标签中不能使用 html 注释")
+err(`<script>console.log('hello')`, "<script> 缺少结束标签")
+err(`<template><div`, "非法标签 1")
+err(`<template><div `, "非法标签 2")
+err(`<template><div id`, "非法标签 3")
+err(`<template><div id `, "非法标签 4")
+err(`<template><div id =`, "非法标签 5")
+err(`<template><div id='abc`, "非法标签 6")
+err(`<template><div id="abc`, "非法标签 7")
+err(`<template><div id='abc'`, "非法标签 8")
+err(`<template><div id="abc"`, "非法标签 9")
+err(`<template><div id=abc`, "非法标签 10")
+err(`<template><div id='abc'/`, "非法标签 11")
+err(`<template><div id="abc"/`, "非法标签 12")
+err(`<template><div id=abc /`, "非法标签 13")
+err(`<div></div`, "非法标签 14")
+err(`<template><!--comment--!></template>`, "错误注释结束")
+err(`<template><!></template>`, "错误注释开始 1")
+err(`<template><!-></template>`, "错误注释开始 2")
+err(`<template><!ELEMENT br EMPTY></template>`, "错误注释开始 3")
+err(`<!DOCTYPE html>`, "忽略 doctype")
+err(`<template>a < b</template>`, "标签名第一个字符非法 1")
+err(`<template><�></template>`, "标签名第一个字符非法 2")
+err(`<template>a </ b</template>`, "标签名第一个字符非法 3")
+err(`<template></�></template>`, "标签名第一个字符非法 4")
+err(`<template>{{a < b}}</template>`, "插值里面 < 可以单独使用")
+err(`<template><div id=></div></template>`, "无效的属性名 1")
+err(`<template><div id= ></div></template>`, "无效的属性名 2")
+err(`<template><div id= /></div></template>`, "无效的属性名 3")
+err(`<template></></template>`, "缺少结束标签")
+err(`<template><div id="foo"class="bar"></div></template>`, "属性之间必须要有空格")
+err(`<template><div id="foo"\r\nclass="bar"></div></template>`, "但是可以有 \r\n 换行符")
+err(`<template><!--a<!--b--></template>`, "嵌套注释 1")
+err(`<template><!--a<!--b<!--c--></template>`, "嵌套注释 2")
+err(`<template><!--a<!--b<!----></template>`, "嵌套注释 3")
+err(`<template><!--a<!--></template>`, "非法注释")
+err(`<template><!--a<!--`, "非法注释结束")
+err(`<template><div a\"bc=''></div></template>`, "属性名中包含非法字符(\") 1")
+err(`<template><div a'bc=''></div></template>`, "属性名中包含非法字符(') 2")
+err(`<template><div a<bc=''></div></template>`, "属性名中包含非法字符(<)")
+err(`<template><div foo=bar"></div></template>`, "没引号属性中的非法字符(\")")
+err(`<template><div foo=bar'></div></template>`, "没引号属性中的非法字符(\')")
+err(`<template><div foo=bar<div></div></template>`, "没引号属性中的非法字符(<)")
+err(`<template><div foo=bar=baz></div></template>`, "没引号属性中的非法字符(=)")
+err(`<template><div foo=bar\`></div></template>`, "没引号属性中的非法字符(`)")
+err(`<template><div =foo=bar></div></template>`, "属性名中的非法字符(=)")
+err(`<template><?xml?></template>`)
+err(`<template><div a/b></div></template>`)
+err(`<template></div></template>`, "无效结束标签")
+err(`<template></div></div></template>`, "无效结束标签")
+err(`<template>{{'</div>'}}</template>`, "插值中有效")
+err(`<textarea></div></textarea>`, "多行文本中有效")
+err(`<svg><![CDATA[</div>]]></svg>`, "svg CDATA 中有效")
+err(`<svg><!--</div>--></svg>`, "注释中有效")
+err(`<template><div></template>`, "没有结束标签")
+err(`<template><div>`, "没有结束标签")
+err(`{{ foo`, "非法插值")
+err(`{{`, "非法插值")
+err(`{{}}`, "空插值")
+err(`<div v-foo:[sef fsef] />`, "无效指令参数")
+
+} catch (e) {
+    console.log(e.message)
+    console.log('您的浏览器可能不支持 es6+ 新语法，请使用 chrome 浏览。')
+}
+
+
+</script>
+
+#+end_export
+
+#+begin_src js
+const {
+  baseParse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const _ = x => console.log(`>>> ${x}`)
+const __ = x => console.log(x)
+const parse = content => baseParse(content, {
+  onError: (e) => console.log(e.message)
+})
+
+__(parse(`some text`).children[0])
+#+end_src
+
+更多测试内容和输出(由于篇幅问题)请查看 ~<F12>~ 打开控制台查看。
++RESULTS:
+#+begin_example
+{
+  type: 2,
+  content: 'some text',
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 10, line: 1, offset: 9 },
+    source: 'some text'
+  }
+}
+undefined
+#+end_example

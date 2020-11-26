@@ -19,7 +19,11 @@
 #+end_export
 
 [[/img/bdx/glsl-4.jpg]]
-  
+
+* vue-next methods need polyfills
+
+1. startsWith
+2. some
 * 万能的 Counter
 #+begin_src js
   {
