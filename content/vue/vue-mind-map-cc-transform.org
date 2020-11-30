@@ -36,6 +36,7 @@
 <script src="/js/vue/compiler-core.global.js"></script>
 #+end_export
 
+
 * 脑图
 
 # [[/img/vue3/compiler-core/compiler-core-parser.svg]]
@@ -43,6 +44,89 @@
 * e03a03c init transform module
 
 [[https://github.com/gcclll/stb-vue-next/commit/e03a03c5d775ff9315cc027d88b0669a775cf590][feat(init): transform section · gcclll/stb-vue-next@e03a03c]]
+
+初始化函数。
+
+#+begin_src typescript
+export function createTransformContext(
+  root: RootNode,
+  {
+    prefixIdentifiers = false,
+    hoistStatic = false,
+    cacheHandlers = false,
+    nodeTransforms = [],
+    directiveTransforms = {},
+    transformHoist = null,
+    isBuiltInComponent = NOOP,
+    isCustomElement = NOOP,
+    expressionPlugins = [],
+    scopeId = null,
+    ssr = false,
+    ssrCssVars = ``,
+    bindingMetadata = {},
+    onError = defaultOnError
+  }: TransformOptions
+): TransformContext {
+  const context: TransformContext = {
+
+    // ...
+
+    // methods
+    helper(name) {
+      context.helpers.add(name)
+      return name
+    },
+    helperString(name) {
+      return ``
+    },
+    replaceNode(node) {},
+    removeNode(node) {},
+    onNodeRemoved: () => {},
+    addIdentifiers(exp) {
+      // TODO
+    },
+    removeIdentifiers(exp) {
+      // TODO
+    },
+    hoist(exp) {
+      // TODO
+      return {} as any
+    },
+    cache(exp, isVNode = false) {
+      // TODO
+      return {} as any
+    }
+  }
+
+  return context
+}
+
+export function transform(root: RootNode, options: TransformOptions) {
+  // TODO
+}
+
+// TODO
+// createRootCodegen
+
+export function traverseChildren(
+  parent: ParentNode,
+  context: TransformContext
+) {
+  // TODO
+}
+
+export function traverseNode(
+  node: RootNode | TemplateChildNode,
+  context: TransformContext
+) {}
+
+export function createStructuralDirectiveTransform(
+  name: string | RegExp,
+  fn: StructuralDirectiveTransform
+): NodeTransform {
+  return {} as any
+}
+#+end_src
 
 * fc6f1f1 add transform function
 
@@ -54,6 +138,8 @@
 4. ssr render, 不需要创建根节点 codegenNode
 5. 复制 context 属性到 -> root
 
+
+[[http://qiniu.ii6g.com/img/20201130231832.png]]
 
 transform 作用就是通过 ~traverseNode()~ 递归遍历所有节点，解析，构造对应的节点
 codegenNode 。
@@ -67,9 +153,57 @@ codegenNode 。
 - transform(~transform()~) -> 解析 ast 得到 codegenNode
 - codegen(~generate()~) -> 将 codegenNode 解析成 Render 函数
 
+
+这是后面测试的基础，所以得提前实现了。
+
+#+begin_src typescript
+
+export function baseCompile(
+  template: string | RootNode,
+  options: CompilerOptions = {}
+): CodegenResult {
+  // const onError = options.onError || defaultOnError
+  const isModuleMode = options.mode === 'module'
+
+  const prefixIdentifiers =
+    !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode)
+
+  // TODO errors
+  const ast = isString(template) ? baseParse(template, options) : template
+  const [nodeTransforms, directiveTransforms] = getBaseTransformPreset(
+    prefixIdentifiers
+  )
+
+  transform(
+    ast,
+    extend({}, options, {
+      prefixIdentifiers,
+      nodeTransforms: [
+        ...nodeTransforms,
+        ...(options.nodeTransforms || []) // user transforms
+      ],
+      directiveTransforms: extend(
+        {},
+        directiveTransforms,
+        options.directiveTransforms || {}
+      )
+    })
+  )
+
+  return generate(
+    ast,
+    extend({}, options, {
+      prefixIdentifiers
+    })
+  )
+}
+#+end_src
+
 * 35248ce add exports maybe needs
 
 [[https://github.com/gcclll/stb-vue-next/commit/35248ceece1aa8650b65f7f7ce13612660a65397][feat(add): compiler-core exports · gcclll/stb-vue-next@35248ce]]
+
+增加 compiler-core 模块的导出(~export~)内容
 * 05a223b add transform pure text
 
 [[https://github.com/gcclll/stb-vue-next/commit/05a223b7b1eb2ab877aec3b11feace484a7dde82][feat(add): transform pure text · gcclll/stb-vue-next@05a223b]]
@@ -119,7 +253,7 @@ export function traverseNode(
 }
 #+end_src
 
-transform 阶段代码节本都是三个阶段
+transform 阶段代码毕竟的三个阶段
 
 1. 收集 transformXxx 函数到 exitFns
 2. 根据 ast节点类型递归遍历子孙节点
@@ -160,7 +294,8 @@ console.log(res.children[0])
 
 [[https://github.com/gcclll/stb-vue-next/commit/61ce4066c9b49e11399da0b499220f426da444a0][feat: createRootCodegen() for pure text · gcclll/stb-vue-next@61ce406]]
 
-只增加了针对非 ELEMENT 类型或者孩子节点没有 codegenNode 的情况实现。
+只增加了针对非 ELEMENT 类型或者孩子节点没有 codegenNode 的情况实现(当前 commit
+最简化)。
 
 当 root.children 只有一个孩子节点且该节点没有自己的 codegenNode 时候：
 #+begin_src typescript
@@ -220,9 +355,9 @@ console.log(res)
     source: 'pure text'
   }
 }
-undefined
 #+end_example
 
+注意 codegenNode 其实就是 ~root.children[0]~ 节点本身。
 *** b9f3cb7 add transform text
 
 [[https://github.com/gcclll/stb-vue-next/commit/b9f3cb762e36e7f7090987db9cba77948845cdaf][feat: transformText function · gcclll/stb-vue-next@b9f3cb7]]
@@ -234,6 +369,8 @@ undefined
 3. 构造 TEXT_CALL 类型节点
 4. codegenNode -> createCallExpression
 *** f6d5271 add generate text codegen
+
+codegen 阶段目的是将 codegenNode 解析成 Render 函数的一部分。
 
 1. /f6d5271/ add ~createCodegenContext()~
 
@@ -248,14 +385,14 @@ undefined
    [[https://github.com/gcclll/stb-vue-next/commit/2ef2699b95457be4456b736b70467b98bf240ddd][feat: generate text codegen · gcclll/stb-vue-next@2ef2699]]
 
    该部分涉及到一个较为完整的 codegen generator 流程，所以增加内容较多，因此这里
-   不直接贴代码了，请点击上面 commit 链接查看。
+   不直接贴代码了，请点击上面 commit 链接查看实际增加的源码。
 
    处理流程：
 
    - preamble 处理，如果是 Node 环境需要通过 ~import { ...} from 'vue'~ 语法，如
      果是浏览器环境使用 ~const { ... } = Vue~ 解构语法。
 
-   - 是否使用 ~with() {}~ 作用域语法
+   - 是否使用 ~with() {}~ 作用域语法，默认是使用的
 
    - ~return ...~ 返回实际 render 函数返回结果，这里将返回最后被渲染的 DOM 结构。
 
@@ -281,7 +418,7 @@ function genText(
 *** 测试
 
 测试将分为两个部分，
-**** function preamble 形式
+**** function preamble 形式(作为全局 ~Vue~ 对象引入)
 
 #+begin_src js
 const {
@@ -292,9 +429,18 @@ const res = baseCompile(`pure text`)
 console.log(res.code)
 #+end_src
 
+#+RESULTS:
+:
+: return function render(_ctx, _cache) {
+:   with (_ctx) {
+:     return "pure text"
+:   }
+: }
+: undefined
+
 [[https://github.com/gcclll/stb-vue-next/commit/6b3bd2e4c20dc7a325ff7c0575c127595da91b42][fix: less the last } paren · gcclll/stb-vue-next@6b3bd2e]]
 
-**** module preamble 形式，这个请打开控制台(~<f12>~)查看输出结果
+**** module preamble 形式(*es6* 模块化导出导入)
 
 #+begin_src js
 const {
@@ -305,5 +451,12 @@ const {
 const res = baseCompile(`pure text`, { mode: 'module' })
 console.log(res.code)
 #+end_src
+
+#+RESULTS:
+:
+: return function render(_ctx, _cache) {
+:   return "pure text"
+: }
+: undefined
 
 这里好像看不出啥区别，后面再说吧。
