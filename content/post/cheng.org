@@ -166,15 +166,63 @@ alias: {
 
 ** 工具
 1. ~.gitignore~ 生成网站： https://www.toptal.com/developers/gitignore
-* 极客
-- [[https://github.com/jarun/nnn][nnn]]
+* 神器???
+*** [[https://github.com/jarun/nnn][nnn]]
 
   author: https://github.com/jarun
 
   终端文件管理工具
   [[http://qiniu.ii6g.com/img/20201125234727.png]]
 
+*** [[https://github.com/brookhong/Surfingkeys][Surfingkeys]]
 
+chrome/firefox 按键, https://github.com/brookhong/Surfingkeys。
+
+按键： ~?~ 查看按键表。
+
+常用按键表：
+| key            | function                       |
+|----------------+--------------------------------|
+| 截屏           |                                |
+| ~yg~           | 截取当前视图                   |
+| ~yG~           | 截取当前整个页面，长图         |
+| ~yS~           | capture current scroll target. |
+|----------------+--------------------------------|
+| ~Alt/Option s~ | on/off Surfingkeys             |
+|----------------+--------------------------------|
+| 字符查找       |                                |
+| ~f~, ~;~       | 向下查找，向下重复查找结果     |
+| ~F~, ~,~       | 向上查找，向上重复查找结果     |
+|----------------+--------------------------------|
+| 定位/导航      |                                |
+| ~zz~           | 将鼠标行定位到屏幕中间         |
+| ~t~            | 搜索书签或历史                 |
+| ~b~            | 打开书签                       |
+| ~og~           | 打开搜索引擎，会弹出输入框     |
+| ~ow~           | 同上                           |
+
+配置文件：
+
+#+begin_src js
+mapkey('<Ctrl-y>', 'Show me the money', function() {
+    Front.showPopup('a well-known phrase uttered by characters in the 1996 film Jerry Maguire (Escape to close).');
+});
+#+end_src
+
+chrome url 操作：
+[[http://qiniu.ii6g.com/img/20201127172312.png]]
+
+标记操作，添加-跳转
+[[http://qiniu.ii6g.com/img/20201127172426.png]]
+
+当前标签页URL操作：
+[[http://qiniu.ii6g.com/img/20201127172514.png]]
+
+tab 操作：
+[[http://qiniu.ii6g.com/img/20201127180601.png]]
+
+搜索，打开url操作：
+[[http://qiniu.ii6g.com/img/20201127180736.png]]
 * Hugo
 1. 设置文章列表以 year-month 分类，如图：
    [[http://qiniu.ii6g.com/img/20200901233906.png]]

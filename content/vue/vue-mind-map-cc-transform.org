@@ -1,0 +1,309 @@
+#+TITLE: Vue3 源码头脑风暴之 3 ☞compiler-core - transform + codegen
+#+DATE: <2020-11-30 10:07:11>
+#+TAGS[]: vue, vue3, compiler-core, parser, compiler, transform
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的学习及尝试应用于机顶盒环境。*
+@@html:</kbd>@@
+
+@@html:<kbd>@@ *本文依据 commit 进程进行记录，只要跟着下面的进程走，你将能完整实
+现 vue ast transform 和 codegen generate 最后生成 render 函数 💃🏼💃🏼💃🏼* @@html:</kbd>@@
+
+#+begin_quote
+声明：该篇为 ts 源码(/commit/)版本，之前做过一遍完整的 js 版本，更详细，也可参考
+
+[[https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/][Vue3.0 源码系列（二）编译器核心 - Compiler core 3: compile.ts - 若叶知秋]]
+
+由于 transform 阶段直接测试不太好直观的看出结果，因此这里会结合 codegen 来一起实
+现，即该文包含 compiler-core 三大阶段的最后两个阶段(transform + generate)
+#+end_quote
+
+#+begin_export html
+<script src="/js/vue/compiler-core.global.js"></script>
+#+end_export
+
+* 脑图
+
+# [[/img/vue3/compiler-core/compiler-core-parser.svg]]
+
+* e03a03c init transform module
+
+[[https://github.com/gcclll/stb-vue-next/commit/e03a03c5d775ff9315cc027d88b0669a775cf590][feat(init): transform section · gcclll/stb-vue-next@e03a03c]]
+
+* fc6f1f1 add transform function
+
+[[https://github.com/gcclll/stb-vue-next/commit/fc6f1f112ae0e98b7e2e9a432d3dca1d6420307a][feat: transform function · gcclll/stb-vue-next@fc6f1f1]]
+
+1. create transform context
+2. traverse nodes, 递归遍历所有节点，构造器 codegenNode
+3. hoist static, 静态节点提升，复用
+4. ssr render, 不需要创建根节点 codegenNode
+5. 复制 context 属性到 -> root
+
+
+transform 作用就是通过 ~traverseNode()~ 递归遍历所有节点，解析，构造对应的节点
+codegenNode 。
+* b0d72da add compile.ts>compile()
+
+[[https://github.com/gcclll/stb-vue-next/commit/b0d72dac2738fd270b0ea7fe0bb33f47597a233b][feat(add): compile function · gcclll/stb-vue-next@b0d72da]]
+
+对外的 compile 函数，执行分为三个阶段：
+
+- ast(~baseParse()~) -> 解析出 ast 结构
+- transform(~transform()~) -> 解析 ast 得到 codegenNode
+- codegen(~generate()~) -> 将 codegenNode 解析成 Render 函数
+
+* 35248ce add exports maybe needs
+
+[[https://github.com/gcclll/stb-vue-next/commit/35248ceece1aa8650b65f7f7ce13612660a65397][feat(add): compiler-core exports · gcclll/stb-vue-next@35248ce]]
+* 05a223b add transform pure text
+
+[[https://github.com/gcclll/stb-vue-next/commit/05a223b7b1eb2ab877aec3b11feace484a7dde82][feat(add): transform pure text · gcclll/stb-vue-next@05a223b]]
+
+#+begin_src typescript
+export function traverseNode(
+  node: RootNode | TemplateChildNode,
+  context: TransformContext
+) {
+  // 保存当前被处理的 节点
+  context.currentNode = node
+  // 应用 transform 插件
+  const { nodeTransforms } = context
+  // 针对每个节点会收集到一个或多个 transformXxx 函数，用来解析它的 ast
+  // 得到 codegenNode ，这些函数会在当前的节点树被递归遍历完之后调用
+  const exitFns = []
+  for (let i = 0; i < nodeTransforms.length; i++) {
+    const onExit = nodeTransforms[i](node, context)
+    if (onExit) {
+      if (isArray(onExit)) {
+        exitFns.push(...onExit)
+      } else {
+        exitFns.push(onExit)
+      }
+    }
+
+    if (!context.currentNode) {
+      // 节点可能被删除了，比如： v-else-if, v-else 会合并到 v-if 的 branches[] 中
+      return
+    } else {
+      // 节点可能会替换了，需要更新
+      node = context.currentNode
+    }
+  }
+
+  switch (
+    node.type
+    // TODO
+  ) {
+  }
+
+  context.currentNode = node
+  let i = exitFns.length
+  while (i--) {
+    exitFns[i]()
+  }
+}
+#+end_src
+
+transform 阶段代码节本都是三个阶段
+
+1. 收集 transformXxx 函数到 exitFns
+2. 根据 ast节点类型递归遍历子孙节点
+3. 按照收集时相反的顺序执行 exitFns，解析出 codegenNode
+
+
+为了方便测试，在 ~generate()~ 中直接返回 ast :
+[[https://github.com/gcclll/stb-vue-next/commit/999d8d6b611443f8fd04282786d4a67f018d6319][test: generate return ast for test · gcclll/stb-vue-next@999d8d6]]
+#+begin_src js
+const {
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const res = baseCompile(`pure text`)
+console.log(res.children[0])
+#+end_src
+
++RESULTS:
+#+begin_example
+{
+  type: 2,
+  content: 'pure text',
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 10, line: 1, offset: 9 },
+    source: 'pure text'
+  }
+}
+#+end_example
+
+结果显示并没有 codegenNode 因为在transformText 中满足条件
+
+~children.length === 1 && node.type === NodeTypes.ROOT~ 而直接退出了。
+
+至于 ~root.codegenNode = undefined~ 需要实现 ~createRootCodegen()~
+
+*** 61ce406 add createRootCodegen() to create root.codegenNode
+
+[[https://github.com/gcclll/stb-vue-next/commit/61ce4066c9b49e11399da0b499220f426da444a0][feat: createRootCodegen() for pure text · gcclll/stb-vue-next@61ce406]]
+
+只增加了针对非 ELEMENT 类型或者孩子节点没有 codegenNode 的情况实现。
+
+当 root.children 只有一个孩子节点且该节点没有自己的 codegenNode 时候：
+#+begin_src typescript
+function createRootCodegen(root: RootNode, context: TransformContext) {
+  // const { helper } = context
+  const { children } = root
+  if (children.length === 1) {
+    // 只有一个孩子节点，直接取该孩子节点 的 codegenNode
+    const child = children[0]
+    if (isSingleElementRoot(root, child) && child.codegenNode) {
+      // 当 root 节点下只有一个 element 元素的孩子节点时，不进行提升
+    } else {
+      // - single <slot/>, IfNode, ForNode: already blocks.
+      // - single text node: always patched.
+      // root codegen falls through via genNode()
+
+      root.codegenNode = child
+    }
+  } else if (children.length > 1) {
+    // TODO
+  } else {
+    // no children = noop, codegen will return null.
+  }
+}
+#+end_src
+
+测试
+#+begin_src js
+const {
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const res = baseCompile(`pure text`)
+console.log(res)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  type: 0,
+  children: [ { type: 2, content: 'pure text', loc: [Object] } ],
+  helpers: [],
+  components: [],
+  directives: [],
+  hoists: [],
+  imports: [],
+  cached: 0,
+  temps: 0,
+  codegenNode: {
+    type: 2,
+    content: 'pure text',
+    loc: { start: [Object], end: [Object], source: 'pure text' }
+  },
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 10, line: 1, offset: 9 },
+    source: 'pure text'
+  }
+}
+undefined
+#+end_example
+
+*** b9f3cb7 add transform text
+
+[[https://github.com/gcclll/stb-vue-next/commit/b9f3cb762e36e7f7090987db9cba77948845cdaf][feat: transformText function · gcclll/stb-vue-next@b9f3cb7]]
+
+[[http://qiniu.ii6g.com/img/20201130150054.png]]
+
+1. 必须是文本节点或者类型是组合表达式类型(~COMPOUND_EXPRESSION~)
+2. patch flag 处理
+3. 构造 TEXT_CALL 类型节点
+4. codegenNode -> createCallExpression
+*** f6d5271 add generate text codegen
+
+1. /f6d5271/ add ~createCodegenContext()~
+
+   [[https://github.com/gcclll/stb-vue-next/commit/f6d52713ae8154d438c2ed94641525fa3c05edef][feat(add): codegen context creator · gcclll/stb-vue-next@f6d5271]]
+
+   上下文对象创建函数，重点方法有两个(~push(code, node)~ 和 ~helper(key)~)。
+
+   FIX1: lint errors, [[https://github.com/gcclll/stb-vue-next/commit/0ac8c2f4b6b5022caa0f83a7f850226c30a99d33][fix: f6d5271 lint errors · gcclll/stb-vue-next@0ac8c2f]]
+
+2. /2ef2699/ 增加 text codegen generator 实现
+
+   [[https://github.com/gcclll/stb-vue-next/commit/2ef2699b95457be4456b736b70467b98bf240ddd][feat: generate text codegen · gcclll/stb-vue-next@2ef2699]]
+
+   该部分涉及到一个较为完整的 codegen generator 流程，所以增加内容较多，因此这里
+   不直接贴代码了，请点击上面 commit 链接查看。
+
+   处理流程：
+
+   - preamble 处理，如果是 Node 环境需要通过 ~import { ...} from 'vue'~ 语法，如
+     果是浏览器环境使用 ~const { ... } = Vue~ 解构语法。
+
+   - 是否使用 ~with() {}~ 作用域语法
+
+   - ~return ...~ 返回实际 render 函数返回结果，这里将返回最后被渲染的 DOM 结构。
+
+   - ~genNode()~ 递归处理 ast 生成 render 函数的对应部分代码
+
+3. /6b901f9/ 增加 node 环境或 module 环境处理(~genModulePreamble~)
+
+   [[https://github.com/gcclll/stb-vue-next/commit/6b901f9f3d8af3dc415d31a6c5027d8e262fa74f][feat: module preamble · gcclll/stb-vue-next@6b901f9]]
+   modue preamble : ~export { ... } from 'vue'~
+   function preamble: ~const { ... } = Vue~
+
+
+重点增加的 genXxx 函数 ~genText(node, context)~ 专门用来处理文本节点的。
+
+#+begin_src typescript
+function genText(
+  node: TextNode | SimpleExpressionNode,
+  context: CodegenContext
+) {
+  context.push(JSON.stringify(node.content), node)
+}
+#+end_src
+*** 测试
+
+测试将分为两个部分，
+**** function preamble 形式
+
+#+begin_src js
+const {
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const res = baseCompile(`pure text`)
+console.log(res.code)
+#+end_src
+
+[[https://github.com/gcclll/stb-vue-next/commit/6b3bd2e4c20dc7a325ff7c0575c127595da91b42][fix: less the last } paren · gcclll/stb-vue-next@6b3bd2e]]
+
+**** module preamble 形式，这个请打开控制台(~<f12>~)查看输出结果
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const res = baseCompile(`pure text`, { mode: 'module' })
+console.log(res.code)
+#+end_src
+
+这里好像看不出啥区别，后面再说吧。
