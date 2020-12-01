@@ -37,6 +37,10 @@
 #+end_export
 
 
+* 关键知识点
+
+1. [[#element-transform][🔗]] root.children.length = 1 且类型是 ELEMENT的时候将 ~CREATE_VNODE~ 改成
+   ~CREATE_BLOCK~   
 * 脑图
 
 # [[/img/vue3/compiler-core/compiler-core-parser.svg]]
@@ -205,6 +209,10 @@ export function baseCompile(
 
 增加 compiler-core 模块的导出(~export~)内容
 * 05a223b add transform pure text
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: pure-text
+:END: 
 
 [[https://github.com/gcclll/stb-vue-next/commit/05a223b7b1eb2ab877aec3b11feace484a7dde82][feat(add): transform pure text · gcclll/stb-vue-next@05a223b]]
 
@@ -460,3 +468,611 @@ console.log(res.code)
 : undefined
 
 这里好像看不出啥区别，后面再说吧。
+* 2f749b2 add interpolation generator
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interpolation
+:END: 
+
+[[https://github.com/gcclll/stb-vue-next/commit/2f749b2a5d0872713704a52943bb18b550c559c0][feat(add): transform -> generate interpolation · gcclll/stb-vue-next@2f749b2]]
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const res = baseCompile(`{{ a > b }}`)
+console.log(res.code)
+console.log(res.ast.children[0])
+#+end_src
+
+这里实现分几个部分：
+
+*transform*: traverseNode() 增加对插值的处理，后面增加了 traverseChildren 处理，因为所有的
+ast 都是挂在 ~root.children~ 中的，所以最开始解析的是 ~ROOT~ 节点，因此这里必须
+要增加 ~ROOT~ 类型的解析，调用 ~traverseChildren(node, ctx)~ 去递归解析 ~root.children~
+
+#+begin_quote
+transform() -> traverseNode(): ROOT 解析 -> traverseChildren() ->
+traverseNode(): INTERPOLATION
+#+end_quote
+
+新增核心函数：遍历所有 ~children[]~ 调用 ~traverseNode()~ 
+#+begin_src typescript
+export function traverseChildren(
+  parent: ParentNode,
+  context: TransformContext
+) {
+  // TODO	  let i = 0
+  const nodeRemoved = () => {
+    i--
+  }
+
+  for (; i < parent.children.length; i++) {
+    const child = parent.children[i]
+    if (isString(child)) continue
+    context.parent = parent
+    context.childIndex = i // 方便在 transformXxx 函数中能快速定位到当前节点
+    context.onNodeRemoved = nodeRemoved
+    traverseNode(child, context)
+  }
+}
+#+end_src
+
+[[http://qiniu.ii6g.com/img/20201201155917.png]]
+
+*codegen*: ~genNode()~ 中新增 ~INTERPOLATION~ 和 ~SIMPLE_EXPRESSION~ 类型的处理，
+ 因为 INTERPOLATION 的 ast.content(如上面代码执行结果) 类型是 SIMPLE_EXPRESSION。
+
+ #+begin_src typescript
+function genExpression(node: SimpleExpressionNode, context: CodegenContext) {
+  const { content, isStatic } = node
+  context.push(isStatic ? JSON.stringify(content) : content, node)
+}
+
+function genInterpolation(node: InterpolationNode, context: CodegenContext) {
+  const { push, helper, pure } = context
+  if (pure) push(PURE_ANNOTATION)
+  push(`${helper(TO_DISPLAY_STRING)}(`)
+  genNode(node.content, context)
+  push(')')
+}
+ #+end_src
+
+-----
+
+[[https://github.com/gcclll/stb-vue-next/commit/2d0e2a6f7610059f37aef798d37eaafdf8c43377][feat(add): comment generator · gcclll/stb-vue-next@2d0e2a6]]
+ 
+拓展：add comment generator
+
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const res = baseCompile(`<!-- i'm a comment -->`)
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createCommentVNode : _createCommentVNode } = _Vue
+
+    return _createCommentVNode(" i'm a comment ")
+  }
+}
+undefined
+#+end_example
+* add element transfrom and generator
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: element
+:END: 
+
+** 准备工作 ~compiler-core/src/utils.ts~
+
+[[https://github.com/gcclll/stb-vue-next/commit/9436d8fe155767391a278807ae02a6ae9eff94a3][feat: utils for compiler-core · gcclll/stb-vue-next@9436d8f]]
+
+相关正则： ~const memberExpRE = /^[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*|\[[^\]]+\])*$/~
+
+[[http://qiniu.ii6g.com/img/image.png]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/2265e466e6daea95614d5fe96968b30ff11a2e19][feat(add): resolveComponentType · gcclll/stb-vue-next@2265e46]]
+
+解析出组件的类型，大体分为四类：
+
+1. 动态组件： ~<component is="xx">~ 或 ~<component v-is="xx">~
+2. 内置组件： ~Teleport, Transition, KeepAlive, Suspense~
+3. 用户组件： ~$setup[]~ 上的组件
+4. 用户组件： ~context.components[]~ 上的组件
+
+** 87339d2 add element transform
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: element-transform
+:END: 
+
+[[https://github.com/gcclll/stb-vue-next/commit/87339d25f1fa43ed5e0a13dabc60fec9479451c1][feat(add): transformElement function · gcclll/stb-vue-next@87339d2]]
+
+普通标签的 transform codegenNode阶段。
+
+1. add ~createVNodeCall()~ 函数，创建基本的 ELEMENT 类型节点 codegenNode
+
+  根据 ~isBlock~ 参数决定使用 BLOCK 函数还是 VNODE 函数。
+   
+  #+begin_src typescript
+   export function createVNodeCall(
+       context: TransformContext | null,
+       tag: VNodeCall['tag'],
+       props?: VNodeCall['props'],
+       children?: VNodeCall['children'],
+       patchFlag?: VNodeCall['patchFlag'],
+       dynamicProps?: VNodeCall['dynamicProps'],
+       directives?: VNodeCall['directives'],
+       isBlock: VNodeCall['isBlock'] = false,
+       disableTracking: VNodeCall['disableTracking'] = false,
+       loc = locStub
+   ): VNodeCall {
+   if (context) {
+       if (isBlock) {
+           context.helper(OPEN_BLOCK)
+           context.helper(CREATE_BLOCK)
+       } else {
+           context.helper(CREATE_VNODE)
+       }
+   }
+
+   return {
+       type: NodeTypes.VNODE_CALL,
+       tag,
+       props,
+       children,
+       patchFlag,
+       dynamicProps,
+       directives,
+       isBlock,
+       disableTracking,
+       loc
+   }
+ }
+ #+end_src
+
+2. add ~createObjectExpression()~ 函数
+
+   #+begin_src typescript
+    export function createObjectExpression(
+        properties: ObjectExpression['properties'],
+        loc: SourceLocation = locStub
+    ): ObjectExpression {
+    return {
+        type: NodeTypes.JS_OBJECT_EXPRESSION,
+        loc,
+        properties
+    }
+    }
+   #+end_src
+
+3. add ~getStaticType()~ 判断节点是否需要做静态提升处理
+
+4. add ~transformElement: postTransformElement()~ 函数
+
+5. add ~stringifyDynamicPropNames()~ 将属性转成数组结构
+
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div></div>`)
+console.log('root codegenNode: ', res.ast.codegenNode)
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+root codegenNode:  undefined
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode } = _Vue
+
+    return null
+  }
+}
+undefined
+#+end_example
+
+正确结果：
+#+begin_example
+ƒ render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div"))
+  }
+}
+#+end_example
+
+问题：
+1. 根节点 codegenNode 为空
+2. render 函数内没有 ~openBlock, createBlock~ 导出
+3. return 后面没内容(这是 generator 范畴，此节不展开)
+
+
+问题1，2都是在同一个地方处理的，因为当 ROOT 节点只有一个孩子节点的时候，不会用
+CREATE_VNODE 创建，而是改用 CREATE_BLOCK，所以这两个问题一起处理
+
+FIX 1,2: [[https://github.com/gcclll/stb-vue-next/commit/97cf290240fa937f167f8aadd6e6527744da4cbe][fix: no export open/create block function from Vue · gcclll/stb-vue-next@97cf290]]
+
+修改： ~createRootCodegen(root: RootNode, context: TransformContext)~
+
+** 2f58786 add element generator
+
+[[https://github.com/gcclll/stb-vue-next/commit/2f58786c56986672c6b7cabdcd541363bf05b4dd][feat: element generator · gcclll/stb-vue-next@2f58786]]
+
+路径：
+
+1. ~VNODE_CALL~ ->
+
+2. ~genVNodeCall()~ ->
+
+3. ~genNodeList([], ctx)~ ->
+
+    - string: ~push(node)~
+    - array: ~genNodeListAsArray(node, ctx)~ 
+    - other: ~genNode(node, ctx)~
+
+
+测试:
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div></div>`)
+console.log('root codegenNode: ', res.ast.codegenNode)
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+root codegenNode:  {
+  type: 13,
+  tag: '"div"',
+  props: undefined,
+  children: undefined,
+  patchFlag: undefined,
+  dynamicProps: undefined,
+  directives: undefined,
+  isBlock: true,
+  disableTracking: false,
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 12, line: 1, offset: 11 },
+    source: '<div></div>'
+  }
+}
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div"))
+  }
+}
+#+end_example
+** 05ca2f8 root.children 有多个孩子
+
+[[https://github.com/gcclll/stb-vue-next/commit/05ca2f8bedf21d146a01ad5694c727bbe776145c][feat: root.children has multi child · gcclll/stb-vue-next@05ca2f8 · GitHub]]
+
+当有多个孩子节点的时候，会创建一个 ~fragment~ 将他们包起来。
+
+[[http://qiniu.ii6g.com/img/20201201232048.png]]
+
+FIX: 死循环， ~genNode(node.codegenNode, ctx)~
+
+[[http://qiniu.ii6g.com/img/20201201232120.png]]
+
+测试：
+
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div></div><div></div>`)
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, Fragment : _Fragment, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock(_Fragment,null,[
+      _createVNode("div"),
+      _createVNode("div")
+    ],64 /* STABLE_FRAGMENT */))
+  }
+}
+undefined
+#+end_example
+
+FIX: 参数之间少了空格([[https://github.com/gcclll/stb-vue-next/commit/05ca2f8bedf21d146a01ad5694c727bbe776145c?branch=05ca2f8bedf21d146a01ad5694c727bbe776145c&diff=split][feat: root.children has multi child · gcclll/stb-vue-next@05ca2f8]])
+
+正解：
+#+begin_example
+const _Vue = Vue
+const { createVNode: _createVNode } = _Vue
+
+const _hoisted_1 = /*#__PURE__*/_createVNode("div", null, null, -1 /* HOISTED */)
+const _hoisted_2 = /*#__PURE__*/_createVNode("div", null, null, -1 /* HOISTED */)
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode: _createVNode, Fragment: _Fragment, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock(_Fragment, null, [
+      _hoisted_1,
+      _hoisted_2
+    ], 64 /* STABLE_FRAGMENT */))
+  }
+}
+#+end_example
+
+正确答案中做了静态提升处理，代码在 ~transform()~ 函数中 ~hoistStatic(root,
+context)~ 的调用，会从 ROOT 节点开始遍历，将需要提升的节点进行提升处理。
+* 7cb3dbf add hoist static 静态提升
+
+满足提升的三种情况：
+
+1. tag 和 tagType 都是 ELEMENT 且整棵树都是静态
+2. 包含动态孩子节点，但是有静态属性的，将属性提升
+3. 纯文本节点
+
+
+[[https://github.com/gcclll/stb-vue-next/commit/7d7dbd4e20198e73df5c93804dce122656252c8f][feat(add): hoist static · gcclll/stb-vue-next@7d7dbd4]]
+
+transform() 中增加静态提升处理：
+
+#+begin_src typescript
+if (options.hoistStatic) {
+  hoistStatic(root, context)
+}
+#+end_src
+
+[[https://github.com/gcclll/stb-vue-next/commit/7cb3dbf94bd17c5af68dc55103a8031da28be55b][feat: hoist static · gcclll/stb-vue-next@7cb3dbf]]
+
+1. 修改 ~genFunctionPreamble(ast: RootNode, context: CodegenContext)~ 解构出需要用到的函数(~_createVNode~)
+
+   [[/img/commit/diff-hoist-decon-functions.png]]
+
+2. 增加 ~genHoists()~ 函数，生成 ~ast.hoists~ 中需要提升的节点
+
+    #+begin_src typescript
+    function genHoists(hoists: (JSChildNode | null)[], context: CodegenContext) {
+    if (!hoists.length) {
+        return
+    }
+
+    context.pure = true
+    const { push, newline, helper, scopeId, mode } = context
+    const genScopeId = !__BROWSER__ && scopeId != null && mode !== 'function'
+    newline()
+
+    // push scope Id before initializing hoisted vnodes so that these vnodes
+    // get the proper scopeId as well.
+    if (genScopeId) {
+        push(`${helper(PUSH_SCOPE_ID)}("${scopeId}")`)
+        newline()
+    }
+
+    hoists.forEach((exp, i) => {
+        if (exp) {
+        push(`const _hoisted_${i + 1} = `)
+        genNode(exp, context)
+        newline()
+        }
+    })
+
+    if (genScopeId) {
+        push(`${helper(POP_SCOPE_ID)}()`)
+        newline()
+    }
+
+    context.pure = false
+    }
+    #+end_src
+
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div></div><div></div>`, { hoistStatic: true })
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+const { createVNode: _createVNode } = _Vue
+
+const _hoisted_1 = /*#__PURE__*/_createVNode("div", null, null, -1 /* HOISTED */)
+const _hoisted_2 = /*#__PURE__*/_createVNode("div", null, null, -1 /* HOISTED */)
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, Fragment : _Fragment, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock(_Fragment, null, [
+      _hoisted_1,
+      _hoisted_2
+    ], 64 /* STABLE_FRAGMENT */))
+  }
+}
+undefined
+#+end_example
+
+#+begin_quote
+PS: 静态属性提升 [[https://github.com/gcclll/stb-vue-next/commit/1e58eeb605b0dc88c90dac550b927f89dd18e07d][feat: props hoist static · gcclll/stb-vue-next@1e58eeb]]
+#+end_quote
+
+* prop transform and generator
+
+在这之前我们完成了以下几个基本部分：
+
+- [[#pure-text][文本]]
+- [[#interpolation][插值]]
+- [[#element][普通标签(一个和多个)]]
+
+
+接下来需要完成属性的解析才能进行下一步，因为 ~v-if, v-for, v-slot, ...~ 都需要属
+性解析。
+
+属性转换这里异常复杂，需要慢慢展开来讲，并且涉及到各种指令，因此对于完整的测试需
+要等所有指令 transform 完成之后再进行。
+
+** e4acc0d props generator
+
+[[https://github.com/gcclll/stb-vue-next/commit/e4acc0dd5e33ceab3420f9e5ca8857f090bb536c][feat: props generator · gcclll/stb-vue-next@e4acc0d]]
+
+修改点：
+
+1. add ~genExpressionAsPropertyKey()~ 生成属性 key 函数
+
+   三种可能的属性名
+
+   - 静态属性名: ~<div class="value">~ -> ~{ class: "value" }~
+
+   - 动态属性名: ~<div :[propName]="value"~ -> ~{ [propName]: "value"}~
+
+   - 组合表达式属性名：TODO
+
+    #+begin_src typescript
+   // 生成对象的属性 key (可能是静态，动态)
+   function genExpressionAsPropertyKey(
+     node: ExpressionNode,
+     context: CodegenContext
+   ) {
+     const { push } = context
+     if (node.type === NodeTypes.COMPOUND_EXPRESSION) {
+       // TODO 动态属性名或表达式
+     } else if (node.isStatic) {
+       // only quote key if necessary
+       const text = isSimpleIdentifier(node.content)
+         ? node.content
+         : JSON.stringify(node.content)
+
+       push(text, node)
+     } else {
+       push(`[${node.content}]`, node)
+     }
+   }
+    #+end_src
+
+2. add ~genObjectExpression()~ 将属性列表生成对象
+
+   遍历节点的 ~node.properties~ 先生成 key(~genExpressionAsPropertyKey(key)~) 再生成 value(~genNode(value)~) 。
+
+
+测试：
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div class="first" name="div"></div>`, { hoistStatic: true })
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+const { createVNode: _createVNode } = _Vue
+
+const _hoisted_1 = {
+  class: "first",
+  name: "div"
+}
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", _hoisted_1))
+  }
+}
+undefined
+#+end_example
+
+#+begin_quote
+实例中最后是用的 ~createBlock()~ 是因为 root.children 只有一个 child 。
+#+end_quote
+
+** 1792f93 props transform
+
+*** buildProps
+
+[[https://github.com/gcclll/stb-vue-next/commit/1792f93b26aff5d0db60d83b946a83fb0fa6e776][feat(add): transform props · gcclll/stb-vue-next@1792f93]]
+
+*** transform props
+
+[[https://github.com/gcclll/stb-vue-next/commit/20a5fa8bfefa9dd98a7965f78ff1f84de2591962][feat: transform props in codgenNode · gcclll/stb-vue-next@20a5fa8]]
+** 静态属性
+
+修改函数： ~transforms/transformElement~
+
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div class="first"></div><div class="second"></div>`, { hoistStatic: true })
+console.log(res.ast.codegenNode.children[0].props[0])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  type: 6,
+  name: 'class',
+  value: {
+    type: 2,
+    content: 'first',
+    loc: { start: [Object], end: [Object], source: '"first"' }
+  },
+  loc: {
+    start: { column: 6, line: 1, offset: 5 },
+    end: { column: 19, line: 1, offset: 18 },
+    source: 'class="first"'
+  }
+}
+undefined
+#+end_example
+
