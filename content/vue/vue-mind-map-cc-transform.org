@@ -1042,7 +1042,7 @@ undefined
 *** transform props
 
 [[https://github.com/gcclll/stb-vue-next/commit/20a5fa8bfefa9dd98a7965f78ff1f84de2591962][feat: transform props in codgenNode · gcclll/stb-vue-next@20a5fa8]]
-** 静态属性
+** static props
 
 修改函数： ~transforms/transformElement~
 
@@ -1075,4 +1075,36 @@ console.log(res.ast.codegenNode.children[0].props[0])
 }
 undefined
 #+end_example
+** 6951dd1 merge props
 
+[[https://github.com/gcclll/stb-vue-next/commit/6951dd1ff97da1ef803e97770162fe0293ef76cc][feat: merge props · gcclll/stb-vue-next@6951dd1]]
+
+合并属性的条件：存在没有参数的指令，如： ~<div v-bind="{...}" v-on="{...}"~
+
+FIX: [[https://github.com/gcclll/stb-vue-next/commit/12a66f0ebef241b282b4ccf746ddabc1a2f45ef1][fix: merge toHandlers props · gcclll/stb-vue-next@12a66f0]]
+
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`
+<div class="first" v-on="{ click: clickHandle  }" v-bind="{ style: 'color:red' }"></div>`)
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { toHandlers : _toHandlers, mergeProps : _mergeProps, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", _mergeProps({ class: "first" }, _toHandlers({ click: clickHandle  }), { style: 'color:red' }), null, 16 /* FULL_PROPS */))
+  }
+}
+undefined
+#+end_example

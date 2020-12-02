@@ -714,6 +714,9 @@ var VueCompilerCore = (function (exports) {
           case 13 /* VNODE_CALL */:
               genVNodeCall(node, context);
               break;
+          case 14 /* JS_CALL_EXPRESSION */:
+              genCallExpression(node, context);
+              break;
           case 15 /* JS_OBJECT_EXPRESSION */:
               genObjectExpression(node, context);
               break;
@@ -794,6 +797,17 @@ var VueCompilerCore = (function (exports) {
       return args.slice(0, i + 1).map(arg => arg || `null`);
   }
   // JavaScript
+  // 根据 node 中的 callee 和 arguments 生成 callee(arguments)
+  function genCallExpression(node, context) {
+      const { push, helper, pure } = context;
+      const callee = isString(node.callee) ? node.callee : helper(node.callee);
+      if (pure) {
+          push(PURE_ANNOTATION);
+      }
+      push(callee + `(`, node);
+      genNodeList(node.arguments, context);
+      push(`)`);
+  }
   // 将属性(attribute, prop, events, bindings, ...)生成对象
   function genObjectExpression(node, context) {
       const { push, indent, deindent, newline } = context;
@@ -2249,7 +2263,7 @@ var VueCompilerCore = (function (exports) {
                       else {
                           // v-on="obj" => toHandlers(obj)
                           mergeArgs.push({
-                              type: 20 /* JS_CACHE_EXPRESSION */,
+                              type: 14 /* JS_CALL_EXPRESSION */,
                               loc,
                               callee: context.helper(TO_HANDLERS),
                               arguments: [exp]
