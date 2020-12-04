@@ -1,0 +1,148 @@
+#+TITLE: React 源码初探
+#+DATE: <2020-12-04 08:22:44>
+#+TAGS[]: react
+#+CATEGORIES[]: react 
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* react.development.js
+- *ReactCurrentDispatcher*
+- *ReactCurrentBatchConfig*
+- *ReactCurrentOwner*
+- *ReactDebugCurrentFrame*
+
+  - *setExtraStackFrame()*
+  - *getCurrentStack*
+  - *getStackAddendum()*
+- *IsSomeRendererActing* 
+- *ReactSharedInternals*
+    
+- *setExtraStackFrame()*
+
+- *ReactNoopUpdateQueue*
+
+  - *isMounted()*
+  - *enqueueForceUpdate()*
+  - *enqueueReplaceState()*
+  - *enqueueSetState()*
+- *Component*
+
+  - *isReactComponent{}*
+  - *setState()*
+  - *forceUpdate()*
+    
+- *ComponentDummy* 
+
+  - *prototype* -> *Component.prototype*
+
+- *PureComponent*
+
+  - *isPureReactComponent: true*
+
+- *ReactElement()* 
+
+  - *createElement(type, config, children)*
+  - *cloneAndReplaceKey(oldElement, newKey)*
+  - *cloneElement(element, config, children)*
+  - *createContext(defaultValue, calculateChangedBits)*
+
+- *Consumer*
+
+  - *Provider{ get, set }*
+  - *_currentValue{ get, set }*
+  - *_currentValue2{ get, set }*
+  - *_threadCount{ get, set }*
+  - *Consumer{ get }*
+  - *displayName{get, set}*
+    
+
+- *useXxxx*
+
+  - *useContext(Context, unstable_observedBits)* -> ~dispatcher.useContext(Context, unstable_observedBits)~
+  - *useState(initialState)* -> ~dispatcher.useState(initialState)~
+  - *useReducer(reducer, initialArg, init)* -> ~dispatcher.useReducer(reducer, initialArg, init)~
+  - *useRef(initialValue) * -> ~dispatcher.useRef(initialValue)~
+  - *useEffect(create, deps)* -> ~dispatcher.useEffect(create, deps)~
+  - *useLayoutEffect(create, deps)* -> ~dispatcher.useLayoutEffect(create, deps)~
+  - *useCallback(callback, deps)* -> ~dispatcher.useCallback(callback, deps)~
+  - *useMemo(create, deps)* -> ~dispatcher.useMemo(create, deps)~
+  - *useImperativeHandle(ref, create, deps)* -> ~dispatcher.useImperativeHandle(ref, create, deps)~
+  - *useDebugValue(value, formatterFn)* -> ~dispatcher.useDebugValue(value, formatterFn)~
+
+- *describeXxx*
+
+  - *describeBuiltInComponentFrame(name, source, ownerFn)*
+  - *describeNativeComponentFrame(fn, construct)*
+  - *describeFunctionComponentFrame(fn, source, ownerFn)*
+  - *describeUnknownElementTypeFrameInDEV(type, source, ownerFn)*
+
+
+- *validateXxx*
+
+  - *validateExplicitKey(element, parentType)*
+  - *validateChildKeys(node, parentType)*
+  - *validatePropTypes(element)*
+  - *validateFragmentProps(fragment)*
+  
+- *createXxx*
+
+  - *createElementWithValidation(type, props, children)*
+  - *createFactoryWithValidation(type)*
+  - *cloneElementWithValidation(element, props, children)*
+
+- *markXxx*
+
+  - *markTaskStart(task, ms)*
+  - *markTaskCompleted(task, ms)* 
+  - *markTaskCanceled(task, ms)*
+  - *markTaskErrored(task, ms)*
+  - *markTaskRun(task, ms)*
+  - *markTaskYield(task, ms)*
+  - *markSchedulerSuspended(ms)*
+  - *markSchedulerUnsuspended(ms)*
+
+- *checkPropTypes(typeSpecs, values, location, componentName, element)*
+- *createRef()*
+- *getComponentName(type)*
+
+- *work*
+
+  - *flushWork(hasTimeRemaining, initialTime)*
+  - *workLoop(hasTimeRemaining, initialTime)*
+
+
+- *unstable_xxx*
+
+  - *unstable_runWithPriority(priorityLevel, eventHandler)*
+  - *unstable_next(eventHandler)* 
+  - *unstable_wrapCallback(callback)*
+  - *unstable_scheduleCallback(priorityLevel, callback, options)*
+  - *unstable_pauseExecution()*
+  - *unstable_continueExecution()*
+  - *unstable_getFirstCallbackNode()*
+  - *unstable_cancelCallback(task)*
+  - *unstable_getCurrentPriorityLevel()*
+  - *unstable_requestPaint*
+  - *unstable_Profiling*
+  - *unstable_clear(callback)*
+  - *unstable_getCurrent()*
+  - *unstable_getThreadID()*
+  - *unstable_trace(name, timestamp, callback)*
+  - *unstable_wrap(callback)*
+  - *unstable_subscribe(subscriber)*
+  - *unstable_unsubscribe(subscriber)*
+    
+
+- *onXxx*
+
+  - *onInteractionTraced(interaction)*
+  - *onWorkScheduled(interactions, threadID)*
+  - *onWorkStarted(interactions, threadID)*
+  - *onWorkStopped(interactions, threadID)*
+  - *onWorkCanceled(interactions, threadID)*
+
+
+
+- *Scheduler*
+- *SchedulerTracing*
+* react-dom.development.js

@@ -41,6 +41,14 @@
 
 1. [[#element-transform][🔗]] root.children.length = 1 且类型是 ELEMENT的时候将 ~CREATE_VNODE~ 改成
    ~CREATE_BLOCK~   
+2. [[#v-bind][🔗]] 动态属性为表达式时，中间不能有空格
+
+   如： ~<div :[first + second]="third" ...~ 是非法的。
+
+   因为 ~parseAttribute()~ 中的正则是不支持中间有空格的：
+
+   取参数名的正则： ~/^[^\t\r\n\f />][^\t\r\n\f />=]*/~
+3. [[#v-bind][🔗]] v-bind 指令的几种用法 ->
 * 脑图
 
 # [[/img/vue3/compiler-core/compiler-core-parser.svg]]
@@ -954,6 +962,58 @@ PS: 静态属性提升 [[https://github.com/gcclll/stb-vue-next/commit/1e58eeb60
 属性转换这里异常复杂，需要慢慢展开来讲，并且涉及到各种指令，因此对于完整的测试需
 要等所有指令 transform 完成之后再进行。
 
+** 1792f93 props transform
+
+*** buildProps
+
+[[https://github.com/gcclll/stb-vue-next/commit/1792f93b26aff5d0db60d83b946a83fb0fa6e776][feat(add): transform props · gcclll/stb-vue-next@1792f93]]
+
+
+- 将 ~codegenNode.props~ 构建成 如下结构：
+
+  #+begin_src json
+{
+    "type":15,
+    "properties":[
+        {
+            "type":16,
+            "key":{
+                "type":4,
+                "isConstant":false,
+                "content":"class",
+                "isStatic":true
+            },
+            "value":{
+                "type":4,
+                "isConstant":false,
+                "content":"second",
+                "isStatic":true
+            }
+        },
+        {
+            "type":16,
+            "key":{
+                "type":4,
+                "isConstant":false,
+                "content":"onClick",
+                "isStatic":true
+            },
+            "value":{
+                "type":4,
+                "content":"clickHandle",
+                "isStatic":false,
+                "isConstant":false,
+            }
+        }
+    ]
+}
+  #+end_src
+
+- v-bind,v-on 指令，没有参数，需要将 props 合并
+
+*** transform props
+
+[[https://github.com/gcclll/stb-vue-next/commit/20a5fa8bfefa9dd98a7965f78ff1f84de2591962][feat: transform props in codgenNode · gcclll/stb-vue-next@20a5fa8]]
 ** e4acc0d props generator
 
 [[https://github.com/gcclll/stb-vue-next/commit/e4acc0dd5e33ceab3420f9e5ca8857f090bb536c][feat: props generator · gcclll/stb-vue-next@e4acc0d]]
@@ -1033,15 +1093,6 @@ undefined
 实例中最后是用的 ~createBlock()~ 是因为 root.children 只有一个 child 。
 #+end_quote
 
-** 1792f93 props transform
-
-*** buildProps
-
-[[https://github.com/gcclll/stb-vue-next/commit/1792f93b26aff5d0db60d83b946a83fb0fa6e776][feat(add): transform props · gcclll/stb-vue-next@1792f93]]
-
-*** transform props
-
-[[https://github.com/gcclll/stb-vue-next/commit/20a5fa8bfefa9dd98a7965f78ff1f84de2591962][feat: transform props in codgenNode · gcclll/stb-vue-next@20a5fa8]]
 ** static props
 
 修改函数： ~transforms/transformElement~
@@ -1089,14 +1140,21 @@ const {
   baseParse,
   baseCompile
 } = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+const log = (code, title) => {
+  console.log(`>>> ${title}`)
+  const res = baseCompile(code)
+  console.log(res.code)
+}
  
-const res = baseCompile(`
-<div class="first" v-on="{ click: clickHandle  }" v-bind="{ style: 'color:red' }"></div>`)
-console.log(res.code)
+log(`
+<div class="first" v-on="{ click: clickHandle  }" v-bind="{ style: 'color:red' }"></div>`, '无参数的指令，合并所有属性')
+
+log(`<div class="second" v-on:click="clickHandle" v-bind:style="color:red"></div>`, '有参数的指令，不合并')
 #+end_src
 
 #+RESULTS:
 #+begin_example
+>>> 无参数的指令，合并所有属性
 const _Vue = Vue
 
 return function render(_ctx, _cache) {
@@ -1106,5 +1164,192 @@ return function render(_ctx, _cache) {
     return (_openBlock(), _createBlock("div", _mergeProps({ class: "first" }, _toHandlers({ click: clickHandle  }), { style: 'color:red' }), null, 16 /* FULL_PROPS */))
   }
 }
+>>> 有参数的指令，不合并
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { resolveDirective : _resolveDirective, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return _withDirectives((_openBlock(), _createBlock("div", { class: "second" }, null, 512 /* NEED_PATCH */)), )
+  }
+}
 undefined
 #+end_example
+
+有参数指令时，需要结合 ~v-on~ 指令解析，因此需要先实现了 transform 指令才能得到下面的正确结果。
+
+不合并(~mergeProps()~) 的正解：
+
+#+begin_src js
+(function anonymous(
+) {
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      class: "second",
+      onClick: clickHandle,
+      style: { color: 'red' }
+    }, null, 12 /* STYLE, PROPS */, ["onClick"]))
+  }
+}
+})
+#+end_src
+
+下面将继续完成指令相关的 transform
+* 6c43451 add v-on transform
+
+init: [[https://github.com/gcclll/stb-vue-next/commit/98dcc9653790a319c3bc04222322167db21546df][feat(init): v-on directive · gcclll/stb-vue-next@98dcc96]]
+
+实现：[[https://github.com/gcclll/stb-vue-next/commit/6c4345156ffc86542120bb97deb438097b36efca][feat: v-on directive transform · gcclll/stb-vue-next@6c43451]]
+
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`<div class="second" v-on:click="clickHandle" v-bind:style="color:red"></div>`)
+
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { resolveDirective : _resolveDirective, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return _withDirectives((_openBlock(), _createBlock("div", {
+      class: "second",
+      onClick: clickHandle
+    }, null, 8 /* PROPS */, ["onClick"])), )
+  }
+}
+undefined
+#+end_example
+
+问题： ~v-bind~ 没有被解析出来。
+* f805858 add v-bind transform
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-bind
+:END: 
+
+[[https://github.com/gcclll/stb-vue-next/commit/f80585802218bcc75aad502880c571b642257ef0][feat(add): v-bind transform · gcclll/stb-vue-next@f805858]]
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const res = baseCompile(`
+<div v-bind:name="test"
+  :age="100"
+  :[propName]="myName"
+  :[first+second]="thrid"
+  :no-need-camel-prop="noNeedCamelProp"
+  :need-camel-prop.camel="needCamelProp"
+  :no-exp-prop.camel
+></div>`, {
+  onError(e) {
+    console.log(e.message)
+  }
+})
+console.log(`>>> render function\n`)
+console.log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+v-bind is missing expression.
+>>> render function
+
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      name: test,
+      age: 100,
+      [propName || ""]: myName,
+      [first+second || ""]: thrid,
+      "no-need-camel-prop": noNeedCamelProp,
+      needCamelProp: needCamelProp,
+      noExpProp: ""
+    }, null, 16 /* FULL_PROPS */, ["name","age","no-need-camel-prop","needCamelProp","noExpProp"]))
+  }
+}
+undefined
+#+end_example
+
+v-bind 属性支持以下几种方式：
+
+- ~v-bind:name="test"~ 无缩写属性，最普通的一种用法
+- ~:age="100"~ 缩写形式
+- ~:[propName]="myName"~ 普通动态属性名
+- ~:[first+second]="third"~ 表达式动态属性名
+- ~:no-need-camel-prop="noNeedCamelProp"~ 不需要转驼峰的属性名
+- ~:need-camel-prop.camel="needCamelProp"~ 需要转成驼峰的属性名，需要制定
+  ~.camel~ 修饰符
+- ~no-exp-prop.camel~ 无属性值的属性，会给默认 ~""~ 值，同时给出警告，不建议使用。
+* 0cc76f0 add v-model transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/0cc76f04112b1194e0a5cafae0a49bc399462ebf][feat(add): v-model transform · gcclll/stb-vue-next@0cc76f0]]
+
+~<input v-model="model" />~
+
+经过 ~transformModel~ 之后的 node.props:
+
+#+begin_src json
+[
+    {
+        "type":16, // JS_PROPERTY
+        "key":{
+            "type":4, // SIMPLE_EXPRESSION
+            "content":"modelValue",
+            "isStatic":true,
+            "constType":3
+        },
+        "value":{
+            "type":4,
+            "content":"model",
+            "isStatic":false,
+            "constType":0,
+        }
+    },
+    {
+        "type":16,
+        "key":{
+            "type":4,
+            "content":"onUpdate:modelValue",
+            "isStatic":true,
+            "constType":3
+        },
+        "value":{
+            "type":8, // COMPOUND_EXPRESSION
+            "children":[
+                "$event => (",
+                {
+                    "type":4,
+                    "content":"model",
+                    "isStatic":false,
+                    "constType":0,
+                },
+                " = $event)"
+            ]
+        }
+    }
+]
+#+end_src
+

@@ -101,11 +101,26 @@ var VueCompilerCore = (function (exports) {
           return hit || (cache[str] = fn(str));
       });
   };
+  const camelizeRE = /-(\w)/g;
+  /**
+   * @private
+   */
+  const camelize = cacheStringFunction((str) => {
+      return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
+  });
   const hyphenateRE = /\B([A-Z])/g;
   /**
    * @private
    */
   const hyphenate = cacheStringFunction((str) => str.replace(hyphenateRE, '-$1').toLowerCase());
+  /**
+   * @private
+   */
+  const capitalize = cacheStringFunction((str) => str.charAt(0).toUpperCase() + str.slice(1));
+  /**
+   * @private
+   */
+  const toHandlerKey = cacheStringFunction((str) => (str ? `on${capitalize(str)}` : ``));
 
   const FRAGMENT = Symbol( `Fragment` );
   const TELEPORT = Symbol( `Teleport` );
@@ -252,6 +267,13 @@ var VueCompilerCore = (function (exports) {
           isConstant,
           content,
           isStatic
+      };
+  }
+  function createCompoundExpression(children, loc = locStub) {
+      return {
+          type: 8 /* COMPOUND_EXPRESSION */,
+          loc,
+          children
       };
   }
   function createCallExpression(callee, args = [], loc = locStub) {
@@ -1950,6 +1972,137 @@ var VueCompilerCore = (function (exports) {
       return {};
   }
 
+  // these keywords should not appear inside expressions, but operators like
+  // typeof, instanceof and in are allowed
+  const prohibitedKeywordRE = new RegExp('\\b' +
+      ('do,if,for,let,new,try,var,case,else,with,await,break,catch,class,const,' +
+          'super,throw,while,yield,delete,export,import,return,switch,default,' +
+          'extends,finally,continue,debugger,function,arguments,typeof,void')
+          .split(',')
+          .join('\\b|\\b') +
+      '\\b');
+  // strip strings in expressions
+  const stripStringRE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`/g;
+  /**
+   * Validate a non-prefixed expression.
+   * This is only called when using the in-browser runtime compiler since it
+   * doesn't prefix expressions.
+   */
+  function validateBrowserExpression(node, context, asParams = false, asRawStatements = false) {
+      const exp = node.content;
+      // empty expressions are validated per-directive since some directives
+      // do allow empty expressions.
+      if (!exp.trim()) {
+          return;
+      }
+      try {
+          new Function(asRawStatements
+              ? ` ${exp} `
+              : `return ${asParams ? `(${exp}) => {}` : `(${exp})`}`);
+      }
+      catch (e) {
+          let message = e.message;
+          const keywordMatch = exp
+              .replace(stripStringRE, '')
+              .match(prohibitedKeywordRE);
+          if (keywordMatch) {
+              message = `avoid using JavaScript keyword as property name: "${keywordMatch[0]}"`;
+          }
+          context.onError(createCompilerError(43 /* X_INVALID_EXPRESSION */, node.loc, undefined, message));
+      }
+  }
+
+  const fnExpRE = /^\s*([\w$_]+|\([^)]*?\))\s*=>|^\s*function(?:\s+[\w$]+)?\s*\(/;
+  const transformOn = (dir, node, context, augmentor) => {
+      const { loc, modifiers, arg } = dir;
+      if (!dir.exp && !modifiers.length) {
+          context.onError(createCompilerError(34 /* X_V_ON_NO_EXPRESSION */, loc));
+      }
+      let eventName;
+      if (arg.type === 4 /* SIMPLE_EXPRESSION */) {
+          if (arg.isStatic) {
+              // v-on:click
+              const rawName = arg.content;
+              // for all event listeners, auto convert it to camelCase. See issue #2249
+              eventName = createSimpleExpression(toHandlerKey(camelize(rawName)), true, arg.loc);
+          }
+      }
+      else {
+          // already a compound expression.
+          eventName = arg;
+          eventName.children.unshift(`${context.helperString(TO_HANDLER_KEY)}(`);
+          eventName.children.push(`)`);
+      }
+      // handler processing
+      let exp = dir.exp;
+      if (exp && !exp.content.trim()) {
+          exp = undefined;
+      }
+      let isCacheable = context.cacheHandlers && !exp;
+      if (exp) {
+          const isMemberExp = isMemberExpression(exp.content);
+          const isInlineStatement = !(isMemberExp || fnExpRE.test(exp.content));
+          // 含多个表达式
+          const hasMultipleStatements = exp.content.includes(';');
+          {
+              validateBrowserExpression(exp, context, false, hasMultipleStatements);
+          }
+      }
+      let ret = {
+          props: [
+              createObjectProperty(eventName, exp || createSimpleExpression(`() => {}`, false, loc))
+          ]
+      };
+      if (isCacheable) {
+          // cache handlers so that it's always the same handler being passed down.
+          // this avoids unnecessary re-renders when users use inline handlers on
+          // components.
+          ret.props[0].value = context.cache(ret.props[0].value);
+      }
+      return ret;
+  };
+
+  // v-bind without arg is handled directly in ./transformElements.ts due to it affecting
+  // codegen for the entire props object. This transform here is only for v-bind
+  // *with* args.
+  const transformBind = (dir, node, context) => {
+      const { exp, modifiers, loc } = dir;
+      const arg = dir.arg;
+      if (arg.type !== 4 /* SIMPLE_EXPRESSION */) {
+          arg.children.unshift(`(`);
+          arg.children.push(`) || ""`);
+      }
+      else if (!arg.isStatic) {
+          arg.content = `${arg.content} || ""`;
+      }
+      // .prop is no longer necessary due to new patch behavior
+      // .sync is replaced by v-model:arg
+      if (modifiers.includes('camel')) {
+          if (arg.type === 4 /* SIMPLE_EXPRESSION */) {
+              if (arg.isStatic) {
+                  arg.content = camelize(arg.content);
+              }
+              else {
+                  arg.content = `${context.helperString(CAMELIZE)}(${arg.content})`;
+              }
+          }
+          else {
+              arg.children.unshift(`${context.helperString(CAMELIZE)}(`);
+              arg.children.push(`)`);
+          }
+      }
+      if (!exp ||
+          (exp.type === 4 /* SIMPLE_EXPRESSION */ && !exp.content.trim())) {
+          context.onError(createCompilerError(33 /* X_V_BIND_NO_EXPRESSION */, loc));
+          return {
+              props: [createObjectProperty(arg, createSimpleExpression('', true, loc))]
+          };
+      }
+      return {
+          props: [createObjectProperty(arg, exp)]
+      };
+  };
+
   // 合并相邻的文本节点(包含插值)
   // Merge adjacent text nodes and expressions into a single expression
   // e.g. <div>abc {{ d }} {{ e }}</div> should have a single expression node as child.
@@ -2429,7 +2582,13 @@ var VueCompilerCore = (function (exports) {
 
   // 合并 transform 插件列表
   function getBaseTransformPreset(prefixIdentifiers) {
-      return [[transformElement, transformText], {}];
+      return [
+          [transformElement, transformText],
+          {
+              on: transformOn,
+              bind: transformBind
+          }
+      ];
   }
   function baseCompile(template, options = {}) {
       // const onError = options.onError || defaultOnError
@@ -2488,6 +2647,7 @@ var VueCompilerCore = (function (exports) {
   exports.createArrayExpression = createArrayExpression;
   exports.createCallExpression = createCallExpression;
   exports.createCompilerError = createCompilerError;
+  exports.createCompoundExpression = createCompoundExpression;
   exports.createObjectExpression = createObjectExpression;
   exports.createObjectProperty = createObjectProperty;
   exports.createRoot = createRoot;

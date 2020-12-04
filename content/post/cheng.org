@@ -582,3 +582,27 @@ https://github.com/PicGo
    
    ~$ adb devices~
 6. 批量下载 bilibili 视频(you-get 命令)？
+7. macos in stall java environment ?
+
+   https://mkyong.com/java/how-to-install-java-on-mac-osx/
+
+   ~$ brew tap adoptopenjdk/openjdk~
+
+   ~$ brew search jdk~
+
+   ~$ brew cask install adoptopenjdk11~
+
+   ~$ /usr/libexec/java_home -V~
+
+   ~$ java -version~
+8. git merge 的时候忽略指定文件？
+
+   https://www.jianshu.com/p/09b546b936a7
+
+   - ~$ git config --global merge.ours.driver true~
+
+   - ~$ echo 'index.php merge=ours' >> .gitattributes~
+
+   - ~$ git add .gitattributes~
+
+   - ~$ git commit -m 'chore: Preserve index.php during merges'~
