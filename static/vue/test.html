@@ -19,15 +19,23 @@
       </p>
     <![endif]-->
 
-    <script src="https://unpkg.com/vue@next"></script>
+    <script src="./vue.js"></script>
     <script type="text/javascript">
       var tpl = `<input v-model="model" />`;
+      tpl = `<input v-model="model[index]" />`;
+      tpl = `<input v-model:value="model" />`;
+      tpl = `<input v-model:[value]="model" />`;
+      tpl = `<input v-model="foo" />`;
     </script>
 
     <script>
-      const { compile } = Vue;
-      const res1 = compile(tpl);
-      console.log(res1);
+      const { compile, baseCompile: bc } = Vue;
+      // const result = compile(tpl, {});
+      const baseResult = bc(tpl, {});
+      // console.log(`> compile result`);
+      // console.log(result);
+      console.log(`> baseCompile result`);
+      console.log(baseResult.code);
     </script>
     <script src="http://127.0.0.1:8080/packages/compiler-core/dist/compiler-core.global.js"></script>
 
@@ -37,6 +45,7 @@
         hoistStatic: true,
       });
       console.log(res2.code);
+      console.log(res2.code === baseResult.code, " result is same, bingo...");
     </script>
   </body>
 </html>

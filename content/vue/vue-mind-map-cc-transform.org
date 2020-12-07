@@ -1353,3 +1353,225 @@ v-bind 属性支持以下几种方式：
 ]
 #+end_src
 
+compiler-core 阶段的解析脑图：
+[[/img/vue3/compiler-core/pcg/pcg-08-v-model-cc.svg]]
+
+从图中可以看出， v-model 指令的解析也是在 buildProps 中完成的，关于这个函数的脑
+图也可以查看 [[/vue/vue-mind-map-house-cc/#key-01-build-props][buildProps(node, context) 如何构建 props ?]]
+
+vue/baseCompile 解析之后的结果：
+
+#+begin_src js
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode: _createVNode, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("input", {
+      modelValue: model,
+      "onUpdate:modelValue": $event => (model = $event)
+    }, null, 8 /* PROPS */, ["modelValue", "onUpdate:modelValue"]))
+  }
+}
+#+end_src
+
+vue/compile 经过 compile-dom package(/未完成/) 的 transformModel 之后的结果：
+
+#+begin_src js
+(function anonymous(
+) {
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { vModelText: _vModelText, createVNode: _createVNode, withDirectives: _withDirectives, openBlock: _openBlock, createBlock: _createBlock } = _Vue
+
+    return _withDirectives((_openBlock(), _createBlock("input", {
+      "onUpdate:modelValue": $event => (model = $event)
+    }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
+      [_vModelText, model]
+    ])
+  }
+}
+})
+#+end_src
+
+[[https://github.com/gcclll/stb-vue-next/commit/a537be0fc265243012032750a801b6e6582751d5][fix: v-model no value · gcclll/stb-vue-next@a537be0]]
+
+修复之后(~genNode~ 没有实现 ~8,COMPOUND_EXPRESSION~ 类型)，测试
+
+1. 不带参数的 ~v-model~
+
+   #+begin_src js
+    const {
+        baseParse,
+        baseCompile
+    } = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+    const { code } = baseCompile(`<input v-model="model" />`)
+    console.log(code)
+    #+end_src
+
+    #+RESULTS:
+    #+begin_example
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("input", {
+          modelValue: model,
+          "onUpdate:modelValue": $event => (model = $event)
+        }, null, 8 /* PROPS */, ["modelValue","onUpdate:modelValue"]))
+      }
+    }
+    #+end_example
+
+2. 指令 ~{ prefixIdentifiers: true }~ 选项(需要 node 环境, *TODO*)
+
+   #+begin_src js
+    const {
+        baseParse,
+        baseCompile
+    } = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+    const { code } = baseCompile(`<input v-model="model" />`, {
+      prefixIdentifiers: true
+    })
+    console.log(code)
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("input", {
+         modelValue: model,
+         "onUpdate:modelValue": $event => (model = $event)
+       }, null, 8 /* PROPS */, ["modelValue","onUpdate:modelValue"]))
+     }
+   }
+   undefined
+   #+end_example
+
+3. 组合表达式(~8,COMPOUND_EXPRESSION~)
+
+   #+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const { code } = baseCompile(`<input v-model="model[index]" />`)
+console.log(code)
+ 
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("input", {
+         modelValue: model[index],
+         "onUpdate:modelValue": $event => (model[index] = $event)
+       }, null, 8 /* PROPS */, ["modelValue","onUpdate:modelValue"]))
+     }
+   }
+   undefined
+   #+end_example
+
+4. 带参数
+
+   #+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { code } = baseCompile(`<input v-model:value="model" />`)
+console.log(code)
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("input", {
+         value: model,
+         "onUpdate:value": $event => (model = $event)
+       }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["value","onUpdate:value"]))
+     }
+   }
+   undefined
+   #+end_example
+
+    不带参数的时候参数名会给一个默认值： ~modelValue~, 如果有自己的参数会直接使
+   用提供的参数名。
+
+5. 动态参数
+
+   #+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { code } = baseCompile(`<input v-model:[value]="model" />`)
+console.log(code)
+   #+end_src
+
+   有问题结果：
+   #+RESULTS:
+   #+begin_example
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("input", {
+         [value]: model,
+         : $event => (model = $event)
+       }, null, 16 /* FULL_PROPS */))
+     }
+   }
+   #+end_example
+
+   结果显示，动态属性的事件名没有被解析出来 ~: $event => (model = $event)~ 。
+
+   修复之后结果([[https://github.com/gcclll/stb-vue-next/commit/94a7a850d7e060e948c5672cdb170c47489feda9][fix: v-model dynamic arg generate · gcclll/stb-vue-next@94a7a85]])：
+   #+RESULTS:
+   #+begin_example
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("input", {
+         [value]: model,
+         ["onUpdate:" + value]: $event => (model = $event)
+       }, null, 16 /* FULL_PROPS */))
+     }
+   }
+   #+end_example
+
+6. 缓存事件回调函数(~cacheHandlers: true~, *TODO*)
+
+   需要结合 ~prefixIdentifiers: true~ 使用。

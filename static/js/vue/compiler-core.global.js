@@ -730,6 +730,9 @@ var VueCompilerCore = (function (exports) {
           case 5 /* INTERPOLATION */:
               genInterpolation(node, context);
               break;
+          case 8 /* COMPOUND_EXPRESSION */:
+              genCompoundExpression(node, context);
+              break;
           case 3 /* COMMENT */:
               genComment(node, context);
               break;
@@ -759,10 +762,26 @@ var VueCompilerCore = (function (exports) {
       genNode(node.content, context);
       push(')');
   }
+  // 如： v-model="model" -> "onUpdate:modelValue": $event => (model = $event)
+  function genCompoundExpression(node, context) {
+      for (let i = 0; i < node.children.length; i++) {
+          const child = node.children[i];
+          if (isString(child)) {
+              context.push(child);
+          }
+          else {
+              genNode(child, context);
+          }
+      }
+  }
   // 生成对象的属性 key (可能是静态，动态)
   function genExpressionAsPropertyKey(node, context) {
       const { push } = context;
-      if (node.type === 8 /* COMPOUND_EXPRESSION */) ;
+      if (node.type === 8 /* COMPOUND_EXPRESSION */) {
+          push(`[`);
+          genCompoundExpression(node, context);
+          push(`]`);
+      }
       else if (node.isStatic) {
           // only quote key if necessary
           const text = isSimpleIdentifier(node.content)
@@ -1736,12 +1755,52 @@ var VueCompilerCore = (function (exports) {
               if (codegenNode.type !== 13 /* VNODE_CALL */) {
                   return 0 /* NOT_STATIC */;
               }
-          // TODO more
-          // const flag = getPatchFlag(codegenNode)
+              const flag = getPatchFlag(codegenNode);
+              if (!flag && !hasNonHoistableProps(node)) {
+                  // element self is static. check its children.
+                  let returnType = 1 /* FULL_STATIC */;
+                  for (let i = 0; i < node.children.length; i++) {
+                      const childType = getStaticType(node.children[i], resultCache);
+                      if (childType === 0 /* NOT_STATIC */) ;
+                      else if (childType === 2 /* HAS_RUNTIME_CONSTANT */) {
+                          returnType = 2 /* HAS_RUNTIME_CONSTANT */;
+                      }
+                  }
+                  // check if any of the props contain runtime constants
+                  if (returnType !== 2 /* HAS_RUNTIME_CONSTANT */) {
+                      for (let i = 0; i < node.props.length; i++) {
+                          const p = node.props[i];
+                          if (p.type === 7 /* DIRECTIVE */ &&
+                              p.name === 'bind' &&
+                              p.exp &&
+                              (p.exp.type === 8 /* COMPOUND_EXPRESSION */ ||
+                                  p.exp.isRuntimeConstant)) {
+                              returnType = 2 /* HAS_RUNTIME_CONSTANT */;
+                          }
+                      }
+                  }
+                  // only svg/foreignObject could be block here, however if they are
+                  // stati then they don't need to be blocks since there will be no
+                  // nested updates.
+                  if (codegenNode.isBlock) {
+                      codegenNode.isBlock = false;
+                  }
+                  resultCache.set(node, returnType);
+                  return returnType;
+              }
+              else {
+                  resultCache.set(node, 0 /* NOT_STATIC */);
+                  return 0 /* NOT_STATIC */;
+              }
           case 3 /* COMMENT */:
           case 2 /* TEXT */:
               return 1 /* FULL_STATIC */;
+          case 9 /* IF */:
+          case 11 /* FOR */:
+          case 10 /* IF_BRANCH */:
+              return 0 /* NOT_STATIC */;
           case 5 /* INTERPOLATION */:
+          case 12 /* TEXT_CALL */:
               return getStaticType(node.content, resultCache);
           case 4 /* SIMPLE_EXPRESSION */:
               return node.isConstant
@@ -1749,6 +1808,22 @@ var VueCompilerCore = (function (exports) {
                       ? 2 /* HAS_RUNTIME_CONSTANT */
                       : 1 /* FULL_STATIC */
                   : 0 /* NOT_STATIC */;
+          case 8 /* COMPOUND_EXPRESSION */:
+              let returnType = 1 /* FULL_STATIC */;
+              for (let i = 0; i < node.children.length; i++) {
+                  const child = node.children[i];
+                  if (isString(child) || isSymbol(child)) {
+                      continue;
+                  }
+                  const childType = getStaticType(child, resultCache);
+                  if (childType === 0 /* NOT_STATIC */) {
+                      return 0 /* NOT_STATIC */;
+                  }
+                  else if (childType === 2 /* HAS_RUNTIME_CONSTANT */) {
+                      returnType = 2 /* HAS_RUNTIME_CONSTANT */;
+                  }
+              }
+              return returnType;
           default:
               return 0 /* NOT_STATIC */;
       }
@@ -1971,196 +2046,6 @@ var VueCompilerCore = (function (exports) {
   function createStructuralDirectiveTransform(name, fn) {
       return {};
   }
-
-  // these keywords should not appear inside expressions, but operators like
-  // typeof, instanceof and in are allowed
-  const prohibitedKeywordRE = new RegExp('\\b' +
-      ('do,if,for,let,new,try,var,case,else,with,await,break,catch,class,const,' +
-          'super,throw,while,yield,delete,export,import,return,switch,default,' +
-          'extends,finally,continue,debugger,function,arguments,typeof,void')
-          .split(',')
-          .join('\\b|\\b') +
-      '\\b');
-  // strip strings in expressions
-  const stripStringRE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`/g;
-  /**
-   * Validate a non-prefixed expression.
-   * This is only called when using the in-browser runtime compiler since it
-   * doesn't prefix expressions.
-   */
-  function validateBrowserExpression(node, context, asParams = false, asRawStatements = false) {
-      const exp = node.content;
-      // empty expressions are validated per-directive since some directives
-      // do allow empty expressions.
-      if (!exp.trim()) {
-          return;
-      }
-      try {
-          new Function(asRawStatements
-              ? ` ${exp} `
-              : `return ${asParams ? `(${exp}) => {}` : `(${exp})`}`);
-      }
-      catch (e) {
-          let message = e.message;
-          const keywordMatch = exp
-              .replace(stripStringRE, '')
-              .match(prohibitedKeywordRE);
-          if (keywordMatch) {
-              message = `avoid using JavaScript keyword as property name: "${keywordMatch[0]}"`;
-          }
-          context.onError(createCompilerError(43 /* X_INVALID_EXPRESSION */, node.loc, undefined, message));
-      }
-  }
-
-  const fnExpRE = /^\s*([\w$_]+|\([^)]*?\))\s*=>|^\s*function(?:\s+[\w$]+)?\s*\(/;
-  const transformOn = (dir, node, context, augmentor) => {
-      const { loc, modifiers, arg } = dir;
-      if (!dir.exp && !modifiers.length) {
-          context.onError(createCompilerError(34 /* X_V_ON_NO_EXPRESSION */, loc));
-      }
-      let eventName;
-      if (arg.type === 4 /* SIMPLE_EXPRESSION */) {
-          if (arg.isStatic) {
-              // v-on:click
-              const rawName = arg.content;
-              // for all event listeners, auto convert it to camelCase. See issue #2249
-              eventName = createSimpleExpression(toHandlerKey(camelize(rawName)), true, arg.loc);
-          }
-      }
-      else {
-          // already a compound expression.
-          eventName = arg;
-          eventName.children.unshift(`${context.helperString(TO_HANDLER_KEY)}(`);
-          eventName.children.push(`)`);
-      }
-      // handler processing
-      let exp = dir.exp;
-      if (exp && !exp.content.trim()) {
-          exp = undefined;
-      }
-      let isCacheable = context.cacheHandlers && !exp;
-      if (exp) {
-          const isMemberExp = isMemberExpression(exp.content);
-          const isInlineStatement = !(isMemberExp || fnExpRE.test(exp.content));
-          // 含多个表达式
-          const hasMultipleStatements = exp.content.includes(';');
-          {
-              validateBrowserExpression(exp, context, false, hasMultipleStatements);
-          }
-      }
-      let ret = {
-          props: [
-              createObjectProperty(eventName, exp || createSimpleExpression(`() => {}`, false, loc))
-          ]
-      };
-      if (isCacheable) {
-          // cache handlers so that it's always the same handler being passed down.
-          // this avoids unnecessary re-renders when users use inline handlers on
-          // components.
-          ret.props[0].value = context.cache(ret.props[0].value);
-      }
-      return ret;
-  };
-
-  // v-bind without arg is handled directly in ./transformElements.ts due to it affecting
-  // codegen for the entire props object. This transform here is only for v-bind
-  // *with* args.
-  const transformBind = (dir, node, context) => {
-      const { exp, modifiers, loc } = dir;
-      const arg = dir.arg;
-      if (arg.type !== 4 /* SIMPLE_EXPRESSION */) {
-          arg.children.unshift(`(`);
-          arg.children.push(`) || ""`);
-      }
-      else if (!arg.isStatic) {
-          arg.content = `${arg.content} || ""`;
-      }
-      // .prop is no longer necessary due to new patch behavior
-      // .sync is replaced by v-model:arg
-      if (modifiers.includes('camel')) {
-          if (arg.type === 4 /* SIMPLE_EXPRESSION */) {
-              if (arg.isStatic) {
-                  arg.content = camelize(arg.content);
-              }
-              else {
-                  arg.content = `${context.helperString(CAMELIZE)}(${arg.content})`;
-              }
-          }
-          else {
-              arg.children.unshift(`${context.helperString(CAMELIZE)}(`);
-              arg.children.push(`)`);
-          }
-      }
-      if (!exp ||
-          (exp.type === 4 /* SIMPLE_EXPRESSION */ && !exp.content.trim())) {
-          context.onError(createCompilerError(33 /* X_V_BIND_NO_EXPRESSION */, loc));
-          return {
-              props: [createObjectProperty(arg, createSimpleExpression('', true, loc))]
-          };
-      }
-      return {
-          props: [createObjectProperty(arg, exp)]
-      };
-  };
-
-  // 合并相邻的文本节点(包含插值)
-  // Merge adjacent text nodes and expressions into a single expression
-  // e.g. <div>abc {{ d }} {{ e }}</div> should have a single expression node as child.
-  const transformText = (node, context) => {
-      // 只有这四种类型才会收集这个函数
-      if (node.type === 0 /* ROOT */ ||
-          node.type === 1 /* ELEMENT */ ||
-          node.type === 11 /* FOR */ ||
-          node.type === 10 /* IF_BRANCH */) {
-          // perform the transform on node exit so that all expressions have already
-          // been processed.
-          return () => {
-              const children = node.children;
-              // let currentContainer: CompoundExpressionNode | undefined = undefined
-              let hasText = false;
-              // 遍历所有孩子节点，合并文本
-              for (let i = 0; i < children.length; i++) {
-                  const child = children[i];
-                  if (isText(child)) {
-                      hasText = true;
-                      // TODO 合并
-                  }
-              }
-              // 不处理的几种情况
-              // 1. hasText = false ，压根没有文本节点
-              // 2. 只有一个 child 且类型必须是 ROOT 或 type, tagType 都是 ELEMENT的标签
-              if (!hasText ||
-                  (children.length === 1 &&
-                      (node.type === 0 /* ROOT */ ||
-                          (node.type === 1 /* ELEMENT */ &&
-                              node.tagType === 0 /* ELEMENT */)))) {
-                  return;
-              }
-              // 将文本节点转换成用 createTextVNode(text) 创建
-              for (let i = 0; i < children.length; i++) {
-                  const child = children[i];
-                  if (isText(child) || child.type === 8 /* COMPOUND_EXPRESSION */) {
-                      const callArgs = [];
-                      // createTextVNode defaults to single whitespace, so if it is a
-                      // single space the code could be an empty call to save bytes.
-                      if (child.type !== 2 /* TEXT */ || child.content !== ' ') {
-                          callArgs.push(child);
-                      }
-                      // mark dynamic text with flag so it gets patched inside a block
-                      if (!context.ssr && child.type !== 2 /* TEXT */) {
-                          callArgs.push(`${1 /* TEXT */} /* ${PatchFlagNames[1 /* TEXT */]} */`);
-                      }
-                      children[i] = {
-                          type: 12 /* TEXT_CALL */,
-                          content: child,
-                          loc: child.loc,
-                          codegenNode: createCallExpression(context.helper(CREATE_TEXT), callArgs)
-                      };
-                  }
-              }
-          };
-      }
-  };
 
   // some directive transforms (e.g. v-model) may return a symbol for runtime
   // import, which should be used instead of a resolveDirective call.
@@ -2580,21 +2465,276 @@ var VueCompilerCore = (function (exports) {
       return propsNamesString + `]`;
   }
 
+  // these keywords should not appear inside expressions, but operators like
+  // typeof, instanceof and in are allowed
+  const prohibitedKeywordRE = new RegExp('\\b' +
+      ('do,if,for,let,new,try,var,case,else,with,await,break,catch,class,const,' +
+          'super,throw,while,yield,delete,export,import,return,switch,default,' +
+          'extends,finally,continue,debugger,function,arguments,typeof,void')
+          .split(',')
+          .join('\\b|\\b') +
+      '\\b');
+  // strip strings in expressions
+  const stripStringRE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`/g;
+  /**
+   * Validate a non-prefixed expression.
+   * This is only called when using the in-browser runtime compiler since it
+   * doesn't prefix expressions.
+   */
+  function validateBrowserExpression(node, context, asParams = false, asRawStatements = false) {
+      const exp = node.content;
+      // empty expressions are validated per-directive since some directives
+      // do allow empty expressions.
+      if (!exp.trim()) {
+          return;
+      }
+      try {
+          new Function(asRawStatements
+              ? ` ${exp} `
+              : `return ${asParams ? `(${exp}) => {}` : `(${exp})`}`);
+      }
+      catch (e) {
+          let message = e.message;
+          const keywordMatch = exp
+              .replace(stripStringRE, '')
+              .match(prohibitedKeywordRE);
+          if (keywordMatch) {
+              message = `avoid using JavaScript keyword as property name: "${keywordMatch[0]}"`;
+          }
+          context.onError(createCompilerError(43 /* X_INVALID_EXPRESSION */, node.loc, undefined, message));
+      }
+  }
+
+  const fnExpRE = /^\s*([\w$_]+|\([^)]*?\))\s*=>|^\s*function(?:\s+[\w$]+)?\s*\(/;
+  const transformOn = (dir, node, context, augmentor) => {
+      const { loc, modifiers, arg } = dir;
+      if (!dir.exp && !modifiers.length) {
+          context.onError(createCompilerError(34 /* X_V_ON_NO_EXPRESSION */, loc));
+      }
+      let eventName;
+      if (arg.type === 4 /* SIMPLE_EXPRESSION */) {
+          if (arg.isStatic) {
+              // v-on:click
+              const rawName = arg.content;
+              // for all event listeners, auto convert it to camelCase. See issue #2249
+              eventName = createSimpleExpression(toHandlerKey(camelize(rawName)), true, arg.loc);
+          }
+          else {
+              // #2388
+              // 动态事件参数 <div v-on:[eventName] ...
+              eventName = createCompoundExpression([
+                  `${context.helperString(TO_HANDLER_KEY)}(`,
+                  arg,
+                  `)`
+              ]);
+          }
+      }
+      else {
+          // already a compound expression.
+          eventName = arg;
+          eventName.children.unshift(`${context.helperString(TO_HANDLER_KEY)}(`);
+          eventName.children.push(`)`);
+      }
+      // handler processing
+      let exp = dir.exp;
+      if (exp && !exp.content.trim()) {
+          exp = undefined;
+      }
+      let isCacheable = context.cacheHandlers && !exp;
+      if (exp) {
+          const isMemberExp = isMemberExpression(exp.content);
+          const isInlineStatement = !(isMemberExp || fnExpRE.test(exp.content));
+          // 含多个表达式
+          const hasMultipleStatements = exp.content.includes(';');
+          {
+              validateBrowserExpression(exp, context, false, hasMultipleStatements);
+          }
+      }
+      let ret = {
+          props: [
+              createObjectProperty(eventName, exp || createSimpleExpression(`() => {}`, false, loc))
+          ]
+      };
+      if (isCacheable) {
+          // cache handlers so that it's always the same handler being passed down.
+          // this avoids unnecessary re-renders when users use inline handlers on
+          // components.
+          ret.props[0].value = context.cache(ret.props[0].value);
+      }
+      return ret;
+  };
+
+  // v-bind without arg is handled directly in ./transformElements.ts due to it affecting
+  // codegen for the entire props object. This transform here is only for v-bind
+  // *with* args.
+  const transformBind = (dir, node, context) => {
+      const { exp, modifiers, loc } = dir;
+      const arg = dir.arg;
+      if (arg.type !== 4 /* SIMPLE_EXPRESSION */) {
+          arg.children.unshift(`(`);
+          arg.children.push(`) || ""`);
+      }
+      else if (!arg.isStatic) {
+          arg.content = `${arg.content} || ""`;
+      }
+      // .prop is no longer necessary due to new patch behavior
+      // .sync is replaced by v-model:arg
+      if (modifiers.includes('camel')) {
+          if (arg.type === 4 /* SIMPLE_EXPRESSION */) {
+              if (arg.isStatic) {
+                  arg.content = camelize(arg.content);
+              }
+              else {
+                  arg.content = `${context.helperString(CAMELIZE)}(${arg.content})`;
+              }
+          }
+          else {
+              arg.children.unshift(`${context.helperString(CAMELIZE)}(`);
+              arg.children.push(`)`);
+          }
+      }
+      if (!exp ||
+          (exp.type === 4 /* SIMPLE_EXPRESSION */ && !exp.content.trim())) {
+          context.onError(createCompilerError(33 /* X_V_BIND_NO_EXPRESSION */, loc));
+          return {
+              props: [createObjectProperty(arg, createSimpleExpression('', true, loc))]
+          };
+      }
+      return {
+          props: [createObjectProperty(arg, exp)]
+      };
+  };
+
+  // 合并相邻的文本节点(包含插值)
+  // Merge adjacent text nodes and expressions into a single expression
+  // e.g. <div>abc {{ d }} {{ e }}</div> should have a single expression node as child.
+  const transformText = (node, context) => {
+      // 只有这四种类型才会收集这个函数
+      if (node.type === 0 /* ROOT */ ||
+          node.type === 1 /* ELEMENT */ ||
+          node.type === 11 /* FOR */ ||
+          node.type === 10 /* IF_BRANCH */) {
+          // perform the transform on node exit so that all expressions have already
+          // been processed.
+          return () => {
+              const children = node.children;
+              // let currentContainer: CompoundExpressionNode | undefined = undefined
+              let hasText = false;
+              // 遍历所有孩子节点，合并文本
+              for (let i = 0; i < children.length; i++) {
+                  const child = children[i];
+                  if (isText(child)) {
+                      hasText = true;
+                      // TODO 合并
+                  }
+              }
+              // 不处理的几种情况
+              // 1. hasText = false ，压根没有文本节点
+              // 2. 只有一个 child 且类型必须是 ROOT 或 type, tagType 都是 ELEMENT的标签
+              if (!hasText ||
+                  (children.length === 1 &&
+                      (node.type === 0 /* ROOT */ ||
+                          (node.type === 1 /* ELEMENT */ &&
+                              node.tagType === 0 /* ELEMENT */)))) {
+                  return;
+              }
+              // 将文本节点转换成用 createTextVNode(text) 创建
+              for (let i = 0; i < children.length; i++) {
+                  const child = children[i];
+                  if (isText(child) || child.type === 8 /* COMPOUND_EXPRESSION */) {
+                      const callArgs = [];
+                      // createTextVNode defaults to single whitespace, so if it is a
+                      // single space the code could be an empty call to save bytes.
+                      if (child.type !== 2 /* TEXT */ || child.content !== ' ') {
+                          callArgs.push(child);
+                      }
+                      // mark dynamic text with flag so it gets patched inside a block
+                      if (!context.ssr && child.type !== 2 /* TEXT */) {
+                          callArgs.push(`${1 /* TEXT */} /* ${PatchFlagNames[1 /* TEXT */]} */`);
+                      }
+                      children[i] = {
+                          type: 12 /* TEXT_CALL */,
+                          content: child,
+                          loc: child.loc,
+                          codegenNode: createCallExpression(context.helper(CREATE_TEXT), callArgs)
+                      };
+                  }
+              }
+          };
+      }
+  };
+
+  const transformModel = (dir, node, context) => {
+      const { exp, arg } = dir;
+      if (!exp) {
+          context.onError(createCompilerError(40 /* X_V_MODEL_NO_EXPRESSION */, dir.loc));
+          return createTransformProps();
+      }
+      const expString = exp.type === 4 /* SIMPLE_EXPRESSION */ ? exp.content : exp.loc.source;
+      if (!isMemberExpression(expString)) {
+          context.onError(createCompilerError(41 /* X_V_MODEL_MALFORMED_EXPRESSION */, exp.loc));
+          return createTransformProps();
+      }
+      const propName = arg ? arg : createSimpleExpression('modelValue', true);
+      const eventName = arg
+          ? isStaticExp(arg)
+              ? `onUpdate:${arg.content}`
+              : createCompoundExpression(['"onUpdate:" + ', arg])
+          : `onUpdate:modelValue`;
+      const props = [
+          // modelValue: foo
+          createObjectProperty(propName, dir.exp),
+          // "onUpdate:modelValue": $event => (foo = $event)
+          createObjectProperty(eventName, createCompoundExpression([`$event => (`, exp, ` = $event)`]))
+      ];
+      // modelModifiers: { foo: true, "bar-baz": true }
+      if (dir.modifiers.length && node.tagType === 1 /* COMPONENT */) {
+          const modifiers = dir.modifiers
+              .map(m => (isSimpleIdentifier(m) ? m : JSON.stringify(m)) + `: true`)
+              .join(`, `);
+          const modifiersKey = arg
+              ? isStaticExp(arg)
+                  ? `${arg.content}Modifiers`
+                  : createCompoundExpression([arg, ' + "Modifiers"'])
+              : `modelModifiers`;
+          props.push(createObjectProperty(modifiersKey, createSimpleExpression(`{ ${modifiers} }`, false, dir.loc, true)));
+      }
+      return createTransformProps(props);
+  };
+  function createTransformProps(props = []) {
+      return { props };
+  }
+
   // 合并 transform 插件列表
   function getBaseTransformPreset(prefixIdentifiers) {
       return [
           [transformElement, transformText],
           {
               on: transformOn,
-              bind: transformBind
+              bind: transformBind,
+              model: transformModel
           }
       ];
   }
   function baseCompile(template, options = {}) {
-      // const onError = options.onError || defaultOnError
+      const onError = options.onError || defaultOnError;
       const isModuleMode = options.mode === 'module';
+      /* istanbul ignore if */
+      {
+          if (options.prefixIdentifiers === true) {
+              onError(createCompilerError(45 /* X_PREFIX_ID_NOT_SUPPORTED */));
+          }
+          else if (isModuleMode) {
+              onError(createCompilerError(46 /* X_MODULE_MODE_NOT_SUPPORTED */));
+          }
+      }
       const prefixIdentifiers = !true ;
-      // TODO errors
+      if ( options.cacheHandlers) {
+          onError(createCompilerError(47 /* X_CACHE_HANDLER_NOT_SUPPORTED */));
+      }
+      if (options.scopeId && !isModuleMode) {
+          onError(createCompilerError(48 /* X_SCOPE_ID_NOT_SUPPORTED */));
+      }
       const ast = isString(template) ? baseParse(template, options) : template;
       const [nodeTransforms, directiveTransforms] = getBaseTransformPreset();
       transform(ast, extend({}, options, {
@@ -2686,10 +2826,3 @@ var VueCompilerCore = (function (exports) {
   return exports;
 
 }({}));
-
-try {
-  if (module) {
-    module.exports = VueCompilerCore;
-  }
-} catch (e) {}
- 
