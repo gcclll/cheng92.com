@@ -34,6 +34,25 @@
 
 #+begin_export html
 <script src="/js/vue/compiler-core.global.js"></script>
+<script>
+let i = 0, j = 0
+const l1 = x => console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55')
+const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
+const log = (args) => console.log.apply(console, args)
+log.reset = () => (j = 0, log)
+const { baseCompile } = VueCompilerCore
+const compile = (tpl, title, logAst = false) => {
+    l2(title)
+    const { code, ast } = baseCompile(tpl, {
+        onError: (e) => console.warn(e.message),
+        hoistStatic: true
+    })
+
+    log(code)
+    logAst && log(ast)
+}
+
+</script>
 #+end_export
 
 
@@ -2128,3 +2147,14 @@ BUG: 这里居然少了个 ~_hoisted_2~ ???
 答： ~genNode()~ 中缺少对 ~4,TEXT_CALL~ 纯文本类型处理。
 
 解：[[https://github.com/gcclll/stb-vue-next/commit/2372b5fb793da98a8330aa843137e852d5c375c1][fix: v-if TEXT_CALL gen node · gcclll/stb-vue-next@2372b5f]]
+
+#+begin_comment
+更多测试(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+l1(`test`)
+</script>
+#+end_export
+
