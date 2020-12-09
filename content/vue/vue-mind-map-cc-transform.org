@@ -1575,3 +1575,556 @@ console.log(code)
 6. 缓存事件回调函数(~cacheHandlers: true~, *TODO*)
 
    需要结合 ~prefixIdentifiers: true~ 使用。
+* bf18a84 add v-once transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/bf18a84650adaf68004a0ce0977d33b1436a4587][feat(add): v-once · gcclll/stb-vue-next@bf18a84]]
+
+#+begin_src typescript
+const seen = new WeakSet()
+
+export const transformOnce: NodeTransform = (node, context) => {
+  if (node.type === NodeTypes.ELEMENT && findDir(node, 'once', true)) {
+    // 缓存实现 v-once，就算有数据更新也不会重新生成 render 函数
+    if (seen.has(node)) {
+      return
+    }
+    seen.add(node)
+    context.helper(SET_BLOCK_TRACKING)
+    return () => {
+      const cur = context.currentNode as ElementNode | IfNode | ForNode
+      if (cur.codegenNode) {
+        cur.codegenNode = context.cache(cur.codegenNode, true /* isVNode */)
+      }
+    }
+  }
+}
+#+end_src
+
+~v-once~ 指令的实现看似挺简单的，将解析后的 node 节点缓存到 ~seen: WeakSet~ 中，
+下次使用的时候直接取缓存(~context.cache(...)~)，而不是重新生成 ~codegenNode~
+
+~JS_CACHE_EXPRESSION~ 结构：
+
+#+begin_src typescript
+export function createCacheExpression(
+  index: number,
+  value: JSChildNode,
+  isVNode: boolean = false
+): CacheExpression {
+  return {
+    type: NodeTypes.JS_CACHE_EXPRESSION,
+    index, // 在 context.cached 中的索引
+    value, // v-once节点的 ast
+    isVNode, // block 或 vnode ?
+    loc: locStub
+  }
+}
+#+end_src
+
+generator 阶段实现：[[https://github.com/gcclll/stb-vue-next/commit/8bacf14f156f0ca357d4c0efdbc75dc2120a3ec5][feat(add): v-once generator · gcclll/stb-vue-next@8bacf14]]
+
+在 ~genNode()~ 中增加 ~JS_CACHE_EXPRESSION~ 类型的分支处理。
+
+#+begin_src typescript
+function genCacheExpression(node: CacheExpression, context: CodegenContext) {
+  const { push, helper, indent, deindent, newline } = context
+  if (node.isVNode) {
+    indent()
+    push(`${helper(SET_BLOCK_TRACKING)}(-1),`)
+    newline()
+  }
+
+  push(`_cache[${node.index}] = `)
+  genNode(node.value, context)
+  if (node.isVNode) {
+    push(`,`)
+    newline()
+    push(`${helper(SET_BLOCK_TRACKING)}(1),`)
+    newline()
+    push(`_cache[${node.index}]`)
+    deindent()
+  }
+  push(`)`)
+}
+#+end_src
+
+测试：
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const c = ( tpl, desc ) => {
+  console.log(desc)
+  const { code } = baseCompile(tpl)
+  console.log(code)
+}
+
+c(`<div :id="foo" v-once />`, `>>> <div :id="foo" v-once />`)
+c(`<div><div :id="foo" v-once /></div>`, `>>> 标签中嵌套使用`)
+c(`<div><Comp :id="foo" v-once /></div>`, `>>> 在自定义组件上`)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> <div :id="foo" v-once />
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { setBlockTracking : _setBlockTracking, createVNode : _createVNode } = _Vue
+
+    return _cache[1] || (
+      _setBlockTracking(-1),
+      _cache[1] = _createVNode("div", { id: foo }, null, 8 /* PROPS */, ["id"]),
+      _setBlockTracking(1),
+      _cache[1]
+    )
+  }
+}
+>>> 标签中嵌套使用
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { setBlockTracking : _setBlockTracking, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", null, [
+      _cache[1] || (
+        _setBlockTracking(-1),
+        _cache[1] = _createVNode("div", { id: foo }, null, 8 /* PROPS */, ["id"]),
+        _setBlockTracking(1),
+        _cache[1]
+      )
+    ]))
+  }
+}
+>>> 在自定义组件上
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { setBlockTracking : _setBlockTracking, resolveComponent : _resolveComponent, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", null, [
+      _cache[1] || (
+        _setBlockTracking(-1),
+        _cache[1] = _createVNode(_component_Comp, { id: foo }, null, 8 /* PROPS */, ["id"]),
+        _setBlockTracking(1),
+        _cache[1]
+      )
+    ]))
+  }
+}
+undefined
+#+end_example
+
+TODO 缺少： ~const _component_Comp = _resolveComponent("Comp")~
+* acdea14 add v-if transform
+
+~v-if~ 指令源码脑图可参考： [[/vue/vue-mind-map-house-cc/#pcg-v-if][05 v-if 指令(git:0a591b6)]]
+
+对于 ~v-if|else|else-if~ 指令在 transform 阶段，转换收集 transformXxx 函数过程中，
+会先针对指令进行处理，比如： ~v-else, v-else-if~ 指令的组件会被解析到 ~v-if~ 节
+点的 ~node.branches[]~ 分支数组里面之后被删除，这些都是在收集 transformXxx 之前需要完成的。
+
+包括 ~v-for~ 指令都需要经过 ~createStructuralDirectiveTransform()~ 函数封装一层
+之后，返回对应的 ~transformXxx~ 函数。
+
+#+begin_src typescript
+
+export function createStructuralDirectiveTransform(
+  name: string | RegExp,
+  fn: StructuralDirectiveTransform
+): NodeTransform {
+  const matches = isString(name)
+    ? (n: string) => n === name
+    : (n: string) => name.test(n)
+
+  return (node, context) => {
+    if (node.type === NodeTypes.ELEMENT) {
+      const { props } = node
+      // structural directive transforms are not concerned with slots
+      // as they are handled separately in vSlot.ts
+      if (node.tagType === ElementTypes.TEMPLATE && props.some(isVSlot)) {
+        return
+      }
+      const exitFns = []
+      for (let i = 0; i < props.length; i++) {
+        const prop = props[i]
+        if (prop.type === NodeTypes.DIRECTIVE && matches(prop.name)) {
+          // structural directives are removed to avoid infinite recursion
+          // also we remove them *before* applying so that it can further
+          // traverse itself in case it moves the node around
+          props.splice(i, 1)
+          i--
+          const onExit = fn(node, prop, context)
+          if (onExit) exitFns.push(onExit)
+        }
+      }
+      return exitFns
+    }
+  }
+}
+#+end_src
+
+通过 ~for (...)~ 将所有 v-if/v-for 相关指令经过他们自己的处理函数(比如：
+~processIf~ ) 之后得到最终的 ~onExit~ 收集到 ~exitFns~ 中，在处理过程中随时会出
+现节点的删除操作(比如： ~v-else~ 节点会在解析完之后被删除)，在正常的 traverse 过
+程中这些节点都不会再存在。
+
+#+begin_quote
+PS: 正确理解应该属于移动操作，因为原始的 AST 结构并没改变，只不过是在原有的 AST
+数结构中移除到新的 AST 节点下面了。
+#+end_quote
+
+** acdea14 v-if transform init
+
+[[https://github.com/gcclll/stb-vue-next/commit/acdea1419d0361a4566a5f2a53ffc8bb1f941878][feat(init): v-if transform · gcclll/stb-vue-next@acdea14]]
+
+#+begin_src typescript
+export const transformIf = createStructuralDirectiveTransform(
+  /^(if|else|else-if)$/,
+  (node, dir, context) => {
+    return processIf(node, dir, context, (ifNode, branch, isRoot) => {
+      // TODO
+      console.log(ifNode, branch, isRoot)
+      return () => {}
+    })
+  }
+)
+
+export function processIf(
+  node: ElementNode,
+  dir: DirectiveNode,
+  context: TransformContext,
+  processCodegen?: (
+    node: IfNode,
+    branch: IfBranchNode,
+    isRoot: boolean
+  ) => (() => void) | undefined
+) {}
+#+end_src
+
+初始化 v-if process 函数， processIf 函数里面会针对 v-if 节点甚至它的兄弟节点做
+一系列操作，比如将下一个是 ~v-else~ 的兄弟节点删除移到自己的 ~branches[]~ 里面。
+** 9039a3e v-if transform processIf
+
+[[https://github.com/gcclll/stb-vue-next/commit/9039a3e567260d33c0bc617d4c58639b14b66fec][feat: v-if processIf · gcclll/stb-vue-next@9039a3e]]
+
+这里增加了两个函数的实现：
+
+1. processIf, 解析 if，创建 ~IF,9~ 类型的结构，替换 v-if 原来的 ast
+
+   #+begin_src typescript
+    const ifNode: IfNode = {
+      type: NodeTypes.IF,
+      loc: node.loc,
+      branches: [branch]
+    }
+   #+end_src
+
+   其中 branches 保存着所有 v-else, v-else-if 分支节点，这里其实是创建了一个默认
+   的分支节点，因为 ~v-if~ 系列指令在 ~render~ 函数中是以三元运算符(~?:~)形式存
+   在的，所以 if 后面必须要有一个分支，即 ~condition ? node1 : node2~ 中的 node2
+   必须是个有效的值，才能正常使用 ~?:~ 运算符。
+
+   所以，如果只有 ~v-if~ 指令的时候三元符后面的值起始是个空值(好像是 ~null~)
+   
+2. createIfBranch, 创建 ~v-if~ 的分支节点的
+   
+   #+begin_src typescript
+function createIfBranch(node: ElementNode, dir: DirectiveNode): IfBranchNode {
+  return {
+    type: NodeTypes.IF_BRANCH,
+    loc: node.loc,
+    // condition ? v-if node : v-else node
+    condition: dir.name === 'else' ? undefined : dir.exp,
+    // 如果用的是 <template v-if="condition" ... 就需要 node.children
+    // 因为 template 本身是不该被渲染的
+    children:
+      node.tagType === ElementTypes.TEMPLATE && !findDir(node, 'for')
+        ? node.children
+        : [node],
+    // 对于 v-for, v-if/... 都应该给它个 key, 这里是用户编写是的提供的唯一 key
+    // 如果没有解析器会默认生成一个全局唯一的 key
+    userKey: findProp(node, `key`)
+  }
+}
+   #+end_src
+
+    注意看最后一个属性， ~v-if~ 分支也是需要一个 ~key~ 属性的。
+** 44985b4 v-if transform createIfBranch
+
+[[https://github.com/gcclll/stb-vue-next/commit/44985b49e031752a7c84464b29adb769050cb1fb][feat: v-if createIfBranch · gcclll/stb-vue-next@44985b4]]
+
+#+begin_src typescript
+export function createConditionalExpression(
+  test: ConditionalExpression['test'],
+  consequent: ConditionalExpression['consequent'],
+  alternate: ConditionalExpression['alternate'],
+  newline = true
+) {
+  return {
+    type: NodeTypes.JS_CONDITIONAL_EXPRESSION,
+    test,
+    consequent,
+    alternate,
+    newline,
+    loc: locStub
+  }
+}
+#+end_src
+
+这里的结构(~v-if~)在 render 函数中的对应关系：
+
+~test ? consequent : alternate~
+
+如果有 v-else-if 时候， ~alternate~ 结构会是个完整的 ~JS_CONDITIONAL_EXPRESSION~
+，即： ~alternate: { test, consequent, alternate, ...}~ 所以：
+
+~test ? consequent : test1 ? consequent 1 : alternate~
+
+[[https://github.com/gcclll/stb-vue-next/commit/1e24eb7a30588690a4e83f888623b97f0085e899][fix: no v-if transform · gcclll/stb-vue-next@1e24eb7]]
+
+到这里 v-if 指令 transform 阶段已经完成，测试结果：
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { code, ast } = baseCompile(`<div v-if="ok"/>`)
+console.log(`>>> ast.codegenNode 结果`)
+console.log(ast.codegenNode)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> ast.codegenNode 结果
+{
+  type: 9,
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 17, line: 1, offset: 16 },
+    source: '<div v-if="ok"/>'
+  },
+  branches: [
+    {
+      type: 10,
+      loc: [Object],
+      condition: [Object],
+      children: [Array],
+      userKey: undefined
+    }
+  ],
+  codegenNode: {
+    type: 19,
+    test: {
+      type: 4,
+      content: 'ok',
+      isStatic: false,
+      isConstant: false,
+      loc: [Object]
+    },
+    consequent: {
+      type: 13,
+      tag: '"div"',
+      props: [Object],
+      children: undefined,
+      patchFlag: undefined,
+      dynamicProps: undefined,
+      directives: undefined,
+      isBlock: true,
+      disableTracking: false,
+      loc: [Object]
+    },
+    alternate: {
+      type: 14,
+      loc: [Object],
+      callee: Symbol(createCommentVNode),
+      arguments: [Array]
+    },
+    newline: true,
+    loc: { source: '', start: [Object], end: [Object] }
+  }
+}
+undefined
+#+end_example
+
++RESULTS: 错误结果
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode } = _Vue
+
+    return (_openBlock(), _createBlock("div", { key: 0 }))
+  }
+}
+>>> ast.codegenNode 结果
+{
+  type: 13,
+  tag: '"div"',
+  props: {
+    type: 15,
+    loc: { source: '', start: [Object], end: [Object] },
+    properties: [ [Object] ]
+  },
+  children: undefined,
+  patchFlag: undefined,
+  dynamicProps: undefined,
+  directives: undefined,
+  isBlock: true,
+  disableTracking: false,
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 17, line: 1, offset: 16 },
+    source: '<div v-if="ok"/>'
+  }
+}
+undefined
+#+end_example
+
+结果显示是不对的，因为创建的 ~IF~ 结构没有替换 ast 🌲中原来的节点，追踪后发现是
+漏掉了 ~context.replaceNode(node)~ 的实现。
+
+[[https://github.com/gcclll/stb-vue-next/commit/47c30d296b2f42759aea8de4730ae1802dbb6e32][fix: v-if codegenNode is incorrect · gcclll/stb-vue-next@47c30d2]]
+
+traverseNode 中需要增加 ~case 9,IF~ 分支处理，遍历所有的 ~branches[]~ 。
+
+[[https://github.com/gcclll/stb-vue-next/commit/179f06f716687166b167f5d190073bfe65a9393f][fix: v-if branches no codegenNode · gcclll/stb-vue-next@179f06f]]
+** 742757e v-if generator
+
+[[https://github.com/gcclll/stb-vue-next/commit/742757ebe2c4d1faaadf32b6606d43cef2900934?branch=742757ebe2c4d1faaadf32b6606d43cef2900934&diff=split][feat: v-if generator · gcclll/stb-vue-next@742757e]]
+
+genNode 增加 ~JS_CONDITIONAL_EXPRESSION~ 分支处理(~genConditionalExpression~)
+
+#+begin_src typescript
+function genConditionalExpression(
+  node: ConditionalExpression,
+  context: CodegenContext
+) {
+  const { test, consequent, alternate, newline: needNewline } = node
+  const { push, indent, deindent, newline } = context
+  if (test.type === NodeTypes.SIMPLE_EXPRESSION) {
+    // 非简单的标识符需要用括号，可能是表达式，所以需要 (a + b) ? ... : ...
+    const needsParams = !isSimpleIdentifier(test.content)
+    needsParams && push(`(`)
+    genExpression(test, context)
+    needsParams && push(`)`)
+  } else {
+    push(`(`)
+    genNode(test, context)
+    push(`)`)
+  }
+
+  needNewline && indent()
+  context.indentLevel++
+  needNewline || push(` `)
+  push(`? `)
+  genNode(consequent, context)
+  context.indentLevel--
+  needNewline && newline()
+  needNewline || push(` `)
+  push(`: `)
+  const isNested = alternate.type === NodeTypes.JS_CONDITIONAL_EXPRESSION
+  if (!isNested) {
+    // 不是嵌套
+    context.indentLevel++
+  }
+  genNode(alternate, context)
+  if (!isNested) {
+    context.indentLevel--
+  }
+
+  needNewline && deindent(true /* without newline */)
+}
+#+end_src
+
+~genConditionalExpression~ 处理分为三个部分
+
+1. ~test~ 生成条件表达式，这里是: ~ok~ ，如果是表达式需要括号： ~(a + b)~
+2. ~consequent~ 用来生成 ~?~ 后面的表达式，即 ~ok~ 结果为 truth 时执行
+3. ~alternate~ 用来生成 ~:~ 后面的表达式，即 ~ok~ 结果为 falsy 时执行
+
+   ~alternate~ 中的结构可能也是个 ~JS_CONDITIONAL_EXPRESSION~ 结构，代表可能有
+   ~v-else-if~ 分支，如： ~(a + b) ? node1 : (c + d) ? node2 : othernode~ 。
+
+
+测试：
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const c = ( tpl, desc ) => {
+  console.log(`>>> ` + desc)
+  const { code } = baseCompile(tpl, { hoistStatic: true })
+  console.log(code)
+}
+
+c(`<div v-if="ok"/>`, 'basic v-if')
+c(`<template v-if="ok"><div/>hello<p/></template>`, 'template v-if')
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic v-if
+const _Vue = Vue
+const { createVNode: _createVNode, createCommentVNode: _createCommentVNode } = _Vue
+
+const _hoisted_1 = { key: 0 }
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode } = _Vue
+
+    return ok
+      ? (_openBlock(), _createBlock("div", _hoisted_1))
+      : _createCommentVNode("v-if", true)
+  }
+}
+>>> template v-if
+const _Vue = Vue
+const { createVNode: _createVNode, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode } = _Vue
+
+const _hoisted_1 = /*#__PURE__*/_createVNode("div", null, null, -1 /* HOISTED */)
+const _hoisted_2 = /*#__PURE__*/_createTextVNode("hello")
+const _hoisted_3 = /*#__PURE__*/_createVNode("p", null, null, -1 /* HOISTED */)
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, createTextVNode : _createTextVNode, Fragment : _Fragment, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode } = _Vue
+
+    return ok
+      ? (_openBlock(), _createBlock(_Fragment, { key: 0 }, [
+          _hoisted_1,
+          _hoisted_2,
+          _hoisted_3
+        ], 64 /* STABLE_FRAGMENT */))
+      : _createCommentVNode("v-if", true)
+  }
+}
+undefined
+#+end_example
+
+BUG: 这里居然少了个 ~_hoisted_2~ ???
+
+#+begin_src js
+[
+  _hoisted_1,
+  ,
+  _hoisted_3
+]
+#+end_src
+
+答： ~genNode()~ 中缺少对 ~4,TEXT_CALL~ 纯文本类型处理。
+
+解：[[https://github.com/gcclll/stb-vue-next/commit/2372b5fb793da98a8330aa843137e852d5c375c1][fix: v-if TEXT_CALL gen node · gcclll/stb-vue-next@2372b5f]]

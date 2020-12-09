@@ -21,17 +21,26 @@
 
     <script src="./vue.js"></script>
     <script type="text/javascript">
+      var option = {
+        hoistStatic: true,
+      };
       var tpl = `<input v-model="model" />`;
       tpl = `<input v-model="model[index]" />`;
       tpl = `<input v-model:value="model" />`;
       tpl = `<input v-model:[value]="model" />`;
       tpl = `<input v-model="foo" />`;
+      // v-once
+      tpl = `<div :id="foo" v-once />`;
+      tpl = `<div><Comp :id="foo" v-once /></div>`;
+      // v-if
+      tpl = `<div v-if="ok"/>`;
+      tpl = `<template v-if="ok"><div/>hello<p/></template>`;
     </script>
 
     <script>
       const { compile, baseCompile: bc } = Vue;
       // const result = compile(tpl, {});
-      const baseResult = bc(tpl, {});
+      const baseResult = bc(tpl, option);
       // console.log(`> compile result`);
       // console.log(result);
       console.log(`> baseCompile result`);
@@ -41,9 +50,7 @@
 
     <script type="text/javascript">
       const { baseCompile } = VueCompilerCore;
-      const res2 = baseCompile(tpl, {
-        hoistStatic: true,
-      });
+      const res2 = baseCompile(tpl, option);
       console.log(res2.code);
       console.log(res2.code === baseResult.code, " result is same, bingo...");
     </script>

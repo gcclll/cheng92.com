@@ -284,6 +284,95 @@ var VueCompilerCore = (function (exports) {
           arguments: args
       };
   }
+  function createConditionalExpression(test, consequent, alternate, newline = true) {
+      return {
+          type: 19 /* JS_CONDITIONAL_EXPRESSION */,
+          test,
+          consequent,
+          alternate,
+          newline,
+          loc: locStub
+      };
+  }
+  function createCacheExpression(index, value, isVNode = false) {
+      return {
+          type: 20 /* JS_CACHE_EXPRESSION */,
+          index,
+          value,
+          isVNode,
+          loc: locStub
+      };
+  }
+
+  function defaultOnError(error) {
+      throw error;
+  }
+  function createCompilerError(code, loc, messages, additionalMessage) {
+      const msg =  (messages || errorMessages)[code] + (additionalMessage || ``)
+          ;
+      const error = new SyntaxError(String(msg));
+      error.code = code;
+      error.loc = loc;
+      return error;
+  }
+  const errorMessages = {
+      // parse errors
+      [0 /* ABRUPT_CLOSING_OF_EMPTY_COMMENT */]: 'Illegal comment.',
+      [1 /* CDATA_IN_HTML_CONTENT */]: 'CDATA section is allowed only in XML context.',
+      [2 /* DUPLICATE_ATTRIBUTE */]: 'Duplicate attribute.',
+      [3 /* END_TAG_WITH_ATTRIBUTES */]: 'End tag cannot have attributes.',
+      [4 /* END_TAG_WITH_TRAILING_SOLIDUS */]: "Illegal '/' in tags.",
+      [5 /* EOF_BEFORE_TAG_NAME */]: 'Unexpected EOF in tag.',
+      [6 /* EOF_IN_CDATA */]: 'Unexpected EOF in CDATA section.',
+      [7 /* EOF_IN_COMMENT */]: 'Unexpected EOF in comment.',
+      [8 /* EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT */]: 'Unexpected EOF in script.',
+      [9 /* EOF_IN_TAG */]: 'Unexpected EOF in tag.',
+      [10 /* INCORRECTLY_CLOSED_COMMENT */]: 'Incorrectly closed comment.',
+      [11 /* INCORRECTLY_OPENED_COMMENT */]: 'Incorrectly opened comment.',
+      [12 /* INVALID_FIRST_CHARACTER_OF_TAG_NAME */]: "Illegal tag name. Use '&lt;' to print '<'.",
+      [13 /* MISSING_ATTRIBUTE_VALUE */]: 'Attribute value was expected.',
+      [14 /* MISSING_END_TAG_NAME */]: 'End tag name was expected.',
+      [15 /* MISSING_WHITESPACE_BETWEEN_ATTRIBUTES */]: 'Whitespace was expected.',
+      [16 /* NESTED_COMMENT */]: "Unexpected '<!--' in comment.",
+      [17 /* UNEXPECTED_CHARACTER_IN_ATTRIBUTE_NAME */]: 'Attribute name cannot contain U+0022 ("), U+0027 (\'), and U+003C (<).',
+      [18 /* UNEXPECTED_CHARACTER_IN_UNQUOTED_ATTRIBUTE_VALUE */]: 'Unquoted attribute value cannot contain U+0022 ("), U+0027 (\'), U+003C (<), U+003D (=), and U+0060 (`).',
+      [19 /* UNEXPECTED_EQUALS_SIGN_BEFORE_ATTRIBUTE_NAME */]: "Attribute name cannot start with '='.",
+      [21 /* UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME */]: "'<?' is allowed only in XML context.",
+      [22 /* UNEXPECTED_SOLIDUS_IN_TAG */]: "Illegal '/' in tags.",
+      // Vue-specific parse errors
+      [23 /* X_INVALID_END_TAG */]: 'Invalid end tag.',
+      [24 /* X_MISSING_END_TAG */]: 'Element is missing end tag.',
+      [25 /* X_MISSING_INTERPOLATION_END */]: 'Interpolation end sign was not found.',
+      [26 /* X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END */]: 'End bracket for dynamic directive argument was not found. ' +
+          'Note that dynamic directive argument cannot contain spaces.',
+      // transform errors
+      [27 /* X_V_IF_NO_EXPRESSION */]: `v-if/v-else-if is missing expression.`,
+      [28 /* X_V_IF_SAME_KEY */]: `v-if/else branches must use unique keys.`,
+      [29 /* X_V_ELSE_NO_ADJACENT_IF */]: `v-else/v-else-if has no adjacent v-if.`,
+      [30 /* X_V_FOR_NO_EXPRESSION */]: `v-for is missing expression.`,
+      [31 /* X_V_FOR_MALFORMED_EXPRESSION */]: `v-for has invalid expression.`,
+      [32 /* X_V_FOR_TEMPLATE_KEY_PLACEMENT */]: `<template v-for> key should be placed on the <template> tag.`,
+      [33 /* X_V_BIND_NO_EXPRESSION */]: `v-bind is missing expression.`,
+      [34 /* X_V_ON_NO_EXPRESSION */]: `v-on is missing expression.`,
+      [35 /* X_V_SLOT_UNEXPECTED_DIRECTIVE_ON_SLOT_OUTLET */]: `Unexpected custom directive on <slot> outlet.`,
+      [36 /* X_V_SLOT_MIXED_SLOT_USAGE */]: `Mixed v-slot usage on both the component and nested <template>.` +
+          `When there are multiple named slots, all slots should use <template> ` +
+          `syntax to avoid scope ambiguity.`,
+      [37 /* X_V_SLOT_DUPLICATE_SLOT_NAMES */]: `Duplicate slot names found. `,
+      [38 /* X_V_SLOT_EXTRANEOUS_DEFAULT_SLOT_CHILDREN */]: `Extraneous children found when component already has explicitly named ` +
+          `default slot. These children will be ignored.`,
+      [39 /* X_V_SLOT_MISPLACED */]: `v-slot can only be used on components or <template> tags.`,
+      [40 /* X_V_MODEL_NO_EXPRESSION */]: `v-model is missing expression.`,
+      [41 /* X_V_MODEL_MALFORMED_EXPRESSION */]: `v-model value must be a valid JavaScript member expression.`,
+      [42 /* X_V_MODEL_ON_SCOPE_VARIABLE */]: `v-model cannot be used on v-for or v-slot scope variables because they are not writable.`,
+      [43 /* X_INVALID_EXPRESSION */]: `Error parsing JavaScript expression: `,
+      [44 /* X_KEEP_ALIVE_INVALID_CHILDREN */]: `<KeepAlive> expects exactly one child component.`,
+      // generic errors
+      [45 /* X_PREFIX_ID_NOT_SUPPORTED */]: `"prefixIdentifiers" option is not supported in this build of compiler.`,
+      [46 /* X_MODULE_MODE_NOT_SUPPORTED */]: `ES module mode is not supported in this build of compiler.`,
+      [47 /* X_CACHE_HANDLER_NOT_SUPPORTED */]: `"cacheHandlers" option is only supported when the "prefixIdentifiers" option is enabled.`,
+      [48 /* X_SCOPE_ID_NOT_SUPPORTED */]: `"scopeId" option is only supported in module mode.`
+  };
 
   const isStaticExp = (p) => p.type === 4 /* SIMPLE_EXPRESSION */ && p.isStatic;
   const isBuiltInType = (tag, expected) => tag === expected || tag === hyphenate(expected);
@@ -500,453 +589,6 @@ var VueCompilerCore = (function (exports) {
               return false;
       }
   }
-
-  const PURE_ANNOTATION = `/*#__PURE__*/`;
-  function createCodegenContext(ast, { mode = 'function', prefixIdentifiers = mode === 'module', sourceMap = false, filename = `template.vue.html`, scopeId = null, optimizeImports = false, runtimeGlobalName = `Vue`, runtimeModuleName = `vue`, ssr = false }) {
-      const context = {
-          mode,
-          prefixIdentifiers,
-          sourceMap,
-          filename,
-          scopeId,
-          optimizeImports,
-          runtimeGlobalName,
-          runtimeModuleName,
-          ssr,
-          source: ast.loc.source,
-          code: ``,
-          column: 1,
-          line: 1,
-          offset: 0,
-          indentLevel: 0,
-          pure: false,
-          map: undefined,
-          helper(key) {
-              return `_${helperNameMap[key]}`;
-          },
-          push(code, node) {
-              context.code += code;
-          },
-          indent() {
-              newline(++context.indentLevel);
-          },
-          deindent(withoutNewLine = false) {
-              if (withoutNewLine) {
-                  --context.indentLevel;
-              }
-              else {
-                  newline(--context.indentLevel);
-              }
-          },
-          newline() {
-              newline(context.indentLevel);
-          }
-      };
-      function newline(n) {
-          context.push('\n' + `  `.repeat(n));
-      }
-      return context;
-  }
-  function generate(ast, options = {}) {
-      const context = createCodegenContext(ast, options);
-      // 上下文创建结束的钩子函数
-      if (options.onContextCreated) {
-          options.onContextCreated(context);
-      }
-      const { prefixIdentifiers, scopeId, push, ssr, mode, indent, deindent, newline } = context;
-      const hasHelpers = ast.helpers.length > 0;
-      const useWithBlock = !prefixIdentifiers && mode !== 'module';
-      {
-          // -> `function ...`
-          genFunctionPreamble(ast, context);
-      }
-      const optimizeSources = options.bindingMetadata
-          ? `, $props, $setup, $data, $options`
-          : ``;
-      if (!ssr) {
-          push(`function render(_ctx, _cache${optimizeSources}) {`);
-      }
-      indent();
-      if (useWithBlock) {
-          push(`with (_ctx) {`);
-          indent();
-          // function mode const declarations should be inside with block
-          // also they should be renamed to avoid collision with user properties
-          // 重命名引入的函数避免冲突
-          if (hasHelpers) {
-              push(`const { ${ast.helpers
-                .map(s => `${helperNameMap[s]} : _${helperNameMap[s]}`)
-                .join(', ')} } = _Vue`);
-              push(`\n`);
-              newline();
-          }
-      }
-      // TODO ast.components, generate asset resolution statements
-      // TODO generate directives, ast.directives
-      // TODO 临时变量 ast.temps
-      // 生成 VNode 树表达式
-      if (!ssr) {
-          // 这里是真正 render 函数核心，上面都是为了引入变量，函数，imports 等做的处理
-          push(`return `);
-      }
-      if (ast.codegenNode) {
-          // genNode 为 codegen 阶段最最最核心函数
-          genNode(ast.codegenNode, context);
-      }
-      else {
-          push(`null`);
-      }
-      if (useWithBlock) {
-          deindent();
-          push(`}`);
-      }
-      deindent();
-      push(`}`);
-      return {
-          ast,
-          code: context.code,
-          map: context.map ? context.map.toJSON() : undefined
-      };
-  }
-  function genFunctionPreamble(ast, context) {
-      const { push, newline, runtimeGlobalName, prefixIdentifiers, ssr } = context;
-      const VueBinding =  runtimeGlobalName;
-      const aliasHelper = (s) => `${helperNameMap[s]}: _${helperNameMap[s]}`;
-      // Generate const declaration for helpers
-      // In prefix mode, we place the const declaration at top so it's done
-      // only once; But if we not prefixing, we place the declaration inside the
-      // with block so it doesn't incur the `in` check cost for every helper access.
-      if (ast.helpers.length > 0) {
-          {
-              // "with" mode.
-              // save Vue in a separate variable to avoid collision
-              push(`const _Vue = ${VueBinding}\n`);
-              // in "with" mode, helpers are declared inside the with block to avoid
-              // has check cost, but hoists are lifted out of the function - we need
-              // to provide the helper here.
-              if (ast.hoists.length) {
-                  const staticHelpers = [
-                      CREATE_VNODE,
-                      CREATE_COMMENT,
-                      CREATE_TEXT,
-                      CREATE_STATIC
-                  ]
-                      .filter(helper => ast.helpers.includes(helper))
-                      .map(aliasHelper)
-                      .join(', ');
-                  push(`const { ${staticHelpers} } = _Vue\n`);
-              }
-          }
-      }
-      genHoists(ast.hoists, context);
-      newline();
-      push(`return `);
-  }
-  function genHoists(hoists, context) {
-      if (!hoists.length) {
-          return;
-      }
-      context.pure = true;
-      const { push, newline, helper, scopeId, mode } = context;
-      newline();
-      hoists.forEach((exp, i) => {
-          if (exp) {
-              push(`const _hoisted_${i + 1} = `);
-              genNode(exp, context);
-              newline();
-          }
-      });
-      context.pure = false;
-  }
-  function isText$1(n) {
-      return (isString(n) ||
-          n.type === 4 /* SIMPLE_EXPRESSION */ ||
-          n.type === 2 /* TEXT */ ||
-          n.type === 5 /* INTERPOLATION */ ||
-          n.type === 8 /* COMPOUND_EXPRESSION */);
-  }
-  function genNodeListAsArray(nodes, context) {
-      const multilines = nodes.length > 3 ||
-          ( nodes.some(n => isArray(n) || !isText$1(n)));
-      context.push(`[`);
-      multilines && context.indent();
-      genNodeList(nodes, context, multilines);
-      multilines && context.deindent();
-      context.push(']');
-  }
-  // nodes: 对应 [tag, props, children, patchFlag, dynamicProps]
-  // 遍历递归处理这些节点
-  function genNodeList(nodes, context, multilines = false, comma = true) {
-      const { push, newline } = context;
-      for (let i = 0; i < nodes.length; i++) {
-          const node = nodes[i];
-          if (isString(node)) {
-              // 节点是字符串，直接 code += node
-              push(node);
-          }
-          else if (isArray(node)) {
-              // 将节点生成数组类型
-              genNodeListAsArray(node, context);
-          }
-          else {
-              genNode(node, context);
-          }
-          if (i < nodes.length - 1) {
-              // 最后一个不用加逗号
-              if (multilines) {
-                  comma && push(',');
-                  newline();
-              }
-              else {
-                  // 生成在一行，如： _createVnode("div", null, null, -1)
-                  comma && push(', ');
-              }
-          }
-      }
-  }
-  function genNode(node, context) {
-      if (isString(node)) {
-          // 节点是字符串，直接 code += node
-          context.push(node);
-          return;
-      }
-      if (isSymbol(node)) {
-          context.push(context.helper(node));
-          return;
-      }
-      switch (node.type) {
-          case 1 /* ELEMENT */:
-              
-                  assert(node.codegenNode != null, `Codegen node is missing for element/if/for node. ` +
-                      `Apply appropriate transforms first.`);
-              genNode(node.codegenNode, context);
-              break;
-          case 2 /* TEXT */:
-              genText(node, context);
-              break;
-          case 4 /* SIMPLE_EXPRESSION */:
-              genExpression(node, context);
-              break;
-          case 5 /* INTERPOLATION */:
-              genInterpolation(node, context);
-              break;
-          case 8 /* COMPOUND_EXPRESSION */:
-              genCompoundExpression(node, context);
-              break;
-          case 3 /* COMMENT */:
-              genComment(node, context);
-              break;
-          case 13 /* VNODE_CALL */:
-              genVNodeCall(node, context);
-              break;
-          case 14 /* JS_CALL_EXPRESSION */:
-              genCallExpression(node, context);
-              break;
-          case 15 /* JS_OBJECT_EXPRESSION */:
-              genObjectExpression(node, context);
-              break;
-      }
-  }
-  function genText(node, context) {
-      context.push(JSON.stringify(node.content), node);
-  }
-  function genExpression(node, context) {
-      const { content, isStatic } = node;
-      context.push(isStatic ? JSON.stringify(content) : content, node);
-  }
-  function genInterpolation(node, context) {
-      const { push, helper, pure } = context;
-      if (pure)
-          push(PURE_ANNOTATION);
-      push(`${helper(TO_DISPLAY_STRING)}(`);
-      genNode(node.content, context);
-      push(')');
-  }
-  // 如： v-model="model" -> "onUpdate:modelValue": $event => (model = $event)
-  function genCompoundExpression(node, context) {
-      for (let i = 0; i < node.children.length; i++) {
-          const child = node.children[i];
-          if (isString(child)) {
-              context.push(child);
-          }
-          else {
-              genNode(child, context);
-          }
-      }
-  }
-  // 生成对象的属性 key (可能是静态，动态)
-  function genExpressionAsPropertyKey(node, context) {
-      const { push } = context;
-      if (node.type === 8 /* COMPOUND_EXPRESSION */) {
-          push(`[`);
-          genCompoundExpression(node, context);
-          push(`]`);
-      }
-      else if (node.isStatic) {
-          // only quote key if necessary
-          const text = isSimpleIdentifier(node.content)
-              ? node.content
-              : JSON.stringify(node.content);
-          push(text, node);
-      }
-      else {
-          push(`[${node.content}]`, node);
-      }
-  }
-  function genComment(node, context) {
-      {
-          const { push, helper, pure } = context;
-          if (pure) {
-              push(PURE_ANNOTATION);
-          }
-          push(`${helper(CREATE_COMMENT)}(${JSON.stringify(node.content)})`, node);
-      }
-  }
-  function genVNodeCall(node, context) {
-      const { push, helper, pure } = context;
-      const { tag, props, children, patchFlag, dynamicProps, directives, isBlock, disableTracking } = node;
-      if (directives) {
-          push(helper(WITH_DIRECTIVES) + `(`);
-      }
-      if (isBlock) {
-          push(`(${helper(OPEN_BLOCK)}(${disableTracking ? `true` : ``}), `);
-      }
-      if (pure) {
-          push(PURE_ANNOTATION);
-      }
-      push(helper(isBlock ? CREATE_BLOCK : CREATE_VNODE) + '(', node);
-      genNodeList(
-      // 过滤掉空值
-      genNullableArgs([tag, props, children, patchFlag, dynamicProps]), context);
-      push(`)`);
-      if (isBlock) {
-          push(`)`);
-      }
-      if (directives) {
-          push(`, `);
-          genNode(directives, context);
-          push(`)`);
-      }
-  }
-  function genNullableArgs(args) {
-      let i = args.length;
-      // 从末尾开始淘汰掉空值参数
-      while (i--) {
-          if (args[i] != null)
-              break;
-      }
-      return args.slice(0, i + 1).map(arg => arg || `null`);
-  }
-  // JavaScript
-  // 根据 node 中的 callee 和 arguments 生成 callee(arguments)
-  function genCallExpression(node, context) {
-      const { push, helper, pure } = context;
-      const callee = isString(node.callee) ? node.callee : helper(node.callee);
-      if (pure) {
-          push(PURE_ANNOTATION);
-      }
-      push(callee + `(`, node);
-      genNodeList(node.arguments, context);
-      push(`)`);
-  }
-  // 将属性(attribute, prop, events, bindings, ...)生成对象
-  function genObjectExpression(node, context) {
-      const { push, indent, deindent, newline } = context;
-      const { properties } = node;
-      if (!properties.length) {
-          push(`{}`, node);
-          return;
-      }
-      const multilines = properties.length > 1 ||
-          (
-              properties.some(p => p.value.type !== 4 /* SIMPLE_EXPRESSION */));
-      push(multilines ? `{` : `{ `);
-      multilines && indent();
-      for (let i = 0; i < properties.length; i++) {
-          const { key, value } = properties[i];
-          // key
-          genExpressionAsPropertyKey(key, context);
-          push(`: `);
-          // value
-          genNode(value, context);
-          if (i < properties.length - 1) {
-              push(`,`);
-              newline();
-          }
-      }
-      multilines && deindent();
-      push(multilines ? `}` : ` }`);
-  }
-
-  function defaultOnError(error) {
-      throw error;
-  }
-  function createCompilerError(code, loc, messages, additionalMessage) {
-      const msg =  (messages || errorMessages)[code] + (additionalMessage || ``)
-          ;
-      const error = new SyntaxError(String(msg));
-      error.code = code;
-      error.loc = loc;
-      return error;
-  }
-  const errorMessages = {
-      // parse errors
-      [0 /* ABRUPT_CLOSING_OF_EMPTY_COMMENT */]: 'Illegal comment.',
-      [1 /* CDATA_IN_HTML_CONTENT */]: 'CDATA section is allowed only in XML context.',
-      [2 /* DUPLICATE_ATTRIBUTE */]: 'Duplicate attribute.',
-      [3 /* END_TAG_WITH_ATTRIBUTES */]: 'End tag cannot have attributes.',
-      [4 /* END_TAG_WITH_TRAILING_SOLIDUS */]: "Illegal '/' in tags.",
-      [5 /* EOF_BEFORE_TAG_NAME */]: 'Unexpected EOF in tag.',
-      [6 /* EOF_IN_CDATA */]: 'Unexpected EOF in CDATA section.',
-      [7 /* EOF_IN_COMMENT */]: 'Unexpected EOF in comment.',
-      [8 /* EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT */]: 'Unexpected EOF in script.',
-      [9 /* EOF_IN_TAG */]: 'Unexpected EOF in tag.',
-      [10 /* INCORRECTLY_CLOSED_COMMENT */]: 'Incorrectly closed comment.',
-      [11 /* INCORRECTLY_OPENED_COMMENT */]: 'Incorrectly opened comment.',
-      [12 /* INVALID_FIRST_CHARACTER_OF_TAG_NAME */]: "Illegal tag name. Use '&lt;' to print '<'.",
-      [13 /* MISSING_ATTRIBUTE_VALUE */]: 'Attribute value was expected.',
-      [14 /* MISSING_END_TAG_NAME */]: 'End tag name was expected.',
-      [15 /* MISSING_WHITESPACE_BETWEEN_ATTRIBUTES */]: 'Whitespace was expected.',
-      [16 /* NESTED_COMMENT */]: "Unexpected '<!--' in comment.",
-      [17 /* UNEXPECTED_CHARACTER_IN_ATTRIBUTE_NAME */]: 'Attribute name cannot contain U+0022 ("), U+0027 (\'), and U+003C (<).',
-      [18 /* UNEXPECTED_CHARACTER_IN_UNQUOTED_ATTRIBUTE_VALUE */]: 'Unquoted attribute value cannot contain U+0022 ("), U+0027 (\'), U+003C (<), U+003D (=), and U+0060 (`).',
-      [19 /* UNEXPECTED_EQUALS_SIGN_BEFORE_ATTRIBUTE_NAME */]: "Attribute name cannot start with '='.",
-      [21 /* UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME */]: "'<?' is allowed only in XML context.",
-      [22 /* UNEXPECTED_SOLIDUS_IN_TAG */]: "Illegal '/' in tags.",
-      // Vue-specific parse errors
-      [23 /* X_INVALID_END_TAG */]: 'Invalid end tag.',
-      [24 /* X_MISSING_END_TAG */]: 'Element is missing end tag.',
-      [25 /* X_MISSING_INTERPOLATION_END */]: 'Interpolation end sign was not found.',
-      [26 /* X_MISSING_DYNAMIC_DIRECTIVE_ARGUMENT_END */]: 'End bracket for dynamic directive argument was not found. ' +
-          'Note that dynamic directive argument cannot contain spaces.',
-      // transform errors
-      [27 /* X_V_IF_NO_EXPRESSION */]: `v-if/v-else-if is missing expression.`,
-      [28 /* X_V_IF_SAME_KEY */]: `v-if/else branches must use unique keys.`,
-      [29 /* X_V_ELSE_NO_ADJACENT_IF */]: `v-else/v-else-if has no adjacent v-if.`,
-      [30 /* X_V_FOR_NO_EXPRESSION */]: `v-for is missing expression.`,
-      [31 /* X_V_FOR_MALFORMED_EXPRESSION */]: `v-for has invalid expression.`,
-      [32 /* X_V_FOR_TEMPLATE_KEY_PLACEMENT */]: `<template v-for> key should be placed on the <template> tag.`,
-      [33 /* X_V_BIND_NO_EXPRESSION */]: `v-bind is missing expression.`,
-      [34 /* X_V_ON_NO_EXPRESSION */]: `v-on is missing expression.`,
-      [35 /* X_V_SLOT_UNEXPECTED_DIRECTIVE_ON_SLOT_OUTLET */]: `Unexpected custom directive on <slot> outlet.`,
-      [36 /* X_V_SLOT_MIXED_SLOT_USAGE */]: `Mixed v-slot usage on both the component and nested <template>.` +
-          `When there are multiple named slots, all slots should use <template> ` +
-          `syntax to avoid scope ambiguity.`,
-      [37 /* X_V_SLOT_DUPLICATE_SLOT_NAMES */]: `Duplicate slot names found. `,
-      [38 /* X_V_SLOT_EXTRANEOUS_DEFAULT_SLOT_CHILDREN */]: `Extraneous children found when component already has explicitly named ` +
-          `default slot. These children will be ignored.`,
-      [39 /* X_V_SLOT_MISPLACED */]: `v-slot can only be used on components or <template> tags.`,
-      [40 /* X_V_MODEL_NO_EXPRESSION */]: `v-model is missing expression.`,
-      [41 /* X_V_MODEL_MALFORMED_EXPRESSION */]: `v-model value must be a valid JavaScript member expression.`,
-      [42 /* X_V_MODEL_ON_SCOPE_VARIABLE */]: `v-model cannot be used on v-for or v-slot scope variables because they are not writable.`,
-      [43 /* X_INVALID_EXPRESSION */]: `Error parsing JavaScript expression: `,
-      [44 /* X_KEEP_ALIVE_INVALID_CHILDREN */]: `<KeepAlive> expects exactly one child component.`,
-      // generic errors
-      [45 /* X_PREFIX_ID_NOT_SUPPORTED */]: `"prefixIdentifiers" option is not supported in this build of compiler.`,
-      [46 /* X_MODULE_MODE_NOT_SUPPORTED */]: `ES module mode is not supported in this build of compiler.`,
-      [47 /* X_CACHE_HANDLER_NOT_SUPPORTED */]: `"cacheHandlers" option is only supported when the "prefixIdentifiers" option is enabled.`,
-      [48 /* X_SCOPE_ID_NOT_SUPPORTED */]: `"scopeId" option is only supported in module mode.`
-  };
 
   // The default decoder only provides escapes for characters reserved as part of
   // the template syntax, and is only used if the custom renderer did not provide
@@ -1792,8 +1434,8 @@ var VueCompilerCore = (function (exports) {
                   resultCache.set(node, 0 /* NOT_STATIC */);
                   return 0 /* NOT_STATIC */;
               }
-          case 3 /* COMMENT */:
           case 2 /* TEXT */:
+          case 3 /* COMMENT */:
               return 1 /* FULL_STATIC */;
           case 9 /* IF */:
           case 11 /* FOR */:
@@ -1905,7 +1547,19 @@ var VueCompilerCore = (function (exports) {
           helperString(name) {
               return `_${helperNameMap[context.helper(name)]}`;
           },
-          replaceNode(node) { },
+          replaceNode(node) {
+              /* istanbul ignore if */
+              {
+                  if (!context.currentNode) {
+                      throw new Error(`Node being replaced is already removed.`);
+                  }
+                  if (!context.parent) {
+                      throw new Error(`Cannot replace root node.`);
+                  }
+              }
+              // 替换原来 ast 🌲中的节点，并且重置 currentNode 为最新的节点
+              context.parent.children[context.childIndex] = context.currentNode = node;
+          },
           removeNode(node) { },
           onNodeRemoved: () => { },
           addIdentifiers(exp) {
@@ -1921,8 +1575,7 @@ var VueCompilerCore = (function (exports) {
               return identifier;
           },
           cache(exp, isVNode = false) {
-              // TODO
-              return {};
+              return createCacheExpression(++context.cached, exp, isVNode);
           }
       };
       return context;
@@ -2030,6 +1683,12 @@ var VueCompilerCore = (function (exports) {
                   context.helper(TO_DISPLAY_STRING);
               }
               break;
+          // for container types, further traverse downwards
+          case 9 /* IF */:
+              for (let i = 0; i < node.branches.length; i++) {
+                  traverseNode(node.branches[i], context);
+              }
+              break;
           case 10 /* IF_BRANCH */:
           case 11 /* FOR */:
           case 1 /* ELEMENT */:
@@ -2044,7 +1703,639 @@ var VueCompilerCore = (function (exports) {
       }
   }
   function createStructuralDirectiveTransform(name, fn) {
-      return {};
+      const matches = isString(name)
+          ? (n) => n === name
+          : (n) => name.test(n);
+      return (node, context) => {
+          if (node.type === 1 /* ELEMENT */) {
+              const { props } = node;
+              // structural directive transforms are not concerned with slots
+              // as they are handled separately in vSlot.ts
+              // 过滤掉 v-slot 它在 vSlot.ts 中处理
+              if (node.tagType === 3 /* TEMPLATE */ && props.some(isVSlot)) {
+                  return;
+              }
+              const exitFns = [];
+              for (let i = 0; i < props.length; i++) {
+                  const prop = props[i];
+                  if (prop.type === 7 /* DIRECTIVE */ && matches(prop.name)) {
+                      // structural directives are removed to avoid infinite recursion
+                      // also we remove them *before* applying so that it can further
+                      // traverse itself in case it moves the node around
+                      props.splice(i, 1);
+                      i--;
+                      const onExit = fn(node, prop, context);
+                      if (onExit)
+                          exitFns.push(onExit);
+                  }
+              }
+              return exitFns;
+          }
+      };
+  }
+
+  const PURE_ANNOTATION = `/*#__PURE__*/`;
+  function createCodegenContext(ast, { mode = 'function', prefixIdentifiers = mode === 'module', sourceMap = false, filename = `template.vue.html`, scopeId = null, optimizeImports = false, runtimeGlobalName = `Vue`, runtimeModuleName = `vue`, ssr = false }) {
+      const context = {
+          mode,
+          prefixIdentifiers,
+          sourceMap,
+          filename,
+          scopeId,
+          optimizeImports,
+          runtimeGlobalName,
+          runtimeModuleName,
+          ssr,
+          source: ast.loc.source,
+          code: ``,
+          column: 1,
+          line: 1,
+          offset: 0,
+          indentLevel: 0,
+          pure: false,
+          map: undefined,
+          helper(key) {
+              return `_${helperNameMap[key]}`;
+          },
+          push(code, node) {
+              context.code += code;
+          },
+          indent() {
+              newline(++context.indentLevel);
+          },
+          deindent(withoutNewLine = false) {
+              if (withoutNewLine) {
+                  --context.indentLevel;
+              }
+              else {
+                  newline(--context.indentLevel);
+              }
+          },
+          newline() {
+              newline(context.indentLevel);
+          }
+      };
+      function newline(n) {
+          context.push('\n' + `  `.repeat(n));
+      }
+      return context;
+  }
+  function generate(ast, options = {}) {
+      const context = createCodegenContext(ast, options);
+      // 上下文创建结束的钩子函数
+      if (options.onContextCreated) {
+          options.onContextCreated(context);
+      }
+      const { prefixIdentifiers, scopeId, push, ssr, mode, indent, deindent, newline } = context;
+      const hasHelpers = ast.helpers.length > 0;
+      const useWithBlock = !prefixIdentifiers && mode !== 'module';
+      {
+          // -> `function ...`
+          genFunctionPreamble(ast, context);
+      }
+      const optimizeSources = options.bindingMetadata
+          ? `, $props, $setup, $data, $options`
+          : ``;
+      if (!ssr) {
+          push(`function render(_ctx, _cache${optimizeSources}) {`);
+      }
+      indent();
+      if (useWithBlock) {
+          push(`with (_ctx) {`);
+          indent();
+          // function mode const declarations should be inside with block
+          // also they should be renamed to avoid collision with user properties
+          // 重命名引入的函数避免冲突
+          if (hasHelpers) {
+              push(`const { ${ast.helpers
+                .map(s => `${helperNameMap[s]} : _${helperNameMap[s]}`)
+                .join(', ')} } = _Vue`);
+              push(`\n`);
+              newline();
+          }
+      }
+      // TODO ast.components, generate asset resolution statements
+      // TODO generate directives, ast.directives
+      // TODO 临时变量 ast.temps
+      // 生成 VNode 树表达式
+      if (!ssr) {
+          // 这里是真正 render 函数核心，上面都是为了引入变量，函数，imports 等做的处理
+          push(`return `);
+      }
+      if (ast.codegenNode) {
+          // genNode 为 codegen 阶段最最最核心函数
+          genNode(ast.codegenNode, context);
+      }
+      else {
+          push(`null`);
+      }
+      if (useWithBlock) {
+          deindent();
+          push(`}`);
+      }
+      deindent();
+      push(`}`);
+      return {
+          ast,
+          code: context.code,
+          map: context.map ? context.map.toJSON() : undefined
+      };
+  }
+  function genFunctionPreamble(ast, context) {
+      const { push, newline, runtimeGlobalName, prefixIdentifiers, ssr } = context;
+      const VueBinding =  runtimeGlobalName;
+      const aliasHelper = (s) => `${helperNameMap[s]}: _${helperNameMap[s]}`;
+      // Generate const declaration for helpers
+      // In prefix mode, we place the const declaration at top so it's done
+      // only once; But if we not prefixing, we place the declaration inside the
+      // with block so it doesn't incur the `in` check cost for every helper access.
+      if (ast.helpers.length > 0) {
+          {
+              // "with" mode.
+              // save Vue in a separate variable to avoid collision
+              push(`const _Vue = ${VueBinding}\n`);
+              // in "with" mode, helpers are declared inside the with block to avoid
+              // has check cost, but hoists are lifted out of the function - we need
+              // to provide the helper here.
+              if (ast.hoists.length) {
+                  const staticHelpers = [
+                      CREATE_VNODE,
+                      CREATE_COMMENT,
+                      CREATE_TEXT,
+                      CREATE_STATIC
+                  ]
+                      .filter(helper => ast.helpers.includes(helper))
+                      .map(aliasHelper)
+                      .join(', ');
+                  push(`const { ${staticHelpers} } = _Vue\n`);
+              }
+          }
+      }
+      genHoists(ast.hoists, context);
+      newline();
+      push(`return `);
+  }
+  function genHoists(hoists, context) {
+      if (!hoists.length) {
+          return;
+      }
+      context.pure = true;
+      const { push, newline, helper, scopeId, mode } = context;
+      newline();
+      hoists.forEach((exp, i) => {
+          if (exp) {
+              push(`const _hoisted_${i + 1} = `);
+              genNode(exp, context);
+              newline();
+          }
+      });
+      context.pure = false;
+  }
+  function isText$1(n) {
+      return (isString(n) ||
+          n.type === 4 /* SIMPLE_EXPRESSION */ ||
+          n.type === 2 /* TEXT */ ||
+          n.type === 5 /* INTERPOLATION */ ||
+          n.type === 8 /* COMPOUND_EXPRESSION */);
+  }
+  function genNodeListAsArray(nodes, context) {
+      const multilines = nodes.length > 3 ||
+          ( nodes.some(n => isArray(n) || !isText$1(n)));
+      context.push(`[`);
+      multilines && context.indent();
+      genNodeList(nodes, context, multilines);
+      multilines && context.deindent();
+      context.push(']');
+  }
+  // nodes: 对应 [tag, props, children, patchFlag, dynamicProps]
+  // 遍历递归处理这些节点
+  function genNodeList(nodes, context, multilines = false, comma = true) {
+      const { push, newline } = context;
+      for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          if (isString(node)) {
+              // 节点是字符串，直接 code += node
+              push(node);
+          }
+          else if (isArray(node)) {
+              // 将节点生成数组类型
+              genNodeListAsArray(node, context);
+          }
+          else {
+              genNode(node, context);
+          }
+          if (i < nodes.length - 1) {
+              // 最后一个不用加逗号
+              if (multilines) {
+                  comma && push(',');
+                  newline();
+              }
+              else {
+                  // 生成在一行，如： _createVnode("div", null, null, -1)
+                  comma && push(', ');
+              }
+          }
+      }
+  }
+  function genNode(node, context) {
+      if (isString(node)) {
+          // 节点是字符串，直接 code += node
+          context.push(node);
+          return;
+      }
+      if (isSymbol(node)) {
+          context.push(context.helper(node));
+          return;
+      }
+      switch (node.type) {
+          case 1 /* ELEMENT */:
+          case 9 /* IF */:
+              
+                  assert(node.codegenNode != null, `Codegen node is missing for element/if/for node. ` +
+                      `Apply appropriate transforms first.`);
+              genNode(node.codegenNode, context);
+              break;
+          case 2 /* TEXT */:
+              genText(node, context);
+              break;
+          case 4 /* SIMPLE_EXPRESSION */:
+              genExpression(node, context);
+              break;
+          case 5 /* INTERPOLATION */:
+              genInterpolation(node, context);
+              break;
+          case 12 /* TEXT_CALL */:
+              genNode(node.codegenNode, context);
+              break;
+          case 8 /* COMPOUND_EXPRESSION */:
+              genCompoundExpression(node, context);
+              break;
+          case 3 /* COMMENT */:
+              genComment(node, context);
+              break;
+          case 13 /* VNODE_CALL */:
+              genVNodeCall(node, context);
+              break;
+          case 14 /* JS_CALL_EXPRESSION */:
+              genCallExpression(node, context);
+              break;
+          case 15 /* JS_OBJECT_EXPRESSION */:
+              genObjectExpression(node, context);
+              break;
+          case 19 /* JS_CONDITIONAL_EXPRESSION */:
+              genConditionalExpression(node, context);
+              break;
+          case 20 /* JS_CACHE_EXPRESSION */:
+              genCacheExpression(node, context);
+              break;
+      }
+  }
+  function genText(node, context) {
+      context.push(JSON.stringify(node.content), node);
+  }
+  function genExpression(node, context) {
+      const { content, isStatic } = node;
+      context.push(isStatic ? JSON.stringify(content) : content, node);
+  }
+  function genInterpolation(node, context) {
+      const { push, helper, pure } = context;
+      if (pure)
+          push(PURE_ANNOTATION);
+      push(`${helper(TO_DISPLAY_STRING)}(`);
+      genNode(node.content, context);
+      push(')');
+  }
+  // 如： v-model="model" -> "onUpdate:modelValue": $event => (model = $event)
+  function genCompoundExpression(node, context) {
+      for (let i = 0; i < node.children.length; i++) {
+          const child = node.children[i];
+          if (isString(child)) {
+              context.push(child);
+          }
+          else {
+              genNode(child, context);
+          }
+      }
+  }
+  // 生成对象的属性 key (可能是静态，动态)
+  function genExpressionAsPropertyKey(node, context) {
+      const { push } = context;
+      if (node.type === 8 /* COMPOUND_EXPRESSION */) {
+          push(`[`);
+          genCompoundExpression(node, context);
+          push(`]`);
+      }
+      else if (node.isStatic) {
+          // only quote key if necessary
+          const text = isSimpleIdentifier(node.content)
+              ? node.content
+              : JSON.stringify(node.content);
+          push(text, node);
+      }
+      else {
+          push(`[${node.content}]`, node);
+      }
+  }
+  function genComment(node, context) {
+      {
+          const { push, helper, pure } = context;
+          if (pure) {
+              push(PURE_ANNOTATION);
+          }
+          push(`${helper(CREATE_COMMENT)}(${JSON.stringify(node.content)})`, node);
+      }
+  }
+  function genVNodeCall(node, context) {
+      const { push, helper, pure } = context;
+      const { tag, props, children, patchFlag, dynamicProps, directives, isBlock, disableTracking } = node;
+      if (directives) {
+          push(helper(WITH_DIRECTIVES) + `(`);
+      }
+      if (isBlock) {
+          push(`(${helper(OPEN_BLOCK)}(${disableTracking ? `true` : ``}), `);
+      }
+      if (pure) {
+          push(PURE_ANNOTATION);
+      }
+      push(helper(isBlock ? CREATE_BLOCK : CREATE_VNODE) + '(', node);
+      genNodeList(
+      // 过滤掉空值
+      genNullableArgs([tag, props, children, patchFlag, dynamicProps]), context);
+      push(`)`);
+      if (isBlock) {
+          push(`)`);
+      }
+      if (directives) {
+          push(`, `);
+          genNode(directives, context);
+          push(`)`);
+      }
+  }
+  function genNullableArgs(args) {
+      let i = args.length;
+      // 从末尾开始淘汰掉空值参数
+      while (i--) {
+          if (args[i] != null)
+              break;
+      }
+      return args.slice(0, i + 1).map(arg => arg || `null`);
+  }
+  // JavaScript
+  // 根据 node 中的 callee 和 arguments 生成 callee(arguments)
+  function genCallExpression(node, context) {
+      const { push, helper, pure } = context;
+      const callee = isString(node.callee) ? node.callee : helper(node.callee);
+      if (pure) {
+          push(PURE_ANNOTATION);
+      }
+      push(callee + `(`, node);
+      genNodeList(node.arguments, context);
+      push(`)`);
+  }
+  // 将属性(attribute, prop, events, bindings, ...)生成对象
+  function genObjectExpression(node, context) {
+      const { push, indent, deindent, newline } = context;
+      const { properties } = node;
+      if (!properties.length) {
+          push(`{}`, node);
+          return;
+      }
+      const multilines = properties.length > 1 ||
+          (
+              properties.some(p => p.value.type !== 4 /* SIMPLE_EXPRESSION */));
+      push(multilines ? `{` : `{ `);
+      multilines && indent();
+      for (let i = 0; i < properties.length; i++) {
+          const { key, value } = properties[i];
+          // key
+          genExpressionAsPropertyKey(key, context);
+          push(`: `);
+          // value
+          genNode(value, context);
+          if (i < properties.length - 1) {
+              push(`,`);
+              newline();
+          }
+      }
+      multilines && deindent();
+      push(multilines ? `}` : ` }`);
+  }
+  function genConditionalExpression(node, context) {
+      const { test, consequent, alternate, newline: needNewline } = node;
+      const { push, indent, deindent, newline } = context;
+      if (test.type === 4 /* SIMPLE_EXPRESSION */) {
+          // 非简单的标识符需要用括号，可能是表达式，所以需要 (a + b) ? ... : ...
+          const needsParams = !isSimpleIdentifier(test.content);
+          needsParams && push(`(`);
+          genExpression(test, context);
+          needsParams && push(`)`);
+      }
+      else {
+          push(`(`);
+          genNode(test, context);
+          push(`)`);
+      }
+      needNewline && indent();
+      context.indentLevel++;
+      needNewline || push(` `);
+      push(`? `);
+      genNode(consequent, context);
+      context.indentLevel--;
+      needNewline && newline();
+      needNewline || push(` `);
+      push(`: `);
+      const isNested = alternate.type === 19 /* JS_CONDITIONAL_EXPRESSION */;
+      if (!isNested) {
+          // 不是嵌套
+          context.indentLevel++;
+      }
+      genNode(alternate, context);
+      if (!isNested) {
+          context.indentLevel--;
+      }
+      needNewline && deindent(true /* without newline */);
+  }
+  function genCacheExpression(node, context) {
+      const { push, helper, indent, deindent, newline } = context;
+      push(`_cache[${node.index}] || (`);
+      if (node.isVNode) {
+          indent();
+          push(`${helper(SET_BLOCK_TRACKING)}(-1),`);
+          newline();
+      }
+      push(`_cache[${node.index}] = `);
+      genNode(node.value, context);
+      if (node.isVNode) {
+          push(`,`);
+          newline();
+          push(`${helper(SET_BLOCK_TRACKING)}(1),`);
+          newline();
+          push(`_cache[${node.index}]`);
+          deindent();
+      }
+      push(`)`);
+  }
+
+  // these keywords should not appear inside expressions, but operators like
+  // typeof, instanceof and in are allowed
+  const prohibitedKeywordRE = new RegExp('\\b' +
+      ('do,if,for,let,new,try,var,case,else,with,await,break,catch,class,const,' +
+          'super,throw,while,yield,delete,export,import,return,switch,default,' +
+          'extends,finally,continue,debugger,function,arguments,typeof,void')
+          .split(',')
+          .join('\\b|\\b') +
+      '\\b');
+  // strip strings in expressions
+  const stripStringRE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`/g;
+  /**
+   * Validate a non-prefixed expression.
+   * This is only called when using the in-browser runtime compiler since it
+   * doesn't prefix expressions.
+   */
+  function validateBrowserExpression(node, context, asParams = false, asRawStatements = false) {
+      const exp = node.content;
+      // empty expressions are validated per-directive since some directives
+      // do allow empty expressions.
+      if (!exp.trim()) {
+          return;
+      }
+      try {
+          new Function(asRawStatements
+              ? ` ${exp} `
+              : `return ${asParams ? `(${exp}) => {}` : `(${exp})`}`);
+      }
+      catch (e) {
+          let message = e.message;
+          const keywordMatch = exp
+              .replace(stripStringRE, '')
+              .match(prohibitedKeywordRE);
+          if (keywordMatch) {
+              message = `avoid using JavaScript keyword as property name: "${keywordMatch[0]}"`;
+          }
+          context.onError(createCompilerError(43 /* X_INVALID_EXPRESSION */, node.loc, undefined, message));
+      }
+  }
+
+  const transformIf = createStructuralDirectiveTransform(/^(if|else|else-if)$/, (node, dir, context) => {
+      return processIf(node, dir, context, (ifNode, branch, isRoot) => {
+          // #1587: We need to dynamically increment the key based on the current
+          // node's sibling nodes, since chained v-if/else branches are
+          // rendered at the same depth
+          // 这里讲的是，必须给兄弟节点一个动态递增的 `key` 属性，因为 v-if/else 分支
+          // 会在同一级渲染
+          // 取出分支的所有兄弟，这里面包含它自己
+          const siblings = context.parent.children;
+          let i = siblings.indexOf(ifNode);
+          let key = 0;
+          while (i-- >= 0) {
+              const sibling = siblings[i];
+              if (sibling && sibling.type === 9 /* IF */) {
+                  key += sibling.branches.length;
+              }
+          }
+          // Exit callback. Complete the codegenNode when all children have been
+          // transformed.
+          // exitFns 中的 exitFn ，到这里的时候说明分支节点的所有 children 都被 traverse
+          // 过了，因此这里就可以直接返回对应的 codegenNode 了
+          return () => {
+              if (isRoot) {
+                  ifNode.codegenNode = createCodegenNodeForBranch(branch, key, context);
+              }
+          };
+      });
+  });
+  function processIf(node, dir, context, processCodegen) {
+      // 不是 v-else 且没有表达式的情况，非法的情况，如： <div v-if></div>
+      if (dir.name !== 'else' &&
+          (!dir.exp || !dir.exp.content.trim())) {
+          const loc = dir.exp ? dir.exp.loc : node.loc;
+          context.onError(createCompilerError(27 /* X_V_IF_NO_EXPRESSION */, dir.loc));
+          // 默认表达式的值为 true -> <div v-if="true" ...
+          dir.exp = createSimpleExpression(`true`, false, loc);
+      }
+      if ( dir.exp) {
+          // 检测是不是有效的表达式，直接 new Function(code) 有没报错就知道对不对
+          validateBrowserExpression(dir.exp, context);
+      }
+      if (dir.name === 'if') {
+          // v-if 分支
+          const branch = createIfBranch(node, dir);
+          const ifNode = {
+              type: 9 /* IF */,
+              loc: node.loc,
+              branches: [branch]
+          };
+          // 替换原来的节点
+          context.replaceNode(ifNode);
+          if (processCodegen) {
+              return processCodegen(ifNode, branch, true);
+          }
+      }
+  }
+  function createIfBranch(node, dir) {
+      return {
+          type: 10 /* IF_BRANCH */,
+          loc: node.loc,
+          // condition ? v-if node : v-else node
+          condition: dir.name === 'else' ? undefined : dir.exp,
+          // 如果用的是 <template v-if="condition" ... 就需要 node.children
+          // 因为 template 本身是不该被渲染的
+          children: node.tagType === 3 /* TEMPLATE */ && !findDir(node, 'for')
+              ? node.children
+              : [node],
+          // 对于 v-for, v-if/... 都应该给它个 key, 这里是用户编写是的提供的唯一 key
+          // 如果没有解析器会默认生成一个全局唯一的 key
+          userKey: findProp(node, `key`)
+      };
+  }
+  function createCodegenNodeForBranch(branch, keyIndex, context) {
+      if (branch.condition) {
+          return createConditionalExpression(branch.condition, createChildrenCodegenNode(branch, keyIndex, context), 
+          // make sure to pass in asBlock: true so that the comment node call
+          // closes the current block.
+          createCallExpression(context.helper(CREATE_COMMENT), [
+               '"v-if"' ,
+              'true'
+          ]));
+      }
+      else {
+          return createChildrenCodegenNode(branch, keyIndex, context);
+      }
+  }
+  function createChildrenCodegenNode(branch, keyIndex, context) {
+      const { helper } = context;
+      // 给每个分支加一个 `key` 属性
+      const keyProperty = createObjectProperty(`key`, createSimpleExpression(`${keyIndex}`, false, locStub, true));
+      const { children } = branch;
+      const firstChild = children[0];
+      // 是不是需要用 fragment 将所有 children 包起来
+      const needFragmentWrapper = children.length !== 1 || firstChild.type !== 1 /* ELEMENT */;
+      if (needFragmentWrapper) {
+          if (children.length === 1 && firstChild.type === 11 /* FOR */) {
+              // optimize away nested fragments when child is a ForNode
+              const vnodeCall = firstChild.codegenNode;
+              injectProp(vnodeCall, keyProperty, context);
+              return vnodeCall;
+          }
+          else {
+              return createVNodeCall(context, helper(FRAGMENT), createObjectExpression([keyProperty]), children, `${64 /* STABLE_FRAGMENT */} /* ${PatchFlagNames[64 /* STABLE_FRAGMENT */]} */`, undefined, undefined, true, false, branch.loc);
+          }
+      }
+      else {
+          // children.length === 1 && firstChild.type === NodeTypes.ELEMENT
+          // 正常的元素，直接用它来创建
+          const vnodeCall = firstChild
+              .codegenNode;
+          // Change createVNode to createBlock.
+          if (vnodeCall.type === 13 /* VNODE_CALL */) {
+              vnodeCall.isBlock = true;
+              helper(OPEN_BLOCK);
+              helper(CREATE_BLOCK);
+          }
+          // inject branch key
+          injectProp(vnodeCall, keyProperty, context);
+          return vnodeCall;
+      }
   }
 
   // some directive transforms (e.g. v-model) may return a symbol for runtime
@@ -2465,46 +2756,6 @@ var VueCompilerCore = (function (exports) {
       return propsNamesString + `]`;
   }
 
-  // these keywords should not appear inside expressions, but operators like
-  // typeof, instanceof and in are allowed
-  const prohibitedKeywordRE = new RegExp('\\b' +
-      ('do,if,for,let,new,try,var,case,else,with,await,break,catch,class,const,' +
-          'super,throw,while,yield,delete,export,import,return,switch,default,' +
-          'extends,finally,continue,debugger,function,arguments,typeof,void')
-          .split(',')
-          .join('\\b|\\b') +
-      '\\b');
-  // strip strings in expressions
-  const stripStringRE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`/g;
-  /**
-   * Validate a non-prefixed expression.
-   * This is only called when using the in-browser runtime compiler since it
-   * doesn't prefix expressions.
-   */
-  function validateBrowserExpression(node, context, asParams = false, asRawStatements = false) {
-      const exp = node.content;
-      // empty expressions are validated per-directive since some directives
-      // do allow empty expressions.
-      if (!exp.trim()) {
-          return;
-      }
-      try {
-          new Function(asRawStatements
-              ? ` ${exp} `
-              : `return ${asParams ? `(${exp}) => {}` : `(${exp})`}`);
-      }
-      catch (e) {
-          let message = e.message;
-          const keywordMatch = exp
-              .replace(stripStringRE, '')
-              .match(prohibitedKeywordRE);
-          if (keywordMatch) {
-              message = `avoid using JavaScript keyword as property name: "${keywordMatch[0]}"`;
-          }
-          context.onError(createCompilerError(43 /* X_INVALID_EXPRESSION */, node.loc, undefined, message));
-      }
-  }
-
   const fnExpRE = /^\s*([\w$_]+|\([^)]*?\))\s*=>|^\s*function(?:\s+[\w$]+)?\s*\(/;
   const transformOn = (dir, node, context, augmentor) => {
       const { loc, modifiers, arg } = dir;
@@ -2664,6 +2915,24 @@ var VueCompilerCore = (function (exports) {
       }
   };
 
+  const seen = new WeakSet();
+  const transformOnce = (node, context) => {
+      if (node.type === 1 /* ELEMENT */ && findDir(node, 'once', true)) {
+          // 缓存实现 v-once，就算有数据更新也不会重新生成 render 函数
+          if (seen.has(node)) {
+              return;
+          }
+          seen.add(node);
+          context.helper(SET_BLOCK_TRACKING);
+          return () => {
+              const cur = context.currentNode;
+              if (cur.codegenNode) {
+                  cur.codegenNode = context.cache(cur.codegenNode, true /* isVNode */);
+              }
+          };
+      }
+  };
+
   const transformModel = (dir, node, context) => {
       const { exp, arg } = dir;
       if (!exp) {
@@ -2708,7 +2977,7 @@ var VueCompilerCore = (function (exports) {
   // 合并 transform 插件列表
   function getBaseTransformPreset(prefixIdentifiers) {
       return [
-          [transformElement, transformText],
+          [transformOnce, transformIf, transformElement, transformText],
           {
               on: transformOn,
               bind: transformBind,
@@ -2785,9 +3054,11 @@ var VueCompilerCore = (function (exports) {
   exports.baseCompile = baseCompile;
   exports.baseParse = baseParse;
   exports.createArrayExpression = createArrayExpression;
+  exports.createCacheExpression = createCacheExpression;
   exports.createCallExpression = createCallExpression;
   exports.createCompilerError = createCompilerError;
   exports.createCompoundExpression = createCompoundExpression;
+  exports.createConditionalExpression = createConditionalExpression;
   exports.createObjectExpression = createObjectExpression;
   exports.createObjectProperty = createObjectProperty;
   exports.createRoot = createRoot;
@@ -2826,3 +3097,10 @@ var VueCompilerCore = (function (exports) {
   return exports;
 
 }({}));
+
+try {
+  if (module) {
+    module.exports = VueCompilerCore;
+  }
+} catch (e) {}
+ 
