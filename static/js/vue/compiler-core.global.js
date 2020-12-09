@@ -1045,7 +1045,7 @@ var VueCompilerCore = (function (exports) {
           // 2. :, @, # 指令缩写
           // 3. [name] 动态属性名
           // 4. name.modifier 修饰符
-          const match = /(?:^v-([a-z0-9]+))?(?:(?::|^@|^#)(\[[^\]]+\]|[^\.]+))?(.+)?$/i.exec(name);
+          const match = /(?:^v-([a-z0-9-]+))?(?:(?::|^@|^#)(\[[^\]]+\]|[^\.]+))?(.+)?$/i.exec(name);
           // 缩写指令替换成指令单词
           const dirName = match[1] ||
               (startsWith(name, ':') ? 'bind' : startsWith(name, '@') ? 'on' : 'slot');
@@ -1560,7 +1560,35 @@ var VueCompilerCore = (function (exports) {
               // 替换原来 ast 🌲中的节点，并且重置 currentNode 为最新的节点
               context.parent.children[context.childIndex] = context.currentNode = node;
           },
-          removeNode(node) { },
+          removeNode(node) {
+              if ( !context.parent) {
+                  throw new Error(`Cannot remove root node.`);
+              }
+              const list = context.parent.children;
+              // traverseChildren 里面会用 childIndex 记录下当前被 traverse 的节点
+              const removalIndex = node
+                  ? list.indexOf(node)
+                  : context.currentNode
+                      ? context.childIndex
+                      : -1;
+              /* istanbul ignore if */
+              if ( removalIndex < 0) {
+                  throw new Error(`node being removed is not a child of current parent`);
+              }
+              if (!node || node === context.currentNode) {
+                  // current node removed
+                  context.currentNode = null;
+                  context.onNodeRemoved();
+              }
+              else {
+                  // sibling node removed
+                  if (context.childIndex > removalIndex) {
+                      context.childIndex--;
+                      context.onNodeRemoved();
+                  }
+              }
+              context.parent.children.splice(removalIndex, 1);
+          },
           onNodeRemoved: () => { },
           addIdentifiers(exp) {
               // TODO
@@ -2241,9 +2269,15 @@ var VueCompilerCore = (function (exports) {
               if (isRoot) {
                   ifNode.codegenNode = createCodegenNodeForBranch(branch, key, context);
               }
+              else {
+                  // attach this branch's codegen node to the v-if root.
+                  const parentCondition = getParentCondition(ifNode.codegenNode);
+                  parentCondition.alternate = createCodegenNodeForBranch(branch, key + ifNode.branches.length - 1, context);
+              }
           };
       });
   });
+  // target-agnostic transform used for both Client and SSR
   function processIf(node, dir, context, processCodegen) {
       // 不是 v-else 且没有表达式的情况，非法的情况，如： <div v-if></div>
       if (dir.name !== 'else' &&
@@ -2269,6 +2303,67 @@ var VueCompilerCore = (function (exports) {
           context.replaceNode(ifNode);
           if (processCodegen) {
               return processCodegen(ifNode, branch, true);
+          }
+      }
+      else {
+          // v-else, v-else-if 分支
+          // locate the adjacent v-if
+          const siblings = context.parent.children;
+          const comments = [];
+          let i = siblings.indexOf(node);
+          // 一直往回找到 v-if 节点
+          while (i-- >= -1) {
+              const sibling = siblings[i];
+              // 开发模式忽略注释，但缓存将来需要回复，生产模式不需要注释
+              if ( sibling && sibling.type === 3 /* COMMENT */) {
+                  context.removeNode(sibling);
+                  comments.unshift(sibling);
+                  continue;
+              }
+              // 空文本内容，直接删除
+              if (sibling &&
+                  sibling.type === 2 /* TEXT */ &&
+                  !sibling.content.trim().lenth) {
+                  context.removeNode(sibling);
+                  continue;
+              }
+              if (sibling && sibling.type === 9 /* IF */) {
+                  // 找到目标节点
+                  context.removeNode();
+                  const branch = createIfBranch(node, dir);
+                  if ( comments.length) {
+                      branch.children = [...comments, ...branch.children];
+                  }
+                  // check if user is forcing same key on different branches
+                  // 在不同分支上应用了同一个 `key`
+                  {
+                      const key = branch.userKey;
+                      if (key) {
+                          sibling.branches.forEach(({ userKey }) => {
+                              if (isSameKey(userKey, key)) {
+                                  context.onError(createCompilerError(28 /* X_V_IF_SAME_KEY */, branch.userKey.loc));
+                              }
+                          });
+                      }
+                  }
+                  sibling.branches.push(branch);
+                  const onExit = processCodegen && processCodegen(sibling, branch, false);
+                  // since the branch was removed, it will not be traversed.
+                  // make sure to traverse here.
+                  // 分支节点被上面删除，所以要手动 traverse 该节点
+                  traverseNode(branch, context);
+                  // call on exit
+                  if (onExit)
+                      onExit();
+                  // make sure to reset currentNode after traversal to indicate this
+                  // node has been removed.
+                  // 标识当前节点被删除了， traverseNode 中会用到
+                  context.currentNode = null;
+              }
+              else {
+                  context.onError(createCompilerError(29 /* X_V_ELSE_NO_ADJACENT_IF */, node.loc));
+              }
+              break;
           }
       }
   }
@@ -2335,6 +2430,45 @@ var VueCompilerCore = (function (exports) {
           // inject branch key
           injectProp(vnodeCall, keyProperty, context);
           return vnodeCall;
+      }
+  }
+  function isSameKey(a, b) {
+      if (!a || a.type !== b.type) {
+          return false;
+      }
+      if (a.type === 6 /* ATTRIBUTE */) {
+          if (a.value.content !== b.value.content) {
+              return false;
+          }
+      }
+      else {
+          // directive
+          const exp = a.exp;
+          const branchExp = b.exp;
+          if (exp.type !== branchExp.type) {
+              return false;
+          }
+          if (exp.type !== 4 /* SIMPLE_EXPRESSION */ ||
+              (exp.isStatic !== branchExp.isStatic ||
+                  exp.content !== branchExp.content)) {
+              return false;
+          }
+      }
+      return true;
+  }
+  function getParentCondition(node) {
+      while (true) {
+          if (node.type === 19 /* JS_CONDITIONAL_EXPRESSION */) {
+              if (node.alternate.type === 19 /* JS_CONDITIONAL_EXPRESSION */) {
+                  node = node.alternate;
+              }
+              else {
+                  return node;
+              }
+          }
+          else if (node.type === 20 /* JS_CACHE_EXPRESSION */) {
+              node = node.value;
+          }
       }
   }
 

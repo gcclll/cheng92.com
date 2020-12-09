@@ -36,10 +36,11 @@
 <script src="/js/vue/compiler-core.global.js"></script>
 <script>
 let i = 0, j = 0
-const l1 = x => console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55')
+const l1 = x => (j = 0, console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55'))
 const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
 const log = (args) => console.log.apply(console, args)
-l1.reset = l2.reset = log.reset = () => (j = 0, log)
+log.blue = x => log([`%c ${x}`, `color: blue`])
+log.red = x => log([`%c ${x}`, `color: red`])
 const { baseCompile } = VueCompilerCore
 const compile = (tpl, title, logAst = false) => {
     l2(title)
@@ -2160,5 +2161,118 @@ compile(`<template v-if="ok"><div/>hello<p/></template>`, 'template v-if')
 compile(`<Component v-if="ok"></Component>`, 'component v-if')
 </script>
 #+end_export
-** v-else
+** fa77b51 v-else
 
+[[https://github.com/gcclll/stb-vue-next/commit/fa77b5146f3a3af6c8372012cb6a4d8482adb0c6][feat(add): v-else · gcclll/stb-vue-next@fa77b51]]
+
+修改点：
+
+1. ~processCodegen()~ 函数里面增加分支处理
+
+  [[http://qiniu.ii6g.com/img/20201209164845.png]] 
+    这里有一个需要注意的点: ~getParentCondition()~ 会一直查找
+   ~JS_CONDITIONAL_EXPRESSION~ 类型节点的 ~alternate~ ，如果它依旧是个
+   ~JS_CONDITIONAL_EXPRESSION~ 类型，说明是多级的 ~if/else~ 条件语句，直到找到最
+   后一个不是为止。
+
+   相当于 ： ~c1 ? cons1 : c2 ? cons2 : c3 ? cons3 : alt~ 会一直从 ~c1~ 节点开始
+   查找直到找到最后的那个 ~alt~ 节点为止，然后将新的分支挂到 ~alt~ 后面组织成新
+   的分支:  ~c1 ? cons1 : c2 ? cons2 : c3 ? cons3 : c4 ? cons4 : newalt~
+
+   #+begin_comment
+    PS: c1, c2, c3, c4 分别代表分支节点的 ~test~ ，最后追加的 ~c4 ? cons4 :
+    newalt~ 三个对象都属于新加的节点， ~{test -> c4, cons4 -> consequent,
+    alternate -> newalt }~
+   #+end_comment
+
+2. ~processIf()~ 里增加分支处理
+
+   新增代码里有个 ~while~ 循环去从当前的分支节点开始在它的兄弟节点里面往回找，直
+   到找到第一个 ~9,IF~ 节点，这中间不允许出现其他有效节点(除注释，空文本节点外)，
+   因为 ~v-if/else~ 指令节点必须紧靠着。
+
+   找到之后，要将当前分支节点删除，并且同时要去手动 ~traverseNode(branch)~ 一次，
+   因为他在原来的 ast 树种删除了，所以原来的 traverse 进程不会遍历它，因此需要手
+   动执行 traverse 去处理它及其孩子节点生成对应的 codegenNode 。
+
+   然后将其 push 到 ~9,IF~ 节点的 ~node.branches~ 里面作为分支。
+
+3. ~isSameKey(a,b)~ 新增，检测两个 key 属性是不是相同
+
+   几种判定为不相同的条件：
+   1) key 类型不同 (~a.type !== b.type~)
+
+   2) key 值不同 (~a.value.content !== b.value.content~)
+
+   3) key 如果是指令类型，检测表达式类型，静态属性异同(~isStatic~)
+
+4. ~getParentCondition()~ 新增，递归 ~9，IF~ 节点的
+   ~node.alternate.alternate.alternate...~ 直到找到 ~alternate~ 不是
+   ~JS_CONDITIONAL_EXPRESSION~ 的情况
+      
+
+FIX: [[https://github.com/gcclll/stb-vue-next/commit/464d6815adf49596065440001e0bc5397ad2aa69][fix: v-else current node dont removed · gcclll/stb-vue-next@464d681]]
+
+测试：
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { code } = baseCompile(`<div v-if="ok"/><p v-else/>`)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode } = _Vue
+
+    return ok
+      ? (_openBlock(), _createBlock("div", { key: 0 }))
+      : (_openBlock(), _createBlock("p", { key: 1 }))
+  }
+}
+undefined
+#+end_example
+
+#+begin_comment
+更多测试(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+compile(`<div v-if="ok"/><p v-else/>`, 'v-if + v-else')
+compile(`<template v-if="ok"><div/>hello<p/></template>`, 'template v-if')
+compile(`<div v-if="ok"/><p v-else-if="orNot"/>`, 'v-if + v-else-if')
+compile(`<div v-if="ok"/><p v-else-if="orNot"/><template v-else>fine</template>`, 'v-if + v-else-if + v-else')
+compile(`
+        <div v-if="ok"/>
+        <!--foo-->
+        <p v-else-if="orNot"/>
+        <!--bar-->
+        <template v-else>fine</template>
+      `, 'comment between branches')
+
+l1(`with prefixIdentifiers ... TODO`)
+l1(`errors`)
+compile(`<div v-else/>`, `<div v-else/> 没有匹配的 v-if`)
+compile(`<div v-else-if="foo"/>`, `<div v-else-if="foo"/>, 没有匹配的 v-if`)
+compile(`<div v-if="ok" :key="a + 1" /><div v-else :key="a + 1" />`,
+`<div v-if="ok" :key="a + 1" /><div v-else :key="a + 1" />, 相同的 key`
+)
+log.red(`不允许不同分支使用相似的 key，因为 key 是指令属性，因此会对比它的类型及表达式`)
+l1(`v-on with v-if`)
+compile(`<button v-on="{ click: clickEvent }" v-if="true">w/ v-if</button>`, 'v-if 上使用 v-on 指令')
+log.blue(`因为这里用的是无参数的 v-on 所以会导致所有属性被合并(_mergeProps(...))。`)
+</script>
+
+#+end_export
+
+BUG: v-else-if 被解析成了 ~else~ 因为 parser 阶段匹配正则不对。
+[[https://github.com/gcclll/stb-vue-next/commit/5b83d1c12a8580638d7952e712f7c6776a099a50][fix: parser v-else-if failed · gcclll/stb-vue-next@5b83d1c]]
