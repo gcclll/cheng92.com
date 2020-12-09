@@ -39,7 +39,7 @@ let i = 0, j = 0
 const l1 = x => console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55')
 const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
 const log = (args) => console.log.apply(console, args)
-log.reset = () => (j = 0, log)
+l1.reset = l2.reset = log.reset = () => (j = 0, log)
 const { baseCompile } = VueCompilerCore
 const compile = (tpl, title, logAst = false) => {
     l2(title)
@@ -48,7 +48,7 @@ const compile = (tpl, title, logAst = false) => {
         hoistStatic: true
     })
 
-    log(code)
+    log([code])
     logAst && log(ast)
 }
 
@@ -2154,7 +2154,11 @@ BUG: 这里居然少了个 ~_hoisted_2~ ???
 
 #+begin_export html
 <script>
-l1(`test`)
+l1(`transform`)
+compile(`<div v-if="ok"/>`, 'basic v-if')
+compile(`<template v-if="ok"><div/>hello<p/></template>`, 'template v-if')
+compile(`<Component v-if="ok"></Component>`, 'component v-if')
 </script>
 #+end_export
+** v-else
 
