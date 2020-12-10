@@ -2707,4 +2707,54 @@ c(`<slot v-foo />`, `error on unexpected custom directive on <slot>，不允许�
 </script>
 #+end_export
 
-** add track slot scopes
+** ebdb1ed add track slot scopes
+
+[[https://github.com/gcclll/stb-vue-next/commit/ebdb1edbfd23312d5fb079a3955917745cac2622][feat: add track slot scopes · gcclll/stb-vue-next@ebdb1ed]]
+
+还不知道干吗的❓ 
+
+#+begin_src typescript
+// A NodeTransform that:
+// 1. Tracks scope identifiers for scoped slots so that they don't get prefixed
+//    by transformExpression. This is only applied in non-browser builds with
+//    { prefixIdentifiers: true }.
+// 2. Track v-slot depths so that we know a slot is inside another slot.
+//    Note the exit callback is executed before buildSlots() on the same node,
+//    so only nested slots see positive numbers.
+export const trackSlotScopes: NodeTransform = (node, context) => {
+  // <component> or <template>
+  if (
+    node.type === NodeTypes.ELEMENT &&
+    (node.tagType === ElementTypes.COMPONENT ||
+      node.tagType === ElementTypes.TEMPLATE)
+  ) {
+    // We are only checking non-empty v-slot here
+    // since we only care about slots that introduce scope variables.
+    const vSlot = findDir(node, 'slot')
+    if (vSlot) {
+      const slotProps = vSlot.exp
+      if (!__BROWSER__ && context.prefixIdentifiers) {
+        slotProps && context.addIdentifiers(slotProps)
+      }
+
+      context.scopes.vSlot++
+      return () => {
+        if (!__BROWSER__ && context.prefixIdentifiers) {
+          slotProps && context.removeIdentifiers(slotProps)
+        }
+        context.scopes.vSlot--
+      }
+    }
+  }
+}
+#+end_src
+* 36c1f36 build user component as slots(组件是如何当做 slot 处理的)
+
+[[/img/vue3/compiler-core/pcg/pcg-component-with-slot.svg]]
+
+~<Comp><div/></Comp>~
+
+这里 ~Comp~ 是组件类型(~tagType=1,COMPONENT~) 会在 ~transformElement~ 中被当做
+~slot~ 来处理调用 ~buildSlots()~ 。
+
+[[https://github.com/gcclll/stb-vue-next/commit/36c1f36ea2a92119d2a61f3012972229e85b1e30][feat(add): user component treat as slot to build · gcclll/stb-vue-next@36c1f36]]
