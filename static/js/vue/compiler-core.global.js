@@ -284,6 +284,16 @@ var VueCompilerCore = (function (exports) {
           arguments: args
       };
   }
+  function createFunctionExpression(params, returns = undefined, newline = false, isSlot = false, loc = locStub) {
+      return {
+          type: 18 /* JS_FUNCTION_EXPRESSION */,
+          params,
+          returns,
+          newline,
+          isSlot,
+          loc
+      };
+  }
   function createConditionalExpression(test, consequent, alternate, newline = true) {
       return {
           type: 19 /* JS_CONDITIONAL_EXPRESSION */,
@@ -1978,6 +1988,7 @@ var VueCompilerCore = (function (exports) {
       switch (node.type) {
           case 1 /* ELEMENT */:
           case 9 /* IF */:
+          case 11 /* FOR */:
               
                   assert(node.codegenNode != null, `Codegen node is missing for element/if/for node. ` +
                       `Apply appropriate transforms first.`);
@@ -2009,6 +2020,9 @@ var VueCompilerCore = (function (exports) {
               break;
           case 15 /* JS_OBJECT_EXPRESSION */:
               genObjectExpression(node, context);
+              break;
+          case 18 /* JS_FUNCTION_EXPRESSION */:
+              genFunctionExpression(node, context);
               break;
           case 19 /* JS_CONDITIONAL_EXPRESSION */:
               genConditionalExpression(node, context);
@@ -2147,6 +2161,48 @@ var VueCompilerCore = (function (exports) {
       }
       multilines && deindent();
       push(multilines ? `}` : ` }`);
+  }
+  function genFunctionExpression(node, context) {
+      const { push, indent, deindent, scopeId, mode } = context;
+      const { params, returns, body, newline, isSlot } = node;
+      if (isSlot) {
+          push(`_${helperNameMap[WITH_CTX]}(`);
+      }
+      push(`(`, node);
+      // 解析函数参数
+      if (isArray(params)) {
+          genNodeList(params, context);
+      }
+      else if (params) {
+          genNode(params, context);
+      }
+      push(`) => `);
+      if (newline || body) {
+          push(`{`);
+          indent();
+      }
+      // 函数返回值
+      if (returns) {
+          if (newline) {
+              push(`return `);
+          }
+          if (isArray(returns)) {
+              genNodeListAsArray(returns, context);
+          }
+          else {
+              genNode(returns, context);
+          }
+      }
+      else if (body) {
+          genNode(body, context);
+      }
+      if (newline || body) {
+          deindent();
+          push(`)`);
+      }
+      if ( isSlot) {
+          push(`)`);
+      }
   }
   function genConditionalExpression(node, context) {
       const { test, consequent, alternate, newline: needNewline } = node;
@@ -2323,7 +2379,7 @@ var VueCompilerCore = (function (exports) {
               // 空文本内容，直接删除
               if (sibling &&
                   sibling.type === 2 /* TEXT */ &&
-                  !sibling.content.trim().lenth) {
+                  !sibling.content.trim().length) {
                   context.removeNode(sibling);
                   continue;
               }
@@ -2470,6 +2526,214 @@ var VueCompilerCore = (function (exports) {
               node = node.value;
           }
       }
+  }
+
+  const transformFor = createStructuralDirectiveTransform('for', (node, dir, context) => {
+      const { helper } = context;
+      return processFor(node, dir, context, forNode => {
+          // create the loop render function expression now, and add the
+          // iterator on exit after all children have been traversed
+          const renderExp = createCallExpression(helper(RENDER_LIST), [
+              forNode.source
+          ]);
+          const keyProp = findProp(node, `key`);
+          const keyProperty = keyProp
+              ? createObjectProperty(`key`, keyProp.type === 6 /* ATTRIBUTE */
+                  ? createSimpleExpression(keyProp.value.content, true)
+                  : keyProp.exp)
+              : null;
+          const isStableFragment = forNode.source.type === 4 /* SIMPLE_EXPRESSION */ &&
+              forNode.source.isConstant;
+          const fragmentFlag = isStableFragment
+              ? 64 /* STABLE_FRAGMENT */
+              : keyProp
+                  ? 128 /* KEYED_FRAGMENT */
+                  : 256 /* UNKEYED_FRAGMENT */;
+          forNode.codegenNode = createVNodeCall(context, helper(FRAGMENT), undefined, renderExp, `${fragmentFlag} /* ${PatchFlagNames[fragmentFlag]} */`, undefined, undefined, true /* isBlock */, !isStableFragment /* disableTracking */, node.loc);
+          return () => {
+              // finish the codegen now that all children have been traversed
+              let childBlock;
+              const isTemplate = isTemplateNode(node);
+              const { children } = forNode;
+              // check <template v-for> key placement
+              if ( isTemplate) {
+                  node.children.some(c => {
+                      if (c.type === 1 /* ELEMENT */) {
+                          const key = findProp(c, `key`);
+                          if (key) {
+                              context.onError(createCompilerError(32 /* X_V_FOR_TEMPLATE_KEY_PLACEMENT */, key.loc));
+                              return true;
+                          }
+                      }
+                  });
+              }
+              const needFragmentWrapper = children.length !== 1 || children[0].type !== 1 /* ELEMENT */;
+              const slotOutlet = isSlotOutlet(node)
+                  ? node
+                  : isTemplate &&
+                      node.children.length === 1 &&
+                      isSlotOutlet(node.children[0])
+                      ? node.children[0] // api-extractor somehow fails to infer this
+                      : null;
+              if (slotOutlet) {
+                  // <slot v-for="..."> or <template v-for="..."><slot/></template>
+                  childBlock = slotOutlet.codegenNode;
+                  if (isTemplate && keyProperty) {
+                      // <template v-for="..." :key="..."><slot/></template>
+                      // we need to inject the key to the renderSlot() call.
+                      // the props for renderSlot is passed as the 3rd argument.
+                      injectProp(childBlock, keyProperty, context);
+                  }
+              }
+              else if (needFragmentWrapper) {
+                  // <template v-for="..."> with text or multi-elements
+                  // should generate a fragment block for each loop
+                  childBlock = createVNodeCall(context, helper(FRAGMENT), keyProperty ? createObjectExpression([keyProperty]) : undefined, node.children, `${64 /* STABLE_FRAGMENT */} /* ${PatchFlagNames[64 /* STABLE_FRAGMENT */]} */`, undefined, undefined, true);
+              }
+              else {
+                  // Normal element v-for. Directly use the child's codegenNode
+                  // but mark it as a block.
+                  childBlock = children[0]
+                      .codegenNode;
+                  if (isTemplate && keyProperty) {
+                      injectProp(childBlock, keyProperty, context);
+                  }
+                  childBlock.isBlock = !isStableFragment;
+                  if (childBlock.isBlock) {
+                      helper(OPEN_BLOCK);
+                      helper(CREATE_BLOCK);
+                  }
+              }
+              renderExp.arguments.push(createFunctionExpression(createForLoopParams(forNode.parseResult), childBlock, true /* force newline */));
+          };
+      });
+  });
+  // target-agnostic transform used for both Client and SSR
+  function processFor(node, dir, context, processCodegen) {
+      if (!dir.exp) {
+          context.onError(createCompilerError(30 /* X_V_FOR_NO_EXPRESSION */, dir.loc));
+          return;
+      }
+      const parseResult = parseForExpression(
+      // can only be simple expression because vFor transform is applied
+      // before expression transform.
+      dir.exp, context);
+      if (!parseResult) {
+          context.onError(createCompilerError(31 /* X_V_FOR_MALFORMED_EXPRESSION */, dir.loc));
+          return;
+      }
+      const { addIdentifiers, removeIdentifiers, scopes } = context;
+      const { source, value, key, index } = parseResult;
+      const forNode = {
+          type: 11 /* FOR */,
+          loc: dir.loc,
+          source,
+          valueAlias: value,
+          keyAlias: key,
+          objectIndexAlias: index,
+          parseResult,
+          children: isTemplateNode(node) ? node.children : [node]
+      };
+      context.replaceNode(forNode);
+      // bookkeeping
+      scopes.vFor++;
+      const onExit = processCodegen && processCodegen(forNode);
+      return () => {
+          scopes.vFor--;
+          if (onExit)
+              onExit();
+      };
+  }
+  // for ... in/of ...
+  const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/;
+  // This regex doesn't cover the case if key or index aliases have destructuring,
+  // but those do not make sense in the first place, so this works in practice.
+  const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/;
+  const stripParensRE = /^\(|\)$/g;
+  function parseForExpression(input, context) {
+      const loc = input.loc;
+      const exp = input.content;
+      const inMatch = exp.match(forAliasRE);
+      if (!inMatch)
+          return;
+      // LHS in|of RHS
+      const [, LHS, RHS] = inMatch;
+      if (!inMatch)
+          return;
+      const result = {
+          source: createAliasExpression(loc, RHS.trim(), exp.indexOf(RHS, LHS.length)),
+          value: undefined,
+          key: undefined,
+          index: undefined
+      };
+      {
+          validateBrowserExpression(result.source, context);
+      }
+      // 去掉前后的 (, ), 如： (value, key, index) -> `value, key, index`
+      let valueContent = LHS.trim()
+          .replace(stripParensRE, '')
+          .trim();
+      const trimmedOffset = LHS.indexOf(valueContent);
+      // value, key, index -> 匹配出 ` key` 和 ` index`
+      const iteratorMatch = valueContent.match(forIteratorRE);
+      if (iteratorMatch) {
+          valueContent = valueContent.replace(forIteratorRE, '').trim();
+          // ` key` -> `key`
+          const keyContent = iteratorMatch[1].trim();
+          let keyOffset;
+          if (keyContent) {
+              keyOffset = exp.indexOf(keyContent, trimmedOffset + valueContent.length);
+              result.key = createAliasExpression(loc, keyContent, keyOffset);
+              {
+                  validateBrowserExpression(result.key, context, true);
+              }
+          }
+          // `index`
+          if (iteratorMatch[2]) {
+              const indexContent = iteratorMatch[2].trim();
+              if (indexContent) {
+                  result.index = createAliasExpression(loc, indexContent, exp.indexOf(indexContent, result.key
+                      ? keyOffset + keyContent.length
+                      : trimmedOffset + valueContent.length));
+                  {
+                      validateBrowserExpression(result.index, context, true);
+                  }
+              }
+          }
+      }
+      if (valueContent) {
+          result.value = createAliasExpression(loc, valueContent, trimmedOffset);
+          {
+              validateBrowserExpression(result.value, context, true);
+          }
+      }
+      return result;
+  }
+  function createAliasExpression(range, content, offset) {
+      return createSimpleExpression(content, false, getInnerRange(range, offset, content.length));
+  }
+  function createForLoopParams({ value, key, index }) {
+      // function: (_, __, index) => ....
+      const params = [];
+      if (value) {
+          params.push(value);
+      }
+      if (key) {
+          if (!value) {
+              params.push(createSimpleExpression(`_`, false));
+          }
+          params.push(key);
+      }
+      if (index) {
+          if (!key) {
+              if (!value) {
+                  params.push(createSimpleExpression(`_`, false));
+              }
+              params.push(createSimpleExpression(`__`, false));
+          }
+          params.push(index);
+      }
+      return params;
   }
 
   // some directive transforms (e.g. v-model) may return a symbol for runtime
@@ -3111,7 +3375,7 @@ var VueCompilerCore = (function (exports) {
   // 合并 transform 插件列表
   function getBaseTransformPreset(prefixIdentifiers) {
       return [
-          [transformOnce, transformIf, transformElement, transformText],
+          [transformOnce, transformIf, transformFor, transformElement, transformText],
           {
               on: transformOn,
               bind: transformBind,
@@ -3193,6 +3457,7 @@ var VueCompilerCore = (function (exports) {
   exports.createCompilerError = createCompilerError;
   exports.createCompoundExpression = createCompoundExpression;
   exports.createConditionalExpression = createConditionalExpression;
+  exports.createFunctionExpression = createFunctionExpression;
   exports.createObjectExpression = createObjectExpression;
   exports.createObjectProperty = createObjectProperty;
   exports.createRoot = createRoot;

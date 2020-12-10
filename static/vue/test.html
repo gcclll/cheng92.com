@@ -45,6 +45,10 @@
         <template v-else>fine</template>
      `;
       tpl = `<button v-on="{ click: clickEvent }" v-if="true">w/ v-if</button>`;
+      // v-for
+      tpl = '<span v-for="index in 5" />';
+      tpl = `<template v-for="item in items">hello<span/></template>`;
+      tpl = `<template v-for="item in items" :key="item.id"><span :id="item.id" /></template>`;
     </script>
 
     <script>

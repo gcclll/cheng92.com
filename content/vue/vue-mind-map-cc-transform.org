@@ -2161,7 +2161,7 @@ compile(`<template v-if="ok"><div/>hello<p/></template>`, 'template v-if')
 compile(`<Component v-if="ok"></Component>`, 'component v-if')
 </script>
 #+end_export
-** fa77b51 v-else
+** fa77b51 v-else/v-else-if
 
 [[https://github.com/gcclll/stb-vue-next/commit/fa77b5146f3a3af6c8372012cb6a4d8482adb0c6][feat(add): v-else · gcclll/stb-vue-next@fa77b51]]
 
@@ -2276,3 +2276,341 @@ log.blue(`因为这里用的是无参数的 v-on 所以会导致所有属性被�
 
 BUG: v-else-if 被解析成了 ~else~ 因为 parser 阶段匹配正则不对。
 [[https://github.com/gcclll/stb-vue-next/commit/5b83d1c12a8580638d7952e712f7c6776a099a50][fix: parser v-else-if failed · gcclll/stb-vue-next@5b83d1c]]
+* 6c82066 add v-for transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/3a1662ecde9600525088a48420e526b6f9820931][feat(init): v-for · gcclll/stb-vue-next@3a1662e]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/6c8206676c5d5229c853fb21cb91aad1a9f1d4a2][feat: v-for directive · gcclll/stb-vue-next@6c82066]]
+
+v-for 指令实现过程中需要用到的几个函数：
+
+- ~transformFor()~ 最终生成的 tranformXxx 函数
+- ~createStructuralDirectiveTransform()~ 同 ~v-if~ 指令
+- ~processFor()~ 处理 ~v-for~ 指令入口
+- ~processCodegen()~ 同 ~v-if~ 用来生成 ~codegenNode~ 的函数
+- ~parseForExpression()~ 将 ~v-for="item in items"~ 表达式解析成
+  ~ForParseResult{source, value, key, index}~ 类型 AST 。
+- ~createAliasExpression()~ 给 ~value, key, index~ 创建 ~SIMPLE_EXPRESSION~ 类型
+  结构。
+- ~createForLoopParams()~ 创建 ~_renderList~ 函数回调的参数 ~[value, key,
+  index]~ ，如果没有使用默认变量： ~_~ 或 ~__~ ，如： ~(_, __, index)~
+
+
+其中 ~parseForExpression()~ 函数是解析 ~v-for~ 表达式的核心函数，里面使用了三个
+正则，用来匹配指令表达式：
+
+1. ~const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/~
+
+   [[http://qiniu.ii6g.com/img/20201210155617.png]]
+
+   匹配 ~v-for="item in items"~ 中的值部分
+
+   #+begin_src js
+   const re = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/
+   const log = (params) => console.log(params.map((p, i) => `${i}, ${p}`).join(`\n`))
+   log.title = console.log
+
+   log.title(`>>> 匹配 item in items`)
+   log("item in items".match(re))
+   log.title(`>>> 匹配 (item, key) in items`)
+   log("( item, key ) in items".match(re))
+   #+end_src
+
+   #+RESULTS:
+   : >>> 匹配 item in items
+   : 0, item in items
+   : 1, item
+   : 2, items
+   : >>> 匹配 (item, key) in items
+   : 0, ( item, key ) in items
+   : 1, ( item, key )
+   : 2, items
+   : undefined
+
+2. ~const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/~
+
+   [[http://qiniu.ii6g.com/img/20201210161642.png]]
+
+   这个正则表达式用来匹配 ~(item, key) in items~ 中的 ~item~ 和 ~key~
+
+   #+begin_src js
+   const re = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/ 
+   const log = (params) => console.log(params.map((p, i) => `${i}, ${p}`).join(`\n`))
+   log.title = console.log
+
+   log.title(`>>> 匹配 'item, key, index' 中的 key 和 index`)
+   log("item, key, index".match(re))
+   log.title(`>>> 匹配 "item, key" 中的 key`)
+   log("item, key".match(re))
+   #+end_src
+
+   #+RESULTS:
+   : >>> 匹配 'item, key, index' 中的 key 和 index
+   : 0, , key, index
+   : 1,  key
+   : 2,  index
+   : >>> 匹配 "item, key" 中的 key
+   : 0, , key
+   : 1,  key
+   : 2, undefined
+   : undefined
+
+3. ~const stripParensRE = /^\(|\)$/g~ 这个用来匹配 ~(item, key, index)~ 前后括号
+
+
+~parseForExpression()~ 核心实现：
+
+1. ~source~ 数据源， ~forAliasRE~ 匹配后的 ~RHS~ 值
+   
+   #+begin_src json
+   source: {
+    type: 4, // SIMPLE_EXPRESSION
+    loc: { source: 'obj', start: [Object], end: [Object] },
+    isConstant: false,
+    content: 'obj',
+    isStatic: false
+   }
+   #+end_src
+2. ~value~ 的取值，在 AST 中对应 ~valueAlias~
+
+   ~valueContent = valueContent.replace(forIteratorRE,
+   '').trim()~
+
+   通过匹配 ~key, index~ 的正则，反向替换得到 ~value~
+    #+begin_src js
+    const re = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
+    console.log(`item, key, index`.replace(re, '').trim())
+    console.log(`>>> 支持解构`)
+    console.log(`[ id, value ], key, index`.replace(re, '').trim())
+    #+end_src
+
+    #+RESULTS:
+    : item
+    : >>> 支持解构
+    : [ id, value ]
+    : undefined
+
+    解析后的结构：
+    #+begin_src json
+    valueAlias: {
+        type: 4, // SIMPLE_EXPRESSION
+        loc: { source: 'value', start: [Object], end: [Object] },
+        isConstant: false,
+        content: 'value',
+        isStatic: false
+    }
+    #+end_src
+3. ~key~ 取值处理，在 AST 中对应 ~keyAlias~
+
+   #+begin_src js
+    keyAlias: {
+        type: 4,
+        loc: { source: 'key', start: [Object], end: [Object] },
+        isConstant: false,
+        content: 'key',
+        isStatic: false
+    }
+   #+end_src
+4. ~index~ 取值处理，在 AST中对应 ~objectIndexAlias~
+
+   #+begin_src js
+    objectIndexAlias: {
+        type: 4,
+        loc: { source: 'index', start: [Object], end: [Object] },
+        isConstant: false,
+        content: 'index',
+        isStatic: false
+    }
+   #+end_src
+
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { ast } = baseCompile(`<span v-for="(value, key, index) in obj" />`)
+const { source, valueAlias, keyAlias, objectIndexAlias, type } = ast.codegenNode
+console.log(`type: ${type}`)
+console.log(`>>> 数据源`)
+console.log(source)
+console.log(`>>> value`)
+console.log(valueAlias)
+console.log(`>>> key`)
+console.log(keyAlias)
+console.log(`>>> index`)
+console.log(objectIndexAlias)
+console.log(`>>> _renderList(obj, (value, key, index) => {...}) 第二个参数`)
+console.log(ast.codegenNode.codegenNode.children.arguments[1])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+type: 11
+>>> 数据源
+{
+  type: 4,
+  loc: {
+    source: 'obj',
+    start: { column: 37, line: 1, offset: 36 },
+    end: { column: 40, line: 1, offset: 39 }
+  },
+  isConstant: false,
+  content: 'obj',
+  isStatic: false
+}
+>>> value
+{
+  type: 4,
+  loc: {
+    source: 'value',
+    start: { column: 15, line: 1, offset: 14 },
+    end: { column: 20, line: 1, offset: 19 }
+  },
+  isConstant: false,
+  content: 'value',
+  isStatic: false
+}
+>>> key
+{
+  type: 4,
+  loc: {
+    source: 'key',
+    start: { column: 22, line: 1, offset: 21 },
+    end: { column: 25, line: 1, offset: 24 }
+  },
+  isConstant: false,
+  content: 'key',
+  isStatic: false
+}
+>>> index
+{
+  type: 4,
+  loc: {
+    source: 'index',
+    start: { column: 27, line: 1, offset: 26 },
+    end: { column: 32, line: 1, offset: 31 }
+  },
+  isConstant: false,
+  content: 'index',
+  isStatic: false
+}
+>>> _renderList(obj, (value, key, index) => {...}) 第二个参数
+{
+  type: 18, // JS_FUNCTION_EXPRESSION
+  params: [
+    {
+      type: 4,
+      loc: [Object],
+      isConstant: false,
+      content: 'value',
+      isStatic: false
+    },
+    {
+      type: 4,
+      loc: [Object],
+      isConstant: false,
+      content: 'key',
+      isStatic: false
+    },
+    {
+      type: 4,
+      loc: [Object],
+      isConstant: false,
+      content: 'index',
+      isStatic: false
+    }
+  ],
+  returns: {
+    type: 13,
+    tag: '"span"',
+    props: undefined,
+    children: undefined,
+    patchFlag: undefined,
+    dynamicProps: undefined,
+    directives: undefined,
+    isBlock: true,
+    disableTracking: false,
+    loc: {
+      start: [Object],
+      end: [Object],
+      source: '<span v-for="(value, key, index) in obj" />'
+    }
+  },
+  newline: true,
+  isSlot: false,
+  loc: {
+    source: '',
+    start: { line: 1, column: 1, offset: 0 },
+    end: { line: 1, column: 1, offset: 0 }
+  }
+}
+undefined
+#+end_example
+* 39a20fe add v-for generator
+
+[[https://github.com/gcclll/stb-vue-next/commit/39a20fef0001cf22de6632f96df474c87a127a9d][feat(add): v-for generator · gcclll/stb-vue-next@39a20fe]]
+
+codegen 阶段新增对应的实现： ~18,JS_FUNCTION_EXPRESSION~
+
+这个主要是用来解析 ~_renderList(source, (value, key, index) => { ... })~ 函数的
+第二个参数的，这是个用来 render 列表项的函数。
+
+测试：
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const { code } = baseCompile('<span v-for="(item) in items" />')
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { renderList : _renderList, Fragment : _Fragment, openBlock : _openBlock, createBlock : _createBlock, createVNode : _createVNode } = _Vue
+
+    return (_openBlock(true), _createBlock(_Fragment, null, _renderList(items, (item) => {
+      return (_openBlock(), _createBlock("span"))
+    )), 256 /* UNKEYED_FRAGMENT */))
+  }
+}
+undefined
+#+end_example
+
+#+begin_quote
+更多测试用例请 ~<f12>~ 打开控制台查看。
+#+end_quote
+
+#+begin_export html
+<script>
+l1(`v-for directive`)
+compile(`<span v-for="(item) in items" />`, `basic v-for`)
+compile('<span v-for="(item, key, index) in items" />', 'value + key + index')
+compile('<span v-for="(, key, index) in items" />', `skipped value`)
+compile('<span v-for="(item,,index) in items" />', `skipped key`)
+compile('<span v-for="(,,index) in items" />', `skipped value & key`)
+compile('<p v-for="item in 10">{{item}}</p>', `v-for with constant expression`)
+compile(`<template v-for="item in items">hello<span/></template>`, `template v-for`)
+compile('<template v-for="item in items"><slot/></template>', `template v-for w/ <slot/>`)
+log.red(`TODO <slot> 待完成......`)
+compile('<template v-for="item in items" :key="item.id"><span :id="item.id" /></template>', `template v-for key injection with single child`)
+compile('<slot v-for="item in items"></slot>', `v-for on <slot/>`)
+log.red(`TODO <slot> 待完成......`)
+compile('<span v-for="(item) in items" :key="item" />', `keyed v-for`)
+compile('<template v-for="item in items" :key="item">hello<span/></template>', `keyed template v-for`)
+compile(`<div v-if="ok" v-for="i in list"/>`, `v-if + v-for`)
+compile(`<template v-if="ok" v-for="i in list"/>`, 'v-if + v-for on <template>')
+compile('<div v-for="i in list" v-foo/>', `v-for on element with custom directive`)
+
+</script>
+
+#+end_export
