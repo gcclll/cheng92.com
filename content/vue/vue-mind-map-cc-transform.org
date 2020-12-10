@@ -2706,3 +2706,5 @@ c(`<slot name="foo" :foo="bar"><div/></slot>`, `named slot outlet with props & f
 c(`<slot v-foo />`, `error on unexpected custom directive on <slot>，不允许有自定义指令？`)
 </script>
 #+end_export
+
+** add track slot scopes
