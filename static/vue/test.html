@@ -49,6 +49,8 @@
       tpl = '<span v-for="index in 5" />';
       tpl = `<template v-for="item in items">hello<span/></template>`;
       tpl = `<template v-for="item in items" :key="item.id"><span :id="item.id" /></template>`;
+      // slot outlet -> <slot/>
+      tpl = `<slot/>`;
     </script>
 
     <script>

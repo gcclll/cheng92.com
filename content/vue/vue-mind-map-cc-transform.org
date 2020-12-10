@@ -38,19 +38,21 @@
 let i = 0, j = 0
 const l1 = x => (j = 0, console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55'))
 const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
-const log = (args) => console.log.apply(console, args)
+const log = (args) => console.log.apply(console, Array.isArray(args) ? args : [args])
 log.blue = x => log([`%c ${x}`, `color: blue`])
 log.red = x => log([`%c ${x}`, `color: red`])
 const { baseCompile } = VueCompilerCore
 const compile = (tpl, title, logAst = false) => {
     l2(title)
+    if (!tpl) return null
     const { code, ast } = baseCompile(tpl, {
         onError: (e) => console.warn(e.message),
         hoistStatic: true
     })
 
     log([code])
-    logAst && log(ast)
+    logAst && log(typeof logAst === 'function' ? logAst(ast) : ast)
+    return ast
 }
 
 </script>
@@ -2613,4 +2615,85 @@ compile('<div v-for="i in list" v-foo/>', `v-for on element with custom directiv
 
 </script>
 
+#+end_export
+* 7cb8908 add slot outlet transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/7cb8908700da1bf0c3888a2fcd6857263d09aedd][feat(add): v-slot transform · gcclll/stb-vue-next@7cb8908]]
+
+transform ~<slot />~ 标签。
+
+~<slot/>~ 在 render 函数中是以 ~_renderSlot($slot, name, props, children)~ 形式存在。
+
+相关函数：
+
+1. ~transformSlotOutlet()~ 该阶段的 ~tranformXxx~ 函数
+2. ~SlotOutletProcessResult~ 类型定义 ~{slotName, slotProps}~
+3. ~processSlotOutlet()~, ~<slot/>~ 的处理过程
+
+   首先是解析插槽名称(~name~ 属性)，该属性可以是动态(~<slot :name="myslot"/>~)也
+   可以是静态的(~<slot name="myslot"/>~)。
+
+   然后解析出插槽上定义的一些属性(静态)，除了 ~:name~ 之外插槽上 *不允许有其他的
+   指令类型的属性存在* 。
+
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { ast } = baseCompile(`<slot/>`)
+console.log(ast.codegenNode)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  type: 1,
+  ns: 0,
+  tag: 'slot',
+  tagType: 2,
+  props: [],
+  isSelfClosing: true,
+  children: [],
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 8, line: 1, offset: 7 },
+    source: '<slot/>'
+  },
+  codegenNode: {
+    type: 14, // JS_CALL_EXPRESSION
+    loc: { start: [Object], end: [Object], source: '<slot/>' },
+    callee: Symbol(renderSlot),
+    arguments: [ '$slots', '"default"' ]
+  }
+}
+undefined
+#+end_example
+
+#+begin_quote
+更多 codegenNode 结果请 ~<f12>~ 打开控制台查看。
+#+end_quote
+
+#+begin_export html
+<script>
+l1(`<slot/> 插槽 transform 阶段`)
+
+const _a = ast => [`_renderSlot 参数列表：` , ast.children[0].codegenNode.arguments ]
+const c = (tpl, desc, ast = _a) => compile.call(null, tpl, desc, ast)
+c(`<slot/>`, `default slot outlet`)
+c(`<slot name="foo" />`, `statically named slot outlet，含静态名字`)
+c(`<slot :name="foo" />`, `dynamically named slot outlet, 含动态名字`)
+c(null, `TODO dynamically named slot outlet w/ prefixIdentifiers: true`)
+c(`<slot foo="bar" :baz="qux" />`, `default slot outlet with props，默认插槽+静动态属性`)
+c(`<slot name="foo" foo="bar" :baz="qux" />`, `statically named slot outlet with props，静态具名插槽+其他静动态属性`)
+c(`<slot :name="foo" foo="bar" :baz="qux" />`, `dynamically named slot outlet with props，动态具名插槽+其他静动态属性`)
+c(`<slot><div/></slot>`, `default slot outlet with fallback`)
+c(`<slot name="foo"><div/></slot>`, `named slot outlet with fallback`)
+c(`<slot :foo="bar"><div/></slot>`, `default slot outlet with props & fallback`)
+c(`<slot name="foo" :foo="bar"><div/></slot>`, `named slot outlet with props & fallback`)
+c(`<slot v-foo />`, `error on unexpected custom directive on <slot>，不允许有自定义指令？`)
+</script>
 #+end_export

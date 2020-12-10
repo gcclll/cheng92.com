@@ -3154,6 +3154,66 @@ var VueCompilerCore = (function (exports) {
       return propsNamesString + `]`;
   }
 
+  const transformSlotOutlet = (node, context) => {
+      if (isSlotOutlet(node)) {
+          const { children, loc } = node;
+          const { slotName, slotProps } = processSlotOutlet(node, context);
+          // 内容：
+          // 1. $slots, 数据源
+          // 2. slotName, 插槽名
+          // 3. slotProps, 插槽属性
+          // 4. children, 插槽的孩子节点
+          const slotArgs = [
+              context.prefixIdentifiers ? `_ctx.$slots` : `$slots`,
+              slotName
+          ];
+          // slot 属性
+          if (slotProps) {
+              slotArgs.push(slotProps);
+          }
+          if (children.length) {
+              if (!slotProps) {
+                  slotArgs.push(`{}`);
+              }
+              slotArgs.push(createFunctionExpression([], children, false, false, loc));
+          }
+          node.codegenNode = createCallExpression(context.helper(RENDER_SLOT), slotArgs, loc);
+      }
+  };
+  function processSlotOutlet(node, context) {
+      let slotName = `"default"`;
+      let slotProps = undefined;
+      // check for <slot name="xxx" OR :name="xxx" />
+      const name = findProp(node, 'name');
+      if (name) {
+          if (name.type === 6 /* ATTRIBUTE */ && name.value) {
+              // 静态名字
+              slotName = JSON.stringify(name.value.content);
+          }
+          else if (name.type === 7 /* DIRECTIVE */ && name.exp) {
+              // 动态插槽名
+              slotName = name.exp;
+          }
+      }
+      // 过滤出不含 `name` 的属性
+      const propsWithoutName = name
+          ? node.props.filter(p => p !== name)
+          : node.props;
+      if (propsWithoutName.length > 0) {
+          // -> { properties: [...], type: 15,JS_OBJECT_EXPRSSIOn }
+          const { props, directives } = buildProps(node, context, propsWithoutName);
+          slotProps = props;
+          if (directives.length) {
+              // 插槽上不允许有指令
+              context.onError(createCompilerError(35 /* X_V_SLOT_UNEXPECTED_DIRECTIVE_ON_SLOT_OUTLET */, directives[0].loc));
+          }
+      }
+      return {
+          slotName,
+          slotProps
+      };
+  }
+
   const fnExpRE = /^\s*([\w$_]+|\([^)]*?\))\s*=>|^\s*function(?:\s+[\w$]+)?\s*\(/;
   const transformOn = (dir, node, context, augmentor) => {
       const { loc, modifiers, arg } = dir;
@@ -3375,7 +3435,14 @@ var VueCompilerCore = (function (exports) {
   // 合并 transform 插件列表
   function getBaseTransformPreset(prefixIdentifiers) {
       return [
-          [transformOnce, transformIf, transformFor, transformElement, transformText],
+          [
+              transformOnce,
+              transformIf,
+              transformFor,
+              transformSlotOutlet,
+              transformElement,
+              transformText
+          ],
           {
               on: transformOn,
               bind: transformBind,
