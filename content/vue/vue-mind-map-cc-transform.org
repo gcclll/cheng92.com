@@ -2624,7 +2624,12 @@ transform ~<slot />~ 标签。
 
 ~<slot/>~ 在 render 函数中是以 ~_renderSlot($slot, name, props, children)~ 形式存在。
 
-相关函数：
+#+begin_comment
+<slot> 上不允许自定义的指令存在？
+#+end_comment
+
+
+相关函数/参数：
 
 1. ~transformSlotOutlet()~ 该阶段的 ~tranformXxx~ 函数
 2. ~SlotOutletProcessResult~ 类型定义 ~{slotName, slotProps}~
@@ -2635,7 +2640,11 @@ transform ~<slot />~ 标签。
 
    然后解析出插槽上定义的一些属性(静态)，除了 ~:name~ 之外插槽上 *不允许有其他的
    指令类型的属性存在* 。
+4. ~children~ 参数
 
+   ~<slot><div/><p/></slot>~
+
+   在 ~<slot>~ 标签内的所有元素(~<div/><p/>~)会被解析成 ~_renderSlot~ 的第四个参数。
 
 测试：
 #+begin_src js
