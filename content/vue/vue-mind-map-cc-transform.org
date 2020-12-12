@@ -3,7 +3,7 @@
 #+TAGS[]: vue, vue3, compiler-core, parser, compiler, transform
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
-#+STARTUP: indent
+#+STARTUP: indent shrink
 
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
@@ -71,6 +71,7 @@ const compile = (tpl, title, logAst = false) => {
 
    取参数名的正则： ~/^[^\t\r\n\f />][^\t\r\n\f />=]*/~
 3. [[#v-bind][🔗]] v-bind 指令的几种用法 ->
+4. [[#slot-usage][🔗]] 用户组件 -> 插槽处理 -> v-slot 使用方法
 * 脑图
 
 # [[/img/vue3/compiler-core/compiler-core-parser.svg]]
@@ -2152,7 +2153,7 @@ BUG: 这里居然少了个 ~_hoisted_2~ ???
 解：[[https://github.com/gcclll/stb-vue-next/commit/2372b5fb793da98a8330aa843137e852d5c375c1][fix: v-if TEXT_CALL gen node · gcclll/stb-vue-next@2372b5f]]
 
 #+begin_comment
-更多测试(~<f12>~)打开控制台查看 ->> 。
+更多测试用例(~<f12>~)打开控制台查看 ->> 。
 #+end_comment
 
 #+begin_export html
@@ -2750,11 +2751,853 @@ export const trackSlotScopes: NodeTransform = (node, context) => {
 #+end_src
 * 36c1f36 build user component as slots(组件是如何当做 slot 处理的)
 
-[[/img/vue3/compiler-core/pcg/pcg-component-with-slot.svg]]
+[[https://github.com/gcclll/stb-vue-next/commit/36c1f36ea2a92119d2a61f3012972229e85b1e30][feat(add): user component treat as slot to build · gcclll/stb-vue-next@36c1f36]]
+
+完整用户组件当 slot 处理流程图：
+[[/img/vue3/compiler-core/pcg/pcg-v-slot.svg]]
 
 ~<Comp><div/></Comp>~
 
 这里 ~Comp~ 是组件类型(~tagType=1,COMPONENT~) 会在 ~transformElement~ 中被当做
 ~slot~ 来处理调用 ~buildSlots()~ 。
 
-[[https://github.com/gcclll/stb-vue-next/commit/36c1f36ea2a92119d2a61f3012972229e85b1e30][feat(add): user component treat as slot to build · gcclll/stb-vue-next@36c1f36]]
+#+begin_comment
+更多测试用例(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+l1(`<slot /> 插槽 generator 阶段`)
+compile(`<Comp><div/></Comp>`, 'implicit default slot')
+compile(`<Comp v-slot="{ foo }">{{ foo }}{{ bar }}</Comp>`, 'on-component default slot')
+compile(`<Comp v-slot:named="{ foo }">{{ foo }}{{ bar }}</Comp>`, 'on component named slot')
+compile(`<Comp>
+        <template v-slot:one="{ foo }">
+          {{ foo }}{{ bar }}
+        </template>
+        <template #two="{ bar }">
+          {{ foo }}{{ bar }}
+        </template>
+      </Comp>`, 'template named slots')
+compile(`<Comp v-slot:[named]="{ foo }">{{ foo }}{{ bar }}</Comp>`, 'on component dynamically named slot')
+compile(`<Comp>
+        <template #one>foo</template>bar<span/>
+      </Comp>`, 'named slots w/ implicit default slot')
+compile(`<Comp>
+        <template v-slot:[one]="{ foo }">
+          {{ foo }}{{ bar }}
+        </template>
+        <template #[two]="{ bar }">
+          {{ foo }}{{ bar }}
+        </template>
+      </Comp>`, 'dynamically named slots')
+compile(`<Comp>
+        <template #default="{ foo }">
+          <Inner v-slot="{ bar }">
+            {{ foo }}{{ bar }}{{ baz }}
+          </Inner>
+          {{ foo }}{{ bar }}{{ baz }}
+        </template>
+      </Comp>`, 'nested slots scoping')
+
+compile(`<div v-for="i in list">
+        <Comp v-slot="bar">foo</Comp>
+      </div>`, 'should force dynamic when inside v-for')
+l2(` TODO should only force dynamic slots when actually using scope vars w/ prefixIdentifiers: true`)
+compile(`<Comp>
+        <template #one v-if="ok">hello</template>
+      </Comp>`, 'named slot with v-if')
+l2(` TODO named slot with v-if + prefixIdentifiers: true`)
+compile(`<Comp>
+        <template #one v-if="ok">foo</template>
+        <template #two="props" v-else-if="orNot">bar</template>
+        <template #one v-else>baz</template>
+      </Comp>`, 'named slot with v-if + v-else-if + v-else')
+l2(` TODO 'named slot with v-for w/ prefixIdentifiers: true'`)
+compile(`<Comp>
+        <template v-for="name in list" #[name]>{{ name }}</template>
+      </Comp>`, 'named slot with v-for')
+compile(`<Comp><template v-slot:named="slotProps"><div/></template><div :id="defaultSlotId"/></Comp>`, '具名插槽+其他非 template 元素全当做默认插槽处理')
+</script>
+#+end_export
+
+** fbed5cf add component with default slot without <template> transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/fbed5cf508e91ea20195af4dafa491957a4d1d60][feat(add): default slot without template · gcclll/stb-vue-next@fbed5cf]]
+
+~<Comp><div/></Comp>~
+
+这种情况，用户组件上既没有 ~v-slot~ 孩子节点里面也没有 ~<template v-slot>~ 最后
+的处理是 ~<Comp></Comp>~ 里面的所有 children 被当做默认插槽处理。
+
+该示例符合：
+1. 组件上没有 ~v-slot~ 指令
+2. 孩子节点里面没有 ~<template v-slot:name="slotProps">~
+
+因此，这里的处理是将 ~<div/>~ 即 ~comp.children~ 全部作为默认的 ~slot:default~
+来处理。
+
+处理流程： ~<Comp>~ -> ~transformElement~ -> ~isComponent~ -> ~buildSlots()~ ->
+~{slots, hasDynamicSlots}~ -> ~vnodeChildren~ -> ~{type: 13,VNODE_CALL,
+children: vnodeChildren, ... }~
+
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const { ast } = baseCompile(`<Comp><div/></Comp>`)
+console.log(ast.codegenNode)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  type: 13,
+  tag: '_component_Comp',
+  props: undefined,
+  children: {
+    type: 15,
+    loc: { start: [Object], end: [Object], source: '<Comp><div/></Comp>' },
+    properties: [ [Object], [Object] ]
+  },
+  patchFlag: undefined,
+  dynamicProps: undefined,
+  directives: undefined,
+  isBlock: true,
+  disableTracking: false,
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 20, line: 1, offset: 19 },
+    source: '<Comp><div/></Comp>'
+  }
+}
+undefined
+#+end_example
+
+另外在 ~transformElement()~ 函数中通过 ~isComponent = node.tagType ===
+ElementTypes.COMPONENT~ 检测是不是用户组件，如果是继续解析该组件类型(~resolveComponentType()~)。
+
+这里最终得到的结果是： ~vnodeTag = _component_Comp~ 作为标签名，也是该 ~<Comp/>~
+组件在 Vue 实例过程中的存在的标签名(组件名称)。
+
+** 8bed175 add component with default slot without <template> generator
+
+[[https://github.com/gcclll/stb-vue-next/commit/8bed17574988042023be8ac420254918232ef7c4][feat(add): user component resolver generator · gcclll/stb-vue-next@8bed175]]
+
+因为在 transform 阶段 transformElement 过程中，检测到 ~<Comp>~ 是个用户组件，所
+以将其增加到了 ~context.components.add('Comp')~ 中了，在 generator 阶段会去检测
+这个 ~components~ 用来解析组件得到组件的引用：
+
+~_component_Comp = _resolveComponent("Comp")~
+
+新增的代码主要由两部分：
+
+1. 新增 ~genAssets()~ 函数处理 ~context.components~
+
+   处理之后的结果就是增加 ~_component_Comp = _resolveComponent("Comp")~
+
+2. 在 ~generate()~ 中增加 ~ast.components~ 检测，如果有内容调用 ~genAssets()~ 解
+   析
+
+
+#+begin_src typescript
+// generate() 中增加
+ if (ast.components.length) {
+    genAssets(ast.components, 'component', context)
+    if (ast.directives.length || ast.temps > 0) {
+      newline()
+    }
+  }
+
+// 新增
+function genAssets(
+  assets: string[],
+  type: 'component' | 'directive',
+  { helper, push, newline }: CodegenContext
+) {
+  const resolver = helper(
+    type === 'component' ? RESOLVE_COMPONENT : RESOLVE_DIRECTIVE
+  )
+
+  for (let i = 0; i < assets.length; i++) {
+    const id = assets[i]
+    push(
+      `const ${toValidAssetId(id, type)} = ${resolver}(${JSON.stringify(id)})`
+    )
+    if (i < assets.length - 1) {
+      newline()
+    }
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const { code } = baseCompile(`<Comp><div/></Comp>`, { hoistStatic: true })
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+const { createVNode: _createVNode } = _Vue
+
+const _hoisted_1 = /*#__PURE__*/_createVNode("div", null, null, -1 /* HOISTED */)
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, resolveComponent : _resolveComponent, withCtx : _withCtx, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    const _component_Comp = _resolveComponent("Comp")
+
+    return (_openBlock(), _createBlock(_component_Comp, null, {
+      default: _withCtx(() => [
+        _hoisted_1
+      ]),
+      _: 1
+    }))
+  }
+}
+undefined
+#+end_example
+
+缺少 ~1 /* STABLE */~ 注释: [[https://github.com/gcclll/stb-vue-next/commit/08a6fcaab9224552dbd7876930d964e6bcc534d9][fix: slot flag text · gcclll/stb-vue-next@08a6fca]]
+
+注意 ~_createBlock()~ 的第三个参数变成了一个对象(~children~) 对象里面包含了两个
+属性: ~default~ 和 ~_~ 分别代表了默认插槽下的孩子节点，和该插槽标识(~1-STABLE,2-FORWARDED,3-DYNAMIC~)
+** 9f58154 fix: 文本节点没有合并(~transformText~)
+
+[[https://github.com/gcclll/stb-vue-next/commit/9f58154809447e6b718e1579149165fc848e8185][fix: adjacent text node need merge · gcclll/stb-vue-next@9f58154]]
+
+对于 ~`<Comp v-slot="{ foo }">{{ foo }}{{ bar }}</Comp>`~ 用例得到的结果非预期。
+
+vue-next 正确结果：
+#+begin_src js
+const {
+  baseCompile
+} = require(process.env.PWD + '/../../static/vue/vue.js')
+ 
+const { ast } = baseCompile(`<Comp v-slot="{ foo }">{{ foo }}{{ bar }}</Comp>`)
+const returns = ast.codegenNode.children.properties[0].value.returns
+console.log(returns)
+console.log(`>>> 解析后的 {{ foo }} {{ bar }} 应该合并`)
+console.log(returns[0].content)
+console.log(`>>> 下面正是合并之后的两个插值`)
+console.log(returns[0].content.children)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+You are running a development build of Vue.
+Make sure to use the production build (*.prod.js) when deploying for production.
+[
+  {
+    type: 12,
+    content: { type: 8, loc: [Object], children: [Array] },
+    loc: { start: [Object], end: [Object], source: '{{ foo }}' },
+    codegenNode: {
+      type: 14,
+      loc: [Object],
+      callee: Symbol(createTextVNode),
+      arguments: [Array]
+    }
+  }
+]
+>>> 解析后的 {{ foo }} {{ bar }} 应该合并
+{
+  type: 8,
+  loc: {
+    start: { column: 24, line: 1, offset: 23 },
+    end: { column: 33, line: 1, offset: 32 },
+    source: '{{ foo }}'
+  },
+  children: [
+    { type: 5, content: [Object], loc: [Object] },
+    ' + ',
+    { type: 5, content: [Object], loc: [Object] }
+  ]
+}
+>>> 下面正是合并之后的两个插值
+[
+  {
+    type: 5,
+    content: {
+      type: 4,
+      isStatic: false,
+      constType: 0,
+      content: 'foo',
+      loc: [Object]
+    },
+    loc: { start: [Object], end: [Object], source: '{{ foo }}' }
+  },
+  ' + ',
+  {
+    type: 5,
+    content: {
+      type: 4,
+      isStatic: false,
+      constType: 0,
+      content: 'bar',
+      loc: [Object]
+    },
+    loc: { start: [Object], end: [Object], source: '{{ bar }}' }
+  }
+]
+undefined
+#+end_example
+
+看下现阶段 stb-vue-next 输出结果：
+#+begin_src js
+
+const {
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { ast } = baseCompile(`<Comp v-slot="{ foo }">{{ foo }}{{ bar }}</Comp>`)
+const returns = ast.codegenNode.children.properties[0].value.returns
+console.log(returns[0].content)
+console.log(returns[1].content)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  type: 5,
+  content: {
+    type: 4,
+    isStatic: false,
+    isConstant: false,
+    content: 'foo',
+    loc: { start: [Object], end: [Object], source: 'foo' }
+  },
+  loc: {
+    start: { column: 24, line: 1, offset: 23 },
+    end: { column: 33, line: 1, offset: 32 },
+    source: '{{ foo }}'
+  }
+}
+{
+  type: 5,
+  content: {
+    type: 4,
+    isStatic: false,
+    isConstant: false,
+    content: 'bar',
+    loc: { start: [Object], end: [Object], source: 'bar' }
+  },
+  loc: {
+    start: { column: 33, line: 1, offset: 32 },
+    end: { column: 42, line: 1, offset: 41 },
+    source: '{{ bar }}'
+  }
+}
+undefined
+#+end_example
+
+stb-vue-next 明显 returns 里面包含了两个元素分别是： ~{{ foo }}~ 和 ~{{ bar }}~
+
+这是因为在 ~transformText~ 里面没有进行文本(插值也算)合并。
+** 0773374 add component nested slots scoping
+
+[[https://github.com/gcclll/stb-vue-next/commit/0773374334feb1ed86ff38c65dea917480b6cb89][fix: patchFlag should |= but != · gcclll/stb-vue-next@0773374]]
+
+插槽嵌套使用。
+
+#+begin_src js
+`<Comp>
+    <template #default="{ foo }">
+        <Inner v-slot="{ bar }">
+        {{ foo }}{{ bar }}{{ baz }}
+        </Inner>
+        {{ foo }}{{ bar }}{{ baz }}
+    </template>
+</Comp>`
+#+end_src
+
+插槽嵌套使用时的解析是先里后外，因为在 transform 阶段 ast 阶段转换之后，会进行回
+溯，回溯过程是相反的。
+
+如：
+
+ast 结构 transform：
+
+~Comp.children -> [template] -> template.children -> [Inner, foo, bar, baz] ->
+Inner.children -> [foo, bar, baz]~
+
+ast回溯:
+
+~Inner.children -> Inner -> template.children -> template -> Comp.children -> Comp~
+
+所以首先执行 ~transformElement()~ 的是 ~Inner~ 所以它会先进入 ~buildSlots()~ 构
+建插槽结构，完了之后是 ~<template>~ 最后是 ~<Comp>~
+
+-----
+
+render 推导过程：
+
+1. ~<Inner v-slot="{bar}">{{foo}}{{bar}}{{baz}}</Inner>~
+
+   是在用户组件上应用了 ~v-slot~ 且是默认插槽，因此它的所有孩子节点都会成为默认
+   插槽一部分。
+
+   结果：
+   #+begin_src js
+   _createVNode(_component_Inner, null, {
+     default: _withCtx(({ bar }) => [
+       _createTextVNode(_toDisplayString(foo) + _toDisplayString(bar) + _toDisplayString(baz), 1 /* TEXT */)
+     ]),
+     _: 2, /* DYNAMIC */
+   }, 1024 /* DYNAMIC_SLOTS */)
+   #+end_src
+
+   这里使用的是 ~_createVNode~ 因为 ~Inner~ 非唯一的孩子节点。
+2. ~<template #default="{foo}">...</template>~
+
+   #+begin_src js
+   (_openBlock(), _createBlock(_component_Comp, null {
+     default: _withCtx(({ foo }) => [
+       _createVNode(_component_Inner, null, {
+          default: _withCtx(({ bar }) => [
+             _createTextVNode(_toDisplayString(foo) + _toDisplayString(bar) + _toDisplayString(baz), 1 /* TEXT */)
+           ]),
+          _: 2 /* DYNAMIC */
+       }, 1024 /* DYNAMIC_SLOTS */),
+       _createTextVNode(_toDisplayString(foo) + _toDisplayString(bar) + _toDisplayString(baz), 1 /* TEXT */)
+     ]),
+     _: 1 /* STABLE */
+   }))
+   #+end_src
+
+   这里有个判断 ~Inner~ 为动态 slot 的关键点： ~context.scopes.vSlot > 0~ 而这个
+   值是在收集 ~transformXxx~ 阶段递增 +1 而后回溯过程中 -1 的。
+
+   在收集阶段 ~<template>~ 收集到 ~trackSlotScopes()~ 函数此时
+   ~context.scopes.vSlot = 1~ 然后递归 children执行到 ~Inner~ 收集阶段的时候
+   ~context.scopes.vSlot = 2~ 直到递归结束。
+
+   开始回溯，先是在 ~Inner~ 上应用 transformElement 直到 ~Inner~ 回溯到执行
+   ~trackSlotScopes()~ 应为它也有 ~v-slot~ 指令，所以 ~Inner~ 能收集到这个函数，
+   它回溯结束执行 ~trackSlotScopes()~ 随之 ~context.scopes.vSlot--~ 所以此时，在
+   回溯 ~Inner~ 结束之后在开始回溯 ~<template>~ 之前 ~context.scopes.vSlot = 1~
+   。
+
+   这就是 ~Inner~ 为什么没有动态属性名但是依旧会判断为动态插槽的原理。
+
+   #+begin_quote
+   一句话：如果在 ~<template v-slot>~ 里面嵌套另一个 ~v-slot~ 那个这个不管有没有
+   动态属性名都会被当做动态插槽来处理。
+   #+end_quote
+** c1ace74 add component with v-slot inside v-for
+
+#+begin_src js
+`<div v-for="i in list">
+  <Comp v-slot="bar">foo</Comp>
+</div>`
+#+end_src
+
+~let hasDynamicSlots = context.scopes.vSlot > 0 || context.scopes.vFor > 0;~
+
+根据这个判断决定 v-for 里面的 v-slot 为动态插槽。
+** cfef20e add named slot with v-if
+
+[[https://github.com/gcclll/stb-vue-next/commit/cfef20efd83d030924c23308cfb1e38c2b63e228][feat(add): slot with v-if · gcclll/stb-vue-next@cfef20e]]
+
+#+begin_src js
+`<Comp>
+  <template #one v-if="ok">hello</template>
+</Comp>`
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const { code } = baseCompile(`<Comp>
+  <template #one v-if="ok">hello</template>
+</Comp>`)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createTextVNode : _createTextVNode, resolveComponent : _resolveComponent, withCtx : _withCtx, createSlots : _createSlots, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    const _component_Comp = _resolveComponent("Comp")
+
+    return (_openBlock(), _createBlock(_component_Comp, null, _createSlots({ _: 2 /* DYNAMIC */ }, [
+      ok
+        ? {
+            name: "one",
+            fn: _withCtx(() => [
+              _createTextVNode("hello")
+            ])
+          }
+        : undefined
+    ]), 1024 /* DYNAMIC_SLOTS */))
+  }
+}
+undefined
+#+end_example
+
+动态 slots 处理之后：
+~_createSlots({ /* 静态 slots */, [ /* 动态 slots 列表 */ ] })~
+
+看下面的运行时的 ~createSlots(slots, dynamicSlots)~ 其实就是讲两者合并在一起了
+v-if 是个对象 ~{ fn, name }~ v-for 是该对象的数组。
+#+begin_src typescript
+export function createSlots(
+  slots: Record<string, Slot>,
+  dynamicSlots: (
+    | CompiledSlotDescriptor
+    | CompiledSlotDescriptor[]
+    | undefined)[]
+): Record<string, Slot> {
+  for (let i = 0; i < dynamicSlots.length; i++) {
+    const slot = dynamicSlots[i]
+    // array of dynamic slot generated by <template v-for="..." #[...]>
+    if (isArray(slot)) {
+      for (let j = 0; j < slot.length; j++) {
+        slots[slot[j].name] = slot[j].fn
+      }
+    } else if (slot) {
+      // conditional single slot generated by <template v-if="..." #foo>
+      slots[slot.name] = slot.fn
+    }
+  }
+  return slots
+}
+#+end_src
+
+拓展： ~v-else, v-else-if~
+[[https://github.com/gcclll/stb-vue-next/commit/e48d46a759478d28eea223c4884ec4815ceb5ac0][feat(add): v-else/v-else-if with v-slot · gcclll/stb-vue-next@e48d46a]]
+
+与普通的 v-else/v-else-if 处理机制一样，首先是要找到他们兄弟节点前面的 v-if 节点，
+然后将该节点挂接到 v-if 节点后面。
+
+核心代码：
+#+begin_src typescript
+// v-else/if on slot
+let j = i
+let prev
+while (j--) {
+    // 找到相邻的 v-if
+    prev = children[j]
+    // 往回找第一个非注释的节点
+    if (prev.type !== NodeTypes.COMMENT) {
+        break
+    }
+}
+
+// 如果该节点是 v-if 合法，否则不合法使用情况
+if (prev && isTemplateNode(prev) && findDir(prev, 'if')) {
+    // remove node
+    children.splice(i, 1)
+    i--
+    __TEST__ && assert(dynamicSlots.length > 0)
+    // attach this slot to previous conditional
+    let conditional = dynamicSlots[
+        dynamicSlots.length - 1
+    ] as ConditionalExpression
+
+  // 这目的是找到 ?: 表达式最后的那个节点
+    while (
+        conditional.alternate.type === NodeTypes.JS_CONDITIONAL_EXPRESSION
+    ) {
+        conditional = conditional.alternate
+    }
+
+  // 将当前的 v-else/v-else-if 挂到最后那个节点表达式位置
+  // vElse.exp 检测是 v-else-if 还是 v-else(没有值exp)
+    conditional.alternate = vElse.exp
+        ? createConditionalExpression(
+            vElse.exp,
+            buildDynamicSlot(slotName, slotFunction),
+            defaultFallback
+        )
+        : buildDynamicSlot(slotName, slotFunction)
+} else {
+    context.onError(
+        createCompilerError(ErrorCodes.X_V_ELSE_NO_ADJACENT_IF, vElse.loc)
+    )
+}
+#+end_src
+
+** c1ace74 add v-for on v-slot component
+
+[[https://github.com/gcclll/stb-vue-next/commit/c1ace746e229db02a9b311d1becfe4deb1513048][feat(add): v-slot inside v-for · gcclll/stb-vue-next@c1ace74]]
+
+
+v-for 的处理和 v-if 原理是一样的，最后返回的都是  ~{name, fn}~ 类型，只不过
+v-for 返回的是这个类型的数组。
+
+v-for _renderList 和 slot 的结合：
+
+#+begin_src js
+_renderList(list, (i) => {
+  return {
+    name: name,
+    fn: _withCtx(() => [
+      _createTextVNode(_toDisplayString(name), 1 /* TEXT */)
+    ])
+  }
+})
+
+// 等于是： [ { name, fn }, { name1, fn1 }]
+// 然后 _renderSlots ->
+_renderSlots({ _: 2 /* DYNAMIC */ }, [
+  _renderList(list, ...)
+])
+
+// -> _createBlock
+_createBlock(_component_Comp, null, _renderSlots({
+  /* 静态，最终动态插槽会合并到该对象来 */
+}, [
+  /* ... 动态列表 */
+]))
+
+// 对比无动态插槽情况：
+_createBlock(_component_Comp, null {
+  default: _withCtx(() => [
+    _createTextVNode(_toDisplayString(foo), 1 /* TEXT */)
+  ]),
+  _: 1 /* STABLE */
+})
+#+end_src
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { code } = baseCompile(`<Comp>
+        <template v-for="name in list" #[name]>{{ name }}</template>
+      </Comp>`)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { toDisplayString : _toDisplayString, createTextVNode : _createTextVNode, resolveComponent : _resolveComponent, withCtx : _withCtx, renderList : _renderList, createSlots : _createSlots, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    const _component_Comp = _resolveComponent("Comp")
+
+    return (_openBlock(), _createBlock(_component_Comp, null, _createSlots({ _: 2 /* DYNAMIC */ }, [
+      _renderList(list, (name) => {
+        return {
+          name: name,
+          fn: _withCtx(() => [
+            _createTextVNode(_toDisplayString(name), 1 /* TEXT */)
+          ])
+        }
+      ))
+    ]), 1024 /* DYNAMIC_SLOTS */))
+  }
+}
+undefined
+#+end_example
+
+无非就是不同类型元素、组件 render 方式的组合。
+** 小结：v-slot 几种用法
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: slot-usage
+:END: 
+
+1. ~<Comp><div/></Comp>~ , 用户组件上的默认插槽
+   
+   #+begin_src js
+   const _hoisted_1 = /*# __PURE__ */_createVNode('div', null, null, -1 /* HOISTED */)
+   (_openBlock(), _createBlock(_component_Comp, null, {
+     default: _withCtx(() => [
+       _hoisted_1
+     ]),
+     _: 1 /* STABLE */
+   }))
+   #+end_src
+2. ~<Comp v-slot="slotProps"><div/></Comp>~, 用户组件上带 ~slotProps~ 的默认插槽
+   
+   #+begin_src js
+   const _hoisted_1 = /*# __PURE__ */_createVNode('div', null, null, -1 /* HOISTED */)
+   (_openBlock(), _createBlock(_component_Comp, null, {
+     default: _withCtx((slotProps) => [
+       _hoisted_1
+     ]),
+     _: 1 /* STABLE */
+   }))
+   #+end_src
+3. ~<Comp v-slot:named="slotProps">~, 用户组件上具名插槽
+
+   #+begin_src js
+   const _hoisted_1 = /*# __PURE__ */_createVNode('div', null, null, -1 /* HOISTED */)
+   (_openBlock(), _createBlock(_component_Comp, null, {
+     named: _withCtx((slotProps) => [
+       _hoisted_1
+     ])
+   }))
+   #+end_src
+
+4. ~<Comp v-slot:[named]="slotProps">~, 用户组件上动态具名插槽
+   
+   #+begin_src js
+   const _hoisted_1 = /*# __PURE__ */_createVNode('div', null, null, -1 /* HOISTED */)
+   (_openBlock(), _createBlock(_component_Comp, null, {
+     [named]: _withCtx((slotProps) => [
+       _hoisted_1
+     ])
+   }))
+   #+end_src
+5. <template> 默认插槽
+
+   ~<Comp><template v-slot="slotProps"><div/></template></Comp>~
+   
+   ~<template>~ 上的默认插槽，这个时候 ~<Comp>~ 不能在使用 ~v-slot~ ，下同 
+6. <template> 具名插槽
+
+   ~<Comp><template v-slot:named="slotProps"></Comp>~
+
+   #+begin_src js
+   return (_openBlock(), _createBlock(_component_Comp, null, {
+     named: _withCtx((slotProps) => []),
+     _: 1 /* STABLE */
+   }))
+   #+end_src
+   
+7. <template> 动态具名插槽
+
+   ~<Comp><template v-slot:[named]="slotProps"></Comp>~
+   
+   #+begin_src js
+   return (_openBlock(), _createBlock(_component_Comp, null, {
+     [named]: _withCtx((slotProps) => []),
+     _: 1 /* STABLE */
+   }))
+   #+end_src
+8. <template> 具名插槽，其余非 template 元素当做默认插槽处理
+
+   ~<Comp><template v-slot:named="slotProps"><div/></template><div :id="defaultSlotId"/></Comp>~
+   
+   ~<template>~ 上的具名插槽 + 默认插槽，在组件内的非 <template> 元素(即： ~<div/>~)都会被动作默认插槽来处理
+
+   #+begin_src js
+   const _hoisted_1 = /*# __PURE__ */_createVNode("div", null, null, -1 /* HOISTED */)
+   _createBlock(_component_Comp, null, {
+     named: _withCtx((slotProps) => [
+       _hoisted_1
+     ]),
+     default: _withCtx(() => [
+       _createVNode('div', {
+         id: defaultSlotId
+       }, null, 8 /* PROPS */, ["id"])
+     ])
+     _: 1 /* STABLE */
+   })
+   #+end_src
+9. v-slot + v-if 插槽使用
+
+   ~<Comp><template v-if="ok" #named="slotProps">{{ bar }}</template></Comp>~
+   
+   配合 v-if 使用的 slot template, 最后解析成 ：
+   ~ok ? { name: 'named', fn : _withCtx(() => [ _createTextVNode(_toDisplayString(bar)) ]) } : undefined~
+   
+   #+begin_src js
+   return (_openBlock(), _createBlock(_component_Comp, null, _renderSlots(
+     { _: 2 /* DYNAMIC */ }, [
+       ok ?
+        {
+          name: 'named',
+          fn: _withCtx((slotProps) => [
+            _createTextVNode(_toDisplayString(bar), 1 /* TEXT */)
+          ])
+        } : undefined
+     ]
+   )))
+   #+end_src
+10. v-slot + v-for 插槽上使用
+
+   ~<Comp><template v-for="i in list" #named="{ prop }">{{ bar }}</template></Comp>~
+    
+   #+begin_src js
+   return (_openBlock(), _createBlock(_component_Comp, null, _renderSlots(
+     { _: 2 /* DYNAMIC */ },
+     _renderList(list, (i) => {
+       return {
+         name: 'named',
+         fn: _withCtx(({ prop }) => [
+           _createTextVNode(_toDisplayString(bar), 1 /* TEXT */)
+         ])
+       }
+     })
+   )))
+   #+end_src
+
+
+#+begin_quote
+插槽按状态分为：
+1. 静态插槽，动态插槽除外的插槽
+2. 动态插槽，有 ~v-if/v-for/v-else[-if]~ 指令或 ~v-slot:[named]~ 或作为 ~v-for~
+   节点的孩子节点都视为动态插槽
+#+end_quote
+
+* update vue-next merge into stb-vue-next[2020-12-11 16:54:06]
+
+更新 vue-next 合并到 stb-vue-next。
+
+1. ast.ts 更新
+
+   + ~SimpleExpressionNode~ : 去掉 ~isConstant~ 属性，增加 ~constType~
+   + 去掉了 ~StaticType~ 增加 ~ConstantType~
+      #+begin_src typescript
+   /**
+    * Static types have several levels.
+    * Higher levels implies lower levels. e.g. a node that can be stringified
+    * can always be hoisted and skipped for patch.
+    */
+   export const enum ConstantTypes {
+     NOT_CONSTANT = 0,
+     CAN_SKIP_PATCH,
+     CAN_HOIST,
+     CAN_STRINGIFY
+   }
+      #+end_src
+2. codegen.ts 更新
+
+   [[https://github.com/gcclll/stb-vue-next/commit/521b879d80b9c982f1a15dbc89404725141674d6][fix: merge vue-next codegen.ts · gcclll/stb-vue-next@521b879]]
+3. parse.ts 更新
+
+   ast 结构中的 ~isConstant~ 改成 ~ConstantTypes~ 类型值
+
+   [[https://github.com/gcclll/stb-vue-next/commit/fdbdc4f93ad04f6544d77bf3ebf20e4f58673930][fix: merge vue-next parse.ts isConstant -> constType · gcclll/stb-vue-next@fdbdc4f]]
+4. transform.ts 更新
+
+   [[https://github.com/gcclll/stb-vue-next/commit/22a8f0be4405592621f805848533396642b4b2f2][fix: merge vue-next transform.ts · gcclll/stb-vue-next@22a8f0b]]
+
+   + add ~filename~
+   + add ~isTS, inline~
+5. transformElement.ts
+
+   [[https://github.com/gcclll/stb-vue-next/commit/1d85990627d0383741c7050fb4af8929377691e1][fix: merge vue-next transformElement.ts · gcclll/stb-vue-next@1d85990]]
+6. transformSlotOutlet.ts
+
+   [[https://github.com/gcclll/stb-vue-next/commit/58e87f3adcfa0657602d459043468ac5ce8859cb][fix: merge vue-next transformSlotOutlet.ts · gcclll/stb-vue-next@58e87f3]]
+   修改 ~<slot></slot>~ 属性解析逻辑。

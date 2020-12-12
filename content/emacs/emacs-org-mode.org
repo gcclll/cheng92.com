@@ -3,14 +3,19 @@
 #+TAGS[]: emacs, org-mode
 #+CATEGORIES[]: emacs
 #+LANGUAGE: zh-cn
-#+STARTUP: indent
+#+STARTUP: indent align
 
 
-* org-mode
-:PROPERTIES:
-:COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: doc_header
-:END:
+* tables
+
+** 列宽和对齐(Column width and alignment)
+
+|---+---------------------+--------|
+|   | <6>                 |        |
+| 1 | one                 | some   |
+| 2 | two                 | boring |
+| 3 | this is a long text | column |
+
 
 * keybindings
 ** 逗号(*,*)

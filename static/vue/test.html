@@ -25,33 +25,7 @@
         hoistStatic: true,
       };
       var tpl = `<input v-model="model" />`;
-      tpl = `<input v-model="model[index]" />`;
-      tpl = `<input v-model:value="model" />`;
-      tpl = `<input v-model:[value]="model" />`;
-      tpl = `<input v-model="foo" />`;
-      // v-once
-      tpl = `<div :id="foo" v-once />`;
-      tpl = `<div><Comp :id="foo" v-once /></div>`;
-      // v-if
-      tpl = `<div v-if="ok"/>`;
-      tpl = `<template v-if="ok"><div/>hello<p/></template>`;
-      tpl = `<div v-if="ok"/><p v-else/>`;
-      tpl = `<div v-if="ok"/><p v-else-if="orNot"/><template v-else>fine</template>`;
-      tpl = `
-        <div v-if="ok"/>
-        <!--foo-->
-        <p v-else-if="orNot"/>
-        <!--bar-->
-        <template v-else>fine</template>
-     `;
-      tpl = `<button v-on="{ click: clickEvent }" v-if="true">w/ v-if</button>`;
-      // v-for
-      tpl = '<span v-for="index in 5" />';
-      tpl = `<template v-for="item in items">hello<span/></template>`;
-      tpl = `<template v-for="item in items" :key="item.id"><span :id="item.id" /></template>`;
-      // slot outlet -> <slot/>
-      tpl = `<slot/>`;
-      tpl = `<Comp><div/></Comp>`;
+      tpl = `<Comp><template v-slot:named="slotProps"><div/></template></Comp>`;
     </script>
 
     <script>

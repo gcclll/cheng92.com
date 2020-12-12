@@ -365,6 +365,22 @@ $ brew cask install font-fira-code
 ** 网站
 1. [[https://realfavicongenerator.net/][图片/svg 转 favicon]]
 ** MacOs 工具
+*** 其他
+1. beyond compare
+
+  破解： https://www.jianshu.com/p/596b4463eacd
+
+  步骤：
+  #+begin_src shell
+  $ cd /Applications/Beyond Compare.app/Contents/MacOS
+  $ mv BCompare BCompare.real
+  $ echo '#!/bin/bash
+  rm "/Users/$(whoami)/Library/Application Support/Beyond Compare/registry.dat"
+  "`dirname "$0"`"/BCompare.real $@
+  ' > BCompare
+  $ chmod a+x ./BCompare
+  #+end_src
+
 *** 系统性工具
 1. [[https://setapp.sjv.io/c/1249877/344537/5114][setapp]]
 2. [[https://karabiner-elements.pqrs.org/][Karabiner-Elements A powerful and stable keyboard customizer for macOS.]]
