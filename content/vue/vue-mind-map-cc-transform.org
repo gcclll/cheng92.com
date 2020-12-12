@@ -17,25 +17,28 @@
 [[/img/bdx/yiyeshu-001.jpg]]
 
 @@html:<kbd>@@
-*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的学习及尝试应用于机顶盒环境。*
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
 @@html:</kbd>@@
 
-@@html:<kbd>@@ *本文依据 commit 进程进行记录，只要跟着下面的进程走，你将能完整实
-现 vue ast transform 和 codegen generate 最后生成 render 函数 💃🏼💃🏼💃🏼* @@html:</kbd>@@
-
 #+begin_quote
-声明：该篇为 ts 源码(/commit/)版本，之前做过一遍完整的 js 版本，更详细，也可参考
+*声明* ：该篇为 ts 源码(/commit/)版本，之前做过一遍完整的 js 版本，更详细，也可参考
 
 [[https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/][Vue3.0 源码系列（二）编译器核心 - Compiler core 3: compile.ts - 若叶知秋]]
 
 由于 transform 阶段直接测试不太好直观的看出结果，因此这里会结合 codegen 来一起实
 现，即该文包含 compiler-core 三大阶段的最后两个阶段(transform + generate)
+
+*调试* ：所有测试用例可通过 ~<F12>~ 控制台查看
+
+*更新日志&Todos* ：
+1. DONE [2020-12-12 18:33:33] 阶段性完成，浏览器支持的所有基本功能(浏览器环境所
+   有用例测试均已通过，可通过控制台查看测试用例及其运行过程结果)
+2. TODO ssr 服务端渲染
+3. TODO <setup> 标签处理
+4. TODO 非浏览器环境支持(~prefixIdentifiers, cacheHandlers~ 选项需要非浏览器环境)
+5. TODO ref 类型处理
 #+end_quote
 
-#+begin_comment
-*每个章节都有对应的测试用例，为了节省文字篇幅，测试用例均以控制台形式输出，建议
-~<f12>~ 打开控制台查看相应的测试内容和结果。*
-#+end_comment
 
 #+begin_export html
 <script src="/js/vue/compiler-core.global.js"></script>
@@ -66,6 +69,7 @@ const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode.pr
 
 </script>
 #+end_export
+
 
 * 关键知识点
 
