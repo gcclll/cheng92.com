@@ -32,6 +32,11 @@
 现，即该文包含 compiler-core 三大阶段的最后两个阶段(transform + generate)
 #+end_quote
 
+#+begin_comment
+*每个章节都有对应的测试用例，为了节省文字篇幅，测试用例均以控制台形式输出，建议
+~<f12>~ 打开控制台查看相应的测试内容和结果。*
+#+end_comment
+
 #+begin_export html
 <script src="/js/vue/compiler-core.global.js"></script>
 <script>
@@ -41,6 +46,7 @@ const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #
 const log = (args) => console.log.apply(console, Array.isArray(args) ? args : [args])
 log.blue = x => log([`%c ${x}`, `color: blue`])
 log.red = x => log([`%c ${x}`, `color: red`])
+log.gray = x => log([`%c ${x}`, `color: gray`])
 const { baseCompile } = VueCompilerCore
 const compile = (tpl, title, logAst = false) => {
     l2(title)
@@ -51,6 +57,7 @@ const compile = (tpl, title, logAst = false) => {
         ...( compile.options || {} )
     })
 
+    log.gray(tpl)
     log([code])
     logAst && log(typeof logAst === 'function' ? logAst(ast) : ast)
     return ast
@@ -59,7 +66,6 @@ const c = (tpl, desc) => compile(tpl, desc, ast => ast.codegenNode.props)
 
 </script>
 #+end_export
-
 
 * 关键知识点
 
@@ -1405,7 +1411,6 @@ return function render(_ctx, _cache) {
 创建过多的无意义的空函数，使用缓存是个不错的选择(+但，一般绑定了事件应该不至于不
 给处理函数吧!!!+)。
 
-
 * f805858 add v-bind transform
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -1761,6 +1766,39 @@ console.log(code)
 6. 缓存事件回调函数(~cacheHandlers: true~, *TODO*)
 
    需要结合 ~prefixIdentifiers: true~ 使用。
+
+
+
+#+begin_comment
+针对 v-model 还需要 compile-runtime 阶段的支持，由于这里还没完成，所以这里的结果
+和 vue-next 测试结果会有些出入，出入点在于 compiler-runtime 期会将 ~modelValue:
+model~ 删除。
+#+end_comment
+
+#+begin_comment
+更多测试用例(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+l1(`v-model 指令`)
+c('<input v-model="model" />', 'simple expression')
+c('<input v-model="\n model\n.\nfoo \n" />', 'simple expression (with multilines)')
+c('<input v-model="model[index]" />', 'compound expression')
+c('<input v-model:value="model" />', 'with argument')
+c('<input v-model:[value]="model" />', 'with dynamic argument')
+c('<input v-model="foo" />', 'should cache update handler w/ cacheHandlers: true')
+c('<input v-for="i in list" v-model="foo[i]" />', 'should not cache update handler if it refers v-for scope variables')
+c('<Comp v-slot="{ foo }"><input v-model="foo.bar"/></Comp>', 'should mark update handler dynamic if it refers slot scope variables')
+c('<Comp v-model.trim.bar-baz="foo" />', 'should generate modelModifiers for component v-model')
+c('<Comp v-model:foo.trim="foo" v-model:bar.number="bar" />', 'should generate modelModifiers for component v-model with arguments')
+c('<span v-model />', 'missing expression')
+c('<span v-model="" />', 'empty expression')
+c('<span v-model="a + b" />', 'mal-formed expression')
+c('<span v-for="i in list" v-model="i" />', 'used on scope variable')
+</script>
+#+end_export
+
 * bf18a84 add v-once transform
 
 [[https://github.com/gcclll/stb-vue-next/commit/bf18a84650adaf68004a0ce0977d33b1436a4587][feat(add): v-once · gcclll/stb-vue-next@bf18a84]]
