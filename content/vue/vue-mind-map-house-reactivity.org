@@ -28,6 +28,62 @@ function _log(el, content) {
 
 @@html:<kbd>@@ *本文依据 commit 进程进行记录* @@html:</kbd>@@
 
+#+begin_quote
+所有用例请按 ~<f12>~ 打开控制台查看 >
+#+end_quote
+
+#+begin_export html
+<script>
+let i = 0, j = 0
+const l1 = x => (j = 0, console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55'))
+const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
+const log = (args) => console.log.apply(console, Array.isArray(args) ? args : [args])
+log.blue = x => log([`%c ${x}`, `color: blue`])
+log.red = x => log([`%c ${x}`, `color: red`])
+log.gray = x => log([`%c ${x}`, `color: gray`])
+log.blues = xx => xx.forEach(x => log.blue(x))
+log.gray.fn = (fn) => (log.gray(fn), fn())
+</script>
+#+end_export
+
+#+begin_export html
+<script>
+const { reactive, isReactive, expect } = VueReactivity
+l1(`reactivity/reacitve`)
+l2(`Object`)
+log.gray.fn(() => {
+  let original = { foo: 1 }
+  let observed = reactive(original)
+  log.blues([
+    `observed !== original, ` + (original !== observed),
+    `observed is reactive, ` + isReactive(observed),
+    `original is reactive, ` + isReactive(original),
+    `observed.foo === ` + observed.foo,
+    `"foo" in observed, ` + ('foo' in observed),
+    `own keys: ` + Object.keys(observed)
+  ])
+})
+l2(`proto, 原型响应式`)
+log.gray.fn(() => {
+  const obj = {}
+  const reactiveObj = reactive(obj)
+  // 属性读取，会导致该属性也变成 reactive
+  const prototype = reactiveObj['__proto__']
+  const otherObj = { data: ['a'] }
+  log.blues([
+    `"reactiveObj" is reactive, ` + isReactive(reactiveObj),
+    `otherObj is reactive, ` + isReactive(otherObj) ,
+  ])
+  const reactiveOther = reactive(otherObj)
+  log.blues([
+    `reactiveOther is reactive, ` + isReactive(otherObj),
+    `reactiveOther.data[0] = ` + reactiveOther.data[0]
+  ])
+})
+</script>
+#+end_export
+
+
 * 关键知识点
 - [-] [[#test-computed-01][计算属性是如何实现结果缓存的？]]
 
@@ -2319,7 +2375,6 @@ computed 函数的 options 可以是函数或一个对象，可以用外部自�
 
 脑图请直接查看“[[#whole-mind-map][完整脑图 computed 部分]]”
 * add ref
-
 * 用例分析
 ** Map.spec.ts
 - [X] instanceof

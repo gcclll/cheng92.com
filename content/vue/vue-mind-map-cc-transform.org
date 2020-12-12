@@ -62,7 +62,7 @@ const compile = (tpl, title, logAst = false) => {
     logAst && log(typeof logAst === 'function' ? logAst(ast) : ast)
     return ast
 }
-const c = (tpl, desc) => compile(tpl, desc, ast => ast.codegenNode.props)
+const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode.props))
 
 </script>
 #+end_export
@@ -1946,6 +1946,24 @@ undefined
 #+end_example
 
 TODO 缺少： ~const _component_Comp = _resolveComponent("Comp")~
+
+#+begin_comment
+更多测试用例(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+l1(`v-once 指令`)
+c(`<div :id="foo" v-once />`, 'as root node', ast => ast.codegenNode)
+c(`<div><div :id="foo" v-once /></div>`, 'on nested plain element')
+c(`<div><Comp :id="foo" v-once /></div>`, 'on component')
+c(`<div><slot v-once /></div>`, 'on slot outlet')
+c(`<div><div v-once /></div>`, 'with hoistStatic: true')
+c(`<div v-if="BOOLEAN" v-once /><p v-else/>`, 'with v-if/else')
+c(`<div v-for="i in list" v-once />`, 'with v-for')
+</script>
+#+end_export
+
 * acdea14 add v-if transform
 
 ~v-if~ 指令源码脑图可参考： [[/vue/vue-mind-map-house-cc/#pcg-v-if][05 v-if 指令(git:0a591b6)]]
@@ -2893,19 +2911,19 @@ undefined
 l1(`<slot/> 插槽 transform 阶段`)
 
 const _a = ast => [`_renderSlot 参数列表：` , ast.children[0].codegenNode.arguments ]
-const c = (tpl, desc, ast = _a) => compile.call(null, tpl, desc, ast)
-c(`<slot/>`, `default slot outlet`)
-c(`<slot name="foo" />`, `statically named slot outlet，含静态名字`)
-c(`<slot :name="foo" />`, `dynamically named slot outlet, 含动态名字`)
-c(null, `TODO dynamically named slot outlet w/ prefixIdentifiers: true`)
-c(`<slot foo="bar" :baz="qux" />`, `default slot outlet with props，默认插槽+静动态属性`)
-c(`<slot name="foo" foo="bar" :baz="qux" />`, `statically named slot outlet with props，静态具名插槽+其他静动态属性`)
-c(`<slot :name="foo" foo="bar" :baz="qux" />`, `dynamically named slot outlet with props，动态具名插槽+其他静动态属性`)
-c(`<slot><div/></slot>`, `default slot outlet with fallback`)
-c(`<slot name="foo"><div/></slot>`, `named slot outlet with fallback`)
-c(`<slot :foo="bar"><div/></slot>`, `default slot outlet with props & fallback`)
-c(`<slot name="foo" :foo="bar"><div/></slot>`, `named slot outlet with props & fallback`)
-c(`<slot v-foo />`, `error on unexpected custom directive on <slot>，不允许有自定义指令？`)
+const c1 = (tpl, desc, ast = _a) => compile.call(null, tpl, desc, ast)
+c1(`<slot/>`, `default slot outlet`)
+c1(`<slot name="foo" />`, `statically named slot outlet，含静态名字`)
+c1(`<slot :name="foo" />`, `dynamically named slot outlet, 含动态名字`)
+c1(null, `TODO dynamically named slot outlet w/ prefixIdentifiers: true`)
+c1(`<slot foo="bar" :baz="qux" />`, `default slot outlet with props，默认插槽+静动态属性`)
+c1(`<slot name="foo" foo="bar" :baz="qux" />`, `statically named slot outlet with props，静态具名插槽+其他静动态属性`)
+c1(`<slot :name="foo" foo="bar" :baz="qux" />`, `dynamically named slot outlet with props，动态具名插槽+其他静动态属性`)
+c1(`<slot><div/></slot>`, `default slot outlet with fallback`)
+c1(`<slot name="foo"><div/></slot>`, `named slot outlet with fallback`)
+c1(`<slot :foo="bar"><div/></slot>`, `default slot outlet with props & fallback`)
+c1(`<slot name="foo" :foo="bar"><div/></slot>`, `named slot outlet with props & fallback`)
+c1(`<slot v-foo />`, `error on unexpected custom directive on <slot>，不允许有自定义指令？`)
 </script>
 #+end_export
 
@@ -2950,7 +2968,9 @@ export const trackSlotScopes: NodeTransform = (node, context) => {
   }
 }
 #+end_src
-* 36c1f36 build user component as slots(组件是如何当做 slot 处理的)
+* 36c1f36 (v-slot)build user component as slots
+
+组件是如何当做 slot 处理的
 
 [[https://github.com/gcclll/stb-vue-next/commit/36c1f36ea2a92119d2a61f3012972229e85b1e30][feat(add): user component treat as slot to build · gcclll/stb-vue-next@36c1f36]]
 
