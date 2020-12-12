@@ -3634,6 +3634,16 @@ var VueCompilerCore = (function (exports) {
           {
               validateBrowserExpression(exp, context, false, hasMultipleStatements);
           }
+          if (isInlineStatement || (shouldCache && isMemberExp)) {
+              // wrap inline statement in a function expression
+              exp = createCompoundExpression([
+                  `${isInlineStatement
+                    ?  `$event`
+                    : `${ ``}(...args)`} => ${hasMultipleStatements ? `{` : `(`}`,
+                  exp,
+                  hasMultipleStatements ? `}` : `)`
+              ]);
+          }
       }
       let ret = {
           props: [

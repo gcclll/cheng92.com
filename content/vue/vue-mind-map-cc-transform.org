@@ -47,13 +47,15 @@ const compile = (tpl, title, logAst = false) => {
     if (!tpl) return null
     const { code, ast } = baseCompile(tpl, {
         onError: (e) => console.warn(e.message),
-        hoistStatic: true
+        hoistStatic: true,
+        ...( compile.options || {} )
     })
 
     log([code])
     logAst && log(typeof logAst === 'function' ? logAst(ast) : ast)
     return ast
 }
+const c = (tpl, desc) => compile(tpl, desc, ast => ast.codegenNode.props)
 
 </script>
 #+end_export
@@ -1260,6 +1262,150 @@ undefined
 #+end_example
 
 问题： ~v-bind~ 没有被解析出来。
+
+如果 v-on的 exp 是个简单的表达式，需要将其转成函数 ~$event => (i++)~
+
+[[https://github.com/gcclll/stb-vue-next/commit/1542b412cef3a1c81e3099e52bb5f7aa1fee2abe][feat(add): v-on with simple expression as handler · gcclll/stb-vue-next@1542b41]]
+
+判断是简单表达式的依据：
+
+~const isInlineStatement = !(isMemberExp || fnExpRE.test(exp.content))~
+
+即不是 member expression 也不是 function expression 。
+
+member expression: ~/^[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*|\[[^\]]+\])*$/~
+[[http://qiniu.ii6g.com/img/20201212163019.png]]
+
+function expresstion: ~/^\s*([\w$_]+|\([^)]*?\))\s*=>|^\s*function(?:\s+[\w$]+)?\s*\(/~
+[[http://qiniu.ii6g.com/img/20201212163123.png]]
+
+测试：
+#+begin_src js
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+ 
+const { code, ast } = baseCompile(`<div v-on:click="i++"></div>`)
+console.log(code)
+console.log(`>>> event name`)
+console.log(ast.codegenNode.props.properties[0].key)
+console.log(`>>> event handler`)
+console.log(ast.codegenNode.props.properties[0].value)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      onClick: $event => (i++)
+    }, null, 8 /* PROPS */, ["onClick"]))
+  }
+}
+>>> event name
+{
+  type: 4,
+  loc: {
+    start: { column: 11, line: 1, offset: 10 },
+    end: { column: 16, line: 1, offset: 15 },
+    source: 'click'
+  },
+  content: 'onClick',
+  isStatic: true,
+  constType: 3
+}
+>>> event handler
+{
+  type: 8,
+  loc: {
+    source: '',
+    start: { line: 1, column: 1, offset: 0 },
+    end: { line: 1, column: 1, offset: 0 }
+  },
+  children: [
+    '$event => (',
+    {
+      type: 4,
+      content: 'i++',
+      isStatic: false,
+      constType: 0,
+      loc: [Object]
+    },
+    ')'
+  ]
+}
+undefined
+#+end_example
+
+#+begin_comment
+更多测试用例(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+l1(`v-on 指令`)
+c(`<div v-on:click="onClick"/>`, `v-on click`)
+c(`<div v-on:[event]="handler"/>`, `v-on动态事件名`)
+l2(`TODO 'dynamic arg with prefixing'`)
+l2(`TODO dynamic arg with complex exp prefixing`)
+c(`<div @click="i++"/>`, '如果 v-on 的exp 是个简单表达式，要用函数封装起来')
+c(`<div @click="foo();bar()"/>`, `支持多个表达式`)
+c(`<div @click="\nfoo();\nbar()\n"/>`, `支持多行表达式`)
+c(`<div @click="foo($event)"/>`, `函数调用`)
+c(`<div @click="foo($event);bar()"/>`, `函数调用加表达式混合`)
+c(`<div @click="$event => foo($event)"/>`, `如果本身是函数不用多余处理`)
+c(`<div @click="
+      $event => {
+        foo($event)
+      }
+    "/>`, `=> 如果表达式已经是函数原样输出就行`)
+c(`<div @click="
+      function($event) {
+        foo($event)
+      }
+    "/>`, `function, 如果表达式已经是函数原样输出就行`)
+c(`<div @click="a['b' + c]"/>`, `如果表达式是对象取值表达式，不用处理`)
+c(`<div v-on:click />`, `如果没有表达式和修饰符，报错`)
+c(`<div v-on:click.prevent />`, `如果没表达式但是有修饰符，不报错`)
+c(`<div v-on:foo-bar="onMount"/>`, `事件名为 foo-bar 要转成驼峰 onFooBar`)
+c(`<div v-on:vnode-mounted="onMount"/>`, 'case conversion for vnode hooks')
+compile.options = { cacheHandlers: true }
+c(`<div v-on:click.prevent />`, `empty handler`)
+c(`<div v-on:click="foo" />`, 'member expression handler')
+c(`<div v-on:click="foo.bar" />`, 'compound member expression handler')
+c(`<comp v-on:click="foo" />`, 'bail on component member expression handler')
+c(`<div v-on:click="() => foo()" />`, 'inline function expression handler')
+c(`<div v-on:click="foo++" />`, 'inline statement handler')
+</script>
+#+end_export
+
+~options.cacheHandlers~ 属性要配合 ~options.prefixIdentifiers~ 使用。
+
+作用是缓存事件处理函数，原理是:
+#+begin_src js
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      onClick: _cache[1] || (_cache[1] = () => {})
+    }))
+  }
+}
+#+end_src
+
+缓存的附加条件： ~let shouldCache: boolean = context.cacheHandlers && !exp~
+
+没有表达式值的情况下才缓存，因为此时会创建一个空的函数作为事件 handler，为了避免
+创建过多的无意义的空函数，使用缓存是个不错的选择(+但，一般绑定了事件应该不至于不
+给处理函数吧!!!+)。
+
+
 * f805858 add v-bind transform
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -1326,6 +1472,23 @@ v-bind 属性支持以下几种方式：
 - ~:need-camel-prop.camel="needCamelProp"~ 需要转成驼峰的属性名，需要制定
   ~.camel~ 修饰符
 - ~no-exp-prop.camel~ 无属性值的属性，会给默认 ~""~ 值，同时给出警告，不建议使用。
+
+#+begin_comment
+更多测试用例(~<f12>~)打开控制台查看 ->> 。
+#+end_comment
+
+#+begin_export html
+<script>
+l1(`v-bind 指令 >>>>>`)
+c(`<div v-bind:id="id"/>`, 'basic')
+c(`<div v-bind:[id]="id"/>`, `dynamic arg`)
+c(`<div v-bind:arg />`, `should error if no expression`)
+c(`<div v-bind:foo-bar.camel="id"/>`, '.camel modifier')
+c(`<div v-bind:[foo].camel="id"/>`, '.camel modifier w/ dynamic arg')
+c(`<div v-bind:[foo(bar)].camel="id"/>`, '.camel modifier w/ dynamic arg + prefixIdentifiers')
+</script>
+#+end_export
+
 * 0cc76f0 add v-model transform
 
 [[https://github.com/gcclll/stb-vue-next/commit/0cc76f04112b1194e0a5cafae0a49bc399462ebf][feat(add): v-model transform · gcclll/stb-vue-next@0cc76f0]]
@@ -2158,7 +2321,7 @@ BUG: 这里居然少了个 ~_hoisted_2~ ???
 
 #+begin_export html
 <script>
-l1(`transform`)
+l1(`v-if 指令`)
 compile(`<div v-if="ok"/>`, 'basic v-if')
 compile(`<template v-if="ok"><div/>hello<p/></template>`, 'template v-if')
 compile(`<Component v-if="ok"></Component>`, 'component v-if')

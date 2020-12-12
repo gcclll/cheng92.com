@@ -25,7 +25,8 @@
         hoistStatic: true,
       };
       var tpl = `<input v-model="model" />`;
-      tpl = `<Comp><template v-slot:named="slotProps"><div/></template></Comp>`;
+      tpl = `<div v-on:click.prevent />`;
+      tpl = `<div v-on:click="foo++" />`;
     </script>
 
     <script>
