@@ -3826,3 +3826,227 @@ undefined
 
    [[https://github.com/gcclll/stb-vue-next/commit/58e87f3adcfa0657602d459043468ac5ce8859cb][fix: merge vue-next transformSlotOutlet.ts · gcclll/stb-vue-next@58e87f3]]
    修改 ~<slot></slot>~ 属性解析逻辑。
+* 综合测试
+
+#+begin_src js
+
+const {
+  baseParse,
+  baseCompile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-core.global.js')
+
+const log = (...args) => console.log.apply(console, args)
+const c = tpl => baseCompile(tpl, {
+  hoistStatic: true
+}).code
+let tpl = ``, code = ``
+tpl = `
+<div :id="status" class="status" :style="{ color: 'red' }">
+  <button v-if="opened" @click="opened = !opened">关闭</button>
+  <button v-else-if="invalid" v-on.enter="{ clicked: toggleValid }">有效</button>
+  <button v-else @click.prevent="() => opened = true">打开</button>
+  <p :name="vbind">v-bind 缩写</p>
+  <p class="vbind-no-arg" v-bind="{ name: 'vbind' }">无参数的 v-bind</p>
+</div>
+<div id="list" :class="list" style="color:red;">
+  <ul>
+    <li v-for="(value, key, index) in list">{{ value }}</li>
+  </ul>
+</div>
+<div id="once" :class="once">{{ once }}</div>
+<div id="user-comp" :class="user-comp">
+  <!-- 我是注释：用户组件 -->
+  <List>{{ "我是 <List/> 的默认插槽" }}</List>
+  <List v-slot="{ prop }"><p class="title">我是带 slotProps({{ prop }}) 的默认插槽</p></List>
+  <List v-slot:title="{ prop }">"我是带名字{{ prop }}的插槽"</List>
+  <List>
+    <template v-slot:one="slotProps"><p>{{ slotProps.title }}</p></template>
+    <p>我是默认插槽的一部分</p>
+    <p>我也是默认插槽的一部分</p>
+    <p>我也是。。。。。。。</p>
+    <p>我们都是。。。。。。</p>
+  </List>
+  <List>
+    <template>
+      <p>我是默认插槽</p>
+    </template>
+    <template v-slot:one="{ prop }">
+      <p>我是名字为 one 的具名插槽插槽({{ prop }})</p>
+    </template>
+  </List>
+  <List v-if="ok" v-slot:one="slotProps"><p>我是带 v-if 指令的且 v-slot 引用在组件上的具名 "one" 插槽，标题属性： {{ slotProps.title }}</p></List>
+  <List>
+    <template><!-- 我是默认插槽，给你们注释用的！！！！！！ --></template>
+    <template v-if="ok" v-slot:one="{ prop }">
+      <p>带 v-if + v-slot + template 的动态插槽，我应该要用到 _createSlots(staticSlots, dynamicSLots) 函数</p>
+    </template>
+    <template v-for="(value, key, index) in list" v-slot:two="slotProps">
+      <p>带 v-for + v-slot + template 的动态插槽，我应该要用到 _createSlots(staticSlots, dynamicSLots) 函数</p>
+    </template>
+  </List>
+</div>
+`
+code = c(tpl)
+log(`>>> 复杂应用场景`)
+log(code)
+log(`\n> 注释\n`,
+    `1. v-on 表达式为简单表达式时会被处理成一个箭头函数\n`,
+    `2. v-on 如果没有参数时，会触发该组件上的所有属性合并(_mergeProps(...))\n`,
+    `3. v-on 表达式为一个函数式，不需要额外处理\n`,
+    `4. v-for 调用 _renderList(list, fn) 渲染列表，list 列表数据来源，fn 列表项渲染函数\n`,
+    `5. v-slot 应用在用户组件上时，里面就不能在使用 v-slot\n`,
+    `6. 只要在 template 上应用了 v-if/v-for 或者将用户组件放在 v-for 下面这些插槽都会被当做动态插槽处理\n`)
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 复杂应用场景
+const _Vue = Vue
+const { createVNode: _createVNode, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode } = _Vue
+
+const _hoisted_1 = { class: "title" }
+const _hoisted_2 = /*#__PURE__*/_createVNode("p", null, "我是默认插槽的一部分", -1 /* HOISTED */)
+const _hoisted_3 = /*#__PURE__*/_createVNode("p", null, "我也是默认插槽的一部分", -1 /* HOISTED */)
+const _hoisted_4 = /*#__PURE__*/_createVNode("p", null, "我也是。。。。。。。", -1 /* HOISTED */)
+const _hoisted_5 = /*#__PURE__*/_createVNode("p", null, "我们都是。。。。。。", -1 /* HOISTED */)
+const _hoisted_6 = /*#__PURE__*/_createVNode("template", null, [
+  /*#__PURE__*/_createVNode("p", null, "我是默认插槽")
+], -1 /* HOISTED */)
+const _hoisted_7 = /*#__PURE__*/_createVNode("template", null, [
+  /*#__PURE__*/_createCommentVNode(" 我是默认插槽，给你们注释用的！！！！！！ ")
+], -1 /* HOISTED */)
+const _hoisted_8 = /*#__PURE__*/_createVNode("p", null, "带 v-if + v-slot + template 的动态插槽，我应该要用到 _createSlots(staticSlots, dynamicSLots) 函数", -1 /* HOISTED */)
+const _hoisted_9 = /*#__PURE__*/_createVNode("p", null, "带 v-for + v-slot + template 的动态插槽，我应该要用到 _createSlots(staticSlots, dynamicSLots) 函数", -1 /* HOISTED */)
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock, createCommentVNode : _createCommentVNode, toHandlers : _toHandlers, mergeProps : _mergeProps, renderList : _renderList, Fragment : _Fragment, toDisplayString : _toDisplayString, createTextVNode : _createTextVNode, resolveComponent : _resolveComponent, withCtx : _withCtx, createSlots : _createSlots } = _Vue
+
+    const _component_List = _resolveComponent("List")
+
+    return (_openBlock(), _createBlock(_Fragment, null, [
+      _createVNode("div", {
+        id: status,
+        class: "status",
+        style: { color: 'red' }
+      }, [
+        opened
+          ? (_openBlock(), _createBlock("button", {
+              key: 0,
+              onClick: $event => (opened = !opened)
+            }, "关闭", 8 /* PROPS */, ["onClick"]))
+          : invalid
+            ? (_openBlock(), _createBlock("button", _mergeProps({ key: 1 }, _toHandlers({ clicked: toggleValid })), "有效", 16 /* FULL_PROPS */))
+            : (_openBlock(), _createBlock("button", {
+                key: 2,
+                onClick: () => opened = true
+              }, "打开", 8 /* PROPS */, ["onClick"])),
+        _createVNode("p", { name: vbind }, "v-bind 缩写", 8 /* PROPS */, ["name"]),
+        _createVNode("p", _mergeProps({ class: "vbind-no-arg" }, { name: 'vbind' }), "无参数的 v-bind", 16 /* FULL_PROPS */)
+      ], 12 /* STYLE, PROPS */, ["id"]),
+      _createVNode("div", {
+        id: "list",
+        class: list,
+        style: "color:red;"
+      }, [
+        _createVNode("ul", null, [
+          (_openBlock(true), _createBlock(_Fragment, null, _renderList(list, (value, key, index) => {
+            return (_openBlock(), _createBlock("li", null, _toDisplayString(value), 1 /* TEXT */))
+          )), 256 /* UNKEYED_FRAGMENT */))
+        ])
+      ], 2 /* CLASS */),
+      _createVNode("div", {
+        id: "once",
+        class: once
+      }, _toDisplayString(once), 3 /* TEXT, CLASS */),
+      _createVNode("div", {
+        id: "user-comp",
+        class: user-comp
+      }, [
+        _createCommentVNode(" 我是注释：用户组件 "),
+        _createVNode(_component_List, null, {
+          default: _withCtx(() => [
+            _createTextVNode(_toDisplayString("我是 <List/> 的默认插槽"), 1 /* TEXT */)
+          ]),
+          _: 1 /* STABLE */
+        }),
+        _createVNode(_component_List, null, {
+          default: _withCtx(({ prop }) => [
+            _createVNode("p", _hoisted_1, "我是带 slotProps(" + _toDisplayString(prop) + ") 的默认插槽", 1 /* TEXT */)
+          ]),
+          _: 1 /* STABLE */
+        }),
+        _createVNode(_component_List, null, {
+          title: _withCtx(({ prop }) => [
+            _createTextVNode("\"我是带名字" + _toDisplayString(prop) + "的插槽\"", 1 /* TEXT */)
+          ]),
+          _: 1 /* STABLE */
+        }),
+        _createVNode(_component_List, null, {
+          one: _withCtx((slotProps) => [
+            _createVNode("p", null, _toDisplayString(slotProps.title), 1 /* TEXT */)
+          ]),
+          default: _withCtx(() => [
+            _hoisted_2,
+            _hoisted_3,
+            _hoisted_4,
+            _hoisted_5
+          ]),
+          _: 1 /* STABLE */
+        }),
+        _createVNode(_component_List, null, {
+          one: _withCtx(({ prop }) => [
+            _createVNode("p", null, "我是名字为 one 的具名插槽插槽(" + _toDisplayString(prop) + ")", 1 /* TEXT */)
+          ]),
+          default: _withCtx(() => [
+            _hoisted_6
+          ]),
+          _: 1 /* STABLE */
+        }),
+        ok
+          ? (_openBlock(), _createBlock(_component_List, { key: 0 }, {
+              one: _withCtx((slotProps) => [
+                _createVNode("p", null, "我是带 v-if 指令的且 v-slot 引用在组件上的具名 \"one\" 插槽，标题属性： " + _toDisplayString(slotProps.title), 1 /* TEXT */)
+              ]),
+              _: 1 /* STABLE */
+            }))
+          : _createCommentVNode("v-if", true),
+        _createVNode(_component_List, null, _createSlots({
+          default: _withCtx(() => [
+            _hoisted_7
+          ]),
+          _: 2 /* DYNAMIC */
+        }, [
+          ok
+            ? {
+                name: "one",
+                fn: _withCtx(({ prop }) => [
+                  _hoisted_8
+                ])
+              }
+            : undefined,
+          _renderList(list, (value, key, index) => {
+            return {
+              name: "two",
+              fn: _withCtx((slotProps) => [
+                _hoisted_9
+              ])
+            }
+          ))
+        ]), 1024 /* DYNAMIC_SLOTS */)
+      ], 2 /* CLASS */)
+    ], 64 /* STABLE_FRAGMENT */))
+  }
+}
+
+> 注释
+ 1. v-on 表达式为简单表达式时会被处理成一个箭头函数
+ 2. v-on 如果没有参数时，会触发该组件上的所有属性合并(_mergeProps(...))
+ 3. v-on 表达式为一个函数式，不需要额外处理
+ 4. v-for 调用 _renderList(list, fn) 渲染列表，list 列表数据来源，fn 列表项渲染函数
+ 5. v-slot 应用在用户组件上时，里面就不能在使用 v-slot
+ 6. 只要在 template 上应用了 v-if/v-for 或者将用户组件放在 v-for 下面这些插槽都会被当做动态插槽处理
+
+undefined
+#+end_example
