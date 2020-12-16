@@ -1,0 +1,186 @@
+#+TITLE: Vue3 源码头脑风暴之 4 ☞compiler-dom - TODO
+#+DATE: <2020-12-16 19:39:26>
+#+TAGS[]: vue, vue3, compiler-dom
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+*声明* ：vue-next compiler-dom 模块
+*调试* ：所有测试用例可通过 ~<F12>~ 控制台查看
+
+*更新日志&Todos* ：
+1. [2020-12-16 19:40:21] 创建
+#+end_quote
+
+#+begin_export html
+<script src="/js/vue/compiler-dom.global.js"></script>
+<script>
+let i = 0, j = 0
+const l1 = x => (j = 0, console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55'))
+const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
+const log = (args) => console.log.apply(console, Array.isArray(args) ? args : [args])
+log.blue = x => log([`%c ${x}`, `color: blue`])
+log.red = x => log([`%c ${x}`, `color: red`])
+log.gray = x => log([`%c ${x}`, `color: gray`])
+const { compile: compile2, parse } = VueCompilerDOM
+const compile = (tpl, title, logAst = false) => {
+    l2(title)
+    if (!tpl) return null
+    const { code, ast } = compile2(tpl, {
+        onError: (e) => console.warn(e.message),
+        hoistStatic: true,
+        ...( compile.options || {} )
+    })
+
+    log.gray(tpl)
+    log([code])
+    logAst && log(typeof logAst === 'function' ? logAst(ast) : ast)
+    return ast
+}
+const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode.props))
+</script>
+#+end_export
+
+* 0062974 compiler-dom模块初始化
+
+[[https://github.com/gcclll/stb-vue-next/commit/0062974d50531aa5e51f229968fd582d567a090c][feat(init): compiler-dom · gcclll/stb-vue-next@0062974]]
+
+日常操作先 copy：先将 /vue-next/packages/compiler-dom// 下面的内容拷贝过来，删除 src 目录下的所有代
+码。
+
+了解目录结构：
+
+#+begin_example
+╰─$ tree -C -I 'dist|__tests__'
+.
+├── LICENSE
+├── README.md
+├── api-extractor.json
+├── index.js
+├── package.json
+└── src
+    ├── decodeHtml.ts
+    ├── decodeHtmlBrowser.ts
+    ├── errors.ts
+    ├── index.ts
+    ├── namedChars.json
+    ├── parserOptions.ts
+    ├── runtimeHelpers.ts
+    └── transforms
+        ├── ignoreSideEffectTags.ts
+        ├── stringifyStatic.ts
+        ├── transformStyle.ts
+        ├── vHtml.ts
+        ├── vModel.ts
+        ├── vOn.ts
+        ├── vShow.ts
+        ├── vText.ts
+        └── warnTransitionChildren.ts
+
+2 directories, 21 files
+#+end_example
+* 4fa13bf init parse + compile function
+
+[[https://github.com/gcclll/stb-vue-next/commit/4fa13bfe57f414f158041122119096f3fb8a859d][feat(init): compiler-dom index.ts> compile + parse function · gcclll/stb-vue-next@4fa13bf]]
+
+初始化编译和解析函数，对应着 compile-core 的 ~baseCompile~ 和 ~baseParse~ 函数。
+
+即： compiler-dom 是针对 compiler-core 的进一步封装处理，传递一些 ~transformXxx~
+函数，至于这些函数做了什么处理，需要下面一步步来揭开。
+
+compile :
+#+begin_src typescript
+export function compile(
+  template: string,
+  options: CompilerOptions
+): CodegenResult {
+  return baseCompile(
+    template,
+    extend({}, parserOptions, {
+      nodeTransforms: [],
+      directiveTransforms: extend({}),
+      // 静态提升 transform
+      transformHoist: __BROWSER__ ? null : stringifyStatic
+    })
+  )
+}
+#+end_src
+
+parse:
+#+begin_src typescript
+export function parse(template: string, options: ParserOptions = {}): RootNode {
+  return baseParse(template, extend({}, parserOptions, options))
+}
+#+end_src
+
+其实到这里也是应该可以执行的，来测试下：
+
+#+begin_src js
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code, ast } = compile(`<div>{{ test }}</div>`)
+console.log(code, '\n>>> AST: \n', ast)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", null, _toDisplayString(test), 1 /* TEXT */))
+  }
+}
+>>> AST:
+ {
+  type: 0,
+  children: [
+    {
+      type: 1,
+      ns: 0,
+      tag: 'div',
+      tagType: 0,
+      props: [],
+      isSelfClosing: false,
+      children: [Array],
+      loc: [Object],
+      codegenNode: [Object]
+    }
+  ],
+  codegenNode: {
+    type: 13,
+    tag: '"div"',
+    props: undefined,
+    children: { type: 5, content: [Object], loc: [Object] },
+    patchFlag: '1 /* TEXT */',
+    dynamicProps: undefined,
+    directives: undefined,
+    isBlock: true,
+    disableTracking: false,
+    loc: { start: [Object], end: [Object], source: '<div>{{ test }}</div>' }
+  },
+}
+#+end_example
+
+接下来才是进入正题 ⛳...🚄🚄🚄

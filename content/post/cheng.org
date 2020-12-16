@@ -10,6 +10,12 @@
 #+end_quote
 
 * 程序员
+** ReadTheDocs 创建技术文档
+
+[[https://docs.readthedocs.io/en/stable/guides/platform.html][Read the Docs Guides — Read the Docs 5.8.0 documentation]]
+
+[[https://sphinx-rtd-theme.readthedocs.io/en/stable/][Read the Docs Sphinx Theme — Read the Docs Sphinx Theme 0.5.0 documentation]]
+
 ** go
 
 ~go get golang.org/x/tools/gopls@latest~
@@ -261,6 +267,65 @@ tab 操作：
 
 * 软件&命令
 
+** tree 命令使用
+
+| 选项               | 含义                               |
+|--------------------+------------------------------------|
+| ~-a~               | 递归列出所有，默认使用             |
+| ~-d~               | 仅列出目录                         |
+| ~-l~               | TODO                               |
+| ~-f~               | 全路径(相对)显示                   |
+| ~-x~               | TODO                               |
+| ~-L~               | 指定列出的层级                     |
+| ~-R~               | 重新执行命令，当目录层级达到上限时 |
+| ~-P pattern~       | 列出与指定 ~pattern~ 匹配的结果    |
+| ~-I pattern~       | 与 ~-P~ 相反，匹配的不列出来       |
+| ~--ignore-case~    | ~-P~, ~-I~ 忽略大小写              |
+| ~-o filename~      | 结果输出到指定文件                 |
+|--------------------+------------------------------------|
+| 文件选项           |                                    |
+| ~-q~               | 将不可打印字符输出成 ~?~           |
+| ~-N~               | 将不可打印字符输出成 ~is~          |
+| ~-Q~               | 文件名双引号括起来                 |
+| ~-p~               | 输出文件权限                       |
+| ~-u~               | 输出文件 owner 或 UID              |
+| ~-g~               | 输出文件用户组或 GID               |
+| ~-s~               | 输出每个文件的字节大小             |
+| ~-h~               | 以可读形式输出每个文件字节大小     |
+| ~--si~             | 和 ~-h~ 类似，不过是以 ~SI~ 单位   |
+| ~-D~               | 输出上次修改的时间                 |
+| ~-F~               | 目录最后显示 ~/~                   |
+| ~--inodes~         | 输出文件 inode 数字                |
+| ~--device~         | 输出每个文件所属的设备ID           |
+|--------------------+------------------------------------|
+| 排序选项           |                                    |
+| ~-v~               | 根据 version                       |
+| ~-t~               | 根据上次修改时间                   |
+| ~-c~               | 根据上次状态变更时间               |
+| ~-U~               | 取消排序                           |
+| ~-r~               | 逆序                               |
+| ~--dirsfirst~      | 目录显示在文件之前                 |
+| ~--sort X~         | name, version, size, mtime, ctime  |
+|--------------------+------------------------------------|
+| 图形化选项         |                                    |
+| ~-i~               | 不缩进                             |
+| ~-A~               | ANSI lines                         |
+| ~-S~               | 示例： ~��� package.json~          |
+| ~-n~               | 关闭色彩                           |
+| ~-C~               | 颜色显示                           |
+|--------------------+------------------------------------|
+| XML/HTML/JSON 选项 |                                    |
+| ~-X~               | XML 格式输出                       |
+| ~-J~               | JSON 格式输出                      |
+| ~-H baseHREF~      | HTML 格式输出                      |
+| ~-T string~        | -                                  |
+| ~--nolinks~        | -                                  |
+|--------------------+------------------------------------|
+| 输入选项           |                                    |
+| ~--fromfile~       | 从文件读取                         |
+
+*-I,-P* 使用的时候多个规则： ~-I 'dist|__tests__'~ 会同时忽略 dist 和 __tests__
+  目录或文件。
 ** crontab 定时任务
 
 [[http://codingpub.github.io/2016/10/27/OS-X-%E6%B7%BB%E5%8A%A0%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1/][OS X 添加定时任务 | Coding Pub]]
