@@ -1,4 +1,4 @@
-#+TITLE: Vue3 源码头脑风暴之 4 ☞compiler-dom - TODO
+#+TITLE: Vue3 源码头脑风暴之 4 ☞compiler-dom
 #+DATE: <2020-12-16 19:39:26>
 #+TAGS[]: vue, vue3, compiler-dom
 #+CATEGORIES[]: vue
@@ -184,3 +184,768 @@ return function render(_ctx, _cache) {
 #+end_example
 
 接下来才是进入正题 ⛳...🚄🚄🚄
+* 8c86624 add transformStyle node transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/8c8662439d651e95f2036040e4d31f95dd52b836][feat: add transformStyle transform · gcclll/stb-vue-next@8c86624]]
+
+作用是将 ~node.props~ 里面的 ~style~ 内联属性转成对象类型。
+
+根据条件，这里只检测静态属性，然后将其转成 ~v-bind~ 型的动态属性，将内联转成对象。
+#+begin_src typescript
+export const transformStyle: NodeTransform = node => {
+  if (node.type === NodeTypes.ELEMENT) {
+    node.props.forEach((p, i) => {
+      if (p.type === NodeTypes.ATTRIBUTE && p.name === 'style' && p.value) {
+        // replace p with an expression node
+        node.props[i] = {
+          type: NodeTypes.DIRECTIVE,
+          name: `bind`,
+          arg: createSimpleExpression(`style`, true, p.loc),
+          exp: parseInlineCSS(p.value.content, p.loc),
+          modifiers: [],
+          loc: p.loc
+        }
+      }
+    })
+  }
+}
+#+end_src
+
+内联转对象解析函数： ~parseInlineCSS~
+
+#+begin_src typescript
+const parseInlineCSS = (
+  cssText: string,
+  loc: SourceLocation
+): SimpleExpressionNode => {
+  const normalized = parseStringStyle(cssText)
+  return createSimpleExpression(
+    JSON.stringify(normalized),
+    false,
+    loc,
+    ConstantTypes.CAN_STRINGIFY
+  )
+}
+#+end_src
+
+~parseStringStyle~ 处理其实就是以 ~;~ 为分隔符，将 ~name:value~ 分割出来，解析出
+~name~ 和 ~value~ 组成对象。
+
+测试：
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code } = compile(`<div style="color:red;font-size:30px;">{{ text }}</div>`)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", { style: {"color":"red","font-size":"30px"} }, _toDisplayString(text), 1 /* TEXT */))
+  }
+}
+undefined
+#+end_example
+
+* 7ea8dfe add v-html transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/7ea8dfe5c57ec712fe7f87d2fcce7320aa0f2560][feat: add transform v-html · gcclll/stb-vue-next@7ea8dfe]]
+
+v-html 指令转换。
+
+代码很简单：
+#+begin_src typescript
+
+export const transformVHtml: DirectiveTransform = (dir, node, context) => {
+  const { exp, loc } = dir
+  if (!exp) {
+    context.onError(
+      createDOMCompilerError(DOMErrorCodes.X_V_HTML_NO_EXPRESSION, loc)
+    )
+  }
+
+  if (node.children.length) {
+    context.onError(
+      createDOMCompilerError(DOMErrorCodes.X_V_HTML_WITH_CHILDREN, loc)
+    )
+    node.children.length = 0
+  }
+
+  return {
+    props: [
+      createObjectProperty(
+        createSimpleExpression(`innerHTML`, true, loc),
+        exp || createSimpleExpression('', true)
+      )
+    ]
+  }
+}
+#+end_src
+
+其实就是针对 ~v-html~ 将其转成 ~innerHTML~ 动态属性，检测两个不合法使用情况
+1. 没有表达式
+2. 包含孩子节点
+
+测试：
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const _c = tpl => compile(tpl, {
+  onError: e => console.log(`错误描述：` + e.message)
+}).code
+console.log(_c(`<div v-html="test"/>`))
+console.log(`>>> v-html 下不能有任何孩子节点`)
+console.log(_c(`<div v-html="test">hello</div>`))
+console.log(`>>> v-html 不能没有表达式`)
+console.log(_c(`<div v-html></div>`))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", { innerHTML: test }, null, 8 /* PROPS */, ["innerHTML"]))
+  }
+}
+>>> v-html 下不能有任何孩子节点
+错误描述：v-html will override element children.
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", { innerHTML: test }, null, 8 /* PROPS */, ["innerHTML"]))
+  }
+}
+>>> v-html 不能没有表达式
+错误描述：v-html is missing expression.
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", { innerHTML: "" }))
+  }
+}
+undefined
+#+end_example
+
+1. 这里 v-html 属性会被解析成 ~node.props~ 里面动态属性，属性名为 ~innerHTML~ 。
+
+2. 如果有 ~v-html~ 指令是该组件下面就不能有任何孩子节点
+* 4f3a4ee add v-text transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/4f3a4eeec6394537b38587a47d3ac948155d1995][feat(add): v-text transform · gcclll/stb-vue-next@4f3a4ee]]
+
+v-text 指令转换函数，转成属性为 ~textContent~ 。
+
+代码:
+#+begin_src typescript
+
+export const transformVText: DirectiveTransform = (dir, node, context) => {
+  const { exp, loc } = dir
+
+  if (!exp) {
+    context.onError(
+      createDOMCompilerError(DOMErrorCodes.X_V_TEXT_NO_EXPRESSION, loc)
+    )
+  }
+
+  if (node.children.length) {
+    context.onError(
+      createDOMCompilerError(DOMErrorCodes.X_V_TEXT_WITH_CHILDREN, loc)
+    )
+
+    node.children.length = 0
+  }
+
+  return {
+    props: [
+      createObjectProperty(
+        createSimpleExpression(`textContent`, true),
+        exp
+          ? createCallExpression(
+              context.helperString(TO_DISPLAY_STRING),
+              [exp],
+              loc
+            )
+          : createSimpleExpression('', true)
+      )
+    ]
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const c = tpl => compile(tpl, {
+  onError: e => console.log(`错误描述: ${e.message}`)
+}).code
+
+console.log(c(`<div v-text="test"/>`))
+console.log(`>>> 包含孩子节点`)
+console.log(c(`<div v-text="test">hello</div>`))
+console.log(`>>> 无表达式`)
+console.log(c(`<div v-text></div>`))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      textContent: _toDisplayString(test)
+    }, null, 8 /* PROPS */, ["textContent"]))
+  }
+}
+>>> 包含孩子节点
+错误描述: v-text will override element children.
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { toDisplayString : _toDisplayString, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      textContent: _toDisplayString(test)
+    }, null, 8 /* PROPS */, ["textContent"]))
+  }
+}
+>>> 无表达式
+错误描述: v-text is missing expression.
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", { textContent: "" }))
+  }
+}
+undefined
+#+end_example
+* 588d5f1 add v-model transform
+
+v-model 指令转换。
+
+在完成 v-model 指令转换之前，我们看下 compiler-core 里面的 v-model 处理的最后结
+果是什么❓
+
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code } = compile(`<input v-model:value="result" />`)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("input", {
+      value: result,
+      "onUpdate:value": $event => (result = $event)
+    }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["value","onUpdate:value"]))
+  }
+}
+undefined
+#+end_example
+
+结果显示：v-model 最终转成了两个属性
+
+~{ value: result, "onUpdate:value": $event => (result = $event)}~
+
+这个原理应该是这样： 输入框内容绑定 ~result~ ，当输入框内容发生变化，触发
+~onUpdate:value~ 事件，执行该函数重新复制 ~result~ 变更数据。 
+
+
+加上 compiler-dom 阶段的 v-model transform 之后：
+[[https://github.com/gcclll/stb-vue-next/commit/588d5f1d088ad48a71fa89a3070a1ad58666f431][feat(add): v-model transform · gcclll/stb-vue-next@588d5f1]]
+
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code } = compile(`<input v-model="result" />`)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { vModelText : _vModelText, createVNode : _createVNode, withDirectives : _withDirectives, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return _withDirectives((_openBlock(), _createBlock("input", {
+      "onUpdate:modelValue": $event => (result = $event)
+    }, null, 8 /* PROPS */, ["onUpdate:modelValue"])), [
+      [_vModelText, result]
+    ])
+  }
+}
+undefined
+#+end_example
+
+
+变化：
+1) 不支持参数了
+2) 删除了 ~value: result~ 属性(默认是 ~modelValue~)。
+3) 用 ~_withDirectives~ 将 ~<input>~ 包起来了
+
+   这个函数定义是在 ~runtime-core~ 里面定义了，作用就是将 第二个参数 ~[
+   [_vModelText, result] ]~ 里面的指令塞到 ~vnode.dirs~ 指令集中去。
+
+
+代码:
+#+begin_src typescript
+
+export const transformModel: DirectiveTransform = (dir, node, context) => {
+  const baseResult = baseTransform(dir, node, context)
+  // base transform has errors OR component v-model (only need props)
+  // 没有 v-model指令，或应用在用户组件上了
+  if (!baseResult.props.length || node.tagType === ElementTypes.COMPONENT) {
+    return baseResult
+  }
+
+  // 不能有参数？
+  if (dir.arg) {
+    // ... 报错，不能有参数，即必须是 ~v-model="xxx"~ 来使用
+  }
+
+  // 不能有 value 属性，因为 input 绑定的就是 value 属性
+  function checkDuplicateValue() {
+    // ... 这里既是检测是不是有 <input value="xx"> value 属性
+  }
+
+  const { tag } = node
+  const isCustomElement = context.isCustomElement(tag)
+  if (
+    tag === 'input' ||
+    tag === 'textarea' ||
+    tag === 'select' ||
+    isCustomElement
+  ) {
+    let directiveToUse = V_MODEL_TEXT
+    let isInvalidType = false
+    if (tag === 'input' || isCustomElement) {
+      const type = findProp(node, `type`)
+      if (type) {
+        if (type.type === NodeTypes.DIRECTIVE) {
+          // :type='foo'
+          directiveToUse = V_MODEL_DYNAMIC
+        } else if (type.value) {
+          switch (type.value.content) {
+            case 'radio':
+              directiveToUse = V_MODEL_RADIO
+              break
+            case 'checkbox':
+              directiveToUse = V_MODEL_CHECKBOX
+              break
+            case 'file':
+              isInvalidType = true
+              // ERROR 不能用在 <file> 标签上
+              break
+            default:
+              __DEV__ && checkDuplicateValue()
+              break
+          }
+        }
+      } else if (hasDynamicKeyVBind(node)) {
+        // element has bindings with dynamic keys, which can possibly contain
+        // "type".
+        directiveToUse = V_MODEL_DYNAMIC
+      } else {
+        // text type
+        __DEV__ && checkDuplicateValue()
+      }
+    } else if (tag === 'select') {
+      directiveToUse = V_MODEL_SELECT
+    } else {
+      // textarea
+      __DEV__ && checkDuplicateValue()
+    }
+
+    // inject runtime directive
+    // by returning the helper symbol via needRuntime
+    // the import will replaced a resolveDirective call.
+    if (!isInvalidType) {
+      baseResult.needRuntime = context.helper(directiveToUse)
+    }
+  } else {
+    // v-model 应用到不合法的元素上
+  }
+
+  // native vmodel doesn't need the `modelValue` props since they are also
+  // passed to the runtime as `binding.value`. removing it reduces code size.
+  // 最后过滤掉 modelValue: xxx 属性
+  baseResult.props = baseResult.props.filter(
+    p =>
+      !(
+        p.key.type === NodeTypes.SIMPLE_EXPRESSION &&
+        p.key.content === 'modelValue'
+      )
+  )
+  return baseResult
+}
+#+end_src
+
+源码分析：
+
+1) 只处理 ~input, textarea, select~ 文本框标签，或自定义的标签
+2) ~<input>~ 标签类型分为 ~radio~ 和 ~checkbox~ 单复选项框处理，不能使用
+   ~type='file'~ 类型
+3) ~<select>~ 下拉选项框的处理
+4) 过滤掉 transform 之后的 ~{modelValue: value, 'onUpdate:value': $event =>
+   value = $event}~ 里面的 ~modelValue：value~ 属性，因为在 runtime-core 时期的
+   ~withDirectives()~ 处理里面会被绑定到 ~value~ 属性上
+* add v-on transform
+
+v-on 指令转换。
+
+compiler-core 阶段：
+
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code, ast } = compile(`<div v-on:keyup.enter.prevent="pressKeyup" />`)
+console.log(code)
+console.log(ast.codegenNode.props.properties)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", { onKeyup: pressKeyup }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["onKeyup"]))
+  }
+}
+[
+  {
+    type: 16,
+    loc: { source: '', start: [Object], end: [Object] },
+    key: {
+      type: 4,
+      loc: [Object],
+      content: 'onKeyup',
+      isStatic: true,
+      constType: 3
+    },
+    value: {
+      type: 4,
+      content: 'pressKeyup',
+      isStatic: false,
+      constType: 0,
+      loc: [Object]
+    }
+  }
+]
+undefined
+#+end_example
+
+可以看到 compile-core 阶段是没有处理修饰符的。
+
+v-on 指令最后解析成 ~{ key, value, type: 16 }~ 结构。
+
+compiler-dom v-on 处理逻辑：
+
+1. ~resolveModifiers(key, modifiers)~ 解析出三类修饰符
+
+   - ~keyModifiers~ 修饰符
+
+      键盘事件： ~onkeyup, onkeydown, onkeypress~
+
+   - ~eventOptionModifiers~ 事件选项修饰符，只有三种 ~passive, once, capture~
+     
+   - ~nonKeyModifiers~ 非按键类修饰符
+
+      事件冒泡管理： ~stop,prevent,self~
+
+      系统修饰符+exact: ~ctrl,shift,alt,meta,exact~ , exact 表示精确匹配按键。
+
+      鼠标按键修饰符： ~middle~
+
+2. 经过 1 之后得出三种类型的修饰符，处理其中的 ~nonKeyModifiers~
+
+   将这种类型的修饰符中的 ~right, middle~ 转换成对应的 ~onContextmenu~ 和
+   ~onMouseup~ 事件
+
+   即：
+
+   如果有 ~right~ 点击事件会触发 ~onContextmenu~ 事件，弹出右键菜单？
+
+   如果有 ~middle~ 鼠标中间滚轮事件，会触发 ~onMouseup~ 鼠标弹起事件
+
+   最后将 ~nonKeyModifiers~ 结合 ~value~ 创建成函数表达式。
+
+   #+begin_src js
+   
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const {code} = compile(
+  `<div @click.right="testRight"
+        @click.middle="testMiddle"
+        @click.left="testLeft" />`)
+console.log(`>>> right 修饰符被当做 onContextmenu 事件处理, middle -> onMouseup`)
+console.log(code)
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   >>> right 修饰符被当做 onContextmenu 事件处理, middle -> onMouseup
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { withModifiers : _withModifiers, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("div", {
+         onContextmenu: _withModifiers(testRight, ["right"]),
+         onMouseup: _withModifiers(testMiddle, ["middle"]),
+         onClick: _withModifiers(testLeft, ["left"])
+       }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["onContextmenu","onMouseup","onClick"]))
+     }
+   }
+   undefined
+   #+end_example
+
+3. 处理 ~keyModifiers~ ，如：键盘事件修饰符，系统修饰符等等
+
+   比如：键盘 ~ctrl-a~ 组合键
+   
+   #+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code } = compile(`
+<div @keydown.stop.capture.ctrl.a="test" />`)
+console.log(code)
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   const _Vue = Vue
+
+   return function render(_ctx, _cache) {
+     with (_ctx) {
+       const { withModifiers : _withModifiers, withKeys : _withKeys, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+       return (_openBlock(), _createBlock("div", {
+         onKeydownCapture: _withKeys(_withModifiers(test, ["stop","ctrl"]), ["a"])
+       }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["onKeydownCapture"]))
+     }
+   }
+   undefined
+   #+end_example
+
+4. 处理 ~eventOptionModifiers~ 结合 ~key~ 生成对应的事件名表达式
+
+   事件选项修饰符只有三个： ~capture,passive,once~
+
+   passive: [[https://segmentfault.com/a/1190000017247263][passive的作用和原理_个人文章 - SegmentFault 思否]]
+
+   [[/post/javascript-docs/#event-cap-bub][capture]]: [[https://blog.techbridge.cc/2017/07/15/javascript-event-propagation/][DOM 的事件傳遞機制：捕獲與冒泡]]
+
+   解析结果，事件选项修饰符被合并到事件名中：
+   
+    #+begin_src js
+    const {
+        parse,
+        compile
+    } = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+    const { code } = compile(`<div @click.stop.capture.once="test" />`)
+    console.log(code)
+    #+end_src
+
+    #+RESULTS:
+    #+begin_example
+    const _Vue = Vue
+
+    return function render(_ctx, _cache) {
+      with (_ctx) {
+        const { withModifiers : _withModifiers, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+        return (_openBlock(), _createBlock("div", {
+          onClickCaptureOnce: _withModifiers(test, ["stop"])
+        }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["onClickCaptureOnce"]))
+      }
+    }
+    undefined
+    #+end_example
+
+    如：事件名 ~onClickCaptureOnce~
+
+5. 如果事件名为动态或是键盘事件，得用 ~_withKeys()~ 包一层
+
+
+-----
+
+测试：
+ 
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+const log = console.log
+const c = (tpl, title) => {
+  const { code, ast } = compile(tpl, {
+    onError: e => log(`错误描述：${e.message}`)
+  })
+
+  log(`>>> ${title}`)
+  log(code)
+  log(ast.codegenNode.props.properties)
+}
+
+c(`<div @click.stop.prevent="test" />`, '多个修饰符')
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 多个修饰符
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { withModifiers : _withModifiers, createVNode : _createVNode, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return (_openBlock(), _createBlock("div", {
+      onClick: _withModifiers(test, ["stop","prevent"])
+    }, null, 8 /* PROPS */, ["onClick"]))
+  }
+}
+[
+  {
+    type: 16,
+    loc: { source: '', start: [Object], end: [Object] },
+    key: {
+      type: 4,
+      loc: [Object],
+      content: 'onClick',
+      isStatic: true,
+      constType: 3
+    },
+    value: {
+      type: 14,
+      loc: [Object],
+      callee: Symbol(vOnModifiersGuard),
+      arguments: [Array]
+    }
+  }
+]
+undefined
+#+end_example
+
+#+begin_quote
+~<f12>~ 打开控制台查看更多测试用例结果。
+#+end_quote
+
+#+begin_export html
+<script>
+l1(`v-on`)
+c(`<div @click.stop.prevent="test"/>`, '支持多个修饰符')
+c(`<div @click.stop="test" @keyup.enter="test" />`, '多个事件')
+c(`<div @click.stop.capture.once="test"/>`, '多个修饰符和事件选项')
+c(`<div @keydown.stop.capture.ctrl.a="test"/>`, '键盘事件或动态事件，应该用 keys guard 包一层(runtime-dom: withKeys())')
+c(`<div @keyup.exact="test"/>`, `没有按键修饰符的时候，不需要 keys guard`)
+c(`<div @keyup.left="test"/>`, '静态事件名+left/right 修饰符，需要 keys guard')
+c(`<div @[e].left="test"/>`, '动态事件名+left/right 修饰符，需要 keys guard')
+c(`<div @keyup.enter="test"/>`, 'should not wrap normal guard if there is only keys guard')
+// 转成 onContextmenu 事件
+c(`<div @click.right="test"/>`, 'should transform click.right')
+// 如果是 click.right 转成 onContextmenu
+c(`<div @[event].right="test"/>`, '动态事件名 + right 修饰符')
+// 转成 onMouseup
+c(`<div @click.middle="test"/>`, '鼠标中键按键事件')
+c(`<div @[event].middle="test"/>`, '鼠标中键动态按键事件')
+compile.options = { cacheHandlers: true }
+const root = c(`<div @keyup.enter.capture="foo" />`, '缓存 handler 修饰符')
+log(root)
+</script>
+#+end_export
+
+#+begin_quote
+*小结* :
+
+事件修饰符分为三大类
+
+1. 事件选项类型修饰符(passive,capture,once)
+
+   会和事件名合并： ~click.capture.once~ -> ~onClickCaptureOnce~
+   
+2. 键盘事件(包括键盘按键 a-b-c-...)
+3. 其他类型事件修饰符(如：stop,prevent,self, ctrl,shift,alt,meta,exact)
+
+
+关于 ~right, middle~ 修饰符处理情况
+
+1. right 处理成 ~onContextmenu~ 事件
+2. middle 处理成 ~onMouseup~ 事件 
+3. right/middle 是在动态事件名上面，会检测是不是 onClick 如果是进行 1/2 转换，不
+   是按照原事件名处理。
+
+   如： ~@[eventName].middle="test"~ -> ~eventName === 'onClick' ? 'onMouseup' :
+   eventName~
+#+end_quote
+
+

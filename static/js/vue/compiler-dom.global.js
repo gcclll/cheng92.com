@@ -80,6 +80,19 @@ var VueCompilerDOM = (function (exports) {
       return res.join('\n');
   }
 
+  const listDelimiterRE = /;(?![^(]*\))/g;
+  const propertyDelimiterRE = /:(.+)/;
+  function parseStringStyle(cssText) {
+      const ret = {};
+      cssText.split(listDelimiterRE).forEach(item => {
+          if (item) {
+              const tmp = item.split(propertyDelimiterRE);
+              tmp.length > 1 && (ret[tmp[0].trim()] = tmp[1].trim());
+          }
+      });
+      return ret;
+  }
+
   const EMPTY_OBJ =  Object.freeze({})
       ;
   const EMPTY_ARR =  Object.freeze([]) ;
@@ -3900,12 +3913,320 @@ var VueCompilerDOM = (function (exports) {
       }));
   }
 
+  // Parse inline CSS strings for static style attributes into an object.
+  // This is a NodeTransform since it works on the static `style` attribute and
+  // converts it into a dynamic equivalent:
+  // style="color: red" -> :style='{ "color": "red" }'
+  // It is then processed by `transformElement` and included in the generated
+  // props.
+  // 将内联 css 字符串解析成对象
+  const transformStyle = node => {
+      if (node.type === 1 /* ELEMENT */) {
+          node.props.forEach((p, i) => {
+              if (p.type === 6 /* ATTRIBUTE */ && p.name === 'style' && p.value) {
+                  // replace p with an expression node
+                  node.props[i] = {
+                      type: 7 /* DIRECTIVE */,
+                      name: `bind`,
+                      arg: createSimpleExpression(`style`, true, p.loc),
+                      exp: parseInlineCSS(p.value.content, p.loc),
+                      modifiers: [],
+                      loc: p.loc
+                  };
+              }
+          });
+      }
+  };
+  const parseInlineCSS = (cssText, loc) => {
+      const normalized = parseStringStyle(cssText);
+      return createSimpleExpression(JSON.stringify(normalized), false, loc, 3 /* CAN_STRINGIFY */);
+  };
+
+  function createDOMCompilerError(code, loc) {
+      return createCompilerError(code, loc,  DOMErrorMessages );
+  }
+  const DOMErrorMessages = {
+      [49 /* X_V_HTML_NO_EXPRESSION */]: `v-html is missing expression.`,
+      [50 /* X_V_HTML_WITH_CHILDREN */]: `v-html will override element children.`,
+      [51 /* X_V_TEXT_NO_EXPRESSION */]: `v-text is missing expression.`,
+      [52 /* X_V_TEXT_WITH_CHILDREN */]: `v-text will override element children.`,
+      [53 /* X_V_MODEL_ON_INVALID_ELEMENT */]: `v-model can only be used on <input>, <textarea> and <select> elements.`,
+      [54 /* X_V_MODEL_ARG_ON_ELEMENT */]: `v-model argument is not supported on plain elements.`,
+      [55 /* X_V_MODEL_ON_FILE_INPUT_ELEMENT */]: `v-model cannot be used on file inputs since they are read-only. Use a v-on:change listener instead.`,
+      [56 /* X_V_MODEL_UNNECESSARY_VALUE */]: `Unnecessary value binding used alongside v-model. It will interfere with v-model's behavior.`,
+      [57 /* X_V_SHOW_NO_EXPRESSION */]: `v-show is missing expression.`,
+      [58 /* X_TRANSITION_INVALID_CHILDREN */]: `<Transition> expects exactly one child element or component.`,
+      [59 /* X_IGNORED_SIDE_EFFECT_TAG */]: `Tags with side effect (<script> and <style>) are ignored in client component templates.`
+  };
+
+  const transformVHtml = (dir, node, context) => {
+      const { exp, loc } = dir;
+      if (!exp) {
+          context.onError(createDOMCompilerError(49 /* X_V_HTML_NO_EXPRESSION */, loc));
+      }
+      if (node.children.length) {
+          context.onError(createDOMCompilerError(50 /* X_V_HTML_WITH_CHILDREN */, loc));
+          node.children.length = 0;
+      }
+      return {
+          props: [
+              createObjectProperty(createSimpleExpression(`innerHTML`, true, loc), exp || createSimpleExpression('', true))
+          ]
+      };
+  };
+
+  const transformVText = (dir, node, context) => {
+      const { exp, loc } = dir;
+      if (!exp) {
+          context.onError(createDOMCompilerError(51 /* X_V_TEXT_NO_EXPRESSION */, loc));
+      }
+      if (node.children.length) {
+          context.onError(createDOMCompilerError(52 /* X_V_TEXT_WITH_CHILDREN */, loc));
+          node.children.length = 0;
+      }
+      return {
+          props: [
+              createObjectProperty(createSimpleExpression(`textContent`, true), exp
+                  ? createCallExpression(context.helperString(TO_DISPLAY_STRING), [exp], loc)
+                  : createSimpleExpression('', true))
+          ]
+      };
+  };
+
+  const V_MODEL_RADIO = Symbol( `vModelRadio` );
+  const V_MODEL_CHECKBOX = Symbol( `vModelCheckbox` );
+  const V_MODEL_TEXT = Symbol( `vModelText` );
+  const V_MODEL_SELECT = Symbol( `vModelSelect` );
+  const V_MODEL_DYNAMIC = Symbol( `vModelDynamic` );
+  const V_ON_WITH_MODIFIERS = Symbol( `vOnModifiersGuard` );
+  const V_ON_WITH_KEYS = Symbol( `vOnKeysGuard` );
+  const V_SHOW = Symbol( `vShow` );
+  const TRANSITION = Symbol( `Transition` );
+  const TRANSITION_GROUP = Symbol( `TransitionGroup` );
+  registerRuntimeHelpers({
+      [V_MODEL_RADIO]: `vModelRadio`,
+      [V_MODEL_CHECKBOX]: `vModelCheckbox`,
+      [V_MODEL_TEXT]: `vModelText`,
+      [V_MODEL_SELECT]: `vModelSelect`,
+      [V_MODEL_DYNAMIC]: `vModelDynamic`,
+      [V_ON_WITH_MODIFIERS]: `withModifiers`,
+      [V_ON_WITH_KEYS]: `withKeys`,
+      [V_SHOW]: `vShow`,
+      [TRANSITION]: `Transition`,
+      [TRANSITION_GROUP]: `TransitionGroup`
+  });
+
+  const transformModel$1 = (dir, node, context) => {
+      const baseResult = transformModel(dir, node, context);
+      // base transform has errors OR component v-model (only need props)
+      // 没有 v-model指令，或应用在用户组件上了
+      if (!baseResult.props.length || node.tagType === 1 /* COMPONENT */) {
+          return baseResult;
+      }
+      // 不能有参数？
+      if (dir.arg) {
+          context.onError(createDOMCompilerError(54 /* X_V_MODEL_ARG_ON_ELEMENT */, dir.arg.loc));
+      }
+      // 不能有 value 属性，因为 input 绑定的就是 value 属性
+      function checkDuplicateValue() {
+          const value = findProp(node, 'value');
+          if (value) {
+              context.onError(createDOMCompilerError(56 /* X_V_MODEL_UNNECESSARY_VALUE */, value.loc));
+          }
+      }
+      const { tag } = node;
+      const isCustomElement = context.isCustomElement(tag);
+      if (tag === 'input' ||
+          tag === 'textarea' ||
+          tag === 'select' ||
+          isCustomElement) {
+          let directiveToUse = V_MODEL_TEXT;
+          let isInvalidType = false;
+          if (tag === 'input' || isCustomElement) {
+              const type = findProp(node, `type`);
+              if (type) {
+                  if (type.type === 7 /* DIRECTIVE */) {
+                      // :type='foo'
+                      directiveToUse = V_MODEL_DYNAMIC;
+                  }
+                  else if (type.value) {
+                      switch (type.value.content) {
+                          case 'radio':
+                              directiveToUse = V_MODEL_RADIO;
+                              break;
+                          case 'checkbox':
+                              directiveToUse = V_MODEL_CHECKBOX;
+                              break;
+                          case 'file':
+                              isInvalidType = true;
+                              context.onError(createDOMCompilerError(54 /* X_V_MODEL_ARG_ON_ELEMENT */, dir.loc));
+                              break;
+                          default:
+                               checkDuplicateValue();
+                              break;
+                      }
+                  }
+              }
+              else if (hasDynamicKeyVBind(node)) {
+                  // element has bindings with dynamic keys, which can possibly contain
+                  // "type".
+                  directiveToUse = V_MODEL_DYNAMIC;
+              }
+              else {
+                  // text type
+                   checkDuplicateValue();
+              }
+          }
+          else if (tag === 'select') {
+              directiveToUse = V_MODEL_SELECT;
+          }
+          else {
+              // textarea
+               checkDuplicateValue();
+          }
+          // inject runtime directive
+          // by returning the helper symbol via needRuntime
+          // the import will replaced a resolveDirective call.
+          if (!isInvalidType) {
+              baseResult.needRuntime = context.helper(directiveToUse);
+          }
+      }
+      else {
+          context.onError(createDOMCompilerError(53 /* X_V_MODEL_ON_INVALID_ELEMENT */, dir.loc));
+      }
+      // native vmodel doesn't need the `modelValue` props since they are also
+      // passed to the runtime as `binding.value`. removing it reduces code size.
+      baseResult.props = baseResult.props.filter(p => !(p.key.type === 4 /* SIMPLE_EXPRESSION */ &&
+          p.key.content === 'modelValue'));
+      return baseResult;
+  };
+
+  const isEventOptionModifier = /*#__PURE__*/ makeMap(`passive,once,capture`);
+  const isNonKeyModifier = /*#__PURE__*/ makeMap(
+  // event propagation management
+`stop,prevent,self,`   +
+      // system modifiers + exact
+      `ctrl,shift,alt,meta,exact,` +
+      // mouse
+      `middle`);
+  // left & right could be mouse or key modifiers based on event type
+  const maybeKeyModifier = /*#__PURE__*/ makeMap('left,right');
+  const isKeyboardEvent = /*#__PURE__*/ makeMap(`onkeyup,onkeydown,onkeypress`, true);
+  // 解析所有修饰符，区分出类型(key, nonKey, eventOption)
+  const resolveModifiers = (key, modifiers) => {
+      const keyModifiers = [];
+      const nonKeyModifiers = [];
+      const eventOptionModifiers = [];
+      for (let i = 0; i < modifiers.length; i++) {
+          const modifier = modifiers[i];
+          if (isEventOptionModifier(modifier)) {
+              // eventOptionModifiers: modifiers for addEventListener() options,
+              // e.g. .passive & .capture
+              // 作为 addEventListener() 事件的选项
+              eventOptionModifiers.push(modifier);
+          }
+          else {
+              // runtimeModifiers: modifiers that needs runtime guards
+              if (maybeKeyModifier(modifier)) {
+                  if (isStaticExp(key)) {
+                      if (isKeyboardEvent(key.content)) {
+                          keyModifiers.push(modifier);
+                      }
+                      else {
+                          nonKeyModifiers.push(modifier);
+                      }
+                  }
+                  else {
+                      keyModifiers.push(modifier);
+                      nonKeyModifiers.push(modifier);
+                  }
+              }
+              else {
+                  if (isNonKeyModifier(modifier)) {
+                      nonKeyModifiers.push(modifier);
+                  }
+                  else {
+                      keyModifiers.push(modifier);
+                  }
+              }
+          }
+      }
+      return {
+          keyModifiers,
+          nonKeyModifiers,
+          eventOptionModifiers
+      };
+  };
+  const transformClick = (key, event) => {
+      const isStaticClick = isStaticExp(key) && key.content.toLowerCase() === 'onclick';
+      return isStaticClick
+          ? createSimpleExpression(event, true)
+          : key.type !== 4 /* SIMPLE_EXPRESSION */
+              ? createCompoundExpression([
+                  // (key) === "onClick" ? event : (key)
+                  `(`,
+                  key,
+                  `) === "onClick" ? "${event}" : (`,
+                  key,
+                  `)`
+              ])
+              : key;
+  };
+  const transformOn$1 = (dir, node, context) => {
+      return transformOn(dir, node, context, baseResult => {
+          const { modifiers } = dir;
+          // 所以 compiler-dom 只处理修饰符
+          if (!modifiers.length)
+              return baseResult;
+          let { key, value: handlerExp } = baseResult.props[0];
+          const { keyModifiers, nonKeyModifiers, eventOptionModifiers } = resolveModifiers(key, modifiers);
+          // normalize click.right and click.middle since they don't actually fire
+          if (nonKeyModifiers.includes('right')) {
+              key = transformClick(key, `onContextmenu`);
+          }
+          // 中间滚轮点击，转换成mouse up 事件
+          if (nonKeyModifiers.includes('middle')) {
+              key = transformClick(key, `onMouseup`);
+          }
+          if (nonKeyModifiers.length) {
+              handlerExp = createCallExpression(context.helper(V_ON_WITH_MODIFIERS), [
+                  handlerExp,
+                  JSON.stringify(nonKeyModifiers)
+              ]);
+          }
+          if (keyModifiers.length &&
+              // if event name is dynamic, always wrap with keys guard
+              (!isStaticExp(key) || isKeyboardEvent(key.content))) {
+              handlerExp = createCallExpression(context.helper(V_ON_WITH_KEYS), [
+                  handlerExp,
+                  JSON.stringify(keyModifiers)
+              ]);
+          }
+          if (eventOptionModifiers.length) {
+              const modifierPostFix = eventOptionModifiers.map(capitalize).join('');
+              key = isStaticExp(key)
+                  ? createSimpleExpression(`${key.content}${modifierPostFix}`, true)
+                  : createCompoundExpression([`(`, key, `) + "${modifierPostFix}"`]);
+          }
+          return {
+              props: [createObjectProperty(key, handlerExp)]
+          };
+      });
+  };
+
   const parserOptions = {};
 
-  function compile(template, options) {
-      return baseCompile(template, extend({}, parserOptions, {
-          nodeTransforms: [],
-          directiveTransforms: extend({}),
+  const DOMNodeTransforms = [transformStyle];
+  const DOMDirectiveTransforms = {
+      html: transformVHtml,
+      text: transformVText,
+      model: transformModel$1,
+      on: transformOn$1
+  };
+  function compile(template, options = {}) {
+      return baseCompile(template, extend({}, parserOptions, options, {
+          nodeTransforms: [...DOMNodeTransforms, ...(options.nodeTransforms || [])],
+          directiveTransforms: extend({}, DOMDirectiveTransforms, options.directiveTransforms || {}),
           // 静态提升 transform
           transformHoist:  null 
       }));
@@ -3923,6 +4244,8 @@ var VueCompilerDOM = (function (exports) {
   exports.CREATE_STATIC = CREATE_STATIC;
   exports.CREATE_TEXT = CREATE_TEXT;
   exports.CREATE_VNODE = CREATE_VNODE;
+  exports.DOMDirectiveTransforms = DOMDirectiveTransforms;
+  exports.DOMNodeTransforms = DOMNodeTransforms;
   exports.FRAGMENT = FRAGMENT;
   exports.IS_REF = IS_REF;
   exports.KEEP_ALIVE = KEEP_ALIVE;

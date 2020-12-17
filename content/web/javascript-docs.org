@@ -1,4 +1,4 @@
-#+TITLE: JavaScript Api
+#+TITLE: JavaScript Api & 文档
 #+DATE: <2020-09-03 16:20:35>
 #+TAGS[]: javascript, api
 #+CATEGORIES[]: javascript
@@ -15,6 +15,19 @@
 | [[http://ecma-international.org/ecma-262][ecma262]]       | 官方标准文档    |
 | [[https://tc39.es/ecma262][ecma262]]       | 官方标准文档    |
 
+* 事件
+
+[[https://www.w3.org/TR/DOM-Level-2-Events/events.html#Events-interface][w3事件接口：Document Object Model Events]]
+
+[[https://www.w3.org/TR/DOM-Level-3-Events/#event-flow][w3 事件流UI Events]]
+
+1. 事件修饰符(~capture,passive,once~)
+   
+** 捕获(capture)+冒泡(bubble)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: event-cap-bub
+:END: 
 * 操作符
 ** delete
 :PROPERTIES:
@@ -324,7 +337,6 @@ function get(key) {
 *** Map.prototype.set(key,value)
 *** Map.prototype.size
 *** Map.prototype.values()
-
 
 * Proxy & Reflect
 :PROPERTIES:
