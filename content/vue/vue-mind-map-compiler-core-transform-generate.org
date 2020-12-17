@@ -3826,6 +3826,58 @@ undefined
 
    [[https://github.com/gcclll/stb-vue-next/commit/58e87f3adcfa0657602d459043468ac5ce8859cb][fix: merge vue-next transformSlotOutlet.ts · gcclll/stb-vue-next@58e87f3]]
    修改 ~<slot></slot>~ 属性解析逻辑。
+* 6efbc86 add expression transform(node-env)
+
+[[https://github.com/gcclll/stb-vue-next/commit/6efbc86490fdc353c57fcaead5201c46696bb3d4][feat: transformExpression -> processExpression · gcclll/stb-vue-next@6efbc86]]
+
+transformExpression 处理的是复杂表达式情况，且需要在非浏览器环境，因为它需要依赖
+一些 JavaScript 解析器来协助完成。
+
+需要处理的两种类型：
+
+1. ~INTERPOLATION~ 插值类型
+2. ~ELEMENT~ 类型且没有 ~v-for~ 指令的标签，对于指令需要处理的有 ~arg, exp~ 如果
+   参数是动态的情况
+
+
+两者最终都是调用 ~processExpression(node, context, asPrarms, asRawStatement)~ 这
+个函数，这个函数有点复杂，需要慢慢消化🐕 🐕 🐕 
+
+* TODOs(ssr render, node env, setup meta)
+
+在此之前都是基于浏览器去完成和测试的，但是由于后面 compiler-dom 有些测试同样需要
+node 环境支持，因此这里必须先完成所有浏览器的支持，这样 ~prefixIdentifiers~
+和 ~cacheHandlers~ 也将支持。
+
+add generate imports and module mode:
+[[https://github.com/gcclll/stb-vue-next/commit/ea7f16b87df7ffc9aa5018889488b963240acb71][feat: gen imports · gcclll/stb-vue-next@ea7f16b]]
+
+*TODO* ssr template literal:
+[[https://github.com/gcclll/stb-vue-next/commit/356bc93c3086500a5a41211bbeb3faa8267bd727][feat(add): gen template literal · gcclll/stb-vue-next@356bc93]]
+
+*TODO* ssr if generate:
+[[https://github.com/gcclll/stb-vue-next/commit/1c424beb5e2cf21515799cbce245ef3337ff4f41][feat(add): ssr gen if statement · gcclll/stb-vue-next@1c424be]] 
+
+*TODO* ssr assigment expression generate: 生成赋值表达式
+[[https://github.com/gcclll/stb-vue-next/commit/1f99a11193478460a572708fa9829969f443c9be][feat(add): ssr gen assignment expression · gcclll/stb-vue-next@1f99a11]]
+
+*TODO* ssr generate sequence exprssion:
+[[https://github.com/gcclll/stb-vue-next/commit/81aa0b009f7978f7ef5f9d1f9bcbc0d99f70c1c3][feat(add): ssr gen sequence expression · gcclll/stb-vue-next@81aa0b0]]
+
+*TODO* ssr generate return statement:
+[[https://github.com/gcclll/stb-vue-next/commit/c85406cbfbc356bb00562ea4366907f1fbb1980b][feat(add): ssr gen return statement · gcclll/stb-vue-next@c85406c]]
+
+*TODO* ssr v-on transform:
+[[https://github.com/gcclll/stb-vue-next/commit/adefeeceddccf23bdf2c3373d3d28be1bd35878f][feat(add): ssr v-on transform · gcclll/stb-vue-next@adefeec]]
+
+*TODO* setup mode v-model on ref:
+[[https://github.com/gcclll/stb-vue-next/commit/20bb40dd2fdb9222005a71ac019ef96a820268e5][feat(add): setup mode v-model on ref · gcclll/stb-vue-next@20bb40d]]
+
+*TODO* process expression in vIf.ts
+[[https://github.com/gcclll/stb-vue-next/commit/56c49c7f8924e786f8648b063c9a6d8a4252c4c2][feat(add): v-if process expression · gcclll/stb-vue-next@56c49c7]]
+
+*TODO* setup mode ref in transformElement
+[[https://github.com/gcclll/stb-vue-next/commit/54f467f57f2ed0deb061b6602c3154a2be407840][feat(add): transform ref in setup mode in transformElement · gcclll/stb-vue-next@54f467f]]
 * 综合测试
 
 #+begin_src js
