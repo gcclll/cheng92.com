@@ -641,9 +641,9 @@ export const transformModel: DirectiveTransform = (dir, node, context) => {
 4) 过滤掉 transform 之后的 ~{modelValue: value, 'onUpdate:value': $event =>
    value = $event}~ 里面的 ~modelValue：value~ 属性，因为在 runtime-core 时期的
    ~withDirectives()~ 处理里面会被绑定到 ~value~ 属性上
-* add v-on transform
+* a94aacd add v-on transform
 
-v-on 指令转换。
+[[https://github.com/gcclll/stb-vue-next/commit/a94aacdb3983e06b11476394b9413310e827aab5][feat(add): v-on transform · gcclll/stb-vue-next@a94aacd]]
 
 compiler-core 阶段：
 
@@ -948,4 +948,107 @@ log(root)
    eventName~
 #+end_quote
 
+* e64a1b3 add v-show transform
 
+[[https://github.com/gcclll/stb-vue-next/commit/e64a1b35823cb4ebcc96ad143d7dd8d45c05b185][feat(add): v-show transform · gcclll/stb-vue-next@e64a1b3]]
+
+#+begin_src typescript
+export const transformShow: DirectiveTransform = (dir, node, context) => {
+  const { exp, loc } = dir
+  if (!exp) {
+    context.onError(
+      createDOMCompilerError(DOMErrorCodes.X_V_SHOW_NO_EXPRESSION, loc)
+    )
+  }
+
+  return {
+    props: [],
+    needRuntime: context.helper(V_SHOW)
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const { code, ast } = compile(`<div v-show="test"/>`)
+console.log(code)
+console.log(`props: `, ast.codegenNode.props)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const _Vue = Vue
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { vShow : _vShow, createVNode : _createVNode, withDirectives : _withDirectives, openBlock : _openBlock, createBlock : _createBlock } = _Vue
+
+    return _withDirectives((_openBlock(), _createBlock("div", null, null, 512 /* NEED_PATCH */)), [
+      [_vShow, test]
+    ])
+  }
+}
+props:  undefined
+#+end_example
+
+这里貌似什么都没干，除了返回一个 ~needRuntime: context.helper(V_SHOW)~ ，难道
+v-show 必须在 runtime 时期处理？？？
+* 436db72 add transition component warn transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/436db72743d5ff677a4a505e9a4cb914613ffe2a][feat(add): transition component transform · gcclll/stb-vue-next@436db72]]
+
+这里只是加了个错误用法处理，对于 ~<transition>~ 组件下面只能有一个孩子节点。
+* TODO af56754 add stringifyStatic node 环境静态提升
+
+[[https://github.com/gcclll/stb-vue-next/commit/af56754e25a96f161f28bbd5f78473cb81fbeee1][feat(add): node stringify static -> hoist · gcclll/stb-vue-next@af56754]]
+* f0cbb25 add ignoreSideEffectTags transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/f0cbb25e4a47cf2b243156a408ddb4a327420110][feat(add): ignore side effect tags > script/style · gcclll/stb-vue-next@f0cbb25]]
+
+这个 transform 作用是检测模板中是不是存在 ~<script>, <style>~ 标签。
+
+#+begin_src js
+
+const {
+  parse,
+  compile
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+
+const c = (tpl, title) => {
+  console.log(`>>> ${title}`)
+  const { code } = compile(tpl, {
+    onError: e => console.log(`> 错误描述：${e.message}`)
+  })
+  console.log(code)
+}
+
+c(`<script>console.log(1)</script>`, '忽略 <script> 标签')
+c(`<style>h1 { color: red }</style>`, '忽略 <style> 标签')
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 忽略 <script> 标签
+> 错误描述：Tags with side effect (<script> and <style>) are ignored in client component templates.
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    return null
+  }
+}
+>>> 忽略 <style> 标签
+> 错误描述：Tags with side effect (<script> and <style>) are ignored in client component templates.
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    return null
+  }
+}
+undefined
+#+end_example

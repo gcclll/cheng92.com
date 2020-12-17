@@ -4214,18 +4214,75 @@ var VueCompilerDOM = (function (exports) {
       });
   };
 
+  const transformShow = (dir, node, context) => {
+      const { exp, loc } = dir;
+      if (!exp) {
+          context.onError(createDOMCompilerError(57 /* X_V_SHOW_NO_EXPRESSION */, loc));
+      }
+      return {
+          props: [],
+          needRuntime: context.helper(V_SHOW)
+      };
+  };
+
+  const warnTransitionChildren = (node, context) => {
+      if (node.type === 1 /* ELEMENT */ &&
+          node.tagType === 1 /* COMPONENT */) {
+          const component = context.isBuiltInComponent(node.tag);
+          if (component === TRANSITION) {
+              return () => {
+                  if (node.children.length && hasMultipleChildren(node)) {
+                      context.onError(createDOMCompilerError(58 /* X_TRANSITION_INVALID_CHILDREN */, {
+                          start: node.children[0].loc.start,
+                          end: node.children[node.children.length - 1].loc.end,
+                          source: ''
+                      }));
+                  }
+              };
+          }
+      }
+  };
+  function hasMultipleChildren(node) {
+      // #1352 filter out potential comment nodes.
+      const children = (node.children = node.children.filter(c => c.type !== 3 /* COMMENT */));
+      const child = children[0];
+      return (children.length !== 1 ||
+          child.type === 11 /* FOR */ ||
+          (child.type === 9 /* IF */ && child.branches.some(hasMultipleChildren)));
+  }
+
   const parserOptions = {};
 
-  const DOMNodeTransforms = [transformStyle];
+  const ignoreSideEffectTags = (node, context) => {
+      if (node.type === 1 /* ELEMENT */ &&
+          node.tagType === 0 /* ELEMENT */ &&
+          (node.tag === 'script' || node.tag === 'style')) {
+          context.onError(createDOMCompilerError(59 /* X_IGNORED_SIDE_EFFECT_TAG */, node.loc));
+          context.removeNode();
+      }
+  };
+
+  const DOMNodeTransforms = [
+      transformStyle,
+      ...( [warnTransitionChildren] )
+  ];
   const DOMDirectiveTransforms = {
       html: transformVHtml,
       text: transformVText,
       model: transformModel$1,
-      on: transformOn$1
+      on: transformOn$1,
+      show: transformShow
   };
   function compile(template, options = {}) {
       return baseCompile(template, extend({}, parserOptions, options, {
-          nodeTransforms: [...DOMNodeTransforms, ...(options.nodeTransforms || [])],
+          nodeTransforms: [
+              // ignore <script> and <tag>
+              // this is not put inside DOMNodeTransforms because that list is used
+              // by compiler-ssr to generate vnode fallback branches
+              ignoreSideEffectTags,
+              ...DOMNodeTransforms,
+              ...(options.nodeTransforms || [])
+          ],
           directiveTransforms: extend({}, DOMDirectiveTransforms, options.directiveTransforms || {}),
           // 静态提升 transform
           transformHoist:  null 
