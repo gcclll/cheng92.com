@@ -25,13 +25,7 @@
         hoistStatic: true,
       };
       var tpl = `<input v-model="model" />`;
-      tpl = `<div :id="status" class="status" :style="{ color: 'red' }">
-  <button v-if="opened" @keyup.down="opened = !opened">关闭</button>
-  <button v-else-if="invalid" v-on.enter="{ clicked: toggleValid }">有效</button>
-  <button v-else @click.prevent="() => opened = true">打开</button>
-  <p :name="vbind">v-bind 缩写</p>
-  <p class="vbind-no-arg" v-bind="{ name: 'vbind' }">无参数的 v-bind</p>
-</div>`;
+      tpl = "<textarea>some<div>text</div>and<!--comment--></textarea>";
     </script>
 
     <script>
@@ -44,10 +38,11 @@
       console.log(baseResult.code);
     </script>
     <script src="http://127.0.0.1:8080/packages/compiler-core/dist/compiler-core.global.js"></script>
+    <script src="http://127.0.0.1:8080/packages/compiler-dom/dist/compiler-dom.global.js"></script>
 
     <script type="text/javascript">
-      const { baseCompile } = VueCompilerCore;
-      const res2 = baseCompile(tpl, option);
+      const { compile: compile2 } = VueCompilerDOM;
+      const res2 = compile2(tpl, option);
       console.log(res2.code);
       console.log(res2.code === baseResult.code, " result is same, bingo...");
     </script>
