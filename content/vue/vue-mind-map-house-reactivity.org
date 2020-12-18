@@ -2375,6 +2375,63 @@ computed 函数的 options 可以是函数或一个对象，可以用外部自�
 
 脑图请直接查看“[[#whole-mind-map][完整脑图 computed 部分]]”
 * add ref
+* jest 🏃跑🏃用例
+除了 runtime-dom 没实现的部分，都通过了测试。
+
+#+begin_example
+@vue/runtime-dom (guessing 'runtimeDom')
+created packages/vue/dist/vue.global.js in 1.4s
+ FAIL  packages/reactivity/__tests__/effect.spec.ts
+  ● Test suite failed to run
+
+    packages/reactivity/__tests__/ref.spec.ts:11:26 - error TS2307: Cannot find module '@vue/runtime-dom' or its corresponding type declarations.
+
+    11 import { computed } from '@vue/runtime-dom'
+                                ~~~~~~~~~~~~~~~~~~
+
+ PASS  packages/reactivity/__tests__/reactive.spec.ts
+ PASS  packages/reactivity/__tests__/collections/Set.spec.ts
+ PASS  packages/reactivity/__tests__/collections/Map.spec.ts
+ PASS  packages/reactivity/__tests__/reactiveArray.spec.ts
+ PASS  packages/reactivity/__tests__/collections/WeakMap.spec.ts
+ PASS  packages/reactivity/__tests__/collections/WeakSet.spec.ts
+ PASS  packages/reactivity/__tests__/shallowReactive.spec.ts
+ PASS  packages/reactivity/__tests__/readonly.spec.ts
+ FAIL  packages/reactivity/__tests__/ref.spec.ts
+  ● Test suite failed to run
+
+    Configuration error:
+
+    Could not locate module @vue/runtime-dom mapped as:
+    /Users/simon/github/vue/stb-vue-next/packages/$1/src.
+
+    Please check your configuration for these entries:
+    {
+      "moduleNameMapper": {
+        "/^@vue\/(.*?)$/": "/Users/simon/github/vue/stb-vue-next/packages/$1/src"
+      },
+      "resolver": undefined
+    }
+
+      2 |   ref,
+      3 |   effect,
+    > 4 |   reactive,
+        |                      ^
+      5 |   isRef,
+      6 |   toRef,
+      7 |   toRefs,
+
+      at createNoMappedModuleFoundError (node_modules/jest-resolve/build/index.js:551:17)
+      at Object.<anonymous> (packages/reactivity/__tests__/ref.spec.ts:4:23)
+
+ PASS  packages/reactivity/__tests__/computed.spec.ts
+
+Test Suites: 2 failed, 9 passed, 11 total
+Tests:       169 passed, 169 total
+Snapshots:   0 total
+Time:        15.568 s
+#+end_example
+
 * 用例分析
 ** Map.spec.ts
 - [X] instanceof

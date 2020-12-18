@@ -42,30 +42,25 @@
 
 #+begin_export html
 <script src="/js/vue/compiler-core.global.js"></script>
+<script src="/js/utils.js"></script>
 <script>
-let i = 0, j = 0
-const l1 = x => (j = 0, console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55'))
-const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
-const log = (args) => console.log.apply(console, Array.isArray(args) ? args : [args])
-log.blue = x => log([`%c ${x}`, `color: blue`])
-log.red = x => log([`%c ${x}`, `color: red`])
-log.gray = x => log([`%c ${x}`, `color: gray`])
+i = 0, j = 0
 const { baseCompile } = VueCompilerCore
 const compile = (tpl, title, logAst = false) => {
     l2(title)
-    if (!tpl) return null
+    // if (!tpl) return null
     const { code, ast } = baseCompile(tpl, {
         onError: (e) => console.warn(e.message),
         hoistStatic: true,
         ...( compile.options || {} )
     })
 
-    log.gray(tpl)
+    log.grey(tpl)
     log([code])
     logAst && log(typeof logAst === 'function' ? logAst(ast) : ast)
     return ast
 }
-const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode.props))
+const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode&&ast.codegenNode.props))
 
 </script>
 #+end_export
@@ -3878,6 +3873,64 @@ add generate imports and module mode:
 
 *TODO* setup mode ref in transformElement
 [[https://github.com/gcclll/stb-vue-next/commit/54f467f57f2ed0deb061b6602c3154a2be407840][feat(add): transform ref in setup mode in transformElement · gcclll/stb-vue-next@54f467f]]
+* non-browser testing(非浏览器环境测试)
+
+本章节测试都是基于 node 环境进行测试的，测试代码位于各个 package 目录下的
+~__nests__~ (node tests 缩写)里面。
+
+由于测试输出结果较多，因此采用控制台形式输出，请 ~<f12>~ 打开控制台查看
+
+#+begin_export html
+<script>
+l1(`hoist static testing 静态提升测试`)
+c(`<div/>`, 'should NOT hoist root node')
+</script>
+<script src="/js/vue/node.env.test.js"></script>
+#+end_export
+
+* jest 跑🏃用例
+
+[[https://github.com/gcclll/stb-vue-next/commit/2085dd62df2c63d76475988a88f1e3fdc2586e7d][fix: jest errors · gcclll/stb-vue-next@2085dd6]]
+
+#+begin_example
+@vue/runtime-dom (guessing 'runtimeDom')
+created packages/vue/dist/vue.global.js in 5.1s
+ PASS  packages/compiler-core/__tests__/transforms/transformElement.spec.ts (9.278 s)
+ PASS  packages/compiler-core/__tests__/transforms/vModel.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/vFor.spec.ts
+ PASS  packages/compiler-core/__tests__/parse.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/hoistStatic.spec.ts
+ PASS  packages/compiler-core/__tests__/codegen.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/vIf.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/vSlot.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/transformExpressions.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/vOn.spec.ts
+ PASS  packages/compiler-core/__tests__/transform.spec.ts
+ PASS  packages/compiler-core/__tests__/compile.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/transformSlotOutlet.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/transformText.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/vOnce.spec.ts
+ PASS  packages/compiler-core/__tests__/scopeId.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/vBind.spec.ts
+ PASS  packages/compiler-core/__tests__/transforms/noopDirectiveTransform.spec.ts
+ PASS  packages/compiler-core/__tests__/utils.spec.ts
+
+Test Suites: 19 passed, 19 total
+Tests:       480 passed, 480 total
+Snapshots:   205 passed, 205 total
+Time:        17.699 s
+#+end_example
+
+全部通过测试，期间出现两个小问题：
+
+1. transformElement 里面解析动态属性(~vnodeDynamicProps~)的时候会将这些属性组成
+   字符串数组，这里少了个逗号
+
+   [[http://qiniu.ii6g.com/img/20201218162357.png]]
+
+2. ~genFunctionExpression()~ 里面将函数 ~}~ 错写成了 ~)~
+
+   [[http://qiniu.ii6g.com/img/20201218162509.png]]
 * 综合测试
 
 #+begin_src js

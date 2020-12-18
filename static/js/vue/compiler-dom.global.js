@@ -349,6 +349,51 @@ var VueCompilerDOM = (function (exports) {
           loc: locStub
       };
   }
+  function createBlockStatement(body) {
+      return {
+          type: 21 /* JS_BLOCK_STATEMENT */,
+          body,
+          loc: locStub
+      };
+  }
+  function createTemplateLiteral(elements) {
+      return {
+          type: 22 /* JS_TEMPLATE_LITERAL */,
+          elements,
+          loc: locStub
+      };
+  }
+  function createIfStatement(test, consequent, alternate) {
+      return {
+          type: 23 /* JS_IF_STATEMENT */,
+          test,
+          consequent,
+          alternate,
+          loc: locStub
+      };
+  }
+  function createAssignmentExpression(left, right) {
+      return {
+          type: 24 /* JS_ASSIGNMENT_EXPRESSION */,
+          left,
+          right,
+          loc: locStub
+      };
+  }
+  function createSequenceExpression(expressions) {
+      return {
+          type: 25 /* JS_SEQUENCE_EXPRESSION */,
+          expressions,
+          loc: locStub
+      };
+  }
+  function createReturnStatement(returns) {
+      return {
+          type: 26 /* JS_RETURN_STATEMENT */,
+          returns,
+          loc: locStub
+      };
+  }
 
   function defaultOnError(error) {
       throw error;
@@ -1952,8 +1997,20 @@ var VueCompilerDOM = (function (exports) {
               newline();
           }
       }
-      // TODO generate directives, ast.directives
-      // TODO 临时变量 ast.temps
+      // generate directives, ast.directives
+      if (ast.directives.length) {
+          genAssets(ast.directives, 'directive', context);
+          if (ast.temps > 0) {
+              newline();
+          }
+      }
+      // 临时变量 ast.temps
+      if (ast.temps > 0) {
+          push(`let `);
+          for (let i = 0; i < ast.temps; i++) {
+              push(`${i > 0 ? `, ` : ``}_temp${i}`);
+          }
+      }
       if (ast.components.length || ast.directives.length || ast.temps) {
           push(`\n`);
           newline();
@@ -2148,6 +2205,30 @@ var VueCompilerDOM = (function (exports) {
           case 20 /* JS_CACHE_EXPRESSION */:
               genCacheExpression(node, context);
               break;
+          // SSR only types
+          case 21 /* JS_BLOCK_STATEMENT */:
+              break;
+          case 22 /* JS_TEMPLATE_LITERAL */:
+              break;
+          case 23 /* JS_IF_STATEMENT */:
+              break;
+          case 24 /* JS_ASSIGNMENT_EXPRESSION */:
+              break;
+          case 25 /* JS_SEQUENCE_EXPRESSION */:
+              break;
+          case 26 /* JS_RETURN_STATEMENT */:
+              break;
+          /* istanbul ignore next */
+          case 10 /* IF_BRANCH */:
+              // noop
+              break;
+          default:
+              {
+                  assert(false, `unhandled codegen node type: ${node.type}`);
+                  // make sure we exhaust all possible types
+                  const exhaustiveCheck = node;
+                  return exhaustiveCheck;
+              }
       }
   }
   function genText(node, context) {
@@ -2421,6 +2502,53 @@ var VueCompilerDOM = (function (exports) {
       }
   }
 
+  const transformExpression = (node, context) => {
+      if (node.type === 5 /* INTERPOLATION */) {
+          node.content = processExpression(node.content, context);
+      }
+      else if (node.type === 1 /* ELEMENT */) {
+          // handle directives on element
+          for (let i = 0; i < node.props.length; i++) {
+              const dir = node.props[i];
+              // 不处理 v-on & v-for 它们由自己的 transformXxx 处理
+              if (dir.type === 7 /* DIRECTIVE */ && dir.name !== 'for') {
+                  const exp = dir.exp;
+                  const arg = dir.arg;
+                  // 不处理无表达式情况(v-on:arg)，应为对于内联表达式需要特殊处理
+                  if (exp &&
+                      exp.type === 4 /* SIMPLE_EXPRESSION */ &&
+                      !(dir.name === 'on' && arg)) {
+                      dir.exp = processExpression(exp, context, 
+                      // slot args must be processed as function params
+                      // slot 参数必须当做函数参数处理
+                      dir.name === 'slot');
+                  }
+                  // 动态参数 v-bind:[arg]="exp"
+                  if (arg && arg.type === 4 /* SIMPLE_EXPRESSION */ && !arg.isStatic) {
+                      dir.arg = processExpression(arg, context);
+                  }
+              }
+          }
+      }
+  };
+  // Important: since this function uses Node.js only dependencies, it should
+  // always be used with a leading !true check so that it can be
+  // tree-shaken from the browser build.
+  function processExpression(node, context, 
+  // some expressions like v-slot props & v-for aliases should be parsed as
+  // function params
+  asParams = false, 
+  // v-on handler values may contain multiple statements
+  asRawStatements = false) {
+      {
+          {
+              // simple in-browser validation (same logic in 2.x)
+              validateBrowserExpression(node, context, asParams, asRawStatements);
+          }
+          return node;
+      }
+  }
+
   const transformIf = createStructuralDirectiveTransform(/^(if|else|else-if)$/, (node, dir, context) => {
       return processIf(node, dir, context, (ifNode, branch, isRoot) => {
           // #1587: We need to dynamically increment the key based on the current
@@ -2649,18 +2777,6 @@ var VueCompilerDOM = (function (exports) {
               node = node.value;
           }
       }
-  }
-
-  // Important: since this function uses Node.js only dependencies, it should
-  // always be used with a leading !true check so that it can be
-  // tree-shaken from the browser build.
-  function processExpression(node, context, 
-  // some expressions like v-slot props & v-for aliases should be parsed as
-  // function params
-  asParams = false, 
-  // v-on handler values may contain multiple statements
-  asRawStatements = false) {
-      return {};
   }
 
   const transformFor = createStructuralDirectiveTransform('for', (node, dir, context) => {
@@ -2896,6 +3012,30 @@ var VueCompilerDOM = (function (exports) {
               context.scopes.vSlot++;
               return () => {
                   context.scopes.vSlot--;
+              };
+          }
+      }
+  };
+  // A NodeTransform that tracks scope identifiers for scoped slots with v-for.
+  // This transform is only applied in non-browser builds with { prefixIdentifiers: true }
+  const trackVForSlotScopes = (node, context) => {
+      let vFor;
+      // <template v-slot="slotProps" v-for="item in items"> 情况
+      if (isTemplateNode(node) &&
+          node.props.some(isVSlot) &&
+          (vFor = findDir(node, 'for'))) {
+          const result = (vFor.parseResult = parseForExpression(vFor.exp, context));
+          if (result) {
+              const { value, key, index } = result;
+              const { addIdentifiers, removeIdentifiers } = context;
+              // 添加作用域调用 item -> _ctx.item
+              value && addIdentifiers(value);
+              key && addIdentifiers(key);
+              index && addIdentifiers(index);
+              return () => {
+                  value && removeIdentifiers(value);
+                  key && removeIdentifiers(key);
+                  index && removeIdentifiers(index);
               };
           }
       }
@@ -3489,13 +3629,16 @@ var VueCompilerDOM = (function (exports) {
       const dirArgs = [];
       const runtime = directiveImportMap.get(dir);
       if (runtime) {
+          // built-in directive with runtime
           dirArgs.push(context.helperString(runtime));
       }
       else {
-          // inject statement for resolving directive
-          context.helper(RESOLVE_DIRECTIVE);
-          context.directives.add(dir.name);
-          dirArgs.push(toValidAssetId(dir.name, `directive`));
+          {
+              // inject statement for resolving directive
+              context.helper(RESOLVE_DIRECTIVE);
+              context.directives.add(dir.name);
+              dirArgs.push(toValidAssetId(dir.name, `directive`));
+          }
       }
       const { loc } = dir;
       if (dir.exp)
@@ -3825,8 +3968,13 @@ var VueCompilerDOM = (function (exports) {
           context.onError(createCompilerError(40 /* X_V_MODEL_NO_EXPRESSION */, dir.loc));
           return createTransformProps();
       }
-      const expString = exp.type === 4 /* SIMPLE_EXPRESSION */ ? exp.content : exp.loc.source;
-      if (!isMemberExpression(expString)) {
+      const rawExp = exp.loc.source;
+      const expString = exp.type === 4 /* SIMPLE_EXPRESSION */ ? exp.content : rawExp;
+      // im SFC <script setup> inline mode, the exp may have been transformed into
+      // _unref(exp)
+      const bindingType = context.bindingMetadata[rawExp];
+      const maybeRef = !true    /* SETUP_CONST */;
+      if (!isMemberExpression(expString) && !maybeRef) {
           context.onError(createCompilerError(41 /* X_V_MODEL_MALFORMED_EXPRESSION */, exp.loc));
           return createTransformProps();
       }
@@ -3836,11 +3984,21 @@ var VueCompilerDOM = (function (exports) {
               ? `onUpdate:${arg.content}`
               : createCompoundExpression(['"onUpdate:" + ', arg])
           : `onUpdate:modelValue`;
+      let assignmentExp;
+      const eventArg = context.isTS ? `($event: any)` : `$event`;
+      {
+          // -> $event => (value = $event)
+          assignmentExp = createCompoundExpression([
+              `${eventArg} => (`,
+              exp,
+              ` = $event)`
+          ]);
+      }
       const props = [
           // modelValue: foo
           createObjectProperty(propName, dir.exp),
           // "onUpdate:modelValue": $event => (foo = $event)
-          createObjectProperty(eventName, createCompoundExpression([`$event => (`, exp, ` = $event)`]))
+          createObjectProperty(eventName, assignmentExp)
       ];
       // modelModifiers: { foo: true, "bar-baz": true }
       if (dir.modifiers.length && node.tagType === 1 /* COMPONENT */) {
@@ -3867,6 +4025,8 @@ var VueCompilerDOM = (function (exports) {
               transformOnce,
               transformIf,
               transformFor,
+              ...(  [transformExpression]
+                      ),
               transformSlotOutlet,
               transformElement,
               trackSlotScopes,
@@ -3912,6 +4072,8 @@ var VueCompilerDOM = (function (exports) {
           prefixIdentifiers
       }));
   }
+
+  const noopDirectiveTransform = () => ({ props: [] });
 
   // Parse inline CSS strings for static style attributes into an object.
   // This is a NodeTransform since it works on the static `style` attribute and
@@ -4334,6 +4496,8 @@ var VueCompilerDOM = (function (exports) {
   exports.buildSlots = buildSlots;
   exports.compile = compile;
   exports.createArrayExpression = createArrayExpression;
+  exports.createAssignmentExpression = createAssignmentExpression;
+  exports.createBlockStatement = createBlockStatement;
   exports.createCacheExpression = createCacheExpression;
   exports.createCallExpression = createCallExpression;
   exports.createCompilerError = createCompilerError;
@@ -4341,12 +4505,16 @@ var VueCompilerDOM = (function (exports) {
   exports.createConditionalExpression = createConditionalExpression;
   exports.createForLoopParams = createForLoopParams;
   exports.createFunctionExpression = createFunctionExpression;
+  exports.createIfStatement = createIfStatement;
   exports.createInterpolation = createInterpolation;
   exports.createObjectExpression = createObjectExpression;
   exports.createObjectProperty = createObjectProperty;
+  exports.createReturnStatement = createReturnStatement;
   exports.createRoot = createRoot;
+  exports.createSequenceExpression = createSequenceExpression;
   exports.createSimpleExpression = createSimpleExpression;
   exports.createStructuralDirectiveTransform = createStructuralDirectiveTransform;
+  exports.createTemplateLiteral = createTemplateLiteral;
   exports.createTransformContext = createTransformContext;
   exports.createVNodeCall = createVNodeCall;
   exports.findDir = findDir;
@@ -4370,6 +4538,7 @@ var VueCompilerDOM = (function (exports) {
   exports.isText = isText;
   exports.isVSlot = isVSlot;
   exports.locStub = locStub;
+  exports.noopDirectiveTransform = noopDirectiveTransform;
   exports.parse = parse;
   exports.parserOptions = parserOptions;
   exports.processExpression = processExpression;
@@ -4380,9 +4549,11 @@ var VueCompilerDOM = (function (exports) {
   exports.resolveComponentType = resolveComponentType;
   exports.toValidAssetId = toValidAssetId;
   exports.trackSlotScopes = trackSlotScopes;
+  exports.trackVForSlotScopes = trackVForSlotScopes;
   exports.transform = transform;
   exports.transformBind = transformBind;
   exports.transformElement = transformElement;
+  exports.transformExpression = transformExpression;
   exports.transformModel = transformModel;
   exports.transformOn = transformOn;
   exports.traverseNode = traverseNode;
@@ -4392,10 +4563,3 @@ var VueCompilerDOM = (function (exports) {
   return exports;
 
 }({}));
-
-try {
-  if (module) {
-    module.exports = VueCompilerDOM;
-  }
-} catch (e) {}
- 
