@@ -1,0 +1,16 @@
+#+TITLE: HTML 标准
+#+DATE: <2020-12-19 11:53:16>
+#+TAGS[]: html
+#+CATEGORIES[]: web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+HTML 标准首页 [[https://html.spec.whatwg.org/][HTML Standard]]
+#+end_quote
+
+
+* 13 [[https://html.spec.whatwg.org/multipage/syntax.html#syntax][The HTML syntax]]
+** 13.5 [[https://html.spec.whatwg.org/multipage/parsing.html#numeric-character-reference-end-state][Named character references]]
+
+这下面包含了所有符号 /名字 - Unicode - 符号/ 对应关系表。

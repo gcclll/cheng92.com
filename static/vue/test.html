@@ -41,10 +41,15 @@
     <script src="http://127.0.0.1:8080/packages/compiler-dom/dist/compiler-dom.global.js"></script>
 
     <script type="text/javascript">
-      const { compile: compile2 } = VueCompilerDOM;
+      const { compile: compile2, decodeHtml } = VueCompilerDOM;
       const res2 = compile2(tpl, option);
       console.log(res2.code);
       console.log(res2.code === baseResult.code, " result is same, bingo...");
+      let rawText =
+        // "a &#x20ac b &nbsp; c &#021B0 d &#02937 e &FilledVerySmallSquare";
+        "&FilledVerySmallSquare";
+      const res = decodeHtml(rawText);
+      console.log(res);
     </script>
   </body>
 </html>

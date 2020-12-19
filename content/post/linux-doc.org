@@ -1,4 +1,4 @@
-#+TITLE: Linux 记录大全
+#+TITLE: Linux 知识大全
 #+DATE: <2020-12-18 10:49:14>
 #+TAGS[]: linux
 #+CATEGORIES[]: linux

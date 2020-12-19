@@ -89,6 +89,12 @@ const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode))
 
 2 directories, 21 files
 #+end_example
+
+功能预览：
+
+1. ignoreSideEffectTags.ts 忽略模板中的 ~style, script~ 标签
+2. stringifyStatic.ts对静态提升做的一些处理
+
 * 4fa13bf init parse + compile function
 
 [[https://github.com/gcclll/stb-vue-next/commit/4fa13bfe57f414f158041122119096f3fb8a859d][feat(init): compiler-dom index.ts> compile + parse function · gcclll/stb-vue-next@4fa13bf]]
@@ -1046,71 +1052,77 @@ return function render(_ctx, _cache) {
 }
 undefined
 #+end_example
+* fd0f5ae add dom parserOptions and decode html
+
+对 compiler-core 的 ~ParserOptions~ 的一种扩展:
+
+1. ~isNativeTag: tag => isHTMLTag(tag) || isSVGTag(tag)~
+
+  /vue-next/packages/shared/src/domTagConfig.ts/
+
+  中制定了一些原生的标签。
+
+2. ~isPreTag~: ~pre~ 标签
+
+3. ~decodeEntities~ html 实体转换
+
+   分为浏览器环境和NDOE环境处理
+
+   浏览器环境处理较为简单(转标签内容取出字符串，利用浏览器自身能力来转换)：
+   #+begin_src typescript
+
+export function decodeHtmlBrowser(raw: string): string {
+  ;(decoder || (decoder = document.createElement('div'))).innerHTML = raw
+  return decoder.textContent as string
+}
+
+   #+end_src
+
+   NODE 环境稍微复杂，下面做些简单测试吧：
+   
+   [[https://html.spec.whatwg.org/multipage/named-characters.html]]
+   
+   /vue-next/packages/compiler-dom/src/namedChars.json/
+
+   上面链接和路径中包含了所有字符的 16进制 - 符号 - 名字对应表(json)，下面随便找
+   几个来测试下-> 分析如注释
+   #+begin_src js
+
+const {
+  decodeHtml
+} = require(process.env.PWD + '/../../static/js/vue/compiler-dom.global.js')
+ 
+let rawText = 'a &#x20ac b &nbsp; e &FilledVerySmallSquare; d &Gg; f'
+const res = decodeHtml(rawText)
+// while 循环里首先是匹配正则：/&(?:#x?)?/ -> &#x...十六进制数 或 `&[name];`
+// 形式的字符，name 取自 namedChars.json 文件的 key
+// 如果都没有匹配到直接退出循环，
+// 即 decodeHtml 目的是将16进制和 named 表示的符号转换语义化的符号
+// 如： &#x20ac -> "euro;": "€" -> € 符号
+// 或者 &nbsp; 符号
+// 或者使用 namedChars.json 中的名字来作为特殊字符，如： &FilledVerySmallSquare; -> ▪, &Gg; ->  ⋙
+console.log(res)
+   #+end_src
+
+   #+RESULTS:
+   : a € b   e ▪ d ⋙ f
+   : undefined
+
+4. ~isBuiltInComponent~, 两个内置组件： ~Transition, TransitionGroup~
+
+5. ~getNamespace~, 更详细的命名空间检测
+
+6. ~getTextMode~, 文本模式检测
+   
+   ~textarea, title~ 标签视为 ~TextModes.RCDATA~ 类型
+
+   ~style,iframe,script,noscript~ 标签视为 ~TextModes.RAWTEXT~ 类型
+
+   其他视为 ~TextModes.DATA~ 类型
+   
+
 * 用例测试(~<f12>~ 查看控制台)：
 
-
 #+begin_export html
-<script>
-compile.options = {}
-l1(`index.spec.ts>compile`)
-c(`<div v-text="text"></div>
-<div v-html="html"></div>
-<div v-cloak>test</div>
-<div style="color:red">red</div>
-<div :style="{color: 'green'}"></div>`,
-'should contain standard transforms')
-;[
-  '结果说明：\n',
-  '1. v-text 对应属性 textContent',
-  '2. v-html 对应属性 innerHTML',
-  '3. v-cloak 不需要参数，含义：该组件没有被完全编译好之前，先隐藏',
-  '4. style 静态属性，在 compiler-dom 阶段被转成对象形式',
-  '5. 含 :style 动态属性，不提升'
-].forEach(log.magenta)
-l1(`parse.spec.ts>DOM parser`)
-c('<textarea>some<div>text</div>and<!--comment--></textarea>',
-'textarea handles comments/elements as just text', ast => ast.children)
-c('<textarea>&amp;</textarea>', 'textarea handles character references')
-c('<textarea><div>{{ foo }}</textarea>', 'textarea support interpolation')
-c('<style>some<div>text</div>and<!--comment--></style>', 'style handles comments/elements as just a text')
-c('<svg><![CDATA[some text]]></svg>', 'CDATA')
-c(`<pre>  \na   <div>foo \n bar</div>   \n   c</pre>`, '<pre> tag should preserve raw whitespace')
-
-l1(`ignoreSideEffectTags.spec.ts > compiler: ignore side effect tags`)
-c('<script>console.log(1)<\/script>', 'should ignore script')
-c(`<style>h1 { color: red }<\/style>`, 'should ignore style')
-
-l1(`transformStyle.spec.ts > compiler: style transform`)
-c(`<div style="color: red"/>`, 'should transform into directive node，被解析成指令 :style')
-
-l1(`vHtml.spec.ts > compiler: v-html transform`)
-c(`<div v-html="test"/>`, 'should convert v-html to innerHTML')
-c(`<div v-html="test">hello</div>`, 'should raise error and ignore children when v-html is present')
-log.red('v-html 下面不能有任何孩子节点')
-c(`<div v-html></div>`, 'should raise error if has no expression')
-log.red('v-html 必须要提供表达式')
-
-l1(`vModel.spec.ts > compiler: transform v-model`)
-log.blue('compiler-dom 阶段会过滤掉 modelValue: value 属性')
-c('<input v-model="model" />', 'simple expression')
-c('<input type="text" v-model="model" />', 'simple expression for input (text)')
-c('<input type="radio" v-model="model" />', 'simple expression for input (radio)')
-c('<input type="checkbox" v-model="model" />', 'simple expression for input (checkbox)')
-c('<input :type="foo" v-model="model" />', 'simple expression for input (dynamic type)')
-c('<input v-bind="obj" v-model="model" />', 'input w/ dynamic v-bind')
-c('<select v-model="model" />', 'simple expression for select')
-c('<textarea v-model="model" />', 'simple expression for textarea')
-l1(`vModel.spec.ts > errors`)
-log.red('---> 错误用法，错误信息情况对应的警告')
-c('<input v-model:value="model" />', 'error > plain elements with argument')
-c('<span v-model="model" />', 'error > invalid element')
-compile.options.isCustomElement = tag => tag.startsWith('my-')
-c('<my-input v-model="model" />', 'error > should allow usage on custom element')
-c(`<input type="file" v-model="test"/>`,'error > should raise error if used file input element')
-log.red('不允许应用在 文件类型的 Input')
-l1(`vModel.spec.ts > modifiers`)
-c('<input  v-model.number="model" />', '.number')
-c('<input  v-model.trim="model" />', '.trim')
-c('<input  v-model.lazy="model" />', '.lazy')
-</script>
+<script src="/js/vue/node.env.dom.test.js"></script>
 #+end_export
