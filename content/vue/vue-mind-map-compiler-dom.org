@@ -26,6 +26,8 @@
 
 *更新日志&Todos* ：
 1. [2020-12-16 19:40:21] 创建
+2. [2020-12-19 13:01:02] 完成
+3. TODO 完善测试用例
 #+end_quote
 
 #+begin_export html
@@ -52,6 +54,10 @@ const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode))
 #+end_export
 
 * 0062974 compiler-dom模块初始化
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: init
+:END: 
 
 [[https://github.com/gcclll/stb-vue-next/commit/0062974d50531aa5e51f229968fd582d567a090c][feat(init): compiler-dom · gcclll/stb-vue-next@0062974]]
 
@@ -92,8 +98,44 @@ const c = (tpl, desc, fn) => compile(tpl, desc, fn || (ast => ast.codegenNode))
 
 功能预览：
 
-1. ignoreSideEffectTags.ts 忽略模板中的 ~style, script~ 标签
-2. stringifyStatic.ts对静态提升做的一些处理
+1. ~ignoreSideEffectTags.ts~ 忽略模板中的 ~style, script~ 标签
+2. ~stringifyStatic.ts~ 对静态提升做的一些处理
+3. ~transformStyle.ts~ 将静态 style 属性转成指令类型属性，且将内容转成对象
+
+   如： ~<div style="color:red" />~ 会转成：
+
+   #+begin_src js
+   _createBlock('div', {
+     style: { color: "red" }
+   }, null, 1 /* TEXT */)
+   #+end_src
+4. ~vHtml.ts~ 将 v-html 表达式转成 ~innerHTML~ 内容
+5. ~vModel.ts~ 处理 ~<input>~ 类型，删除 ~modelValue: value~ 属性，不允许有参数
+6. ~vOn.ts~  事件修饰符处理, 详情请查[[#v-on][相关章节 >>>]] 
+
+   分为三类：
+   - 事件选项修饰符 ~passive, capture, once~ 会被解析到事件名后面
+
+     如： ~<div @click.capture.once="i++" />~ 结果：
+     #+begin_src js
+     _createBlock('div', {
+       'onClickCaptureOnce': $event => (i++)
+     }, null, 40 /* PROPS, HYDRATE_EVENTS */, ["onClickCaptureOnce"])
+     #+end_src
+
+   - 键盘类事件(~onkeydown,onkeyup,onkeypress~)修饰符 ~~
+
+   - 系统按键类型修饰符(~ctrl,alt,shift,meta,exact~)，捕获冒泡(~stop,prevent,self~)，鼠
+     标(~middle,left,right~)
+7. ~vShow.ts~ 针对 v-show 指令，这个可能需要在 runtime 期间处理
+8. ~vText.ts~ v-text 指令的处理，将表达式内容解析成 ~textContent~ 属性内容
+9. ~warnTransitionChildren.ts~ 文件是针对 ~<transition>~ 内置标签的检测，它的孩
+   子节点只能有一个
+10. ~decodeHtml[Browser].ts~ 是用来处理 html 符号语义化的，分别是 NODE 环境和浏览器环
+    境的处理逻辑
+11. ~parserOptions.ts~ 针对 compiler-core 的选项做了进一步扩展(namespace, native
+    tag, decodeEntities 等)
+     
 
 * 4fa13bf init parse + compile function
 
@@ -642,6 +684,10 @@ export const transformModel: DirectiveTransform = (dir, node, context) => {
    value = $event}~ 里面的 ~modelValue：value~ 属性，因为在 runtime-core 时期的
    ~withDirectives()~ 处理里面会被绑定到 ~value~ 属性上
 * a94aacd add v-on transform
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-on
+:END: 
 
 [[https://github.com/gcclll/stb-vue-next/commit/a94aacdb3983e06b11476394b9413310e827aab5][feat(add): v-on transform · gcclll/stb-vue-next@a94aacd]]
 
@@ -1126,3 +1172,18 @@ console.log(res)
 #+begin_export html
 <script src="/js/vue/node.env.dom.test.js"></script>
 #+end_export
+* 总结
+
+#+begin_quote
+这一模块的完成，零零散散时间大概花了不到一周的时间，也是由于有 [[/vue/vue-mind-map-compiler-core-transform-generate/][compiler-core]] 包
+的完成及分析的基础上，进展才会这么顺利。
+#+end_quote
+
+对于 compiler-dom 这一模块主要内容，快速预览可以查看第一章节的[[#init][功能预览]]。
+
+这里重点关注的地方，我认为有以下几个：
+
+1. ~v-model~ 对 ~<input>~ 类型检测和处理
+2. ~v-on~ 事件修饰符的处理，我感觉是这个模块的 *重中之重*
+3. 另外对于 node 环境的 html 符号语义化的处理也值得分析
+
