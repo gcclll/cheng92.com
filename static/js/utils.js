@@ -52,4 +52,19 @@ function register() {
     }
   }
 }
+
+log.props = (obj, props, now = true) => {
+  let o = {};
+  for (let prop in obj) {
+    if (props.includes(prop)) o[prop] = obj[prop];
+  }
+  now && log(o);
+  return o;
+};
 register();
+
+try {
+  module.exports = { log };
+} catch (e) {
+  console.warn(e.message, "no module.");
+}

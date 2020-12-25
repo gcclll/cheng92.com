@@ -8,6 +8,10 @@
 
 * 👴  Commands(命令)
 
+** ripgrep 搜索命令
+
+https://github.com/BurntSushi/ripgrep#installation
+
 ** diff
 
 | 选项                         | 简介                            |

@@ -1,0 +1,1429 @@
+#+TITLE: Vue3 源码头脑风暴之 5 ☞ compiler-sfc
+#+DATE: <2020-12-19 16:07:57>
+#+TAGS[]: vue, vue3, compiler-sfc
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+*声明* ：vue-next compiler-sfc 模块
+
+*更新日志&Todos* ：
+1. [2020-12-19 13:58:31] 创建
+#+end_quote
+
+* 重点、特性、问题
+
+1. [[#parse-func][🔗]] ~<style>~ 标签中可通过 ~v-bind()~ 引用CSS 模块化后的变量
+* f21c84c init 初始化工作
+
+[[https://github.com/gcclll/stb-vue-next/commit/f21c84ca8a8488347aba243262be333f26ab2cef][feat(init): compiler-sfc · gcclll/stb-vue-next@f21c84c]]
+
+cp compiler-sfc form vue-next:/packages/compiler-dom
+
+删除 compiler-sfc/src/* 下所有文件
+
+新建 compiler-sfc/src/index.ts 入口文件
+
+初始化 index.ts:
+
+#+begin_src typescript
+// API
+export { generateCodeFrame } from '@vue/compiler-core'
+
+// Types
+export {
+  CompilerOptions,
+  CompilerError,
+  BindingMetadata
+} from '@vue/compiler-core'
+#+end_src
+
+-----
+
+[[https://github.com/gcclll/stb-vue-next/commit/e7e1cc130e5c555b541be39b475b6546969b32dc][feat(init): parse function · gcclll/stb-vue-next@e7e1cc1]]
+
+声明一些基本类型，比如： ~<template>, <script>, <style>~ 这也是 ~*.vue~ 文件的三
+大要素，这里需要多关注一点就是会发现 ~<script>~ 标签里面多有一个 ~setup~ 属性，
+这个是 vue 自身定义的一种标签类型，比如在这里面可以直接使用 ~ref~ 声明变量，这里
+面的变量都会自动变成响应式的等等。
+
+SFC 块类型定义：
+#+begin_src typescript
+export interface SFCBlock {
+  type: string
+  content: string
+  attrs: Record<string, string | true>
+  loc: SourceLocation
+  map?: RawSourceMap
+  lang?: string
+  src?: string
+}
+#+end_src
+
+SFC ~<template>~ 标签类型定义：
+#+begin_src typescript
+export interface SFCTemplateBlock extends SFCBlock {
+  type: 'template'
+  ast: ElementNode
+}
+#+end_src
+
+SFC ~<script>~ 脚本标签类型定义
+#+begin_src typescript
+export interface SFCScriptBlock extends SFCBlock {
+  type: 'script'
+  setup?: string | boolean
+  bindings?: BindingMetadata
+  scriptAst?: Statement[]
+  scriptSetupAst?: Statement[]
+}
+#+end_src
+
+SFC ~<style>~ 样式标签类型定义
+#+begin_src typescript
+export interface SFCStyleBlock extends SFCBlock {
+  type: 'style' 
+  scoped?: boolean // 指定是不是只能用于当前文件
+  module?: string | boolean // 是不是模块化样式
+}
+#+end_src
+
+SFC 文件类型定义
+#+begin_src typescript
+export interface SFCDescriptor {
+  filename: string
+  source: string
+  template: SFCTemplateBlock | null
+  script: SFCScriptBlock | null
+  scriptSetup: SFCScriptBlock | null
+  styles: SFCStyleBlock[]
+  customBlocks: SFCBlock[]
+  cssVars: string[]
+}
+#+end_src
+
+parse 函数定义：
+#+begin_src typescript
+export function parse(
+  source: string,
+  { sourceMap = true }: SFCParseOptions
+): SFCParseResult {
+  return {} as SFCParseResult
+}
+#+end_src
+* 49ee210 parse function 实现部分
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: parse-func
+:END: 
+
+[[https://github.com/gcclll/stb-vue-next/commit/49ee210b898949dbc36dabb7b98555c6043c2a31][feat: sfc-> code parse function · gcclll/stb-vue-next@49ee210]]
+
+实现 parse 函数的基本架构:
+
+1. ~sourceToSFC<key, source>~ 用来缓存 vue文件解析结果，首先取缓存结果
+2. 通过调用 compiler-dom 中的 compiler.parse 将文件内容 source解析成 AST
+3. 遍历所有 ast.children 根据 node.tag 类型决定走什么分支处理
+
+   ~<template>~ 模板分支，这里面的所有内容会被 parse 继续解析出 ast
+
+   ~<script [setup]>~ 脚本分支, 当做 RAWDATA 文本类型处理，如果有 ~setup~ 属性，
+   则所有 script 都不能带 src 属性，即不能引用外部文件，因为所有 script 内容会合
+   并到一起去处理。
+
+   ~<style [lang=""]>~  样式分支，当做 RAWDATA 文本类型处理
+4. 错误用法检测，主要是 ~<script setup>~ 脚本标签不能有 src 的检测
+5. ~souremap~ 的处理
+6. ~descriptor.cssVars = parseCssVars(descriptor)~ CSS 变量的解析，会全部解析到
+   数组 ~cssVars~ 里面去
+7. 缓存解析后的结果到 ~sourceToSFC.set(sourceKey, result)~
+8. 对了，在 ~switch case~ 分支里面默认走的是自定义块的处理(vue 文件中还可以自定
+   义？)
+
+
+CSS vars 变量处理：
+#+begin_src typescript
+export const CSS_VARS_HELPER = `useCssVars`
+export const cssVarRE = /\bv-bind\(\s*(?:'([^']+)'|"([^"]+)"|([^'"][^)]*))\s*\)/g
+
+export function parseCssVars(sfc: SFCDescriptor): string[] {
+  const vars: string[] = []
+  sfc.styles.forEach(style => {
+    let match
+    // v-bind('xxx'), v-bind("xxx"), v-bind()
+    while ((match = cssVarRE.exec(style.content))) {
+      vars.push(match[1] || match[2] || match[3])
+    }
+  })
+  return vars
+}
+#+end_src
+
+这里有个 cssVarRE 正则，来看下：
+
+[[/img/vue3/re/sfc-css-vars-re.svg]]
+
+这个正则可以匹配结果： ~v-bind('...'), v-bind("..."), v-bind(...)~
+
+从 ~compiler-src/__tests__/cssVars.spec.ts~ 用例中可窥见这种用法：
+
+#+begin_src js
+`<script>const a = 1</script>\n` +
+   `<style>div{
+     color: v-bind(color);
+     font-size: v-bind('font.size');
+   }</style>`
+#+end_src
+
+#+begin_quote
+💟  现在可以直接在 ~<style>~ 变迁里面通过 ~v-bind()~ 来直接使用引入的 CSS 变量。
+#+end_quote
+
+[[https://github.com/gcclll/stb-vue-next/commit/afd8044321de2e4396b8b81bf6e837beeb4ef8b1][feat(add): sfc->parse add sourcemap · gcclll/stb-vue-next@afd8044]]
+** e32d508 parse <template> case
+
+[[https://github.com/gcclll/stb-vue-next/commit/e32d508809cb7c49e04e4bdac63c26d0101f31a7][feat: sfc-> add <template> parse · gcclll/stb-vue-next@e32d508]]
+
+主要增加代码： switch case -> 'template':
+[[http://qiniu.ii6g.com/img/20201219160507.png]]
+
+增加函数： ~createBlock()~ 用来处理 SFC 标签的属性(如： ~lang, setup, src,
+scoped, module~)
+
+回顾下 [[/vue/vue-mind-map-compiler-dom/][compiler-dom]], [[/vue/vue-mind-map-compiler-core-parser/][compiler-core]] 其实对于 ~<template>~ 标签的处理工作依然集中
+在这两个包里面，所以这里就不再赘述模板 ast 的解析了。
+
+#+begin_src js
+
+const {
+  parse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-sfc.global.js')
+ 
+const source = `
+<template>
+  <div>{{ test }}</div>
+</template>
+<script></script>
+<style>
+  div {
+    color:v-bind('fontColor');
+  }
+</style>`
+const res = parse(source)
+console.log(res)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  descriptor: {
+    filename: 'anonymous.vue',
+    source: '\n' +
+      '<template>\n' +
+      '  <div>{{ test }}</div>\n' +
+      '</template>\n' +
+      '<script></script>\n' +
+      '<style>\n' +
+      '  div {\n' +
+      "    color:v-bind('fontColor');\n" +
+      '  }\n' +
+      '</style>',
+    template: {
+      type: 'template',
+      content: '\n  <div>{{ test }}</div>\n',
+      loc: [Object],
+      attrs: {},
+      ast: [Object]
+    },
+    script: null,
+    scriptSetup: null,
+    styles: [],
+    customBlocks: [],
+    cssVars: []
+  },
+  errors: []
+}
+undefined
+#+end_example
+
+如上：一个最简单的 SFC 解析后的结构。
+** 3160fed parse <script> case
+
+[[https://github.com/gcclll/stb-vue-next/commit/3160fedbf252ad5a71a16567ae44fa445a343fa8][feat(add): sfc-> script parse · gcclll/stb-vue-next@3160fed]]
+
+增加 switch case script 逻辑：
+#+begin_src typescript
+case 'script': // 脚本标签处理
+    const scriptBlock = createBlock(node, source, pad) as SFCScriptBlock
+    const isSetup = !!scriptBlock.attrs.setup
+    if (isSetup && !descriptor.scriptSetup) {
+        descriptor.scriptSetup = scriptBlock
+        break
+    }
+
+    if (!isSetup && !descriptor.script) {
+        descriptor.script = scriptBlock
+        break
+    }
+    errors.push(createDuplicateBlockError(node, isSetup))
+    break
+break
+#+end_src
+
+createBlock() 中增加各属性的解析和设置：
+
+~lang~ -> ~block.lang~
+
+~src~ -> ~block.src~
+
+~style > scoped~ -> ~block.scoped~
+
+~style > module~ -> ~block.module~
+
+~script > setup~ -> ~block.setup~
+
+另外增加了 ~padContent()~ 检测回车换行符替换？
+
+测试：
+#+begin_src js
+const {
+  parse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-sfc.global.js')
+ 
+const source = `
+<script setup>
+import { x } from './x'
+let a = 1
+const b = 2
+function c() {}
+class d {}
+</script>`
+const res = parse(source)
+console.log(res.descriptor)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  filename: 'anonymous.vue',
+  source: '\n' +
+    '<script setup>\n' +
+    "import { x } from './x'\n" +
+    'let a = 1\n' +
+    'const b = 2\n' +
+    'function c() {}\n' +
+    'class d {}\n' +
+    '</script>',
+  template: null,
+  script: null,
+  scriptSetup: {
+    type: 'script',
+    content: '\n' +
+      "import { x } from './x'\n" +
+      'let a = 1\n' +
+      'const b = 2\n' +
+      'function c() {}\n' +
+      'class d {}\n',
+    loc: {
+      source: '\n' +
+        "import { x } from './x'\n" +
+        'let a = 1\n' +
+        'const b = 2\n' +
+        'function c() {}\n' +
+        'class d {}\n',
+      start: [Object],
+      end: [Object]
+    },
+    attrs: { setup: true },
+    setup: true
+  },
+  styles: [],
+  customBlocks: [],
+  cssVars: []
+}
+undefined
+#+end_example
+** aa037fe parse <style> case
+
+[[https://github.com/gcclll/stb-vue-next/commit/aa037fef4476f27ce25a88480768cb81e10075da][feat(add): sfc-> parse <style> · gcclll/stb-vue-next@aa037fe]]
+
+解析后的结果保存到 ~descriptor.styles.push(styleBlock)~ 所以可以有多个 ~<style>~
+存在。
+
+#+begin_quote
+/Tip/: 这里还有一个 ~styleBlock.attrs.vars~ 检测，难不成将来会支持直接 SFC 里面
+声明 CSS 变量?
+#+end_quote
+
+测试：
+#+begin_src js
+const {
+  parse
+} = require(process.env.PWD + '/../../static/js/vue/compiler-sfc.global.js')
+ 
+const source = `
+<style scoped>
+h1 {
+  color: red;
+  font-size: v-bind(fontSize);
+  border: v-bind('border');
+}
+</style>`
+const res = parse(source)
+console.log(res.descriptor)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  filename: 'anonymous.vue',
+  source: '\n' +
+    '<style scoped>\n' +
+    'h1 {\n' +
+    '  color: red;\n' +
+    '  font-size: v-bind(fontSize);\n' +
+    "  border: v-bind('border');\n" +
+    '}\n' +
+    '</style>',
+  template: null,
+  script: null,
+  scriptSetup: null,
+  styles: [
+    {
+      type: 'style',
+      content: '\n' +
+        'h1 {\n' +
+        '  color: red;\n' +
+        '  font-size: v-bind(fontSize);\n' +
+        "  border: v-bind('border');\n" +
+        '}\n',
+      loc: [Object],
+      attrs: [Object],
+      scoped: true
+    }
+  ],
+  customBlocks: [],
+  cssVars: [ 'fontSize', 'border' ]
+}
+undefined
+#+end_example
+
+对于 ~v-bind()~ 变量的引用，不管有没引号，都会当做变量处理。
+* compile <template>
+
+** c26e76c init compileTemplate
+
+[[https://github.com/gcclll/stb-vue-next/commit/c26e76cb4e7ef260f3c500aa693581fca175cab4][feat(init): sfc->compile <template> · gcclll/stb-vue-next@c26e76c]]
+
+增加两个类型和 compileTemplate 函数定义：
+
+SFCTemplateCompileResults 模板便后的结果类型
+#+begin_src typescript
+export interface SFCTemplateCompileResults {
+  code: string
+  ast?: RootNode
+  preamble?: string
+  source: string
+  tips: string[]
+  errors: (string | CompilerError)[]
+  map?: RawSourceMap
+}
+#+end_src
+
+SFCTemplateCompileOptions 模板编译器选项
+#+begin_src typescript
+
+export interface SFCTemplateCompileOptions {
+  source: string
+  filename: string
+  id: string
+  scoped?: boolean
+  isProd?: boolean
+  ssr?: boolean
+  ssrCssVars?: string[]
+  inMap?: RawSourceMap
+  compiler?: TemplateCompiler
+  compilerOptions?: CompilerOptions
+  preprocessLang?: string
+  preprocessOptions?: any
+  /**
+   * In some cases, compiler-sfc may not be inside the project root (e.g. when
+   * linked or globally installed). In such cases a custom `require` can be
+   * passed to correctly resolve the preprocessors.
+   */
+  preprocessCustomRequire?: (id: string) => any
+  /**
+   * Configure what tags/attributes to transform into asset url imports,
+   * or disable the transform altogether with `false`.
+   */
+  transformAssetUrls?: AssetURLOptions | AssetURLTagConfig | boolean
+}
+#+end_src
+
+及 compileTemplate 函数
+#+begin_src typescript
+export function compileTemplate(
+  options: SFCTemplateCompileOptions
+): SFCTemplateCompileResults {
+  return {} as SFCTemplateCompileResults
+}
+#+end_src
+** TODO 1b2965f coding compileTemplate
+
+[[https://github.com/gcclll/stb-vue-next/commit/1b2965fb3d45c450f0b8af66c54834a0ecc8d219][feat: sfc->compile compileTemplate code · gcclll/stb-vue-next@1b2965f]]
+
+
+这个函数相关的内容：
+
+1. preprocessLang
+2. preprocessCustomRequire
+
+TODO 模板预处理器，没搞明白这里是要做什么？
+
+代码逻辑：
+
+if preprocessor -> doCompileTemplate()
+
+elseif preprocessLang -> ...
+
+else -> doCompileTemplate()
+
+#+begin_quote
+⏹ 等待探索......
+#+end_quote
+** 7b49db4 coding doCompileTemplate 函数实现
+
+[[https://github.com/gcclll/stb-vue-next/commit/7b49db43ed8b1535d423b9143b3019fd5556be8a][feat(add): sfc->compile doCompileTemplate · gcclll/stb-vue-next@7b49db4]]
+
+函数功能：收集两个 transform 给 compiler.compile 在模板编译期间使用。
+
+1. asset url 资源地址转换用的 transform
+
+   要处理的标签和对应的包含 url 的属性:
+
+   | tag        | prop with url        |
+   |------------+----------------------|
+   | ~<video>~  | 'src', 'poster'      |
+   | ~<source>~ | 'src'                |
+   | ~<img>~    | 'src'                |
+   | ~<image>~  | 'xlink:href', 'href' |
+   | ~<use>~    | 'xlink:href', 'href' |
+
+2. img/source 标签 src 地址转换
+
+
+
+重点代码：
+#+begin_src typescript
+ const shortId = id.replace(/^data-v-/, '')
+  const longId = `data-v-${shortId}`
+
+  let { code, ast, preamble, map } = compiler.compile(source, {
+    mode: 'module',
+    prefixIdentifiers: true,
+    hoistStatic: true,
+    cacheHandlers: true,
+    ssrCssVars:
+      ssr && ssrCssVars && ssrCssVars.length
+        ? '' /* TODO genCssVarsFromList(ssrCssVars, shortId, isProd) */
+        : '',
+    // css 局部使用，加上对应的唯一 id
+    scopeId: scoped ? longId : undefined,
+    ...compilerOptions,
+    nodeTransforms: nodeTransforms.concat(compilerOptions.nodeTransforms || []),
+    filename,
+    sourceMap: true,
+    onError: e => errors.push(e)
+  })
+#+end_src
+
+将 ~nodeTransforms: [transformAssetUrl, transformSrcset]~ 传递给编译器处理。
+
+注意这里设置了几个属性： ~mode = 'module', prefixIdentifiers = true~ 所以这个应
+该只能运行在非浏览器环境。
+
+下面来实现一个相对简单的 ~transformAssetUrl()~ 函数 ......
+** 2d82400 coding transformAssetUrl 转换资源 url
+
+[[https://github.com/gcclll/stb-vue-next/commit/2d8240089e6d7642a0f2234b6addff8e0d9885cd][feat(add): sfc->compile templateTransformAssetUrl · gcclll/stb-vue-next@2d82400]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/e08f8059612591a6b38d6e813e305986fc7f646a][fix: sfc preprocess function · gcclll/stb-vue-next@e08f805]]
+
+几种URL使用情况和转换结果如下实例：
+
+#+begin_src js
+const { compileTemplate } = require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+const { code, ast } = compileTemplate({
+  source: `<template><div id="test">
+<img src="./test/test.png" />
+<img src="./test/test.png" />
+<img :src="imgUrl" />
+<img src="" />
+<img src="http://1.1.1.1:100/imgs/test/test.png" />
+<img src="data:...." />
+<img src="#test/test.png" />
+<img src="~test/test.png" />
+<img src="~/test/test.png" />
+<img src="@test/test.png" />
+<video src="./test/video.mp4" poster="./test/poster.png" />
+<div src="./test/test.png" />
+
+</div></template>`,
+  id: '', filename: 'test.vue'
+})
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { createVNode as _createVNode, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+import _imports_0 from './test/test.png'
+import _imports_1 from 'test/test.png'
+import _imports_2 from '@test/test.png'
+import _imports_3 from './test/video.mp4'
+import _imports_4 from './test/poster.png'
+
+
+const _hoisted_1 = { id: "test" }
+const _hoisted_2 = /*#__PURE__*/_createVNode("img", { src: _imports_0 }, null, -1 /* HOISTED */)
+const _hoisted_3 = /*#__PURE__*/_createVNode("img", { src: _imports_0 }, null, -1 /* HOISTED */)
+const _hoisted_4 = /*#__PURE__*/_createVNode("img", { src: "" }, null, -1 /* HOISTED */)
+const _hoisted_5 = /*#__PURE__*/_createVNode("img", { src: "http://1.1.1.1:100/imgs/test/test.png" }, null, -1 /* HOISTED */)
+const _hoisted_6 = /*#__PURE__*/_createVNode("img", { src: "data:...." }, null, -1 /* HOISTED */)
+const _hoisted_7 = /*#__PURE__*/_createVNode("img", { src: "#test/test.png" }, null, -1 /* HOISTED */)
+const _hoisted_8 = /*#__PURE__*/_createVNode("img", { src: _imports_1 }, null, -1 /* HOISTED */)
+const _hoisted_9 = /*#__PURE__*/_createVNode("img", { src: _imports_1 }, null, -1 /* HOISTED */)
+const _hoisted_10 = /*#__PURE__*/_createVNode("img", { src: _imports_2 }, null, -1 /* HOISTED */)
+const _hoisted_11 = /*#__PURE__*/_createVNode("video", {
+  src: _imports_3,
+  poster: _imports_4
+}, null, -1 /* HOISTED */)
+const _hoisted_12 = /*#__PURE__*/_createVNode("div", { src: "./test/test.png" }, null, -1 /* HOISTED */)
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createBlock("template", null, [
+    _createVNode("div", _hoisted_1, [
+      _hoisted_2,
+      _hoisted_3,
+      _createVNode("img", { src: _ctx.imgUrl }, null, 8 /* PROPS */, ["src"]),
+      _hoisted_4,
+      _hoisted_5,
+      _hoisted_6,
+      _hoisted_7,
+      _hoisted_8,
+      _hoisted_9,
+      _hoisted_10,
+      _hoisted_11,
+      _hoisted_12
+    ])
+  ]))
+}
+undefined
+#+end_example
+
+模板中资源URL不转换几种情况：
+
+1. 属性不是静态属性(~NodeTypes.ATTRIBUTE~)
+2. 非特定标签的不转换(或者通过 ~options.tags~ 里指定的标签)
+
+   #+begin_src json
+   tags: {
+     video: ['src', 'poster'],
+     source: ['src'],
+     img: ['src'],
+     image: ['xlink:href', 'href'],
+     use: ['xlink:href', 'href']
+   }
+   #+end_src
+3. 没有属性值的属性
+4. 外部链接的URL(~https~ 开头的)
+5. ~data:~ 开头的资源地址
+6. 属性值以 ~#~ 开头的地址
+7. 非绝对路径且费相对路径的(以， ~.|~|@~ 开头的地址)
+
+
+需要处理的又分两种情况：
+
+1. 给定了 ~options.base~ 基地址的(~.|~|@~ 为第一个字符的)
+
+   直接用 ~options.base + assert url~ 处理
+
+2. 非1中清空的使用 ~import imgName from '...img url'~ 引入
+
+
+#+begin_quote
+PS. 对于 CSS 中的URL引用放到后续 compileStyle 中去展示。
+#+end_quote
+* 56358a8 compile <style>
+
+[[https://github.com/gcclll/stb-vue-next/commit/56358a8b2cf95ef6a2df125c672a455690785a84][feat(add): sfc-> compile style · gcclll/stb-vue-next@56358a8]]
+
+这部分代码都是直接 Ctrl-c, Ctrl-v 来的，也没深入研究，所以这节也没什么好讲述的。
+
+待到以后有时间再来研究。
+
+#+begin_src js
+const { compileStyle } = require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+
+const c = (source, option = {}) => compileStyle({
+  source,
+  filename: 'test.css',
+  id: 'data-v-test',
+  scoped: true,
+  ...option
+})
+
+const log = console.log
+const res = c(`
+h1 { color: red; }
+.foo { color: red; }
+h1 .foo { color: red; }
+h1 .foo, .bar, .baz { color: red; }
+.foo:after { color: red; }
+::selection { display: none; }
+.abc, ::selection { color: red; }
+
+:deep(.foo) { color: red; }
+::v-deep(.foo) { color: red; }
+::v-deep(.foo .bar) { color: red; }
+.baz .qux ::v-deep(.foo .bar) { color: red; }
+
+:slotted(.foo) { color: red; }
+::v-slotted(.foo) { color: red; }
+::v-slotted(.foo .bar) { color: red; }
+.baz .qux ::v-slotted(.foo .bar) { color: red; }
+
+:global(.foo) { color: red; }
+::v-global(.foo) { color: red; }
+::v-global(.foo .bar) { color: red; }
+.baz .qux ::v-global(.foo .bar) { color: red; }
+
+@media print { .foo { color: red }}
+@supports(display: grid) { .foo { display: grid }}
+
+.anim {
+  animation: color 5s infinite, other 5s;
+}
+.anim-2 {
+  animation-name: color;
+  animation-duration: 5s;
+}
+.anim-3 {
+  animation: 5s color infinite, 5s other;
+}
+.anim-multiple {
+  animation: color 5s infinite, opacity 2s;
+}
+.anim-multiple-2 {
+  animation-name: color, opacity;
+  animation-duration: 5s, 2s;
+}
+
+@keyframes color {
+  from { color: red; }
+  to { color: green; }
+}
+@-webkit-keyframes color {
+  from { color: red; }
+  to { color: green; }
+}
+@keyframes opacity {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@-webkit-keyframes opacity {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+`)
+log(res.code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+h1[data-v-test] { color: red;
+}
+.foo[data-v-test] { color: red;
+}
+h1 .foo[data-v-test] { color: red;
+}
+h1 .foo[data-v-test], .bar[data-v-test], .baz[data-v-test] { color: red;
+}
+.foo[data-v-test]:after { color: red;
+}
+[data-v-test]::selection { display: none;
+}
+.abc[data-v-test],[data-v-test]::selection { color: red;
+}
+[data-v-test] .foo { color: red;
+}
+[data-v-test] .foo { color: red;
+}
+[data-v-test] .foo .bar { color: red;
+}
+.baz .qux[data-v-test] .foo .bar { color: red;
+}
+.foo[data-v-test-s] { color: red;
+}
+.foo[data-v-test-s] { color: red;
+}
+.foo .bar[data-v-test-s] { color: red;
+}
+.baz .qux .foo .bar[data-v-test-s] { color: red;
+}
+.foo { color: red;
+}
+.foo { color: red;
+}
+.foo .bar { color: red;
+}
+.foo .bar { color: red;
+}
+@media print {
+.foo[data-v-test] { color: red
+}}
+@supports(display: grid) {
+.foo[data-v-test] { display: grid
+}}
+.anim[data-v-test] {
+  animation: color-test 5s infinite, other 5s;
+}
+.anim-2[data-v-test] {
+  animation-name: color-test;
+  animation-duration: 5s;
+}
+.anim-3[data-v-test] {
+  animation: 5s color-test infinite, 5s other;
+}
+.anim-multiple[data-v-test] {
+  animation: color-test 5s infinite,opacity-test 2s;
+}
+.anim-multiple-2[data-v-test] {
+  animation-name: color-test,opacity-test;
+  animation-duration: 5s, 2s;
+}
+@keyframes color-test {
+from { color: red;
+}
+to { color: green;
+}
+}
+@-webkit-keyframes color-test {
+from { color: red;
+}
+to { color: green;
+}
+}
+@keyframes opacity-test {
+from { opacity: 0;
+}
+to { opacity: 1;
+}
+}
+@-webkit-keyframes opacity-test {
+from { opacity: 0;
+}
+to { opacity: 1;
+}
+}
+
+undefined
+#+end_example
+
+#+begin_quote
+PS. 对于 CSS 的解析需要 postcss 以及各种预处理来处理，这里暂时不展开。
+#+end_quote
+* 4d66531 compile <script>^{重点}
+
+这节会是重点部分。
+
+[[/img/vue3/compiler-sfc/vue-compiler-sfc-compile-script.svg]]
+
+** init compileScript function
+
+初始化 ~compileScript()~ 函数以及参数选项类型 ~SFCScriptCompileOptions~
+
+SFCScriptCompileOptions:
+
+- ~id: string~, 传递给 ~compileStyle~ 用于作为 injected CSS 变量前缀用
+- ~isProd?: boolean~ 决定生成的 CSS 变量是否要加上 hash 值
+- ~babelParserPlugins?: ParserPlugin[]~
+- ~refSugar?: boolean~ 使能 ~ref~ 语法糖
+- ~inlineTemplate?: boolean~ 内联模板？？？
+
+
+compileScript:
+#+begin_src typescript
+/**
+ * Compile `<script setup>`
+ * It requires the whole SFC descriptor because we need to handle and merge
+ * normal `<script>` + `<script setup>` if both are present.
+ */
+export function compileScript(
+  sfc: SFCDescriptor,
+  options: SFCScriptCompileOptions
+): SFCScriptBlock {
+  return {} as SFCScriptBlock
+}
+#+end_src
+
+[[https://github.com/gcclll/stb-vue-next/commit/54ea72a4fd3d2ccdce268714f0ef205fa9e9b976][feat(add): sfc->script, compileScript steps comment ·
+gcclll/stb-vue-next@54ea72a]]
+
+列出 compileScript() 将要完成的任务：
+
+| No. | Desc                                                        | Link |
+|-----+-------------------------------------------------------------+------|
+|   0 | 前置处理                                                    | -    |
+|   1 | 处理存在的 <script> 代码体                                  | -    |
+|   2 | 解析 <script setup>，遍历置顶的语句                         | -    |
+|   3 | 将 ref访问转换成对 ref.value 的引用                         | -    |
+|   4 | 释放 setup 上下文类型的运行时 props/emits 代码              | -    |
+|   5 | 检查用户选项(useOptions)参数，确保它没有引用 setup 下的变量 | -    |
+|   6 | 删除 non-script 的内容                                      | -    |
+|   7 | 分析 binding metadata                                       | -    |
+|   8 | 注入 `useCssVars` 调用                                      | -    |
+|   9 | 完成 setup() 参数签名                                       | -    |
+|  10 | 生成返回语句(return)                                        | -    |
+|  11 | 完成 default export                                         | -    |
+|  12 | 完成 Vue helpers imports                                    | -    |
+
+接下来就是按照上表的步骤来一步步完成 ~compileScript()~
+
+#+begin_quote
+PS. 下面每个对应章节都有对应的原版英文注释，英语不好~~~~~。
+#+end_quote
+
+增加一些逻辑无关的变量声明：
+[[https://github.com/gcclll/stb-vue-next/commit/06f1d95b352452cd2f3999e431b2a2bf60dc37c4][feat(add): sfc->script compileScript declarations · gcclll/stb-vue-next@06f1d95]]
+
+在进入正式步骤之前，来简单看看使用到的 ~@babel/parser~ 这个插件是如何使用的，输
+出结果又是啥？
+
+#+begin_src js
+const { parse } = require(process.env.BABEL_DIR + '/parser/lib/index.js')
+const log = console.log
+let code = `
+import { a } from './a.js';
+
+const value = 1 * 10 + 100 - 20 / 30 + 1
+export const name = a.getName();
+
+export default { name }
+`
+const res = parse(code, { sourceType: 'module' })
+console.log(res.program.body.map(body => body.type).join('\n'))
+#+end_src
+
+#+RESULTS:
+: ImportDeclaration
+: VariableDeclaration
+: ExportNamedDeclaration
+: ExportDefaultDeclaration
+: undefined
+
+以上输出是每个语句在 parser 中对应的 AST 类型。
+
+** 0⃣ d7369ae 无 <script setup> 时
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: script-0
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/d7369ae572e45ea9f6f32aa6bdfe534b1f5dda39][feat(add): script without setup-script parse · gcclll/stb-vue-next@d7369ae]]
+
+一开始会检测有没有 ~script setup~ 如果没有，继续检测 ~<script>~ 普通标签，如果两
+者都不存在，抛出异常。
+
+如果 ~<script>~ 存在，则直接调用 ~@babel/parser~ 的 [[https://babeljs.io/docs/en/babel-parser#babelparserparsecode-options][parse]] 函数进行解析，因此后面
+一坨代码在这种情况下(只有普通的 ~script~ 时)是不需要的。
+
+新增代码：
+#+begin_src typescript
+const scriptAst = _parse(script.content, {
+    plugins,
+    sourceType: 'module'
+}).program.body
+const bindings = analyzeScriptBindings(scriptAst)
+const needRewrite = cssVars.length || hasInheritAttrsFlag
+let content = script.content
+if (needRewrite) {
+// TODO need rewrite
+}
+return {
+    ...script,
+    content,
+    bindings,
+    scriptAst
+}
+#+end_src
+
+测试:
+#+begin_src js
+const { compileScript, parse } = require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+
+const compile = (src, options) => {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, { ...options, id: 'xxxx' })
+}
+
+const code = `
+<script>
+import { a } from './a.js';
+</script>
+`
+const res = compile(code)
+console.log(res.type, '\n', res.scriptAst)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+script 
+ [
+  Node {
+    type: 'ImportDeclaration',
+    start: 1,
+    end: 28,
+    loc: SourceLocation {
+      start: [Position],
+      end: [Position],
+      filename: undefined,
+      identifierName: undefined
+    },
+    range: undefined,
+    leadingComments: undefined,
+    trailingComments: undefined,
+    innerComments: undefined,
+    extra: undefined,
+    specifiers: [ [Node] ],
+    source: Node {
+      type: 'StringLiteral',
+      start: 19,
+      end: 27,
+      loc: [SourceLocation],
+      range: undefined,
+      leadingComments: undefined,
+      trailingComments: undefined,
+      innerComments: undefined,
+      extra: [Object],
+      value: './a.js'
+    }
+  }
+]
+undefined
+#+end_example
+
+示例：
+#+begin_src js
+const { compileScript, parse } = require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+const { log } = require(process.env.BLOG_JS + '/utils.js')
+const compile = (src, options) => {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, { ...options, id: 'xxxx' })
+}
+
+const code = `
+<script>
+  export default {
+    props: ['foo', 'bar']
+  }
+</script>`
+const { type, scriptAst: ast } = compile(code)
+// 首先是个 ExportDefaultDeclaration 类型
+// export 的值为一个 ObjectExpression 类型
+log(`>>> <script> 解析后的类型`)
+console.log(type)
+const node = ast[0]
+log(`>>> export default 解析后的类型`)
+log(node.type)
+log(`>>> { props : ... } 解析后的 ast 包含的 keys`)
+log(Object.keys(node.declaration))
+log(`> properties 为 ObjectExpression 对象的成员列表，如： props`)
+log.props(node.declaration.properties[0], ['type', 'key', 'value'])
+log(node.declaration.properties[0].value.elements)
+#+end_src
+
++RESULTS: 精简之后的输出
+#+begin_example
+>>> <script> 解析后的类型
+script
+>>> export default 解析后的类型
+ExportDefaultDeclaration
+>>> { props : ... } 解析后的 ast 包含的 keys
+[
+  'type',
+  'start',
+  'end',
+  'loc',
+  'range',
+  'leadingComments',
+  'trailingComments',
+  'innerComments',
+  'extra',
+  'properties'
+]
+> properties 为 ObjectExpression 对象的成员列表，如： props
+{
+  type: 'ObjectProperty',
+  key: Node {
+    type: 'Identifier',
+    name: 'props'
+  },
+  value: Node {
+    type: 'ArrayExpression',
+    elements: [ [Node], [Node] ]
+  }
+}
+[
+  Node {
+    type: 'StringLiteral',
+    extra: { rawValue: 'foo', raw: "'foo'" },
+    value: 'foo'
+  },
+  Node {
+    type: 'StringLiteral',
+    extra: { rawValue: 'bar', raw: "'bar'" },
+    value: 'bar'
+  }
+]
+#+end_example
+
+** 819a413 export default {} 解析
+
+[[https://github.com/gcclll/stb-vue-next/commit/819a413020da1584de0c73b7f67ed0aec0d9cb86][feat(add): sfc->script, parse export default members into bindings · gcclll/stb-vue-next@819a413]]
+
+~(property.type === 'ObjectMethod' &&property.key.type === 'Identifier' &&(property.key.name === 'setup' || property.key.name === 'data'))~
+
+成员最后在 ~bindings~ 里面存在类型值：
+| name       | type(~BindingTypes~) | value             |
+|------------+----------------------+-------------------|
+| ~props~    | 'PROPS'              | 'props'           |
+| ~inject~   | 'PROPS'              | 'props'           |
+| ~computed~ | 'OPTIONS'            | 'options'         |
+| ~methods~  | 'OPTIONS'            | 'options'         |
+|------------+----------------------+-------------------|
+| ~setup~    | SETUP_MAYBE_REF      | 'setup-maybe-ref' |
+| ~data~     | SETUP_MAYBE_REF      | 'setup-maybe-ref' |
+|            |                      |                   |
+
+到这里还只是借助 ~@babel/parser~ 进行了解析，vue 自身的一些特性处理在
+~analyzeScriptBindings()~ 中，这个函数解析的类型是 ~ExportDefaultDeclaration~ 也
+就是 ~export default {}~ 的代码部分。
+
+
+然后调用 ~analyzeBindingsFromOptions(node.declaration)~ 解析对象成员，这里要处理
+的主要有两种：
+
+1. ~ObjectProperty~ 属性类型成员
+
+   ~(property.type === 'ObjectProperty' &&!property.computed &&property.key.type === 'Identifier')~
+
+   #+begin_src js
+const { compileScript, parse } =
+  require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+const { log } = require(process.env.BLOG_JS + '/utils.js')
+const compile = (src, options) => {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, { ...options, id: 'xxxx' })
+}
+
+const res = compile(`
+<script>
+  export default {
+    props: ['firstName', 'secondName'],
+    inject: { foo: {} },
+    computed: {
+      fullName() {
+        return this.firstName + this.secondName + this.thirdName
+      }
+    },
+    methods: {
+      getName() {
+        return this.fullName
+      }
+    }
+  }
+</script>
+`)
+
+console.log(res.bindings)
+   #+end_src
+
+   #+RESULTS:
+   : {
+   :   firstName: 'props',
+   :   secondName: 'props',
+   :   foo: 'options',
+   :   fullName: 'options',
+   :   getName: 'options'
+   : }
+   : undefined
+
+2. ~ObjectMethod~ 方法类型成员，且只处理 ~setup~ 和 ~data~ 方法
+
+   [[https://github.com/gcclll/stb-vue-next/commit/c7b617bdad949c6db98ab6eb71caa00dbc7dec26][feat(add): sfc->script, parse export default data&setup into bingdings · gcclll/stb-vue-next@c7b617b]]
+
+   需要增加代码：
+   #+begin_src typescript
+   if (
+      property.type === 'ObjectMethod' &&
+      property.key.type === 'Identifier' &&
+      (property.key.name === 'setup' || property.key.name === 'data')
+    ) {
+      for (const bodyItem of property.body.body) {
+        // setup() {
+        //   return {
+        //     foo: null
+        //   }
+        // }
+        if (
+          bodyItem.type === 'ReturnStatement' &&
+          bodyItem.argument &&
+          bodyItem.argument.type === 'ObjectExpression'
+        ) {
+          for (const key of getObjectExpressionKeys(bodyItem.argument)) {
+            bindings[key] = property.key.name = 'setup'
+              ? BindingTypes.SETUP_MAYBE_REF
+              : BindingTypes.DATA
+          }
+        }
+      }
+    }
+   #+end_src
+
+   测试：
+   #+begin_src js
+const { compileScript, parse } =
+  require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+const { log } = require(process.env.BLOG_JS + '/utils.js')
+const compile = (src, options) => {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, { ...options, id: 'xxxx' })
+}
+
+const code = `
+<script>
+export default {
+  setup() {
+    return {
+      foo: null
+    }
+  },
+  data() {
+    return {
+      bar: null
+    }
+  },
+  props: ['baz']
+}
+</script>`
+const res = compile(code)
+log(res.bindings)
+   #+end_src
+
+   #+RESULTS:
+   : { foo: 'setup-maybe-ref', bar: 'setup-maybe-ref', baz: 'props' }
+   : undefined
+** 测试
+
+#+begin_src js
+const { compileScript, parse } =
+  require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+const { log } = require(process.env.BLOG_JS + '/utils.js')
+const compile = (src, options) => {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, { ...options, id: 'xxxx' })
+}
+
+log(`>>> setup return`)
+log(compile(`
+<script>
+const bar = 2
+  export default {
+    setup() {
+    return {
+        foo: 1,
+        bar
+    }
+  }
+}
+</script>`).bindings)
+log(`>>> async setup return`)
+log(compile(`
+<script>
+const bar = 2
+  export default {
+    async setup() {
+      return {
+        foo: 1,
+        bar
+      }
+  }
+}
+</script>`).bindings)
+log(`>>> computeds`)
+log(compile(`
+    <script>
+    export default {
+      computed: {
+        foo() {},
+        bar: {
+            get() {},
+            set() {},
+        }
+      }
+    }
+    </script>
+`).bindings)
+log(`>>> 混合 bindings`)
+log(compile(`
+    <script>
+    export default {
+      inject: ['foo'],
+        props: {
+        bar: String,
+      },
+      setup() {
+        return {
+            baz: null,
+        }
+      },
+      data() {
+        return {
+            qux: null
+        }
+      },
+      methods: {
+        quux() {}
+      },
+      computed: {
+        quuz() {}
+      }
+    }
+    </script>
+`).bindings)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> setup return
+{ foo: 'setup-maybe-ref', bar: 'setup-maybe-ref' }
+>>> async setup return
+{ foo: 'setup-maybe-ref', bar: 'setup-maybe-ref' }
+>>> computeds
+{ foo: 'options', bar: 'options' }
+>>> 混合 bindings
+{
+  foo: 'options',
+  bar: 'props',
+  baz: 'setup-maybe-ref',
+  qux: 'setup-maybe-ref',
+  quux: 'options',
+  quuz: 'options'
+}
+undefined
+#+end_example
+
+** 1⃣  解析普通的 <script>
+
+#+begin_comment
+process normal <script> first if it exists
+#+end_comment
+
+用到的插件：
+| Plugin                |
+|-----------------------|
+| [[https://babeljs.io/docs/en/babel-parser][@babel/parser · Babel]] |
+|                       |
+
+这一节中的普通 <script> 前提是，至少有一个 ~<script setup>~ 存在，否则会直接在
+[[#script-0][上一节]] 就退出解析了。
+
+@babel/parser 解析 import 结果对照表
+| 段                        | 类型                | 值                                 |
+|---------------------------+---------------------+------------------------------------|
+| ~import { a } from './x'~ | ~ImportDeclaration~ | ...                                |
+| ~a~                       | ~ImportSpecifier~   | ~node.specifiers[i].imported.name~ |
+| ~'./x'~                   | ~StringLiteral~     | ~node.source.value~                |
+
+#+begin_src js
+const { parse } = require(process.env.BABEL_DIR + '/parser/lib/index.js')
+
+const code = `
+import { a } from './x'`
+const res = parse(code, { sourceType: 'module' }).program.body
+const node = res[0]
+const spec = node.specifiers[0]
+console.log(`>>> node type > ${node.type}`)
+console.log(`>>> node source type > ${node.source.type}`)
+console.log(`>>> node source value > ${node.source.value}`)
+console.log(`>>> spec type > ${spec.type}`)
+console.log(`>>> spec imported type > ${spec.imported.type}`)
+console.log(`>>> spec imported name > ${spec.imported.name}`)
+#+end_src
+
+#+RESULTS:
+: >>> node type > ImportDeclaration
+: >>> node source type > StringLiteral
+: >>> node source value > ./x
+: >>> spec type > ImportSpecifier
+: >>> spec imported type > Identifier
+: >>> spec imported name > a
+
+所以就有了下面新增的代码处理逻辑：
+#+begin_src typescript
+// import ... from './x' 语句类型
+if (node.type === 'ImportDeclaration') {
+      // record imports for dedupe
+  // import 进来的变量列表
+  for (const specifier of node.specifiers) {
+    // 变量名
+    const imported =
+      specifier.type === 'ImportSpecifier' &&
+      specifier.imported.type === 'Identifier' &&
+      specifier.imported.name
+    // 注册到 userImports[local] = { isType, imported, source } 中
+    registerUserImport(
+      node.source.value,
+      specifier.local.name,
+      imported,
+      node.importKind === 'type'
+    )
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+const {
+  compileScript,
+  parse
+} = require(process.env.VNEXT_PKG_CS + '/dist/compiler-sfc.cjs.js')
+
+const res = compileScript(`
+<script>
+import { a } from './x'
+</script>
+`, { id: 'xxx' })
+console.log(res)
+#+end_src
+
+#+RESULTS:

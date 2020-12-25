@@ -22,7 +22,7 @@
 
 * vue-next methods need polyfills
 
-String.fromCodePoint, startsWith, some, filter
+String.fromCodePoint, startsWith, some, filter, Array.from
 
 * 万能的 Counter
 #+begin_src js

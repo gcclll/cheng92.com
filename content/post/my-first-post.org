@@ -10,6 +10,13 @@
 window.g_need_fold = 1
 </script>
 #+end_export
+
+* head 1
+** head 2
+*** head 3
+**** head 4
+***** head 5
+
 * use bootstrap
 
 buttons:

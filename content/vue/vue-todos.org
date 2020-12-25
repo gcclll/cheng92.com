@@ -1,0 +1,11 @@
+#+TITLE: Vue Related TODOs
+#+DATE: <2020-12-21 20:20:17>
+#+TAGS[]: vue, vue-next, todos
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+
+| lib                   | status |
+|-----------------------+--------|
+| ~vue-class-component~ | TODO   |
