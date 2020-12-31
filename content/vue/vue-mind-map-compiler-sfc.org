@@ -21,7 +21,7 @@
 @@html:</kbd>@@
 
 #+begin_quote
-*声明* ：vue-next compiler-sfc 模块
+*声明* ：vue-next compiler-sfc 模块，相关的所有测试代码均在 ~/js/vue/~ 目录下面。
 
 *更新日志&Todos* ：
 1. [2020-12-19 13:58:31] 创建
@@ -98,7 +98,7 @@ export interface SFCScriptBlock extends SFCBlock {
 SFC ~<style>~ 样式标签类型定义
 #+begin_src typescript
 export interface SFCStyleBlock extends SFCBlock {
-  type: 'style' 
+  type: 'style'
   scoped?: boolean // 指定是不是只能用于当前文件
   module?: string | boolean // 是不是模块化样式
 }
@@ -131,7 +131,7 @@ export function parse(
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: parse-func
-:END: 
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/49ee210b898949dbc36dabb7b98555c6043c2a31][feat: sfc-> code parse function · gcclll/stb-vue-next@49ee210]]
 
@@ -159,19 +159,19 @@ export function parse(
 
 CSS vars 变量处理：
 #+begin_src typescript
-export const CSS_VARS_HELPER = `useCssVars`
-export const cssVarRE = /\bv-bind\(\s*(?:'([^']+)'|"([^"]+)"|([^'"][^)]*))\s*\)/g
+export const CSS_VARS_HELPER = `useCssVars`;
+export const cssVarRE = /\bv-bind\(\s*(?:'([^']+)'|"([^"]+)"|([^'"][^)]*))\s*\)/g;
 
 export function parseCssVars(sfc: SFCDescriptor): string[] {
-  const vars: string[] = []
-  sfc.styles.forEach(style => {
-    let match
+  const vars: string[] = [];
+  sfc.styles.forEach((style) => {
+    let match;
     // v-bind('xxx'), v-bind("xxx"), v-bind()
     while ((match = cssVarRE.exec(style.content))) {
-      vars.push(match[1] || match[2] || match[3])
+      vars.push(match[1] || match[2] || match[3]);
     }
-  })
-  return vars
+  });
+  return vars;
 }
 #+end_src
 
@@ -214,7 +214,7 @@ scoped, module~)
 const {
   parse
 } = require(process.env.PWD + '/../../static/js/vue/compiler-sfc.global.js')
- 
+
 const source = `
 <template>
   <div>{{ test }}</div>
@@ -263,6 +263,7 @@ undefined
 #+end_example
 
 如上：一个最简单的 SFC 解析后的结构。
+
 ** 3160fed parse <script> case
 
 [[https://github.com/gcclll/stb-vue-next/commit/3160fedbf252ad5a71a16567ae44fa445a343fa8][feat(add): sfc-> script parse · gcclll/stb-vue-next@3160fed]]
@@ -305,7 +306,7 @@ createBlock() 中增加各属性的解析和设置：
 const {
   parse
 } = require(process.env.PWD + '/../../static/js/vue/compiler-sfc.global.js')
- 
+
 const source = `
 <script setup>
 import { x } from './x'
@@ -376,7 +377,7 @@ undefined
 const {
   parse
 } = require(process.env.PWD + '/../../static/js/vue/compiler-sfc.global.js')
- 
+
 const source = `
 <style scoped>
 h1 {
@@ -425,6 +426,7 @@ undefined
 #+end_example
 
 对于 ~v-bind()~ 变量的引用，不管有没引号，都会当做变量处理。
+
 * compile <template>
 
 ** c26e76c init compileTemplate
@@ -850,6 +852,7 @@ undefined
 #+begin_quote
 PS. 对于 CSS 的解析需要 postcss 以及各种预处理来处理，这里暂时不展开。
 #+end_quote
+
 * 4d66531 compile <script>^{重点}
 
 这节会是重点部分。
@@ -995,7 +998,7 @@ console.log(res.type, '\n', res.scriptAst)
 
 #+RESULTS:
 #+begin_example
-script 
+script
  [
   Node {
     type: 'ImportDeclaration',
@@ -1341,7 +1344,9 @@ log(compile(`
 undefined
 #+end_example
 
-** 1⃣  解析普通的 <script>
+** 1⃣ eb650ca 解析 <script>
+
+[[https://github.com/gcclll/stb-vue-next/commit/eb650ca301b2e27f47ad53aa5ff8f16b3161b3f9][feat(add): sfc->script, export default handle · gcclll/stb-vue-next@eb650ca]]
 
 #+begin_comment
 process normal <script> first if it exists
@@ -1387,7 +1392,7 @@ console.log(`>>> spec imported name > ${spec.imported.name}`)
 : >>> spec imported type > Identifier
 : >>> spec imported name > a
 
-所以就有了下面新增的代码处理逻辑：
+所以 vue-next 中新增的代码处理逻辑：
 #+begin_src typescript
 // import ... from './x' 语句类型
 if (node.type === 'ImportDeclaration') {
@@ -1410,20 +1415,1373 @@ if (node.type === 'ImportDeclaration') {
 }
 #+end_src
 
-测试：
+然后 compileScript 中有一段处理不明白：
+
+#+begin_src typescript
+if (scriptSetup && scriptSetupLang !== 'ts') {
+    // do not process non js/ts script blocks
+    return scriptSetup
+  }
+#+end_src
+
+这里是说如果有 ~<script setup>~ 但是类型不是 *ts* 就直接返回 ~scriptSetup~ ?
+
 #+begin_src js
+const { compileScript, parse } = require(process.env.VNEXT_PKG_SFC +
+  "/dist/compiler-sfc.cjs.js");
+const { log } = require(process.env.BLOG_JS + "/utils.js");
+const compile = (src, options) => {
+  const { descriptor } = parse(src);
+  return compileScript(descriptor, { ...options, id: "xxxx" });
+};
 
-const {
-  compileScript,
-  parse
-} = require(process.env.VNEXT_PKG_CS + '/dist/compiler-sfc.cjs.js')
-
-const res = compileScript(`
-<script>
-import { a } from './x'
+const res = compile(`
+<script lang="ts">
+import { a, a1, a2 } from './a'
 </script>
-`, { id: 'xxx' })
-console.log(res)
+<script lang="ts" setup>
+import { b } from './b'
+</script>
+`);
 #+end_src
 
 #+RESULTS:
+#+begin_example
+handling script ... with setup
+userImports >
+ [Object: null prototype] {
+  a: { isType: false, imported: 'a', source: './a' },
+  a1: { isType: false, imported: 'a1', source: './a' },
+  a2: { isType: false, imported: 'a2', source: './a' }
+}
+userImportAlias >
+ [Object: null prototype] {}
+undefined
+#+end_example
+
+到此，因为还没实现 ~<script setup>~ 解析，所以只能看到普通 script 标签的处理结果。
+
+*** import ... from 处理
+
+#+begin_src typescript
+for (const node of scriptAst) {
+  // import ... from '...'
+  if (node.type === "ImportDeclaration") {
+    // record imports for dedupe
+    for (const specifier of node.specifiers) {
+      const imported =
+        specifier.type === "ImportSpecifier" &&
+        specifier.imported.type === "Identifier" &&
+        specifier.imported.name;
+      registerUserImport(
+        node.source.value,
+        specifier.local.name,
+        imported,
+        node.importKind === "type"
+      );
+    }
+    console.log("userImports > \n", userImports);
+    console.log("userImportAlias > \n", userImportAlias);
+  }
+}
+#+end_src
+
+上面处理：遍历 script 中所有 ast 节点，找出 ~import ... from ...~ 语句，取出
+
+引入的文件源部分： ~node.source.value~
+
+引入之后的变量或解构后的变量： ~imported.name~
+
+组成新的结构 ~{ isType: false, imported: 'a', source: './a'}~ 保存到 ~userImports~ 中
+
+修改下，引入多个变量呢？结果如下：
+
+#+begin_example
+userImports >
+ [Object: null prototype] {
+  a: { isType: false, imported: 'a', source: './a' },
+  a1: { isType: false, imported: 'a1', source: './a' },
+  a2: { isType: false, imported: 'a2', source: './a' }
+#+end_example
+
+每个变量作为一项保存。
+*** export default {} 处理
+
+~export default {}~ 语法的处理：
+
+#+begin_src typescript
+/* else */ if (node.type === "ExportDefaultDeclaration") {
+  // export default
+  defaultExport = node;
+  const start = node.start! + scriptStartOffset!;
+  s.overwrite(
+    start,
+    start + `export default`.length,
+    `const ${defaultTempVar} =`
+  );
+}
+#+end_src
+
+变量 ~s~ :
+
+~const s = new MagicString(source)~
+
+等于是将 export default 内容赋值给 ~__default__~ 变量上。
+
+~export default {...}~ 处理成 ~const __default__ =~
+
+[[https://github.com/Rich-Harris/magic-string][GitHub - Rich-Harris/magic-string: Manipulate strings like a wizard]]
+
+从仓库介绍:
+#+begin_quote
+Suppose you have some source code. You want to make some light modifications to it - replacing a few characters here and there...
+#+end_quote
+这个库的作用是用来替换源码中的部分代码的(字符串的一些操作)。
+
+先看测试吧：输出处理前后的 ~source -> s~
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const [result] = compileSFC(`
+<script lang="ts">
+export default {
+  data() {},
+  computed: {}
+}
+</script>
+<script lang="ts" setup>
+export default {}
+</script>
+`);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+handling script ... with setup
+----- before -----
+<script lang="ts">
+export default {
+  data() {},
+  computed: {}
+}
+</script>
+<script lang="ts" setup>
+export default {}
+</script>
+
+----- after -----
+<script lang="ts">
+const __default__ = {
+  data() {},
+  computed: {}
+}
+</script>
+<script lang="ts" setup>
+export default {}
+</script>
+
+undefined
+#+end_example
+
+结果如上。
+
+#+begin_quote
+Tip: 请忽略 setup 部分，因为必须要有一个 ~<script setup>~ 且必须是 *ts* 语言才能进
+入到这部分处理。
+#+end_quote
+*** export ... [from] 处理
+
+~export { ...} from '...'~ 的处理。
+
+如：
+
+~export { x as default } from './x'~
+
+~export { x as default }~
+
+#+begin_src typescript
+/*else*/ if (node.type === "ExportNamedDeclaration" && node.specifiers) {
+  const defaultSpecifier = node.specifiers.find(
+    (s) => s.exported.type === "Identifier" && s.exported.name === "default"
+  ) as ExportSpecifier;
+  if (defaultSpecifier) {
+    defaultExport = node;
+    // 1. remove specifier
+    if (node.specifiers.length > 1) {
+      s.remove(
+        defaultSpecifier.start! + scriptStartOffset!,
+        defaultSpecifier.end! + scriptStartOffset!
+      );
+    } else {
+      s.remove(
+        node.start! + scriptStartOffset!,
+        node.end! + scriptStartOffset!
+      );
+    }
+
+    if (node.source) {
+      // export { x as default } from './x'
+      // 重写成 rewrite to `import { x as __default } from './x'
+      // 然后添加到顶部
+      s.prepend(
+        `import { ${defaultSpecifier.local.name} as ${defaultTempVar} } from '${node.source.value}'\n`
+      );
+    } else {
+      // export { x as default }
+      // 重写成 `const __default__ = x` 且移到最后
+      s.append(`\nconst ${defaultTempVar} = ${defaultSpecifier.local.name}\n`);
+    }
+  }
+}
+#+end_src
+
+测试
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(`
+<script lang="ts">export { a as default } from './x'</script>
+<script lang="ts" setup>export default {}</script>
+`);
+
+compileSFC(`
+<script lang="ts">
+const a = {}
+export { a as default }
+</script>
+<script lang="ts" setup>export default {}</script>
+`);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+handling script ... with setup
+----- s, source, before -----
+
+<script lang="ts">export { a as default } from './x'</script>
+<script lang="ts" setup>export default {}</script>
+
+----- s, source, after -----
+import { a as __default__ } from './x'
+
+<script lang="ts"></script>
+<script lang="ts" setup>export default {}</script>
+
+handling script ... with setup
+----- s, source, before -----
+
+<script lang="ts">
+const a = {}
+export { a as default }
+</script>
+<script lang="ts" setup>export default {}</script>
+
+----- s, source, after -----
+
+<script lang="ts">
+const a = {}
+
+</script>
+<script lang="ts" setup>export default {}</script>
+
+const __default__ = a
+
+undefined
+#+end_example
+
+从文件导入的，放到 ~source~ 最前面去了
+
+用变量导出的，放到 ~source~ 最后面去了
+** 2⃣ 8edf0d7 解析 <script setup>
+
+[[https://github.com/gcclll/stb-vue-next/commit/8edf0d7ad4c77fe9bbb08233f09a313eefa6ca9b][feat(add): sfc->script, setup ref process · gcclll/stb-vue-next@8edf0d7]]
+
+如果只保留关键代码，这里的处理主要在 ~processRefExpression()~ 中
+
+#+begin_src typescript
+// @babel/parser 解析出<script setup> 的 ast
+const scriptSetupAst = parse(
+  scriptSetup.content,
+  {
+    plugins: [
+      ...plugins,
+      // allow top level await but only inside <script setup>
+      "topLevelAwait",
+    ],
+    sourceType: "module",
+  },
+  startOffset
+);
+
+for (const node of scriptSetupAst) {
+  // ... 省略
+  // 处理 `ref: x` 绑定，转成 refs
+  if (
+    node.type === "LabeledStatement" &&
+    node.label.name === "ref" &&
+    node.body.type === "ExpressionStatement"
+  ) {
+    // 必须要开启 ref 功能
+    if (enableRefSugar) {
+      warnExperimental(`ref: sugar`, 228);
+      s.overwrite(
+        node.label.start! + startOffset,
+        node.boy.start! + startOffset,
+        "const "
+      );
+      processRefExpression(node.body.expression, node);
+    }
+  }
+}
+#+end_src
+
+下面是 processRefExpression 对 ~ref:~ 语法糖的各种使用情况分析。
+
+*** d4f6497 ref: n = 100
+
+[[https://github.com/gcclll/stb-vue-next/commit/d4f649729c860bcd7c3305a11258cb4ef2b803a2][feat(add): sfc->script, ref: in setup · gcclll/stb-vue-next@d4f6497]]
+
+将 ~ref: n = 100~ 翻译成 ~const n = _ref(100)~
+
+新增核心处理代码：
+[[http://qiniu.ii6g.com/img/20201226211608.png]]
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(
+  `
+<script lang="ts">
+const a = {}
+export { a as default }
+</script>
+<script lang="ts" setup>
+ref: n = 100
+</script>
+`,
+  { enableRefSugar: true }
+);
+#+end_src
+*** db7cb02 ref: { n = 1 } = useFoo()
+
+[[https://github.com/gcclll/stb-vue-next/commit/db7cb021defbc86adb8a2a825315c71359579f27][feat(add): sfc->script, ref: ({ b: 1} = {}) · gcclll/stb-vue-next@db7cb02]]
+
+对象解构语法支持。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(
+  `
+<script>
+export default { b: 2 }
+</script>
+<script setup>
+ref: ({ b = 1, foo: bar, nested: { baz: bax } } = { count: 0, b: 2 })
+
+</script>
+`,
+  { enableRefSugar: true }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+---- before ----
+
+<script>
+const __default__ = { b: 2 }
+</script>
+<script setup>
+ref: ({ b = 1, foo: bar, nested: { baz: bax } } = { count: 0, b: 2 })
+
+</script>
+
+---- after ----
+
+<script>
+const __default__ = { b: 2 }
+</script>
+<script setup>
+const { b: __b = 1, foo: __bar, nested: { baz: __bax } } = { count: 0, b: 2 }
+
+</script>
+
+undefined
+#+end_example
+
+支持解构后重命名：[[https://github.com/gcclll/stb-vue-next/commit/e83d25a6ef9a6c2c3f708169fbd9517c96a87dcd][feat(add): sfc->script, ref: ({ b: bb} = {}) rename · gcclll/stb-vue-next@e83d25a]]
+
+对象嵌套解构：[[https://github.com/gcclll/stb-vue-next/commit/5c615d5c2905f8a50ec1729da4bde68b709ddc43][feat(add): sfc->script, ref deconstruct nested object · gcclll/stb-vue-next@5c615d5]]
+
+解构重命名：[[https://github.com/gcclll/stb-vue-next/commit/e3ffe6f6cf95748654612cd70855f0818e7757e0][feat(add): sfc->script, ref deconstruct object rename · gcclll/stb-vue-next@e3ffe6f]]
+
+*** af26553 ref: [a] = useFoo() 数据解构
+
+[[https://github.com/gcclll/stb-vue-next/commit/af265536bcba6ad3f154b5b944317e4d38b28b2d][feat(add): sfc->script, ref deconstruct array · gcclll/stb-vue-next@af26553]]
+
+#+begin_src js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(
+  `
+<script>
+export default { b: 2 }
+</script>
+<script setup>
+ref: ({ foo: [bar], baz: [,,bax]} = useFoo())
+</script>
+`,
+  { enableRefSugar: true }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+---- before ----
+
+<script>
+const __default__ = { b: 2 }
+</script>
+<script setup>
+ref: ({ foo: [bar], baz: [,,bax]} = useFoo())
+</script>
+
+---- after ----
+
+<script>
+const __default__ = { b: 2 }
+</script>
+<script setup>
+const { foo: [__bar], baz: [,,__bax]} = useFoo()
+const bar = _ref(__bar);
+const bax = _ref(__bax);
+</script>
+
+undefined
+#+end_example
+
+*** a9f4469 ref: ({...foo} = useFoo()) 展开符
+
+[[https://github.com/gcclll/stb-vue-next/commit/a9f4469f8b47a273b2de5165e59ebd9718f5a07d][feat(add): sfc->script, ref deconstruct with es6 rest element · gcclll/stb-vue-next@a9f4469]]
+
+#+begin_src js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(
+  `
+<script>
+export default { b: 2 }
+</script>
+<script setup>
+ref: ({...foo} = useFoo())
+</script>
+`,
+  { enableRefSugar: true }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+---- before ----
+
+<script>
+const __default__ = { b: 2 }
+</script>
+<script setup>
+ref: ({...fo} = useFoo())
+</script>
+
+---- after ----
+
+<script>
+const __default__ = { b: 2 }
+</script>
+<script setup>
+const {...__fo} = useFoo()
+</script>
+
+undefined
+#+end_example
+
+*** d52a6d0 _ref(...) 增加 ref 声明
+
+[[https://github.com/gcclll/stb-vue-next/commit/d52a6d006f3a741a4787220a3503572ad576d0ba][feat(add): sfc->script, ref all variables · gcclll/stb-vue-next@d52a6d0]]
+
+在解析完所有 ~ref: xxx~ 语法之后，需要将解构出来的编码，进行 ref 化。
+
+#+begin_src js
+
+const { compileSFC, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+compileSFC(`
+<script>export default {}</script>
+<script setup>
+ref: ({
+  a, b: { foo, bar: bax }, c = 1, d: [doo1,, doo3], e: e1 = 2
+} = useFoo());
+</script>
+`, { enableRefSugar: true })
+#+end_src
+
+#+RESULTS:
+#+begin_example
+---- before ----
+
+<script>const __default__ = {}</script>
+<script setup>
+ref: ({
+  a, b: { foo, bar: bax }, c = 1, d: [doo1,, doo3], e: e1 = 2
+} = useFoo());
+</script>
+
+---- after ----
+
+<script>const __default__ = {}</script>
+<script setup>
+const {
+  a: __a, b: { foo: __foo, bar: __bax }, c: __c = 1, d: [__doo1,, __doo3], e: __e1 = 2
+} = useFoo();
+const a = _ref(__a);
+const foo = _ref(__foo);
+const bax = _ref(__bax);
+const c = _ref(__c);
+const doo1 = _ref(__doo1);
+const doo3 = _ref(__doo3);
+const e1 = _ref(__e1);
+</script>
+
+undefined
+#+end_example
+
+到这里 ref 语法才算解析完成了。
+
+1. 借助 ~@babel/parser~ 得到 script[setup] ast 处理 ref 及解构语法
+2. 将解构之后的变量进行 ref 语法化。
+*** 168041c ref: a = 1, b = 2 多条语句
+
+[[https://github.com/gcclll/stb-vue-next/commit/168041cafd719477b3904f5e6973547c8eb2fe2e][feat(add): sfc->script, multiple statements after ref: · gcclll/stb-vue-next@168041c]]
+
+#+begin_src js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(
+  `
+<script>export default {}</script>
+<script setup>
+ref: a = 1, b = 2, c = 3
+</script>
+`,
+  { enableRefSugar: true }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+---- before ----
+
+<script>const __default__ = {}</script>
+<script setup>
+ref: a = 1, b = 2, c = 3
+</script>
+
+---- after ----
+
+<script>const __default__ = {}</script>
+<script setup>
+const a = _ref(1), b = _ref(2), c = _ref(3)
+</script>
+
+undefined
+#+end_example
+
+*** 6e337c5 imports 置顶🔝
+
+[[https://github.com/gcclll/stb-vue-next/commit/6e337c59b5c3c87925e1fe7d5efc3a671887c9af][feat(add): sfc->script, hoist imports to top · gcclll/stb-vue-next@6e337c5]]
+
+#+begin_src js
+const { compileSFC, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+compileSFC(
+  `
+<script>export default {}</script>
+<script setup>
+import { a } from './a'
+import { b } from './b'
+import { foo, bar } from './baz'
+</script>
+`,
+  { enableRefSugar: true }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+---- before ----
+
+<script>const __default__ = {}</script>
+<script setup>
+import { a } from './a'
+import { b } from './b'
+import { foo, bar } from './baz'
+</script>
+
+---- after ----
+import { a } from './a'
+
+<script>const __default__ = {}</script>
+<script setup>
+import { b } from './b'
+import { foo, bar } from './baz'
+</script>
+
+---- before ----
+import { a } from './a'
+
+<script>const __default__ = {}</script>
+<script setup>
+import { b } from './b'
+import { foo, bar } from './baz'
+</script>
+
+---- after ----
+import { a } from './a'
+import { b } from './b'
+
+<script>const __default__ = {}</script>
+<script setup>
+import { foo, bar } from './baz'
+</script>
+
+---- before ----
+import { a } from './a'
+import { b } from './b'
+
+<script>const __default__ = {}</script>
+<script setup>
+import { foo, bar } from './baz'
+</script>
+
+---- after ----
+import { a } from './a'
+import { b } from './b'
+import { foo, bar } from './baz'
+
+<script>const __default__ = {}</script>
+<script setup>
+</script>
+
+undefined
+#+end_example
+
+如上，经过几轮循环，将三个 import 提升到了最开始位置。
+
+*** TODO 68d4940 defineProps/Emit() 处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/68d4940a2725e809ab731a6998bc7b72e1131907][feat(add): sfc->script, defineProps/Emit · gcclll/stb-vue-next@68d4940]]
+
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const {content, bindings} = compile(`
+<script setup lang="ts">
+import { defineProps } from 'vue'
+interface Test {}
+
+type Alias = number[]
+
+defineProps<{
+string: string
+number: number
+boolean: boolean
+object: object
+objectLiteral: { a: number }
+fn: (n: number) => void
+functionRef: Function
+objectRef: Object
+array: string[]
+arrayRef: Array<any>
+tuple: [number, number]
+set: Set<string>
+literal: 'foo'
+optional?: any
+recordRef: Record<string, null>
+interface: Test
+alias: Alias
+
+union: string | number
+literalUnion: 'foo' | 'bar'
+literalUnionMixed: 'foo' | 1 | boolean
+intersection: Test & {}
+}>()
+</script>`)
+
+#+end_src
+
+#+RESULTS:
+
+** 3⃣ 5160a6d ref -> ref.value
+
+[[https://github.com/gcclll/stb-vue-next/commit/5160a6db9b1ab4eb8e0aae9adc0c4bbec6e44fa8][feat(add): sfc->script, ref -> ref.value · gcclll/stb-vue-next@5160a6d]]
+
+将对 ref 变量的访问转成对 ~ref.value~ 的访问。
+
+#+begin_src js
+const { compileSFC, log, compile } = require(process.env.BLOG_JS +
+  "/vue/lib.js");
+
+const { content } = compile(
+  `
+<script setup>
+ref: a = 1
+console.log(a)
+function get() {
+  return a + 1
+}
+</script>
+`
+);
+console.log(content);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  enableRefSugar: true,
+  refBindings: [Object: null prototype] { a: 'setup-ref' }
+}
+<script setup>
+const a = _ref(1)
+console.log(a.value)
+function get() {
+  return a.value + 1
+}
+</script>
+undefined
+#+end_example
+
+** TODO 4⃣ a6f4dae extract define props/emits
+
+[[https://github.com/gcclll/stb-vue-next/commit/a6f4dae87de524a4d9da3d375a001c8d67bffdaa][feat(add): sfc->script, extract props/emits · gcclll/stb-vue-next@a6f4dae]]
+
+
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { content } = compile(`
+<script setup>
+defineProps({
+  foo: String
+})
+</script>
+`)
+console.log(content)
+#+end_src
+
+#+RESULTS:
+: ExpressionStatement --
+: undefined {} xx
+:
+: undefined
+
+** TODO 5⃣ 480acf0 checkInvalidScopeReference
+
+[[https://github.com/gcclll/stb-vue-next/commit/480acf01e9febdd804b39b580b572d19cc105a50][feat(add): sfc->script, check invalid scope references ·
+gcclll/stb-vue-next@480acf0]]
+
+检查 ~useOptions~ ，是否包含 ~<setup>~ 中已经存在的变量，即 ~useOptions~ 中不能
+有 setup 中声明的变量。
+** TODO 6⃣ 25662c6 删除非 script 内容
+
+[[https://github.com/gcclll/stb-vue-next/commit/25662c6ea1a85076bfcd8b13e130063cb248b58f][feat(add): sfc->script, delete non-script content · gcclll/stb-vue-next@25662c6]]
+** 7⃣ deed8c1 analyze binding metadata(bindingMetadata)
+
+[[https://github.com/gcclll/stb-vue-next/commit/deed8c1e21d2ccf63c6174032b66669975d4aa6f][feat(add): sfc->script, analyze binding metadata · gcclll/stb-vue-next@deed8c1]]
+
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+const res = compile(`
+<script setup>
+const props = defineProps({
+  foo: String
+})
+ref: a = 1
+const b = 2
+</script>
+`);
+console.log(res.bindings);
+#+end_src
+
+#+RESULTS:
+: {
+:   foo: 'props',
+:   props: 'setup-const',
+:   a: 'setup-ref',
+:   b: 'setup-const'
+: }
+: undefined
+** 8⃣ 9cd2fd5 inject useCssVars, css 变量处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/9cd2fd504a86e4b6a3484f00151a24ef7f719323][feat(add): sfc->script, inject useCssVars · gcclll/stb-vue-next@9cd2fd5]]
+
+*** <style> v-bind css 变量
+
+处理 style 中使用的 css 变量
+
+#+begin_src typescript
+// compileScript.ts
+// TODO 8. 注入 `useCssVars` 调用
+  if (cssVars.length) {
+    helperImports.add(CSS_VARS_HELPER)
+    helperImports.add('unref')
+    s.prependRight(
+      startOffset,
+      `\n${genCssVarsCode(
+        cssVars,
+        bindingMetadata,
+        scopeId,
+        !!options.isProd
+      )}\n`
+    )
+  }
+#+end_src
+
+测试：
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { content } = compile(`
+<script>const a = 1</script>
+<script setup>
+import { defineProps, ref } from 'vue'
+const color = 'red'
+const height = ref('10px')
+defineProps({
+  foo: Striing
+})
+</script>
+<style>
+div {
+  color: v-bind(color);
+  font-size: v-bind('font.size');
+  height: v-bind(height);
+  border: v-bind(foo)
+}
+</style>
+`);
+// 1. 本地变量绑定
+// 2. 本地 ref 绑定
+// 3. props 绑定
+console.log(content);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { ref } from 'vue'
+const a = 1
+_useCssVars(_ctx => ({
+  "xxxxxxxx-color": (color),
+  "xxxxxxxx-font_size": (_ctx.font.size),
+  "xxxxxxxx-height": (height.value),
+  "xxxxxxxx-foo": (__props.foo)
+}))
+
+const color = 'red'
+const height = ref('10px')
+undefined
+#+end_example
+
+*** css 变量重写：
+
+源码处理：
+#+begin_src typescript
+const needRewrite = cssVars.length || hasInheritAttrsFlag;
+let content = script.content;
+if (needRewrite) {
+  content = rewriteDefault(content, `__default__`, plugins);
+  if (cssVars.length) {
+    content += genNormalScriptCssVarsCode(
+      cssVars,
+      bindings,
+      scopeId,
+      !!options.isProd
+    );
+  }
+
+  if (hasInheritAttrsFlag) {
+    content += `__default__.inheritAttrs = false`;
+  }
+  content += `\nexport default __default__`;
+}
+#+end_src
+
+测试：
+#+begin_src js
+const { compileStyle, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { code } = compileStyle({
+  source: `.foo {
+    color: v-bind(color);
+    font-size: v-bind('font.size');
+  }`,
+  filename: "test.css",
+  id: "data-v-test",
+});
+
+console.log(code);
+#+end_src
+
+#+RESULTS:
+: .foo {
+:     color: var(--test-color);
+:     font-size: var(--test-font_size);
+: }
+: undefined
+
+*** isProd option 使用 hash 变量名
+
+生产模式，使用随机 hash 值作为名字：
+
+#+begin_src typescript
+// cssVars.ts
+function genVarName(id: string, raw: string, isProd: boolean): string {
+  if (isProd) {
+    return hash(id + raw)
+  } else {
+    return `${id}-${raw.replace(/([^\w-])/g, '_')}`
+  }
+}
+
+#+end_src
+
+测试：
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { content } = compile(
+  `<script>const a = 1</script>\n` +
+    `<style>div{
+          color: v-bind(color);
+          font-size: v-bind('font.size');
+        }</style>`,
+  { isProd: true }
+);
+console.log(content);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const a = 1
+const __default__ = {}
+import { useCssVars as _useCssVars } from 'vue'
+const __injectCSSVars__ = () => {
+_useCssVars(_ctx => ({
+  "4003f1a6": (_ctx.color),
+  "41b6490a": (_ctx.font.size)
+}))}
+const __setup__ = __default__.setup
+__default__.setup = __setup__
+  ? (props, ctx) => { __injectCSSVars__();return __setup__(props, ctx) }
+  : __injectCSSVars__
+
+export default __default__
+undefined
+#+end_example
+** TODO 9⃣ eef6fd5 setup() 参数签名
+
+[[https://github.com/gcclll/stb-vue-next/commit/eef6fd52f79f561d92a2914a3fdf74b998788640][feat(add): sfc->script, setup() 参数签名 · gcclll/stb-vue-next@eef6fd5]]
+
+** 🔟 9cedeab 生成 return 语句
+
+[[https://github.com/gcclll/stb-vue-next/commit/9cedeab1e337cb0e872d6ca19a83bf6d05856bd0][feat(add): sfc->script, process render function return · gcclll/stb-vue-next@9cedeab]]
+
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+const { content } = compile(`
+<script setup>
+import { x } from './x'
+let a = 1
+const b = 2
+function c() {}
+class d {}
+</script>`);
+console.log(content);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { x } from './x'
+
+let a = 1
+const b = 2
+function c() {}
+class d {}
+
+return { a, b, c, d, x }
+}
+undefined
+#+end_example
+
+将所有变量都返回出去了。
+
+#+begin_src js
+const { compile, log } = require(process.env.BLOG_JS + "/vue/lib.js");
+const { content } = compile(
+  `
+<script setup>
+import { ref } from 'vue'
+const count = ref(0)
+</script>
+<template>
+    <div>{{ count }}</div>
+    <div>static</div>
+</template>
+<style>
+div { color: v-bind(count) }
+</style>`,
+  {
+    inlineTemplate: true,
+  }
+);
+console.log(content);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { toDisplayString as _toDisplayString, createVNode as _createVNode, Fragment as _Fragment, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+const _hoisted_1 = /*#__PURE__*/_createVNode("div", null, "static", -1 /* HOISTED */)
+
+import { ref } from 'vue'
+
+_useCssVars(_ctx => ({
+  "xxxxxxxx-count": (count.value)
+}))
+
+const count = ref(0)
+
+return (_ctx, _cache) => {
+  return (_openBlock(), _createBlock(_Fragment, null, [
+    _createVNode("div", null, _toDisplayString(count.value), 1 /* TEXT */),
+    _hoisted_1
+  ], 64 /* STABLE_FRAGMENT */))
+}
+}
+undefined
+#+end_example
+
+如果要支持：
+#+begin_src js
+{
+   inlineTemplate: true,
+   templateOptions: {
+     ssr: true
+   }
+}
+#+end_src
+
+还需要实现 ~compiler-ssr~ 模块：
+#+begin_src typescript
+// TODO 10. 生成返回语句(return)
+let returned;
+if (options.inlineTemplate) {
+  if (sfc.template && !sfc.template.src) {
+    // TODO 需要 compiler-ssr 支持
+  } else {
+    returned = `() => {}`;
+  }
+} else {
+  // return bindings from setup
+  const allBindings: Record<string, any> = { ...setupBindings };
+  for (const key in userImports) {
+    if (!userImports[key].isType) {
+      allBindings[key] = true;
+    }
+  }
+  returned = `{ ${Object.keys(allBindings).join(", ")} }`;
+}
+s.appendRight(endOffset, `\nreturn ${returned}\n}\n\n`);
+#+end_src
+** TODO 1⃣1⃣ cfca9de finalize default export
+
+[[https://github.com/gcclll/stb-vue-next/commit/cfca9de9bbd44451eb5f7269c89d702220a032cd][feat(add): sfc->script, finalize default export · gcclll/stb-vue-next@cfca9de]]
+
+#+begin_src js
+
+const { compile, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+const { content, bindings } = compile(`
+<script setup>
+import { defineEmit } from 'vue'
+const myEmit = defineEmit(['foo', 'bar'])
+const props = defineProps({
+  foo: String
+})
+</script>
+  `)
+console.log(content)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+export default {
+  expose: [],
+  props: {
+  foo: String
+},
+  emits: ['foo', 'bar'],
+  setup(__props, { emit: myEmit }) {
+
+const props = __props
+
+
+
+return { myEmit, props }
+}
+
+}
+undefined
+#+end_example
+
+#+begin_quote
+emits 哪去了??? -> fix: [[https://github.com/gcclll/stb-vue-next/commit/d631810952131058b7ea474f66ac3d5fdeee3821][d631810]]
+#+end_quote
+
+FIX: [[https://github.com/gcclll/stb-vue-next/commit/d631810952131058b7ea474f66ac3d5fdeee3821][fix: sfc->script, expose indent · gcclll/stb-vue-next@d631810]]
+** TODO 1⃣2⃣ 5810296 finalize Vue helper imports
+
+[[https://github.com/gcclll/stb-vue-next/commit/5810296d43519e902085cacf8ab95cbbada1fe70][feat(add): sfc->script, finalize vue helper imports · gcclll/stb-vue-next@5810296]]
+
+* 61c3b7a transform src set
+
+[[https://github.com/gcclll/stb-vue-next/commit/61c3b7aed514f0d9474da22cb4ed7a1dd60f0492][feat(add): sfc->srcset transform · gcclll/stb-vue-next@61c3b7a]]
+
+转换 ~<img>~ 和 ~<source>~ 的 ~srcset~ 属性。
+
+img srcset 属性值： ~<img srcset="url 1x, url2 2x, ...">~ 浏览器会根据实际情况来
+选用 srcset 中合适的图片地址来显示。
+
+#+begin_quote
+有关 Reponsive Images 说明: [[https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Responsive_images][Responsive images - Learn web development | MDN]]。
+#+end_quote
+
+测试：
+#+begin_src js
+const { compileWithSrcset: compile, log, src } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { code } = compile(src)
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { createVNode as _createVNode, Fragment as _Fragment, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+import _imports_0 from './logo.png'
+
+
+const _hoisted_1 = _imports_0
+const _hoisted_2 = _imports_0 + '2x'
+const _hoisted_3 = _imports_0 + '2x'
+const _hoisted_4 = _imports_0 + ', ' + _imports_0 + '2x'
+const _hoisted_5 = _imports_0 + '2x, ' + _imports_0
+const _hoisted_6 = _imports_0 + '2x, ' + _imports_0 + '3x'
+const _hoisted_7 = _imports_0 + ', ' + _imports_0 + '2x, ' + _imports_0 + '3x'
+const _hoisted_8 = "/logo.png" + ', ' + _imports_0 + '2x'
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createBlock(_Fragment, null, [
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_1
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_2
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_3
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_4
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_5
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_6
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_7
+    }),
+    _createVNode("img", {
+      src: "/logo.png",
+      srcset: "/logo.png, /logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "https://example.com/logo.png",
+      srcset: "https://example.com/logo.png, https://example.com/logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "/logo.png",
+      srcset: _hoisted_8
+    }),
+    _createVNode("img", {
+      src: "data:image/png;base64,i",
+      srcset: "data:image/png;base64,i 1x, data:image/png;base64,i 2x"
+    })
+  ], 64 /* STABLE_FRAGMENT */))
+}
+undefined
+#+end_example
+
+
+指定 ~options.base: '/foo'~ 测试结果：
+#+begin_src js
+const { compileWithSrcset: compile, log, src } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { code } = compile(src, { base: '/foo' })
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { createVNode as _createVNode, Fragment as _Fragment, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createBlock(_Fragment, null, [
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png"
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png, /foo/logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png 2x, /foo/logo.png"
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png 2x, /foo/logo.png 3x"
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: "/foo/logo.png, /foo/logo.png 2x, /foo/logo.png 3x"
+    }),
+    _createVNode("img", {
+      src: "/logo.png",
+      srcset: "/logo.png, /logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "https://example.com/logo.png",
+      srcset: "https://example.com/logo.png, https://example.com/logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "/logo.png",
+      srcset: "/logo.png, /foo/logo.png 2x"
+    }),
+    _createVNode("img", {
+      src: "data:image/png;base64,i",
+      srcset: "data:image/png;base64,i 1x, data:image/png;base64,i 2x"
+    })
+  ], 64 /* STABLE_FRAGMENT */))
+}
+undefined
+#+end_example
+
+~options.includeAbsolute: true~ 选项:
+
+#+begin_src js
+const { compileWithSrcset: compile, log, src } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { code } = compile(src, { includeAbsolute: true })
+console.log(code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { createVNode as _createVNode, Fragment as _Fragment, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+import _imports_0 from './logo.png'
+import _imports_1 from '/logo.png'
+
+
+const _hoisted_1 = _imports_0
+const _hoisted_2 = _imports_0 + '2x'
+const _hoisted_3 = _imports_0 + '2x'
+const _hoisted_4 = _imports_0 + ', ' + _imports_0 + '2x'
+const _hoisted_5 = _imports_0 + '2x, ' + _imports_0
+const _hoisted_6 = _imports_0 + '2x, ' + _imports_0 + '3x'
+const _hoisted_7 = _imports_0 + ', ' + _imports_0 + '2x, ' + _imports_0 + '3x'
+const _hoisted_8 = _imports_1 + ', ' + _imports_1 + '2x'
+const _hoisted_9 = "https://example.com/logo.png" + ', ' + "https://example.com/logo.png" + '2x'
+const _hoisted_10 = _imports_1 + ', ' + _imports_0 + '2x'
+const _hoisted_11 = "data:image/png;base64,i" + '1x, ' + "data:image/png;base64,i" + '2x'
+
+export function render(_ctx, _cache) {
+  return (_openBlock(), _createBlock(_Fragment, null, [
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_1
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_2
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_3
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_4
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_5
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_6
+    }),
+    _createVNode("img", {
+      src: "./logo.png",
+      srcset: _hoisted_7
+    }),
+    _createVNode("img", {
+      src: "/logo.png",
+      srcset: _hoisted_8
+    }),
+    _createVNode("img", {
+      src: "https://example.com/logo.png",
+      srcset: _hoisted_9
+    }),
+    _createVNode("img", {
+      src: "/logo.png",
+      srcset: _hoisted_10
+    }),
+    _createVNode("img", {
+      src: "data:image/png;base64,i",
+      srcset: _hoisted_11
+    })
+  ], 64 /* STABLE_FRAGMENT */))
+}
+undefined
+#+end_example

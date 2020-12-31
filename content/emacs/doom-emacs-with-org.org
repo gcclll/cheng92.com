@@ -371,43 +371,44 @@ Uses `current-date-time-format' for the formatting the date/time."
 *** C-(Control)
 
 #+begin_src emacs-lisp
-(map! "C-e"     #'evil-end-of-line
-      "C-'"     #'imenu-list-smart-toggle
-      "C-d"     (cmd! (previous-line)
-                      (kill-line)
-                      (forward-line))
-      "C-s"     #'+default/search-buffer
+(map!
+ "C-'"     #'imenu-list-smart-toggle
+ "C-d"     (cmd! (previous-line)
+                 (kill-line)
+                 (forward-line))
+ "C-s"     #'+default/search-buffer
 
-      ;; smartparen
-      "C-("     #'sp-backward-slurp-sexp
-      "C-)"     #'sp-forward-slurp-sexp
+ ;; smartparen
+ "C-("     #'sp-backward-slurp-sexp
+ "C-)"     #'sp-forward-slurp-sexp
 
 
-      ;; multiple cursors
-      "C->"     #'mc/mark-next-like-this
-      "C-<"     #'mc/mark-previous-like-this
-      "C-c C-<" #'mc/mark-all-like-this
-      "C-S-c C-S-c" #'mc/edit-lines
-      "C-S-c 0" #'mc/insert-numbers
-      "C-S-c 1" #'mc/insert-letters
-      "C-S-c s" #'mc/mark-all-in-region
-      "C-S-c S" #'mc/mark-all-in-region-regexp
+ ;; multiple cursors
+ "C->"     #'mc/mark-next-like-this
+ "C-<"     #'mc/mark-previous-like-this
+ "C-c C-<" #'mc/mark-all-like-this
+ "C-S-c C-S-c" #'mc/edit-lines
+ "C-S-c 0" #'mc/insert-numbers
+ "C-S-c 1" #'mc/insert-letters
+ "C-S-c s" #'mc/mark-all-in-region
+ "C-S-c S" #'mc/mark-all-in-region-regexp
 
-      ;; prefix C-c
-      "C-c a c"     #'org-mac-chrome-insert-frontmost-url
-      "C-c d"       #'insert-current-date-time
-      "C-c t"       #'insert-current-time
-      "C-c o"       #'crux-open-with
-      "C-c r"       #'vr/replace
-      "C-c q"       #'vr/query-replace
-      "C-c u"       #'crux-view-url
-      "C-c y"       #'youdao-dictrionary-search-at-point+
+ ;; prefix C-c
+ "C-c a c"     #'org-mac-chrome-insert-frontmost-url
+ "C-c d"       #'insert-current-date-time
+ "C-c t"       #'insert-current-time
+ "C-c o"       #'crux-open-with
+ "C-c r"       #'vr/replace
+ "C-c q"       #'vr/query-replace
+ "C-c u"       #'crux-view-url
+ "C-c y"       #'youdao-dictrionary-search-at-point+
 
-      :niv      "C--"     #'cnfonts-decrease-fontsize
-      :niv      "C-+"     #'cnfonts-increase-fontsize
-      :niv      "C-="     #'er/expand-region
+ :niv      "C-e"     #'evil-end-of-line
+ :niv      "C--"     #'cnfonts-decrease-fontsize
+ :niv      "C-+"     #'cnfonts-increase-fontsize
+ :niv      "C-="     #'er/expand-region
 
-      )
+ )
 #+end_src
 
 *** M-(Alt/Option)
@@ -471,7 +472,7 @@ Uses `current-date-time-format' for the formatting the date/time."
 *** 模式开启
 #+begin_src emacs-lisp
 ;; 全局开启一些模式
-(abbrev-mode 1)
+(setq-default abbrev-mode t)
 (display-time-mode 1)                           ; 在 mode-line 中显示时间
 (unless (equal "Battery status not available"
                (battery))
@@ -486,6 +487,19 @@ Uses `current-date-time-format' for the formatting the date/time."
                                             ("8imark" "import { marker } from '@commons/sunlight/marker'")
                                             ("8ilib" "import { isArray } from '@commons/sunlight/lib'")
                                             ("81com" "@import '~@commons/styles/common';")
+                                            ;; for blog
+                                            ("82sfc" "
+const { compileScript, parse } =
+  require(process.env.VNEXT_PKG_SFC + '/dist/compiler-sfc.cjs.js')
+const { log } = require(process.env.BLOG_JS + '/utils.js')
+const compile = (src, options) => {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, { ...options, id: 'xxxx' })
+}
+")
+                                            ("82lib" "
+// 源文件：/js/vue/lib.js
+const { compileSFC, log } = require(process.env.BLOG_JS + '/vue/lib.js')")
                                             ))
 #+end_src
 *** add-hook
@@ -704,6 +718,14 @@ Uses `current-date-time-format' for the formatting the date/time."
 
 (use-package! visual-regexp-steriods
   :commands (vr/select-replace vr/select-query-replace))
+#+end_src
+*** smartparen
+
+#+begin_src emacs-lisp
+(sp-local-pair
+ '(org-mode)
+ "<<" ">>"
+ :actions '(insert))
 #+end_src
 
 *** treemacs
@@ -944,7 +966,7 @@ This file shouldn't be byte compiled.
 (package! yasnippet-snippets)
 
 ;; web dev
-(package! ob-typescript)
+;; (package! ob-typescript)
 (package! prettier-js)
-(package! import-js)
+(package! import-js :disable t)
 #+end_src
