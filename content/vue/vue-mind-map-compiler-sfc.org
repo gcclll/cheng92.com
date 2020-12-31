@@ -859,6 +859,7 @@ PS. 对于 CSS 的解析需要 postcss 以及各种预处理来处理，这里�
 
 [[/img/vue3/compiler-sfc/vue-compiler-sfc-compile-script.svg]]
 
+
 ** init compileScript function
 
 初始化 ~compileScript()~ 函数以及参数选项类型 ~SFCScriptCompileOptions~
@@ -1323,26 +1324,6 @@ log(compile(`
     </script>
 `).bindings)
 #+end_src
-
-#+RESULTS:
-#+begin_example
->>> setup return
-{ foo: 'setup-maybe-ref', bar: 'setup-maybe-ref' }
->>> async setup return
-{ foo: 'setup-maybe-ref', bar: 'setup-maybe-ref' }
->>> computeds
-{ foo: 'options', bar: 'options' }
->>> 混合 bindings
-{
-  foo: 'options',
-  bar: 'props',
-  baz: 'setup-maybe-ref',
-  qux: 'setup-maybe-ref',
-  quux: 'options',
-  quuz: 'options'
-}
-undefined
-#+end_example
 
 ** 1⃣ eb650ca 解析 <script>
 
@@ -2396,6 +2377,41 @@ undefined
 
 [[https://github.com/gcclll/stb-vue-next/commit/eef6fd52f79f561d92a2914a3fdf74b998788640][feat(add): sfc->script, setup() 参数签名 · gcclll/stb-vue-next@eef6fd5]]
 
+#+begin_src js
+
+const { compile, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { content } = compile(`
+<script setup lang="ts">
+import { defineProps, defineEmit } from 'vue'
+const props = defineProps({ foo: String })
+const emit = defineEmit(['a', 'b'])
+</script>`)
+console.log(content)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { defineComponent as _defineComponent } from 'vue'
+
+
+export default _defineComponent({
+  expose: [],
+  props: { foo: String },
+  emits: ['a', 'b'],
+  setup(__props, { emit }) {
+
+const props = __props
+
+
+
+return { props, emit }
+}
+
+})
+undefined
+#+end_example
+
 ** 🔟 9cedeab 生成 return 语句
 
 [[https://github.com/gcclll/stb-vue-next/commit/9cedeab1e337cb0e872d6ca19a83bf6d05856bd0][feat(add): sfc->script, process render function return · gcclll/stb-vue-next@9cedeab]]
@@ -2785,3 +2801,17 @@ export function render(_ctx, _cache) {
 }
 undefined
 #+end_example
+* 总结
+
+SFC 模块的作用：
+
+1. 解析 Render 函数，替换 ref 变量
+2. 解析 <script> 标签
+3. 解析 <script setup>
+4. ref: 解析，将 ref: 类型访问转成对 ref.value 的访问
+5. 将 ref: { ... } 解构后的变量进行 ref(...) 化
+6. defineProps({ foo: String })  解析，合并到 export default { props: {...} }
+7. defineEmit({ ... }) 解析，合并到 export default { emits: {...} }
+8. cssVar v-bind 变量使用，转换，包含 ref 变量引用转换
+9. asset url 转换(相对路径，绝对路径， ~~@path/...~, ~@path/..~ 转换)
+10. ~<img>, <source>~ 的 ~srcset~ URL转换
