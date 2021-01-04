@@ -29,9 +29,9 @@ const compileSFC = (src, options = {}, fn) => {
 function compileSFCScript(src, options) {
   const { descriptor } = parse(src);
   return compileScript(descriptor, {
-    ...options,
     id: mockId,
     enableRefSugar: true,
+    ...options,
   });
 }
 
@@ -71,4 +71,5 @@ module.exports = {
   compileStyle,
   compileWithSrcset,
   src,
+  compileSFCScript,
 };

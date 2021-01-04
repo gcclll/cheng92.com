@@ -27,9 +27,13 @@
 1. [2020-12-19 13:58:31] 创建
 #+end_quote
 
+[[/img/vue3/compiler-sfc/vue-compiler-sfc-compile-script.svg]]
+
 * 重点、特性、问题
 
 1. [[#parse-func][🔗]] ~<style>~ 标签中可通过 ~v-bind()~ 引用CSS 模块化后的变量
+2. ~<script>~ 和 ~<script setup>~ 中的 export default 会合并，且是 setup 优先级
+   更高，因此尽量不要存在重复属性。
 * f21c84c init 初始化工作
 
 [[https://github.com/gcclll/stb-vue-next/commit/f21c84ca8a8488347aba243262be333f26ab2cef][feat(init): compiler-sfc · gcclll/stb-vue-next@f21c84c]]
@@ -2815,3 +2819,277 @@ SFC 模块的作用：
 8. cssVar v-bind 变量使用，转换，包含 ref 变量引用转换
 9. asset url 转换(相对路径，绝对路径， ~~@path/...~, ~@path/..~ 转换)
 10. ~<img>, <source>~ 的 ~srcset~ URL转换
+
+
+综合测试：
+
+*** script[setup] 测试
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, compileWithSrcset, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { content, bindings, attrs } = compileSFCScript(`
+<template>
+  <div>
+    <img src="./logo.png" srcset="./logo.png, ./logo.png 2x, ./logo.png 3x"/>
+  </div>
+  <div>{{ count }}</div>
+  <div>static</div>
+</template>
+<script>
+  const a = 1
+export default {
+  props: ['foo', 'bar'],
+  data() {
+    return { foo: null, bar }
+  },
+  setup() {
+    return { foo: 1, a }
+  },
+  computed: {
+    fcc() {},
+    bcc: {
+      get() {},
+      set() {}
+    }
+  },
+  inject: ['fjj', 'bjj'], // { fjj: {}, bjj: {} },
+  methods: {
+    quux() {}
+  },
+}
+</script>
+<script setup>
+import { defineProps, ref } from 'vue'
+let a, b, c, d
+ref: aa = 1 + (await foa)
+ref: height = 100
+// 对象解构要用括号包裹起来
+ref: ({ foo, bar: bar, baz: { bax } } = useFoo());
+ref: [ar, br] = useFoo()
+ref: count = 0
+const color = 'red'
+const size = ref('10px')
+defineProps({
+  foo: String
+})
+defineEmit(['fox', 'foy'])
+
+// ref 在函数中被访问
+function test() {
+  const { a } = aa
+}
+</script>
+<style>
+div {
+  color: v-bind(color);
+  font-size: v-bind('font.size');
+  border: v-bind(foo);
+  height: v-bind(height);
+}
+</style>
+`)
+log(`>>> content 输出结果：`)
+log(content)
+log(`>>> bindings 输出结果：`)
+log(bindings)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> content 输出结果：
+import { ref as _ref, useCssVars as _useCssVars, unref as _unref } from 'vue'
+import { ref } from 'vue'
+
+  const a = 1
+const __default__ = {
+  props: ['foo', 'bar'],
+  data() {
+    return { foo: null, bar }
+  },
+  setup() {
+    return { foo: 1, a }
+  },
+  computed: {
+    fcc() {},
+    bcc: {
+      get() {},
+      set() {}
+    }
+  },
+  inject: ['fjj', 'bjj'], // { fjj: {}, bjj: {} },
+  methods: {
+    quux() {}
+  },
+}
+
+async function setup(__props) {
+
+_useCssVars(_ctx => ({
+  "xxxxxxxx-color": (color),
+  "xxxxxxxx-font_size": (_ctx.font.size),
+  "xxxxxxxx-foo": (foo.value),
+  "xxxxxxxx-height": (height.value)
+}))
+
+let a, b, c, d
+const aa = _ref(1 + (await foa))
+const height = _ref(100)
+// 对象解构要用括号包裹起来
+const { foo: __foo, bar: __bar, baz: { bax: __bax } } = useFoo();
+const foo = _ref(__foo);
+const bar = _ref(__bar);
+const bax = _ref(__bax);
+const [__ar, __br] = useFoo()
+const ar = _ref(__ar);
+const br = _ref(__br);
+const count = _ref(0)
+const color = 'red'
+const size = ref('10px')
+
+
+
+// ref 在函数中被访问
+function test() {
+  const { a } = aa.value
+}
+
+return { a, b, c, d, aa, height, foo, bar, bax, ar, br, count, color, size, test, ref }
+}
+
+
+export default /*#__PURE__*/ Object.assign(__default__, {
+  expose: [],
+  props: {
+  foo: String
+},
+  emits: ['fox', 'foy'],
+  setup
+})
+>>> bindings 输出结果：
+{
+  foo: 'setup-ref',
+  bar: 'setup-ref',
+  a: 'setup-let',
+  fcc: 'options',
+  bcc: 'options',
+  fjj: 'options',
+  bjj: 'options',
+  quux: 'options',
+  ref: 'setup-const',
+  b: 'setup-let',
+  c: 'setup-let',
+  d: 'setup-let',
+  aa: 'setup-ref',
+  height: 'setup-ref',
+  bax: 'setup-ref',
+  ar: 'setup-ref',
+  br: 'setup-ref',
+  count: 'setup-ref',
+  color: 'setup-const',
+  size: 'setup-ref',
+  test: 'setup-const'
+}
+undefined
+#+end_example
+
+*结果简析：*
+1. ~<script setup>~ 标签内的代码都会被解析到 ~setup() {...}~ 函数中
+
+   即它和 ~<script>~ 中代码是不冲突的，比如 ~<script>~ 里面的变量 ~a~ 和
+   ~<script setup>~ 中的同名变量 ~a~ 互不影响。
+
+2. 在 ~<style>~ 中使用的 v-bind 指令会使用 ~_useCssVars~ 进行注册替换成实际的样
+   式值
+
+3. ~defineProps~ 中定义的变量对应 export default -> props
+4. ~defineEmits~ 中定义的变量对应 export default -> emits
+
+5. ~ref: height = 100~ 中的 ~ref:~ 语法最终会转成对应的 ~_ref(100)~ reactive 变
+   量(语法糖，vue>compile-sfc解析)
+
+   并且支持多种用法，解构/多个声明组合/解构默认值，对于解构后的变量进行
+   ~_ref(...)~ 然后 setup return 中返回。
+
+   ref: 语句中如果有解构(对象解构)操作，那么后面的解构表达式必须用括号(~({ a } = useFoo())~)包起来。
+
+   /Imp. ref: 解构中的变量名不能以 ~$~ 开头。/
+
+6. 如果 ~script~ 和 ~script setup~ 中的 export default 中同时包含同名属性，会被
+   ~script setup~ 中的替换掉。
+
+   因为生成的代码中是将 script setup 往 script 上合并。
+
+   #+begin_quote
+    PS. <script> 和 <script setup> 中 export default 的内容尽量不要重复。
+   #+end_quote
+
+
+
+*** typescript 语言
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript: compile, compileStyle, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { scriptAst, content } = compile(`
+<script lang="ts">
+import { Options, Vue } from 'vue-class-component';
+@Options({
+    components: {
+    HelloWorld,
+    },
+    props: ['foo', 'bar']
+})
+export default class Home extends Vue {}
+</script>
+`)
+
+console.log(content)
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+import { Options, Vue } from 'vue-class-component';
+@Options({
+    components: {
+    HelloWorld,
+    },
+    props: ['foo', 'bar']
+})
+export default class Home extends Vue {}
+
+undefined
+#+end_example
+
+*** style 样式测试
+*** template 模板测试
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript: compile, compileStyle, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { content } = compile(
+`<script setup>
+import { ref } from 'vue'
+const count = ref(0)
+const maybe = foo()
+let lett = 1
+</script>
+<template>
+    <input v-model="count">
+    <input v-model="maybe">
+    <input v-model="lett">
+</template>
+`,
+{ inlineTemplate: true, enableRefSugar: false }
+)
+console.log(content)
+#+end_src
+
+#+RESULTS:

@@ -24,3 +24,8 @@
   font-weight: 700;
   font-size: 1.25em;
 }
+
+.post .post-content h5 {
+  font-weight: 700;
+  font-size: 1em;
+}
