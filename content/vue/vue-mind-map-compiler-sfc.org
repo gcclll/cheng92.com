@@ -28,7 +28,7 @@
 2. [2021-01-04 19:47:10] 完成
 3. TODO defineProps 和 defineEmit 原理和用途
 4. TODO inlineTemplate with ssr: true options
-5. TODO ...
+5. TODO more mind-maps
 #+end_quote
 
 [[/img/vue3/compiler-sfc/vue-compiler-sfc-compile-script.svg]]
