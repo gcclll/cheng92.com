@@ -50,6 +50,16 @@ function compileWithSrcset(template, options) {
   return generate(ast, { mode: "module" });
 }
 
+function compileScoped(source, options) {
+  return compileStyle({
+    source,
+    filename: "test.css",
+    id: "data-v-test",
+    scoped: true,
+    ...options,
+  });
+}
+
 const src = `
 <img src="./logo.png" srcset="./logo.png"/>
 <img src="./logo.png" srcset="./logo.png 2x"/>
@@ -72,4 +82,5 @@ module.exports = {
   compileWithSrcset,
   src,
   compileSFCScript,
+  compileScoped,
 };

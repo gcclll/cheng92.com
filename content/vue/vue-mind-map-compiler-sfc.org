@@ -3066,30 +3066,3 @@ export default class Home extends Vue {}
 undefined
 #+end_example
 
-*** style 样式测试
-*** template 模板测试
-
-#+begin_src js
-
-// 源文件：/js/vue/lib.js
-const { compileSFCScript: compile, compileStyle, log } = require(process.env.BLOG_JS + '/vue/lib.js')
-
-const { content } = compile(
-`<script setup>
-import { ref } from 'vue'
-const count = ref(0)
-const maybe = foo()
-let lett = 1
-</script>
-<template>
-    <input v-model="count">
-    <input v-model="maybe">
-    <input v-model="lett">
-</template>
-`,
-{ inlineTemplate: true, enableRefSugar: false }
-)
-console.log(content)
-#+end_src
-
-#+RESULTS:
