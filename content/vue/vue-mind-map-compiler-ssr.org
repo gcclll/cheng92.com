@@ -34,6 +34,9 @@
 
 [[/img/vue3/compiler-ssr/vue-compiler-ssr.svg]]
 
+* Tip
+1. ssr 不处理 v-on/v-once/v-cloak 三个指令
+2. v-show 转成 ~exp ? 'null' : {display: 'none'}~ 合并到 ~style~
 * 05db578 compiler-ssr init
 
 [[https://github.com/gcclll/stb-vue-next/commit/05db578e37b1bb8651d18fb7b76abb2a064235dc][feat(init): compiler-ssr -> compile function · gcclll/stb-vue-next@05db578 · GitHub]]
@@ -1139,3 +1142,565 @@ TODO 对于 v-bind + v-model 的结合使用，需要实现 ~ssrTransformModel~ 
 ** TODO e58d062 dynamic key attr
 
 [[https://github.com/gcclll/stb-vue-next/commit/e58d06299add184eed058ca9d1a3c1fe21279d1d][feat(add): ssr->dynamic key attr · gcclll/stb-vue-next@e58d062 · GitHub]]
+* 893681b v-model transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/893681b464e811e5c9f039edd147603729fadb15][feat(add): ssr->v-model, text type · gcclll/stb-vue-next@893681b · GitHub]]
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString:ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> <input> (text types，默认)', ssr(`<input v-model="bar">`).code])
+#+end_src
+
+脑图：
+
+[[http://qiniu.ii6g.com/img/20210106174207.png]]
+
+** 7502230 input type: radio
+
+[[https://github.com/gcclll/stb-vue-next/commit/75022301780e1c420421a95042bb7a19cf81c77f][feat(add): ssr->v-model, type radio · gcclll/stb-vue-next@7502230 · GitHub]]
+
+v-model 根据 model表达式的值和 ~value~ 属性的值，判断最终转成 ~checked~ 属性
+(~<input type="radio" checked>~)。
+
+#+begin_src typescript
+if (type.value) {
+  // 静态类型
+  switch (type.value.content) {
+    case "radio":
+      res.props = [
+        createObjectProperty(
+          `checked`,
+          createCallExpression(context.helper(SSR_LOOSE_EQUAL), [model, value])
+        ),
+      ];
+      break;
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString:ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(ssr(`<input type="radio" value="foo" v-model="bar">`).code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { ssrLooseEqual: _ssrLooseEqual, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><input type="radio" value="foo"${
+    (_ssrLooseEqual(_ctx.bar, "foo")) ? " checked" : ""
+  }></div>`)
+}
+undefined
+#+end_example
+** input type: checkbox
+
+类型为 checkbox 的时候要检查 ~true-value/false-value~ 属性。
+
+*** 880eaf3 with true/false-value
+
+[[https://github.com/gcclll/stb-vue-next/commit/880eaf33ffb767ab11885b536486c45e74b4c744][feat(add): ssr->v-model, type checkbox with true/false-value · gcclll/stb-vue-next@880eaf3 · GitHub]]
+
+#+begin_src typescript
+switch (type.value.content) {
+  // ...
+  case "checkbox":
+    const trueValueBinding = findProp(node, "true-value");
+    if (trueValueBinding) {
+      const trueValue =
+        trueValueBinding.type === NodeTypes.ATTRIBUTE
+          ? JSON.stringify(trueValueBinding.value!.content)
+          : trueValueBinding.exp!;
+
+      res.props = [
+        createObjectProperty(
+          `checked`,
+          createCallExpression(context.helper(SSR_LOOSE_EQUAL), [
+            model,
+            trueValue,
+          ])
+        ),
+      ];
+    } else {
+    }
+    break;
+  // ...
+}
+#+end_src
+
+如果存在 ~true-value/false-value~ 的时候，检测条件就是这两个值的比较结果，只有这
+两个值相等的情况下才会 ~checked~ 。
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString:ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> v-bind true-value/false-value\n', ssr(`<input type="checkbox" :true-value="foo" :false-value="bar" v-model="baz">`).code])
+log(['>>> static true-value/false-value\n', ssr(`<input type="checkbox" true-value="foo" false-value="bar" v-model="baz">`).code])
+log(['>>> true-value/false-value 只有其中一个\n', ssr(`<input type="checkbox" false-value="bar" v-model="baz">`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> v-bind true-value/false-value
+ const { ssrLooseEqual: _ssrLooseEqual, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><input type="checkbox"${
+    (_ssrLooseEqual(_ctx.baz, _ctx.foo)) ? " checked" : ""
+  }></div>`)
+}
+>>> static true-value/false-value
+ const { ssrLooseEqual: _ssrLooseEqual, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><input type="checkbox" false-value="bar"${
+    (_ssrLooseEqual(_ctx.baz, "foo")) ? " checked" : ""
+  }></div>`)
+}
+>>> true-value/false-value 只有其中一个
+ const { ssrLooseContain: _ssrLooseContain, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><input type="checkbox" false-value="bar"${
+    ((Array.isArray(_ctx.baz))
+      ? _ssrLooseContain(_ctx.baz, null)
+      : _ctx.baz) ? " checked" : ""
+  }></div>`)
+}
+undefined
+#+end_example
+
+#+begin_quote
+❓ 为什么 ~false-value~ 还在？
+#+end_quote
+
+从结果看，貌似 ~false-value~ 并没有被用到，用到的只有 ~true-value~ 去和
+~v-model~ 表达式值进行比较。
+
+*** 59b1577 without true/false-value
+
+[[https://github.com/gcclll/stb-vue-next/commit/59b157792c9cf02ba55a8614b44da2ed72a5c363][feat(add): ssr->v-model, type checkbox without true/false-value · gcclll/stb-vue-next@59b1577 · GitHub]]
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log(ssr(`<input type="checkbox" value="foo" v-model="bar">`).code);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { ssrLooseContain: _ssrLooseContain, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><input type="checkbox" value="foo"${
+    ((Array.isArray(_ctx.bar))
+      ? _ssrLooseContain(_ctx.bar, "foo")
+      : _ctx.bar) ? " checked" : ""
+  }></div>`)
+}
+undefined
+#+end_example
+
+~_ssrLooseContain(_ctx.bar, "foo")~ 简单的数组找值操作：
+
+#+begin_src typescript
+export function ssrLooseContain(arr: unknown[], value: unknown): boolean {
+  return looseIndexOf(arr, value) > -1;
+}
+#+end_src
+
+相当于，如果 ~v-model="bar"~ 的值 bar 是个数组，只需要其中有一个满足条件就会
+~checked~ ，这也是经常使用到的方式，将一组数据保存到一个数组里面，然后对应一组
+~checkboxs~ 用来控制这些组件的选中未选中状态。
+
+#+begin_src html
+<template>
+<input type="checkbox" value="1" v-model="checkedBoxes">
+<input type="checkbox" value="2" v-model="checkedBoxes">
+<input type="checkbox" value="3" v-model="checkedBoxes">
+</template>
+<script>
+export default {
+  data() {
+    return { checkedBoxes: [1, 2, 3] }
+  }
+}
+<script>
+#+end_src
+
+就如上面的例子，只要 ~checkedBoxes~ 里面的值发生改变，就会触发 ~checkbox~ 状态更
+新，且只有在数组内的值与当前 ~checkbox~ 的 value 属性值相等就会被选中，反之不会
+被选中。
+** a0d4a40 input type: file 时不能用 v-model
+
+[[https://github.com/gcclll/stb-vue-next/commit/a0d4a40ab11adb4ff1c1649f8c05b2af501c3525][feat(add): ssr->v-model, type file with v-model error · gcclll/stb-vue-next@a0d4a40 · GitHub]]
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+try {
+  ssr('<input type="file" v-model="foo">');
+} catch (e) {
+  console.log(e.message);
+}
+#+end_src
+
+#+RESULTS:
+: v-model cannot be used on file inputs since they are read-only. Use a v-on:change listener instead.
+: undefined
+** d7309be v-model on textarea
+
+[[https://github.com/gcclll/stb-vue-next/commit/d7309be668636b5619968ddf7d7b2045bf960f96][feat(add): ssr->v-model on textarea · gcclll/stb-vue-next@d7309be · GitHub]]
+
+当做插值处理，替换成孩子节点。
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString:ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(ssr(`<textarea v-model="foo">bar</textarea>`).code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { ssrRenderAttrs: _ssrRenderAttrs, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><textarea>${
+    _ssrInterpolate(_ctx.foo)
+  }</textarea></div>`)
+}
+undefined
+#+end_example
+* 169027e v-show transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/169027eb3a759cd2bdf12d42430711c0471a1a90][feat(add): ssr->v-show · gcclll/stb-vue-next@169027e · GitHub]]
+
+v-show 指令的处理相对简单，根据指令表达式值，创建一个三元条件表达式，利用
+~display:none~ 属性隐藏元素(非删除操作)。
+
+#+begin_src typescript
+export const ssrTransformShow: DirectiveTransform = (dir, node, context) => {
+  if (!dir.exp) {
+    context.onError(
+      createDOMCompilerError(DOMErrorCodes.X_V_SHOW_NO_EXPRESSION)
+    );
+  }
+
+  return {
+    props: [
+      createObjectProperty(
+        `style`,
+        // -> dir.exp ? `null` : `display:none`
+        createConditionalExpression(
+          dir.exp!,
+          createSimpleExpression(`null`, false),
+          createObjectExpression([
+            createObjectProperty(
+              `display`,
+              createSimpleExpression(`none`, true)
+            ),
+          ]),
+          false /* no newline */
+        )
+      ),
+    ],
+  };
+};
+#+end_src
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString:ssrs, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic 作为根节点\n', ssr(`<div v-show="foo"/>`).code])
+log(['\n>>> basic 非根节点\n', ssrs(`<div v-show="foo"/>`).code])
+log(['\n>>> basic 非根节点，包含静态和动态 style\n', ssrs(`<div v-show="foo" style="color:red" :style="bar"/>`).code])
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic 作为根节点
+ const { mergeProps: _mergeProps } = require("vue")
+const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_mergeProps({
+    style: (_ctx.foo) ? null : { display: "none" }
+  }, _attrs))}></div>`)
+}
+
+>>> basic 非根节点
+ const { ssrRenderStyle: _ssrRenderStyle, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div style="${
+    _ssrRenderStyle((_ctx.foo) ? null : { display: "none" })
+  }"></div></div>`)
+}
+
+>>> basic 非根节点，包含静态和动态 style
+ const { ssrRenderStyle: _ssrRenderStyle, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div style="${
+    _ssrRenderStyle([
+      (_ctx.foo) ? null : { display: "none" },
+      {"color":"red"},
+      _ctx.bar
+    ])
+  }"></div></div>`)
+}
+undefined
+#+end_example
+* 5bf3644 v-if transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/5bf364450c08cc343b308d1a755ead6aca82644c][feat(add): ssr->v-if · gcclll/stb-vue-next@5bf3644 · GitHub]]
+
+ssrTransformIf 也是直接使用了 compiler-core: transformIf 进行处理。
+
+[[https://github.com/gcclll/stb-vue-next/commit/094d5c07717b9593527f4fa442b0e216903cce35][fix: ssr->template v-if no ] · gcclll/stb-vue-next@094d5c0 · GitHub]]
+
+#+begin_src typescript
+// Plugin for the first transform pass, which simply constructs the AST node
+// 先经过 core: transformIf 处理一道
+export const ssrTransformIf = createStructuralDirectiveTransform(
+  /^(if|else|else-if)$/,
+  processIf
+)
+#+end_src
+
+剩下的 ssr 的部分，需要用到 ~ssrProcessIf()~ 进行单独处理。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { code, ast } = ssr('<div v-if="foo"></div>')
+log([ast.children[0].branches[0], '\n', code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  type: 10,
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 23, line: 1, offset: 22 },
+    source: '<div v-if="foo"></div>'
+  },
+  condition: {
+    type: 4,
+    content: '_ctx.foo',
+    isStatic: false,
+    constType: 0,
+    loc: { start: [Object], end: [Object], source: 'foo' }
+  },
+  children: [
+    {
+      type: 1,
+      ns: 0,
+      tag: 'div',
+      tagType: 0,
+      props: [Array],
+      isSelfClosing: false,
+      children: [],
+      loc: [Object],
+      codegenNode: undefined,
+      ssrCodegenNode: [Object]
+    }
+  ],
+  userKey: undefined
+}
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+
+}
+undefined
+#+end_example
+
+啥也没有？
+
+但是从 ast.children[0].branches[0] 结果看确实被 core 正确处理了
+
+所以还是需要实现 ~ssrProcessIf()~ 并且在 ~ssrCodegenTransform->processChildren~
+增加 ~NodeTypes.IF~ 分支处理。
+
+加上 ~ssrProcessIf~ 再测试一遍(测试均来自官方测试用例 /ssrVIf.spec.ts/ 其他同)：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr('<div v-if="foo"></div>').code])
+log(['\n>>> with nested content\n', ssr(`<div v-if="foo">hello<span>ok</span></div>`).code])
+log(['>>> v-if + v-else\n', ssr(`<div v-if="foo"/><span v-else/>`).code])
+log(['>>> v-if + v-else-if\n', ssr(`<div v-if="foo"/><span v-else-if="bar"/>`).code])
+log(['>>> v-if + v-else-if + v-else\n', ssr(`<div v-if="foo"/><span v-else-if="bar"/><span v-else/>`).code])
+log(['>>> <template v-if>(text)', ssr(`<template v-if="foo">hello</template>`).code])
+log(['>>> <template v-if>(single element)', ssr(`<template v-if="foo"><div>hi</div></template>`).code])
+log(['>>> <template v-if>(multiple element)', ssr(`<template v-if="foo"><div>hi</div><div>hi</div><div>ho</div></template>`).code])
+// v-for transform 到此还没实现，所以这个会报错
+// log(['>>> <template v-if> (with v-for inside)', ssr(`<template v-if="foo"><div v-for="i in list"/></template>`).code])
+log(['>>> <template v-if> + normal v-else', ssr(`<template v-if="foo"><div>hi</div></template><div v-else/>`).code])
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}></div>`)
+  } else {
+    _push(`<!---->`)
+  }
+}
+
+>>> with nested content
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}>hello<span>ok</span></div>`)
+  } else {
+    _push(`<!---->`)
+  }
+}
+>>> v-if + v-else
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}></div>`)
+  } else {
+    _push(`<span${_ssrRenderAttrs(_attrs)}></span>`)
+  }
+}
+>>> v-if + v-else-if
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}></div>`)
+  } else if (_ctx.bar) {
+    _push(`<span${_ssrRenderAttrs(_attrs)}></span>`)
+  } else {
+    _push(`<!---->`)
+  }
+}
+>>> v-if + v-else-if + v-else
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}></div>`)
+  } else if (_ctx.bar) {
+    _push(`<span${_ssrRenderAttrs(_attrs)}></span>`)
+  } else {
+    _push(`<span${_ssrRenderAttrs(_attrs)}></span>`)
+  }
+}
+>>> <template v-if>(text)
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<!--[-->hello<!--]-->`)
+  } else {
+    _push(`<!---->`)
+  }
+}
+>>> <template v-if>(single element) const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}>hi</div>`)
+  } else {
+    _push(`<!---->`)
+  }
+}
+>>> <template v-if>(multiple element)
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<!--[--><div>hi</div><div>hi</div><div>ho</div><!--]-->`)
+  } else {
+    _push(`<!---->`)
+  }
+}
+>>> <template v-if> + normal v-else const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  if (_ctx.foo) {
+    _push(`<div${_ssrRenderAttrs(_attrs)}>hi</div>`)
+  } else {
+    _push(`<div${_ssrRenderAttrs(_attrs)}></div>`)
+  }
+}
+undefined
+#+end_example
+
+为什么是 ~if(){}else{}~ ???
+
+这个要追溯到 compiler-core: codegen.ts 里面对 ssr 环境下的 ~if~ 指令的处理代码：
+#+begin_src typescript
+switch (node.type) {
+  case NodeTypes.JS_IF_STATEMENT:
+    !__BROWSER__ && genIfStatement(node, context);
+    break;
+}
+#+end_src
+
+这个 ~genIfStatement~ 就是用来生成 ~if...else~ 代码的。
+
+脑图：
+[[http://qiniu.ii6g.com/img/20210106224304.png]]
+
+所以 ssr v-if 处理大致流程简单分两步：
+
+1. core: transformIf 得到 node.branches
+2. ssrProcessIf 处理，生成 if -> else if -> else
