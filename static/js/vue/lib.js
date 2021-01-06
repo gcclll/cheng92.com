@@ -11,9 +11,28 @@ const {
   transformBind,
   normalizeOptions,
 } = require(process.env.VNEXT_PKG_SFC + "/dist/compiler-sfc.cjs.js");
+const { compile: compileSSR } = require(process.env.VNEXT_PKG_SFC +
+  "/../compiler-ssr/dist/compiler-ssr.cjs.js");
+
 const { log } = require(process.env.BLOG_JS + "/utils.js");
 
 const mockId = "xxxxxxxx";
+
+function getCompiledSSRString(src) {
+  // Wrap src template in a root div so that it doesn't get injected
+  // fallthrough attr. This results in less noise in generated snapshots
+  // but also means this util can only be used for non-root cases.
+  const { code, ...more } = compileSSR(`<div>${src}</div>`);
+  const match = code.match(
+    /_push\(\`<div\${\s*_ssrRenderAttrs\(_attrs\)\s*}>([^]*)<\/div>\`\)/
+  );
+
+  if (!match) {
+    throw new Error(`Unexpected compile result:\n${code}`);
+  }
+
+  return { code, matched: match ? `\`${match[1]}\`` : null, ...more };
+}
 
 const compileSFC = (src, options = {}, fn) => {
   const { descriptor } = parse(src);
@@ -83,4 +102,6 @@ module.exports = {
   src,
   compileSFCScript,
   compileScoped,
+  compileSSR,
+  getCompiledSSRString,
 };

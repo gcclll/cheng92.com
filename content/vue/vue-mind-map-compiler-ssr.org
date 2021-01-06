@@ -1,0 +1,1141 @@
+#+TITLE: Vue3 源码头脑风暴之 6 ☞compiler-ssr
+#+DATE: <2021-01-04 20:11:01>
+#+TAGS[]: vue, vue3, compiler-ssr
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink
+
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+*声明* ：vue-next compiler-ssr 服务端渲染模块，相关的所有测试代码均在 ~/js/vue/~ 目录下面。
+
+*更新日志&Todos* ：
+1. [2021-01-04 20:11:43] 创建
+#+end_quote
+
+模块初始化：[[https://github.com/gcclll/stb-vue-next/commit/dff9d31aeaf88e00f4d9233b05e8ddadc8d6ac5f][feat(init): compiler-ssr · gcclll/stb-vue-next@dff9d31 · GitHub]]
+
+脑图：
+
+[[/img/vue3/compiler-ssr/vue-compiler-ssr.svg]]
+
+* 05db578 compiler-ssr init
+
+[[https://github.com/gcclll/stb-vue-next/commit/05db578e37b1bb8651d18fb7b76abb2a064235dc][feat(init): compiler-ssr -> compile function · gcclll/stb-vue-next@05db578 · GitHub]]
+
+源码：
+#+begin_src typescript
+
+export function compile(
+  template: string,
+  options: CompilerOptions = {}
+): CodegenResult {
+  options = {
+    ...options,
+    // 引用 DOM parser 选项
+    ...parserOptions,
+    ssr: true,
+    scopeId: options.mode === 'function' ? null : options.scopeId,
+    // 总是加上前缀，ssr 不需要关系大小
+    prefixIdentifiers: true,
+    // ssr 下不需要缓存和静态提升优化
+    cacheHandlers: false,
+    hoistStatic: false
+  }
+
+  const ast = baseParse(template, options)
+  // TODO Save raw options for AST. This is needed when performing sub-transforms
+  // on slot vnode branches.
+
+  transform(ast, {
+    ...options,
+    nodeTransforms: [
+      // TODO ... ssr transforms
+
+      ...(options.nodeTransforms || []) // user transforms
+    ],
+    directiveTransforms: {
+      // 复用 compiler-core 的 v-bind
+      bind: transformBind,
+      // TODO ... more ssr directive transforms
+      ...(options.directiveTransforms || {}) // user transforms
+    }
+  })
+
+  // TODO traverse the template AST and convert into SSR codegen AST
+  // by replacing ast.codegenNode.
+  // 将 compiler-core 阶段生成的 codegenNode 转换成 SSR codegen AST
+
+  return generate(ast, options)
+}
+#+end_src
+
+沿用 compiler-core 的三个阶段([[/vue/vue-mind-map-compiler-core-parser/][parse]] -> [[/vue/vue-mind-map-compiler-core-transform-generate/][transform]] -> [[/vue/vue-mind-map-compiler-core-transform-generate/][generate]])，另加上 SSR 渲染相
+关的选项和其对应的 transforms 函数。
+
+*** ssr text testing
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { code, matched, ast } = ssr("foo");
+log(["codegenNode: ", ast.codegenNode || "null"]);
+log('>>> render function')
+log(code)
+#+end_src
+
+#+RESULTS:
+: codegenNode:  null
+: >>> render function
+:
+: return function ssrRender(_ctx, _push, _parent, _attrs) {
+:   null
+: }
+: undefined
+
+结果显示没有 codegenNode， ssrRender 函数体内也就啥都没有。
+
+FIX: 应该需要需要实现 ~ssrCodegenTransform~ 。
+
+#+begin_quote
+后面的所有测试都会依赖下面的正则(官方用例中的代码)：
+
+~/_push\(\`<div\${\s*_ssrRenderAttrs\(_attrs\)\s*}>([^]*)<\/div>\`\)/~
+
+[[http://qiniu.ii6g.com/img/20210104214735.png]]
+
+#+end_quote
+
+* 54ad7e2 coding ssrCodegenTransform function
+
+[[https://github.com/gcclll/stb-vue-next/commit/54ad7e2cc3334473aceca886343f397068ceddbb][feat(add): compiler-ssr-> ssrCodegenTransform function ·
+gcclll/stb-vue-next@54ad7e2 · GitHub]]
+
+生成 ssr codegenNode 的 transform 函数。
+
+大致流程和 compiler-core 差不多。
+
+1. 创建上下文 context = ~createSSRTransformContext(ast, options)~
+2. options.ssrCssVars 样式变量处理
+3. 如果多个且至少有一个为非文本节点，需要用到 fragment
+4. ~processChildren~ 递归处理所有孩子节点，生成 ~codegenNode~ , 所以这里是 *核心*
+5. helpers 合并
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString,
+  compileSSR: ssr,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { code, ast, matched } = ssr("foo");
+log([">>> ast.children\n", ast.children]);
+log([">>> ast.codegenNode.body\n", ast.codegenNode.body]);
+log([">>> code\n", code]);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> ast.children
+ [
+  {
+    type: 2,
+    content: 'foo',
+    loc: { start: [Object], end: [Object], source: 'foo' }
+  }
+]
+>>> ast.codegenNode.body
+ [
+  {
+    type: 14,
+    loc: { source: '', start: [Object], end: [Object] },
+    callee: '_push',
+    arguments: [ [Object] ]
+  }
+]
+>>> code
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`foo`)
+}
+undefined
+#+end_example
+
+*Bug1*: body 里面没东西, [[https://github.com/gcclll/stb-vue-next/commit/f6d22c101b546a2de6d9cfb5b9b1ddd24fcc34d2][fix: body null · gcclll/stb-vue-next@f6d22c1 · GitHub]]
+
+*Bug2*: ~div~ 没有被解析到，因为没有实现 ssrTransformElement 所有这里要先实现它，
+ 测试用例中默认是 ~<div>${src}</div>~ 包起来的。
+
+ #+begin_quote
+因为测试函数 ~getCompiledSSRString~ 中会将 src 用 ~<div>~ 包裹起来，所以需要先实
+现 div 的解析，即 ~NodeTypes.ELEMENT~ 类型解析。
+ #+end_quote
+
+* 561d41b ELEMENT: ssrTransformElement
+
+[[https://github.com/gcclll/stb-vue-next/commit/561d41be869a4718e027273cdea71d3473628229][feat(add): ssr->ssrTransformElement · gcclll/stb-vue-next@561d41b · GitHub]]
+
+新增两个函数实现：
+1) ~ssrProcessElement~ 处理标签
+2) ~ssrPostTransformElement~ ELEMENT 的转换函数
+
+#+begin_src js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssrs,
+  compileSSR: ssr,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { code, ast, matched } = ssrs("foo");
+log([">>> code\n", code]);
+#+end_src
+
+#+RESULTS:
+: >>> code
+:
+: return function ssrRender(_ctx, _push, _parent, _attrs) {
+:   _push(`<div>foo</div>`)
+: }
+: undefined
+
+还是没有 ~_ssrRenderAttrs~ 匹配失败，与期待结果还差一步：属性解析。
+
+[[https://github.com/gcclll/stb-vue-next/commit/dc1571944ef04fb3149c6a112b37ef728230c3a4][feat(add): directives and node transforms from compiler-core ·
+gcclll/stb-vue-next@dc15719 · GitHub]]
+
+* ea6bb01 add ssrInjectFallthroughAttrs 注入属性
+
+[[https://github.com/gcclll/stb-vue-next/commit/ea6bb01d1b8493926d5426bc88af8d34b91b63da][feat(add): ssr-> add ssrInjectFallthroughAttrs · gcclll/stb-vue-next@ea6bb01 ·
+GitHub]]
+
+#+begin_src typescript
+export const ssrInjectFallthroughAttrs: NodeTransform = (node, context) => {
+  // _attrs is provided as a function argument.
+  // mark it as a known identifier so that it doesn't get prefixed by
+  // transformExpression.
+  if (node.type === NodeTypes.ROOT) {
+    context.identifiers._attrs = 1;
+  }
+
+  const parent = context.parent;
+  if (!parent || parent.type !== NodeTypes.ROOT) {
+    return;
+  }
+
+  if (node.type === NodeTypes.IF_BRANCH && hasSingleChild(node)) {
+    injectFallThroughAttrs(node.children[0]);
+  } else if (hasSingleChild(parent)) {
+    injectFallThroughAttrs(node);
+  }
+};
+#+end_src
+
+这个函数是用来将 render 函数的 ~attrs~ 参数处理成 ~v-bind~ 指令。
+
+前提条件：
+1. 必须要有 parent 父元素，即 ROOT 节点不会处理
+2. 且 parent 必须是 ROOT 节点，即 ~attrs~ 会注入到第一个最外层的元素上
+
+   比如：实例中的 ~<div>${src}</div>~ ， render 函数中的 ~attrs~ 会被注入到这个
+   ~div~ 上，这也是 ~_ssrRenderAttrs~ 的由来。
+
+
+测试：
+#+begin_src js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssrs,
+  compileSSR: ssr,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { code, ast, matched } = ssrs("foo");
+log([">>> code\n", code]);
+log(['>>> ast.children[0].props\n', ast.children[0].props])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> code
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div>foo</div>`)
+}
+>>> ast.children[0].props
+ [
+  {
+    type: 7,
+    name: 'bind',
+    arg: undefined,
+    exp: {
+      type: 4,
+      loc: [Object],
+      content: '_attrs',
+      isStatic: false,
+      constType: 0
+    },
+    modifiers: [],
+    loc: { source: '', start: [Object], end: [Object] }
+  }
+]
+undefined
+#+end_example
+
+虽然结果还没达预期，但是上面结果显示已经有属性了，那么接下来就是要处理这个属性了，
+这个在 ~ssrTransformElement~ 中处理。
+
+* 7d20acd ELEMENT: ssrTransformElement>v-bind
+
+[[https://github.com/gcclll/stb-vue-next/commit/7d20acd63f38ff0b6a539c31526ae46dec78b70e][feat(add): ssr->element:v-bind · gcclll/stb-vue-next@7d20acd · GitHub]]
+
+新增处理代码：
+#+begin_src typescript
+// 需要运行时做特殊处理
+const needTagForRuntime = node.tag === "textarea" || node.tag.indexOf("-") > 0;
+// 1. TODO v-bind
+// v-bind="obj" or v-bind:[key] can potentially overwrite other static
+// attrs and can affect final rendering result, so when they are present
+// we need to bail out to full `renderAttrs`
+const hasDynamicVBind = hasDynamicKeyVBind(node);
+if (hasDynamicVBind) {
+  const { props } = buildProps(node, context, node.props, true /* ssr */);
+  if (props) {
+    const propsExp = createCallExpression(context.helper(SSR_RENDER_ATTRS), [
+      props,
+    ]);
+
+    if (node.tag === "textarea") {
+      // TODO
+    } else if (node.tag === "input") {
+      // TODO
+    }
+
+    if (needTagForRuntime) {
+      propsExp.arguments.push(`"${node.tag}"`);
+    }
+
+    openTag.push(propsExp);
+  }
+}
+#+end_src
+
+因为在上一节中将 ~attrs~ 注册为了 v-bind 属性，因此在 transform element 中就有
+Props 需要处理了， ~ssrRenderAttrs~ 就是在这里增加了 ~SSR_RENDER_ATTRS~ 。
+
+#+begin_src js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssrs,
+  compileSSR: ssr,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const { code, ast, matched } = ssrs("foo");
+log([">>> code\n", code]);
+#+end_src
+
+#+RESULTS:
+: >>> code
+:  const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+:
+: return function ssrRender(_ctx, _push, _parent, _attrs) {
+:   _push(`<div${_ssrRenderAttrs(_attrs)}>foo</div>`)
+: }
+: undefined
+
+到这里算是能满足测试用例中的正则要求了。
+
+_attrs 注入逻辑脑图：
+[[http://qiniu.ii6g.com/img/20210106143502.png]]
+* f6d22c1 TEXT 节点类型解析
+
+[[https://github.com/gcclll/stb-vue-next/commit/f6d22c101b546a2de6d9cfb5b9b1ddd24fcc34d2][fix: body null · gcclll/stb-vue-next@f6d22c1 · GitHub]]
+
+新增 ~pushStringPart~ 函数的实现，用来处理 ~NodeTypes.TEXT~ 节点类型。
+#+begin_src typescript
+switch (child.type) {
+  case NodeTypes.TEXT:
+    context.pushStringPart(escapeHtml(child.content));
+    break;
+}
+#+end_src
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssrs,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log([">>> 静态文本\n", ssrs("foo").code]);
+log([">>> 静态文本，含反斜杠\n", ssrs(`\\$foo`).code]);
+log([">>> 静态文本，&lt; 等符号的\n", ssrs(`&lt;foo&gt;`).code]);
+log([
+  ">>> 静态文本，元素嵌套\n",
+  ssrs(`<div><span>hello</span><span>bye</span></div>`).code,
+]);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 静态文本
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}>foo</div>`)
+}
+>>> 静态文本，含反斜杠
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}>\\\$foo</div>`)
+}
+>>> 静态文本，&lt; 等符号的
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}>&lt;foo&gt;</div>`)
+}
+>>> 静态文本，元素嵌套
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}><div><span>hello</span><span>bye</span></div></div>`)
+}
+undefined
+#+end_example
+
+* 8f09472 INTERPOLATION 插值处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/8f09472a264682cc6fb0b8c66586ac555af86f32][feat(add): ssr->interpolation · gcclll/stb-vue-next@8f09472 · GitHub]]
+
+增加代码：
+#+begin_src typescript
+case NodeTypes.INTERPOLATION:
+  context.pushStringPart(
+    createCallExpression(context.helper(SSR_INTERPOLATE), [child.content])
+  )
+  break
+#+end_src
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log([">>> 插值处理\n", ssr(`\`\${foo}\``).code])
+log([">>> 插值处理，元素嵌套\n", ssr(`<div><span>{{ foo }} bar</span><span>baz {{ qux }}</span></div>`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 插值处理
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}>\`\${foo}\`</div>`)
+}
+>>> 插值处理，元素嵌套
+ const { ssrRenderAttrs: _ssrRenderAttrs, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div><span>${
+    _ssrInterpolate(_ctx.foo)
+  } bar</span><span>baz ${
+    _ssrInterpolate(_ctx.qux)
+  }</span></div></div>`)
+}
+undefined
+#+end_example
+
+第一个并非直接的差值，而是字符串形式，所以并没有当做插值处理。
+
+后面的差值调用 ~_ssrInterpolate(_ctx.foo)~ 处理
+* ssrTransformElement 续
+** 954a9ee static class 属性处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/954a9ee4200022b881de18b28c2179a63f8a2797][feat(add): ssr->static class attr · gcclll/stb-vue-next@954a9ee · GitHub]]
+
+静态 class 属性处理:
+#+begin_src typescript
+for (let i = 0; i < node.props.length; i++) {
+  const prop = node.props[i];
+  // 忽略 input 上的 true 值或 false 值
+  if (node.tag === "input" && isTrueFalseValue(prop)) {
+    continue;
+  }
+
+  // special cases with children override
+  if (prop.type === NodeTypes.DIRECTIVE) {
+    // TODO 指令处理
+  } else {
+    if (node.tag === "textarea" && prop.name === "value" && prop.value) {
+      // TODO 特殊情况：value on <textarea>
+    } else if (!hasDynamicVBind) {
+      if (prop.name === "key" || prop.name === "ref") {
+        continue;
+      }
+
+      // static prop
+      if (prop.name === "class" && prop.value) {
+        staticClassBinding = JSON.stringify(prop.value.content);
+      }
+      openTag.push(
+        ` ${prop.name}` +
+          (prop.value ? `="${escapeHtml(prop.value.content)}"` : ``)
+      );
+    }
+  }
+}
+#+end_src
+
+class 处理部分：
+#+begin_src typescript
+// static prop
+if (prop.name === "class" && prop.value) {
+  staticClassBinding = JSON.stringify(prop.value.content);
+}
+openTag.push(
+  ` ${prop.name}` + (prop.value ? `="${escapeHtml(prop.value.content)}"` : ``)
+);
+#+end_src
+
+等于是将 ~class="bar"~ 原样添加到 openTag 中了，只不过这里对值用 ~escapeHtml~ 处
+理了一下。
+
+匹配： ~const escapeRE = /["'&<>]/~ 替换成对应的
+
+| char | value    |
+|------+----------|
+| ~"~  | ~&quot;~ |
+| ~&~  | ~&amp;~  |
+| ~'~  | ~&#39;~  |
+| ~<~  | ~&lt;~   |
+| ~>~  | ~&gt;~   |
+
+如下测试：
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log([">>> static class\n", ssr('<div class="bar"></div><p class="foo>"></p>').code]);
+log(['>>> ref/key 属性会被忽略，不论静态还是动态\n', ssr('<div key="1" ref="el"></div>').code])
+log(['>>> ref/key 属性会被忽略，不论静态还是动态\n', ssr('<div :key="1" :ref="el"></div>').code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> static class
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}><div class="bar"></div><p class="foo&gt;"></p></div>`)
+}
+>>> ref/key 属性会被忽略，不论静态还是动态
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}><div></div></div>`)
+}
+>>> ref/key 属性会被忽略，不论静态还是动态
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}><div></div></div>`)
+}
+undefined
+#+end_example
+
+** c28d528 dynamic class 属性处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/c28d528818adbf829b715bfff68c4508add67af3][feat(add): ssr->dynamic class · gcclll/stb-vue-next@c28d528 · GitHub]]
+
+当既有 static 也有 dynamic class 时需要进行合并，且是将 static 往 dynamic 上进行
+合并，最后成为动态的 class。
+
+新增处理逻辑：
+#+begin_src typescript
+if (attrName === "class") {
+  openTag.push(
+    ` class="`,
+    (dynamicClassBinding = createCallExpression(
+      context.helper(SSR_RENDER_CLASS),
+      [value]
+    )),
+    `"`
+  );
+}
+#+end_src
+
+如果也有静态属性的时候，将两者合并，需要用到两个函数：
+#+begin_src typescript
+function mergeCall(call: CallExpression, arg: string | JSChildNode) {
+  const existing = call.arguments[0] as ExpressionNode | ArrayExpression;
+  if (existing.type === NodeTypes.JS_ARRAY_EXPRESSION) {
+    existing.elements.push(arg);
+  } else {
+    call.arguments[0] = createArrayExpression([existing, arg]);
+  }
+}
+
+function removeStaticBinding(
+  tag: TemplateLiteral["elements"],
+  binding: string
+) {
+  const regExp = new RegExp(`^ ${binding}=".+"$`);
+  const i = tag.findIndex((e) => typeof e === "string" && regExp.test(e));
+
+  if (i > -1) {
+    tag.splice(i, 1);
+  }
+}
+#+end_src
+
+*mergeCall*: 将静态 class 合并到动态 class 上
+*removeStaticBinding*: 删除原来的静态 class 属性
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString: ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> dynamic class\n', ssr('<div :class="bar"></div>').code])
+log(['>>> static class\n', ssr('<div class="foo"></div>').code])
+log(['>>> static + dynamic class\n', ssr('<div class="foo" :class="bar"></div>').code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> dynamic class
+ const { ssrRenderClass: _ssrRenderClass, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div class="${
+    _ssrRenderClass(_ctx.bar)
+  }"></div></div>`)
+}
+>>> static class
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}><div class="foo"></div></div>`)
+}
+>>> static + dynamic class
+ const { ssrRenderClass: _ssrRenderClass, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div class="${
+    _ssrRenderClass([_ctx.bar, "foo"])
+  }"></div></div>`)
+}
+undefined
+#+end_example
+
+逻辑脑图：
+[[http://qiniu.ii6g.com/img/20210106143239.png]]
+** ca39229 style 属性处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/ca392295afd086ef4053a062fa23ad948e305ad4][feat(add): ssr->style prop · gcclll/stb-vue-next@ca39229 · GitHub]]
+
+新增处理代码：
+#+begin_src typescript
+if (attrName === "style") {
+  // :style
+  if (dynamicStyleBinding) {
+    // 已经有 style 合并
+    mergeCall(dynamicStyleBinding, value);
+  } else {
+    openTag.push(
+      ` style="`,
+      (dynamicStyleBinding = createCallExpression(
+        context.helper(SSR_RENDER_STYLE),
+        [value]
+      )),
+      `"`
+    );
+  }
+}
+#+end_src
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString: ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> static style\n', ssr('<div style="color:red"></div>').code])
+log(['>>> dynamic style\n', ssr('<div :style="bar"></div>').code])
+log(['>>> dynamic + static style\n', ssr('<div :style="bar" style="color:red"></div>').code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> static style
+ const { ssrRenderStyle: _ssrRenderStyle, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div style="${
+    _ssrRenderStyle({"color":"red"})
+  }"></div></div>`)
+}
+>>> dynamic style
+ const { ssrRenderStyle: _ssrRenderStyle, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div style="${
+    _ssrRenderStyle(_ctx.bar)
+  }"></div></div>`)
+}
+>>> dynamic + static style
+ const { ssrRenderStyle: _ssrRenderStyle, ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div style="${
+    _ssrRenderStyle([_ctx.bar, {"color":"red"}])
+  }"></div></div>`)
+}
+undefined
+#+end_example
+
+** dfd4fb9 v-html 指令处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/dfd4fb986483ec6de94f894ff44562dae044109f][feat(add): ssr->v-html directive · gcclll/stb-vue-next@dfd4fb9 · GitHub]]
+
+这个处理在 ~ssrTransformElement~ 中只需要增加一行代码就OK，但是需要结合
+~ssrProcessElement~ 来进行处理。
+#+begin_src typescript
+if (prop.name === "html" && prop.exp /* v-html */) {
+  rawChildrenMap.set(node, prop.exp);
+}
+#+end_src
+
+ssrProcessElement 中会对 rawChildrenMap 进行处理：
+#+begin_src typescript
+export function ssrProcessElement(
+  node: PlainElementNode,
+  context: SSRTransformContext
+) {
+  // ...
+  // 已缓存的处理结果
+  const rawChildren = rawChildrenMap.get(node);
+  if (rawChildren) {
+    context.pushStringPart(rawChildren);
+  } else if (node.children.length) {
+    processChildren(node.children, context);
+  }
+
+  // ...
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString: ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> v-html\n', ssr('<div v-html="foo"/>').code])
+#+end_src
+
+直接进行值替换。
+
+[[http://qiniu.ii6g.com/img/20210106170904.png]]
+** 678e98a v-text 指令处理
+
+[[https://github.com/gcclll/stb-vue-next/commit/678e98aff50dec73cd0ab7f6fdfe823c1318bec5][feat(add): ssr->v-text directive · gcclll/stb-vue-next@678e98a · GitHub]]
+
+这里是用插值方式来处理了 v-text ：
+#+begin_src typescript
+if (prop.name === "text" && prop.exp /* v-text */) {
+  node.children = [createInterpolation(prop.exp, prop.loc)];
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString: ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(ssr('<div v-text="foo"/>').code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { ssrRenderAttrs: _ssrRenderAttrs, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div>${
+    _ssrInterpolate(_ctx.foo)
+  }</div></div>`)
+}
+undefined
+#+end_example
+
+[[http://qiniu.ii6g.com/img/20210106170929.png]]
+** 0472dfd v-slot 指令错误
+
+[[https://github.com/gcclll/stb-vue-next/commit/0472dfd1574d6312e11c12336312a2a2bc0cf1d7][feat(add): ssr->v-slot directive · gcclll/stb-vue-next@0472dfd · GitHub]]
+
+由于指令不能应用于非 component 或 template 组件上，所以这里无法适用。
+** 45e78e1 v-bind 指令
+
+[[https://github.com/gcclll/stb-vue-next/commit/45e78e1a9de6d5a6c1820e102c5792ff0c1d2e80][feat(add): ssr->v-bind · gcclll/stb-vue-next@45e78e1 · GitHub]]
+
+下面的测试为综合情况测试，包含大部分使用情况。
+
+1. v-bind:arg(non-boolean)
+2. v-bind:[arg] 动态参数处理
+3. v-bind:[arg] + v-bind 混合方式
+4. style + :style
+5. class + :class
+6. v-on 会被忽略
+7. key/ref 无论静态动态都会被忽略
+
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log(
+  ssr(`<div
+style="color:red"
+:style="baz"
+class="foo"
+:class="bar"
+:[key]="value"
+:id="id"
+v-bind="obj"
+v-on="fxx"
+@click="fxc"
+:key="1"
+:ref="el"
+></div>`).code
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { mergeProps: _mergeProps } = require("vue")
+const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><div${
+    _ssrRenderAttrs(_mergeProps({
+      style: [{"color":"red"}, _ctx.baz],
+      class: ["foo", _ctx.bar],
+      [_ctx.key || ""]: _ctx.value,
+      id: _ctx.id
+    }, _ctx.obj, {
+      key: 1,
+      ref: _ctx.el
+    }))
+  }></div></div>`)
+}
+undefined
+#+end_example
+
+#+begin_quote
+key, ref 为什么没有忽略？？？
+#+end_quote
+
+[[http://qiniu.ii6g.com/img/20210106171132.png]]
+** value on textarea
+
+[[http://qiniu.ii6g.com/img/20210106170832.png]]
+
+*** e79e343 static value
+
+[[https://github.com/gcclll/stb-vue-next/commit/e79e343bc81f3b4b729bab7f02a4ab51f72e23c5][feat(add): ssr->static value on textarea · gcclll/stb-vue-next@e79e343 · GitHub]]
+
+静态 value 处理很简单，直接当做子节点替换。
+
+#+begin_src typescript
+if (node.tag === "textarea" && prop.name === "value" && prop.value) {
+  // 特殊情况：value on <textarea>
+  rawChildrenMap.set(node, escapeHtml(prop.value.content));
+}
+#+end_src
+
+测试
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString:ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> static value on textarea\n', ssr('<textarea value="fo&gt;o"/>').code])
+#+end_src
+
+#+RESULTS:
+: >>> static value on textarea
+:  const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+:
+: return function ssrRender(_ctx, _push, _parent, _attrs) {
+:   _push(`<div${_ssrRenderAttrs(_attrs)}><textarea>fo&gt;o</textarea></div>`)
+: }
+: undefined
+*** dynamic value
+
+处理代码：
+
+#+begin_src typescript
+if (isTextareaWithValue(node, prop) && prop.exp /* textarea with value */) {
+  if (!hasDynamicVBind) {
+    node.children = [createInterpolation(prop.exp, prop.loc)];
+  }
+}
+#+end_src
+
+当做插值类型处理，作为孩子节点。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log(ssr('<textarea :value="foo"/>').code);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { ssrRenderAttrs: _ssrRenderAttrs, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><textarea>${
+    _ssrInterpolate(_ctx.foo)
+  }</textarea></div>`)
+}
+undefined
+#+end_example
+*** cdd8fd0 dynamic arg 动态参数
+
+[[https://github.com/gcclll/stb-vue-next/commit/cdd8fd0d279ef2ef8d8e7c0051e8e95daec8d1d0][feat(add): ssr->dynamic arg on textarea · gcclll/stb-vue-next@cdd8fd0 · GitHub]]
+
+
+#+begin_src typescript
+if (node.tag === "textarea") {
+  // TODO
+  const existingText = node.children[0] as
+    | TextNode
+    | InterpolationNode
+    | undefined;
+  // If interpolation, this is dynamic <textarea> content, potentially
+  // injected by v-model and takes higher priority than v-bind value
+  // v-model 的优先级高于 v-bind value
+  if (!existingText || existingText.type !== NodeTypes.INTERPOLATION) {
+    // <textarea> with dynamic v-bind. We don't know if the final props
+    // will contain .value, so we will have to do something special:
+    // assign the merged props to a temp variable, and check whether
+    // it contains value (if yes, render is as children).
+    // 当 textarea 包含动态参数时，我们并不能确定最后的结果是否包含 .value
+    // 因此我们将不得不做些特殊处理来应对：
+    // 将已合并的 props 保存成一个临时变量，然后检查它是否包含 value 属性(如果
+    // 包含，则将它当做 children 来渲染)
+    const tempId = `_temp${context.temps++}`;
+    propsExp.arguments = [
+      createAssignmentExpression(createSimpleExpression(tempId, false), props),
+    ];
+
+    rawChildrenMap.set(
+      node,
+      createCallExpression(context.helper(SSR_INTERPOLATE), [
+        createConditionalExpression(
+          createSimpleExpression(`"value" in ${tempId}`, false),
+          createSimpleExpression(`${tempId}.value`, false),
+          createSimpleExpression(
+            existingText ? existingText.content : ``,
+            true
+          ),
+          false
+        ),
+      ])
+    );
+  }
+}
+#+end_src
+
+在包含动态参数的时候，并不能确定最终参数名就是 ~value~ 所以需要做些特殊处理。
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(ssr(`<textarea v-bind="obj">fallback</textarea>`).code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { mergeProps: _mergeProps } = require("vue")
+const { ssrRenderAttrs: _ssrRenderAttrs, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  let _temp0
+
+  _push(`<textarea${
+    _ssrRenderAttrs(_temp0 = _mergeProps(_ctx.obj, _attrs), "textarea")
+  }>${
+    _ssrInterpolate(("value" in _temp0) ? _temp0.value : "fallback")
+  }</textarea>`)
+}
+undefined
+#+end_example
+
+等于先将所有属性合并起来，在运行时决定是否有 ~value~ 属性，如果存在就使用这个值
+内容填充 ~<textarea>~ 孩子节点，否则直接使用原来的孩子节点内容(如: ~"fallback"~)
+
+源码处理中有两个前提条件，才会这样处理
+
+1. 没有孩子节点
+2. 或者孩子节点不是插值类型
+
+即如果有插值类型的孩子节点，是不会进行如上的处理的，看下面的实例：
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR: ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(ssr('<textarea v-bind="obj">{{ foo }}</textarea>').code)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+const { mergeProps: _mergeProps } = require("vue")
+const { ssrRenderAttrs: _ssrRenderAttrs, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<textarea${
+    _ssrRenderAttrs(_mergeProps(_ctx.obj, _attrs), "textarea")
+  }>${
+    _ssrInterpolate(_ctx.foo)
+  }</textarea>`)
+}
+undefined
+#+end_example
+
+结果如上 ↑。
+** b97d467 input + boolean attr
+
+[[https://github.com/gcclll/stb-vue-next/commit/b97d4679d19434a2fb29eece3ee3cf1026e08311][feat(add): ssr->v-bind boolean on input · gcclll/stb-vue-next@b97d467 · GitHub]]
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  compileSFCScript,
+  compileStyle,
+  getCompiledSSRString: ssr,
+  compileSSR,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+log([">>> input\n", ssr("<input>").code]);
+log([
+  ">>> input with v-bind:arg(boolean)\n",
+  ssr(`<input type="checkbox" :checked="checked">`).code,
+]);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> input
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${_ssrRenderAttrs(_attrs)}><input></div>`)
+}
+>>> input with v-bind:arg(boolean)
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<div${
+    _ssrRenderAttrs(_attrs)
+  }><input type="checkbox"${
+    (_ctx.checked) ? " checked" : ""
+  }></div>`)
+}
+undefined
+#+end_example
+
+#+begin_quote
+TODO 对于 v-bind + v-model 的结合使用，需要实现 ~ssrTransformModel~ 函数，这里暂时不做处理。
+#+end_quote
+
+** TODO e58d062 dynamic key attr
+
+[[https://github.com/gcclll/stb-vue-next/commit/e58d06299add184eed058ca9d1a3c1fe21279d1d][feat(add): ssr->dynamic key attr · gcclll/stb-vue-next@e58d062 · GitHub]]

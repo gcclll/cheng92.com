@@ -35,6 +35,8 @@
 
 * 重点、特性、问题
 
+[[/img/vue3/compiler-sfc/vue-compiler-sfc-keypoints.svg]]
+
 1. [[#parse-func][🔗]] ~<style>~ 标签中可通过 ~v-bind()~ 引用CSS 模块化后的变量
 2. ~<script>~ 和 ~<script setup>~ 中的 export default 会合并，且是 setup 优先级
    更高，因此尽量不要存在重复属性。
