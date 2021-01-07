@@ -37,6 +37,8 @@
 * Tip
 1. ssr 不处理 v-on/v-once/v-cloak 三个指令
 2. v-show 转成 ~exp ? 'null' : {display: 'none'}~ 合并到 ~style~
+3. ~<Suspense>~ 组件，会将所有 children 放到一个 ~await~ 函数里面执行
+4. ~<Teleport>~ 作用？
 * 05db578 compiler-ssr init
 
 [[https://github.com/gcclll/stb-vue-next/commit/05db578e37b1bb8651d18fb7b76abb2a064235dc][feat(init): compiler-ssr -> compile function · gcclll/stb-vue-next@05db578 · GitHub]]
@@ -1269,7 +1271,7 @@ return function ssrRender(_ctx, _push, _parent, _attrs) {
 return function ssrRender(_ctx, _push, _parent, _attrs) {
   _push(`<div${
     _ssrRenderAttrs(_attrs)
-  }><input type="checkbox" false-value="bar"${
+  }><input type="checkbox"${
     (_ssrLooseEqual(_ctx.baz, "foo")) ? " checked" : ""
   }></div>`)
 }
@@ -1279,7 +1281,7 @@ return function ssrRender(_ctx, _push, _parent, _attrs) {
 return function ssrRender(_ctx, _push, _parent, _attrs) {
   _push(`<div${
     _ssrRenderAttrs(_attrs)
-  }><input type="checkbox" false-value="bar"${
+  }><input type="checkbox"${
     ((Array.isArray(_ctx.baz))
       ? _ssrLooseContain(_ctx.baz, null)
       : _ctx.baz) ? " checked" : ""
@@ -1290,6 +1292,8 @@ undefined
 
 #+begin_quote
 ❓ 为什么 ~false-value~ 还在？
+
+FIX: [[https://github.com/gcclll/stb-vue-next/commit/e0fc173f2246e50ece2dd847083f26e653ecc980][fix: false.value -> false-value · gcclll/stb-vue-next@e0fc173 · GitHub]]
 #+end_quote
 
 从结果看，貌似 ~false-value~ 并没有被用到，用到的只有 ~true-value~ 去和
@@ -1497,6 +1501,8 @@ return function ssrRender(_ctx, _push, _parent, _attrs) {
 }
 undefined
 #+end_example
+
+
 * 5bf3644 v-if transform
 
 [[https://github.com/gcclll/stb-vue-next/commit/5bf364450c08cc343b308d1a755ead6aca82644c][feat(add): ssr->v-if · gcclll/stb-vue-next@5bf3644 · GitHub]]
@@ -1704,3 +1710,655 @@ switch (node.type) {
 
 1. core: transformIf 得到 node.branches
 2. ssrProcessIf 处理，生成 if -> else if -> else
+* 4839090 v-for transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/48390900ef8b899d5797dd0fdf728087605621ef][fix: ssr->v-for add transform · gcclll/stb-vue-next@4839090 · GitHub]]
+
+主要还是借助了 compiler-core: transformFor 处理逻辑，加上 ssrProcessFor 加工处理
+了下。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr(`<div v-for="i in list" />`).code])
+log(['>>> nested content\n', ssr(`<div v-for="i in list">foo<span>bar</span></div>`).code])
+log(['>>> nested v-for\n', ssr(`<div v-for="row, i in list">` +
+          `<div v-for="j in row">{{ i }},{{ j }}</div>` +
+          `</div>`).code])
+log(['>>> template v-for(text)\n', ssr(`<template v-for="i in list">{{ i }}</template>`).code])
+log(['>>> template v-for (single element)\n', ssr(`<template v-for="i in list"><span>{{ i }}</span></template>`).code])
+log(['>>> template v-for (multi element)\n', ssr(`<template v-for="i in list"><span>{{ i }}</span><span>{{ i + 1 }}</span></template>`).code])
+log(['>>> render loop args should not be prefixed\n', '> render loop 循环回调的参数不应该加前缀\n', ssr(`<div v-for="{ foo }, index in list">{{ foo + bar + index }}</div>`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<div></div>`)
+  })
+  _push(`<!--]-->`)
+}
+>>> nested content
+ const { ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<div>foo<span>bar</span></div>`)
+  })
+  _push(`<!--]-->`)
+}
+>>> nested v-for
+ const { ssrInterpolate: _ssrInterpolate, ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (row, i) => {
+    _push(`<div><!--[-->`)
+    _ssrRenderList(row, (j) => {
+      _push(`<div>${
+        _ssrInterpolate(i)
+      },${
+        _ssrInterpolate(j)
+      }</div>`)
+    })
+    _push(`<!--]--></div>`)
+  })
+  _push(`<!--]-->`)
+}
+>>> template v-for(text)
+ const { ssrInterpolate: _ssrInterpolate, ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<!--[-->${_ssrInterpolate(i)}<!--]-->`)
+  })
+  _push(`<!--]-->`)
+}
+>>> template v-for (single element)
+ const { ssrInterpolate: _ssrInterpolate, ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<span>${_ssrInterpolate(i)}</span>`)
+  })
+  _push(`<!--]-->`)
+}
+>>> template v-for (multi element)
+ const { ssrInterpolate: _ssrInterpolate, ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<!--[--><span>${
+      _ssrInterpolate(i)
+    }</span><span>${
+      _ssrInterpolate(i + 1)
+    }</span><!--]-->`)
+  })
+  _push(`<!--]-->`)
+}
+>>> render loop args should not be prefixed
+ > render loop 循环回调的参数不应该加前缀
+ const { ssrInterpolate: _ssrInterpolate, ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, ({ foo }, index) => {
+    _push(`<div>${_ssrInterpolate(foo + _ctx.bar + index)}</div>`)
+  })
+  _push(`<!--]-->`)
+}
+undefined
+#+end_example
+
+代码：
+#+begin_src typescript
+export function ssrProcessFor(
+  node: ForNode,
+  context: SSRTransformContext,
+  disableNestedFragments = false
+) {
+  // 需要 Fragment 的条件
+  // 1. disableNestedFragments = false
+  // 2. 有两个及以上的孩子节点或者第一个孩子节点的类型不是 ELEMENT（可能是用户组件）
+  const needFragmentWrapper =
+    !disableNestedFragments &&
+    (node.children.length !== 1 || node.children[0].type !== NodeTypes.ELEMENT)
+
+  // 创建 for (...) 表达式
+  const renderLoop = createFunctionExpression(
+    createForLoopParams(node.parseResult)
+  )
+
+  renderLoop.body = processChildrenAsStatement(
+    node.children,
+    context,
+    needFragmentWrapper
+  )
+
+  // v-for always renders a fragment unless explicitly disabled
+  if (!disableNestedFragments) {
+    context.pushStringPart(`<!--[-->`)
+  }
+
+  // 创建表达式
+  context.pushStatement(
+    createCallExpression(context.helper(SSR_RENDER_LIST), [
+      node.source,
+      renderLoop
+    ])
+  )
+
+  if (!disableNestedFragments) {
+    context.pushStringPart(`<!--]-->`)
+  }
+}
+#+end_src
+
+v-for 处理除了 ~tranformFor~ 剩下的处理都在这个 ~ssrProcessFor~ 里面了。
+* 8036837 其他不需要处理的情况
+
+[[https://github.com/gcclll/stb-vue-next/commit/80368374101b14f884e7ce56987f82fb99afdf0d][fix: ssr->add other useless cases in process children · gcclll/stb-vue-next@8036837 · GitHub]]
+
+比如：
+
+1. ~IF_BRANCH~ 在 ~ssrProcessIf~ 中被处理了
+2. ~TEXT_CALL~ 和 ~COMPOUND_EXPRESSION~ 在 ssr 中不会被用到
+3. ~COMMENT~ 注释简单的还原处理即可
+
+* TODO 16833be component transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/16833be349c6d91f632d7c7dfacce82a174a4a3f][fix: ssr->component transform · gcclll/stb-vue-next@16833be · GitHub]]
+
+[[http://qiniu.ii6g.com/img/20210107171258.png]]
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR: ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr(`<foo id="a" :prop="b" />`).code])
+log(['>>> 动态组件 is\n', ssr(`<component is="foo" prop="b" />`).code])
+log(['>>> 动态组件 :is\n', ssr(`<component :is="foo" prop="b" />`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { resolveComponent: _resolveComponent, mergeProps: _mergeProps } = require("vue")
+const { ssrRenderComponent: _ssrRenderComponent } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  const _component_foo = _resolveComponent("foo")
+
+  _push(_ssrRenderComponent(_component_foo, _mergeProps({
+    id: "a",
+    prop: _ctx.b
+  }, _attrs), null, _parent))
+}
+>>> 动态组件 is
+ const { resolveDynamicComponent: _resolveDynamicComponent, mergeProps: _mergeProps, createVNode: _createVNode } = require("vue")
+const { ssrRenderVNode: _ssrRenderVNode } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderVNode(_push, _createVNode(_resolveDynamicComponent("foo"), _mergeProps({ prop: "b" }, _attrs), null), _parent)
+}
+>>> 动态组件 :is
+ const { resolveDynamicComponent: _resolveDynamicComponent, mergeProps: _mergeProps, createVNode: _createVNode } = require("vue")
+const { ssrRenderVNode: _ssrRenderVNode } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderVNode(_push, _createVNode(_resolveDynamicComponent(_ctx.foo), _mergeProps({ prop: "b" }, _attrs), null), _parent)
+}
+undefined
+#+end_example
+
+* cdba013 component slot outlet
+
+[[https://github.com/gcclll/stb-vue-next/commit/cdba013401c1bfbc9b389699004f402c0187e7f1][feat(add): ssr->slot outlet transform · gcclll/stb-vue-next@cdba013 · GitHub]]
+
+~<slot></slot>~ 插槽处理。
+
+处理逻辑：
+1. transform 阶段 -> ssrTransformSlotOutlet
+
+   这里还只是创建了 ssrCodegenNode 并没有实际创建 render 函数
+   #+begin_src js
+   _ssrRenderSlot(_ctx.$slots, slotName, slotProps, fallback, _push, _parent)
+   #+end_src
+
+2. codegen 处理 -> ssrCodgenTransform
+
+   这个阶段是扩展 1 中的第四个参数，也就是 fallback，检测 ~<slot></slot>~ 下是不
+   是有孩子节点，如果有当做 fallback 处理，替换
+   ~node.ssrCodegenNode.arguments[3]~ 的值。
+
+
+[[http://qiniu.ii6g.com/img/20210107171820.png]]
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr(`<slot/>`).code])
+log(['>>> with named\n', ssr(`<slot name="foo"/>`).code])
+log(['>>> with dynamic named\n', ssr(`<slot :name="bar.baz"/>`).code])
+log(['>>> with props and fallback\n', ssr(`<slot name="foo" :p1="1" bar="2" >some {{ fallback }} content</slot>`).code])
+log(['>>> with fallback\n', ssr(`<slot>some {{ fallback }} content</slot>`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { ssrRenderSlot: _ssrRenderSlot } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderSlot(_ctx.$slots, "default", {}, null, _push, _parent)
+}
+>>> with named
+ const { ssrRenderSlot: _ssrRenderSlot } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderSlot(_ctx.$slots, "foo", {}, null, _push, _parent)
+}
+>>> with dynamic named
+ const { ssrRenderSlot: _ssrRenderSlot } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderSlot(_ctx.$slots, _ctx.bar.baz, {}, null, _push, _parent)
+}
+>>> with props and fallback
+ const { ssrRenderSlot: _ssrRenderSlot, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderSlot(_ctx.$slots, "foo", {
+    p1: 1,
+    bar: "2"
+  }, () => {
+    _push(`some ${_ssrInterpolate(_ctx.fallback)} content`)
+  }, _push, _parent)
+}
+>>> with fallback
+ const { ssrRenderSlot: _ssrRenderSlot, ssrInterpolate: _ssrInterpolate } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderSlot(_ctx.$slots, "default", {}, () => {
+    _push(`some ${_ssrInterpolate(_ctx.fallback)} content`)
+  }, _push, _parent)
+}
+undefined
+#+end_example
+
+ssrRenderSlot 函数实现：
+#+begin_src typescript
+
+export function ssrRenderSlot(
+  slots: Slots | SSRSlots,
+  slotName: string,
+  slotProps: Props,
+  fallbackRenderFn: (() => void) | null,
+  push: PushFn,
+  parentComponent: ComponentInternalInstance
+) {
+  // template-compiled slots are always rendered as fragments
+  push(`<!--[-->`)
+  const slotFn = slots[slotName]
+  if (slotFn) {
+    const scopeId = parentComponent && parentComponent.type.__scopeId
+    const ret = slotFn(
+      slotProps,
+      push,
+      parentComponent,
+      scopeId ? ` ${scopeId}-s` : ``
+    )
+    if (Array.isArray(ret)) {
+      // normal slot
+      renderVNodeChildren(push, ret, parentComponent)
+    }
+  } else if (fallbackRenderFn) {
+    fallbackRenderFn()
+  }
+  push(`<!--]-->`)
+}
+#+end_src
+
+fallback 用途：在没有任何 slot template 时候会默认用 fallback 里的内容来渲染这个 slot。
+
+如：
+#+begin_src html
+<template>
+<div>
+<slot>some content</slot>
+</div>
+</template>
+
+<!-- 当引用这个组件的组件没有提供任何 slot 模板的时候： 相当于直接使用 fallback 替换插槽-->
+<div>some content</div>
+#+end_src
+
+* 359f856 suspense 内置组件
+
+[[https://github.com/gcclll/stb-vue-next/commit/359f856ffe162420e6023e23f75f0f976ae988f0][feat(add): ssr->slot suspense component · gcclll/stb-vue-next@359f856 · GitHub]]
+
+[[http://qiniu.ii6g.com/img/20210107191831.png]]
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> implicit default\n', ssr(`<suspense><foo/></suspense>`).code])
+log(['>>> explicit slots\n', ssr(`<suspense>
+      <template #default>
+        <foo/>
+      </template>
+      <template #fallback>
+        loading...
+      </template>
+    </suspense>`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> implicit default
+ const { resolveComponent: _resolveComponent, withCtx: _withCtx } = require("vue")
+const { ssrRenderComponent: _ssrRenderComponent, ssrRenderSuspense: _ssrRenderSuspense } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  const _component_foo = _resolveComponent("foo")
+
+  _ssrRenderSuspense(_push, {
+    default: () => {
+      _push(_ssrRenderComponent(_component_foo, null, null, _parent))
+    },
+    _: 1 /* STABLE */
+  })
+}
+>>> explicit slots
+ const { resolveComponent: _resolveComponent, withCtx: _withCtx } = require("vue")
+const { ssrRenderComponent: _ssrRenderComponent, ssrRenderSuspense: _ssrRenderSuspense } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  const _component_foo = _resolveComponent("foo")
+
+  _ssrRenderSuspense(_push, {
+    default: () => {
+      _push(_ssrRenderComponent(_component_foo, null, null, _parent))
+    },
+    fallback: () => {
+      _push(` loading... `)
+    },
+    _: 1 /* STABLE */
+  })
+}
+undefined
+#+end_example
+
+ssrRenderSuspense 实际上只是一个 await 异步函数封装：
+
+#+begin_src typescript
+
+export async function ssrRenderSuspense(
+  push: PushFn,
+  { default: renderContent }: Record<string, (() => void) | undefined>
+) {
+  if (renderContent) {
+    renderContent()
+  } else {
+    push(`<!---->`)
+  }
+}
+#+end_src
+
+最终将 ~SUSPENSE~ 中的组件异步渲染。
+
+* e27a5e4 teleport 内置组件
+
+[[https://github.com/gcclll/stb-vue-next/commit/e27a5e4598354675410acb116667d3e763c63814][feat(add): ssr->teleport component · gcclll/stb-vue-next@e27a5e4 · GitHub]]
+
+
+[[http://qiniu.ii6g.com/img/20210107195939.png]]
+
+作用❓
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr(`<teleport :to="target"><div/></teleport>`).code])
+log(['>>> disabled prop\n', ssr(`<teleport :to="target" disabled><div/></teleport>`).code])
+log(['>>> disabled prop with value\n', ssr(`<teleport :to="target" :disabled="foo"><div/></teleport>`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { ssrRenderTeleport: _ssrRenderTeleport } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderTeleport(_push, (_push) => {
+    _push(`<div></div>`)
+  }, _ctx.target, false, _parent)
+}
+>>> disabled prop
+ const { ssrRenderTeleport: _ssrRenderTeleport } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderTeleport(_push, (_push) => {
+    _push(`<div></div>`)
+  }, _ctx.target, true, _parent)
+}
+>>> disabled prop with value
+ const { ssrRenderTeleport: _ssrRenderTeleport } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _ssrRenderTeleport(_push, (_push) => {
+    _push(`<div></div>`)
+  }, _ctx.target, _ctx.foo, _parent)
+}
+undefined
+#+end_example
+
+ssrRenderTeleport :
+
+#+begin_src typescript
+export function ssrRenderTeleport(
+  parentPush: PushFn,
+  contentRenderFn: (push: PushFn) => void,
+  target: string,
+  disabled: boolean,
+  parentComponent: ComponentInternalInstance
+) {
+  parentPush('<!--teleport start-->')
+
+  let teleportContent: SSRBufferItem
+
+  if (disabled) {
+    contentRenderFn(parentPush)
+    teleportContent = `<!---->`
+  } else {
+    const { getBuffer, push } = createBuffer()
+    contentRenderFn(push)
+    push(`<!---->`) // teleport end anchor
+    teleportContent = getBuffer()
+  }
+
+  const context = parentComponent.appContext.provides[
+    ssrContextKey as any
+  ] as SSRContext
+  const teleportBuffers =
+    context.__teleportBuffers || (context.__teleportBuffers = {})
+  if (teleportBuffers[target]) {
+    teleportBuffers[target].push(teleportContent)
+  } else {
+    teleportBuffers[target] = [teleportContent]
+  }
+
+  parentPush('<!--teleport end-->')
+}
+
+#+end_src
+
+* e0fc173 transition group transform
+
+[[https://github.com/gcclll/stb-vue-next/commit/e0fc173f2246e50ece2dd847083f26e653ecc980][fix: false.value -> false-value · gcclll/stb-vue-next@e0fc173 · GitHub]]
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr(`<transition-group><div v-for="i in list"/></transition-group>`).code])
+log(['>>> with static tag\n', ssr(`<transition-group tag="ul"><div v-for="i in list"/></transition-group>`).code])
+log(['>>> with dynamic tag\n', ssr(`<transition-group :tag="someTag"><div v-for="i in list"/></transition-group>`).code])
+log(['>>> with multi fragments children\n', ssr(`<transition-group>
+              <div v-for="i in 10"/>
+              <div v-for="i in 10"/>
+              <template v-if="ok"><div>ok</div></template>
+            </transition-group>`).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<div></div>`)
+  })
+  _push(`<!--]-->`)
+}
+>>> with static tag
+ const { ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<ul>`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<div></div>`)
+  })
+  _push(`</ul>`)
+}
+>>> with dynamic tag
+ const { ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<${_ctx.someTag}>`)
+  _ssrRenderList(_ctx.list, (i) => {
+    _push(`<div></div>`)
+  })
+  _push(`</${_ctx.someTag}>`)
+}
+>>> with multi fragments children
+ const { ssrRenderList: _ssrRenderList } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  _push(`<!--[-->`)
+  _ssrRenderList(10, (i) => {
+    _push(`<div></div>`)
+  })
+  _ssrRenderList(10, (i) => {
+    _push(`<div></div>`)
+  })
+  if (_ctx.ok) {
+    _push(`<div>ok</div>`)
+  } else {
+    _push(`<!---->`)
+  }
+  _push(`<!--]-->`)
+}
+undefined
+#+end_example
+
+ssrRenderList:
+#+begin_src typescript
+
+export function ssrRenderList(
+  source: unknown,
+  renderItem: (value: unknown, key: string | number, index?: number) => void
+) {
+  if (isArray(source) || isString(source)) {
+    for (let i = 0, l = source.length; i < l; i++) {
+      renderItem(source[i], i)
+    }
+  } else if (typeof source === 'number') {
+    if (__DEV__ && !Number.isInteger(source)) {
+      warn(`The v-for range expect an integer value but got ${source}.`)
+      return
+    }
+    for (let i = 0; i < source; i++) {
+      renderItem(i + 1, i)
+    }
+  } else if (isObject(source)) {
+    if (source[Symbol.iterator as any]) {
+      const arr = Array.from(source as Iterable<any>)
+      for (let i = 0, l = arr.length; i < l; i++) {
+        renderItem(arr[i], i)
+      }
+    } else {
+      const keys = Object.keys(source)
+      for (let i = 0, l = keys.length; i < l; i++) {
+        const key = keys[i]
+        renderItem(source[key], key, i)
+      }
+    }
+  }
+}
+#+end_src
+
+#+begin_quote
+Q. 也就是将 children 直接调用 renderItem 渲染出来，那这个跟动画有什么关系呢❓
+#+end_quote
+
+* c8e1d56 ssrCssVars inject
+
+[[https://github.com/gcclll/stb-vue-next/commit/c8e1d56db5c264e32d69af1dba40306af34b6c98][feat(add): ssr->ssrCssVars inject · gcclll/stb-vue-next@c8e1d56 · GitHub]]
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { compileSFCScript, compileStyle, getCompiledSSRString, compileSSR:ssr, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+log(['>>> basic\n', ssr(`<div/>`, { ssrCssVars: `{ color }` }).code])
+log(['>>> fragment\n', ssr(`<div/><div/><div><p/></div>`, { ssrCssVars: `{ color }` }).code])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> basic
+ const { mergeProps: _mergeProps } = require("vue")
+const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  const _cssVars = { style: { color: _ctx.color }}
+  _push(`<div${_ssrRenderAttrs(_mergeProps(_attrs, _cssVars))}></div>`)
+}
+>>> fragment
+ const { ssrRenderAttrs: _ssrRenderAttrs } = require("@vue/server-renderer")
+
+return function ssrRender(_ctx, _push, _parent, _attrs) {
+  const _cssVars = { style: { color: _ctx.color }}
+  _push(`<!--[--><div${
+    _ssrRenderAttrs(_cssVars)
+  }></div><div${
+    _ssrRenderAttrs(_cssVars)
+  }></div><div${
+    _ssrRenderAttrs(_cssVars)
+  }><p></p></div><!--]-->`)
+}
+undefined
+#+end_example
+
+cssVars 属性会注入到每个外层同级元素上。
