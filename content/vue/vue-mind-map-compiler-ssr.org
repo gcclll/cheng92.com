@@ -1206,6 +1206,10 @@ return function ssrRender(_ctx, _push, _parent, _attrs) {
 undefined
 #+end_example
 ** input type: checkbox
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: input-checkbox
+:END:
 
 类型为 checkbox 的时候要检查 ~true-value/false-value~ 属性。
 
@@ -2362,3 +2366,77 @@ undefined
 #+end_example
 
 cssVars 属性会注入到每个外层同级元素上。
+
+* 总结
+1. ELEMENT 解析
+
+   - v-html: ~<div v-html="foo"/>~ => ~<div>${foo}</div>~
+   - v-text: ~<div v-text="foo"/>~ => ~<div>${_ssrInterpolate(_ctx.foo)}</div>~
+   - v-slot: 只能用在 ~<template>~ 和 ~<component>~ 或用户组件上
+   - v-on: ssr 中不处理
+   - v-bind: 忽略 ref和key 属性，class 合并成动态 class 属性(style 也一样)
+
+     ~<div class="foo" :class="bar"/>~ => ~<div
+     class="${_ssrRenderCalss([_ctx.bar, 'foo'])}"></div>~
+
+2. input: radio
+
+    ~<input type="radio" value="foo" v-model="bar">~
+
+    =>
+
+    #+begin_src html
+    <input type="radio" value="${(_ssrLooseEqual(_ctx.bar, 'foo')) ? 'checked' : ''}">
+    #+end_src
+
+3. input: checkbox, [[#input-checkbox][详情->]]
+
+   有关属性： value, true-value, false-value, v-model
+
+   如果使用 true/false-value 配套，则只支持 v-model 绑定单个属性值。
+
+   如果单独使用 value ，则 v-model 支持绑定一个数组，只要当前 checkbox 的 value
+   值在该数组里面，则为 checked 状态，否则非选中状态。
+
+4. input: file 不支持，如果没有 type 属性，默认为 ~text~
+
+5. ssrInjectFallthroughAttrs ，将 ssrRender 函数的 _attrs 参数作为属性注入到最外
+   层的元素上。
+
+6. INTEROLATION: 插值调用 ~_ssrInterpolate(_ctx.foo)~ 处理
+
+7. v-show 指令处理，就是在元素上增加一个 ~style = { display: 'none' }~ 来切换元
+   素显示隐藏
+
+8. v-if 先调用 compiler-core 的 transformIf 解析出 node.branches，然后使用 ssr
+   端的 processIf 处理成 ~if (condition) {} else if () {} else {}~ 语句，而不是
+   非 ssr 情况下的三元表达式(~?:~)
+
+9. v-for 指令使用 ~_ssrRenderList(_ctx.list, (row, i) => {...})~
+10. ~<slot/>~ 标签的处理
+
+    #+begin_src js
+// `<slot name="foo" :p1="1" bar="2" >some {{ fallback }} content</slot>
+_ssrRenderSlot(_ctx.$slots, "foo", {
+    p1: 1,
+    bar: "2"
+  }, () => {
+    _push(`some ${_ssrInterpolate(_ctx.fallback)} content`)
+  }, _push, _parent)
+    #+end_src
+
+11. ~<Suspense/>~ 内置组件，内部处理其实等于将 children 用一个 ~await~ 函数包裹
+    起来了，成为异步操作。
+
+12. ~<Teleport/>~ 内置组件，需要制定 ~to="target"~
+
+    支持 ~disabled~ 属性
+
+    #+begin_src js
+    // <teleport :to="target" :disabled="foo"><div/></teleport>
+    _ssrRenderTeleport(_push, (_push) => {
+        _push(`<div></div>`)
+    }, _ctx.target, _ctx.foo, _parent)
+    #+end_src
+
+13. ssr css vars 简单在元素上注入 ~style = { color }~ 属性
