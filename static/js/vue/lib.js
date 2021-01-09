@@ -14,6 +14,9 @@ const {
 const { compile: compileSSR } = require(process.env.VNEXT_PKG_SFC +
   "/../compiler-ssr/dist/compiler-ssr.cjs.js");
 
+const rc = require(process.env.VNEXT_PKG_SFC +
+  "/../runtime-core/dist/runtime-core.cjs.js");
+
 const { log } = require(process.env.BLOG_JS + "/utils.js");
 
 const mockId = "xxxxxxxx";
@@ -93,6 +96,8 @@ const src = `
 <img src="data:image/png;base64,i" srcset="data:image/png;base64,i 1x, data:image/png;base64,i 2x"/>`;
 
 module.exports = {
+  filterNullProps,
+  f: filterNullProps,
   compileSFC,
   log,
   mockId,
@@ -104,4 +109,20 @@ module.exports = {
   compileScoped,
   compileSSR,
   getCompiledSSRString,
+  rc,
 };
+
+function filterNullProps(o, specific) {
+  let obj = {};
+  specific = typeof specific === "string" ? [specific] : specific;
+  for (let prop in o) {
+    const val = o[prop];
+    if (o.hasOwnProperty(prop) && (val || val === 0)) {
+      if (specific && specific.indexOf(prop) === -1) {
+        continue;
+      }
+      obj[prop] = val;
+    }
+  }
+  return obj;
+}

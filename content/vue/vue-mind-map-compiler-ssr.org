@@ -26,6 +26,7 @@
 
 *更新日志&Todos* ：
 1. [2021-01-04 20:11:43] 创建
+2. [2021-01-08 10:11:47] 完成
 #+end_quote
 
 模块初始化：[[https://github.com/gcclll/stb-vue-next/commit/dff9d31aeaf88e00f4d9233b05e8ddadc8d6ac5f][feat(init): compiler-ssr · gcclll/stb-vue-next@dff9d31 · GitHub]]

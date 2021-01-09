@@ -1,0 +1,1766 @@
+#+TITLE: Vue3 源码头脑风暴之 7 ☞ runtime-core(1)
+#+DATE: <2021-01-08 10:12:32>
+#+TAGS[]: vue, vue3, runtime-core
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink
+
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+*声明* ：vue-next runtime-core 运行时核心代码，这部分内容较多，可能会分为几篇来
+叙述, ~f~ 过滤掉对象空值属性。
+
+*更新日志&Todos* ：
+1. [2021-01-08 10:12:50] 创建
+2. TODO STATEFUL_COMONENT
+3. TODO patchFlag 测试和用途
+4. TODO transformVNodeArgs
+5. TODO Suspense 组件
+6. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
+#+end_quote
+
+模块初始化： [[https://github.com/gcclll/stb-vue-next/commit/b22b4db3506bf1ba4b266dcf9ff21f1e0b925a81][feat(init): runtime-core · gcclll/stb-vue-next@b22b4db · GitHub]]
+
+[[/img/vue3/runtime-core/vue-runtime-core.svg]]
+
+* Tips
+1. class 支持数组(~['foo', 'bar']~)，对象(~{foo:true,bar:false}~)，字符串(~'foo bar'~)
+2. style 支持数组(~['color:red', {foo:'foo'}]~)，对象(~{color:'red',foo:'foo'}~)，字符串(~color:red~)
+3. class component 条件： 1) function 2) 含 ~__vccOpts = { template: '<div />'}~
+4. vnode ref 属性处理逻辑 [[#test-vnode-ref][链接-->]]
+5. vnode key 属性为简单的值覆盖操作 [[#test-vnode-key][链接-->]]
+* 38e91a8 init
+
+导出已完成模块(reactiviy)里的 Apis:
+[[https://github.com/gcclll/stb-vue-next/commit/38e91a877635b51b56a2918ff173a48638b8760a][feat(init): runtime-core> add exports from @vue/reactivity · gcclll/stb-vue-next@38e91a8 · GitHub]]
+
+这部分代码有点多，所以这里事先将所有类型定义添加好：
+
+[[https://github.com/gcclll/stb-vue-next/commit/e3f7b94ef39cf389aaf25f55ea81877941860f56][feat(add): runtime-core>all types · gcclll/stb-vue-next@e3f7b94 · GitHub]]
+
+有关类型定义请移步[[#defines][最后一节]](纯贴代码的，所以放到最后)
+* e48d5e2 h function
+
+[[https://github.com/gcclll/stb-vue-next/commit/e48d5e28c4e1b55c6d6a326bcf0808047e23ceeb][feat(add): runtime-core>h function · gcclll/stb-vue-next@e48d5e2 · GitHub]]
+
+~h~, render 函数初始化。
+
+#+begin_src typescript
+// Actual implementation
+export function h(type: any, propsOrChildgen?: any, children?: any): VNode {
+  // TODO
+  return {} as VNode;
+}
+#+end_src
+
+实现：
+#+begin_src typescript
+// Actual implementation
+export function h(type: any, propsOrChildgen?: any, children?: any): VNode {
+  const l = arguments.length;
+  if (l === 2) {
+    if (isObject(propsOrChildgen) && !isArray(propsOrChildgen)) {
+      // 没有 props 的 单节点(single vnode)
+      if (isVNode(propsOrChildgen)) {
+        return createVNode(type, null, [propsOrChildgen]);
+      }
+      // 有 props 没有 children
+      return createVNode(type, propsOrChildgen);
+    } else {
+      // omit props
+      return createVNode(type, null, propsOrChildgen);
+    }
+  } else {
+    // 从第三个参数开始全当做孩子节点处理
+    if (l > 3) {
+      children = Array.prototype.slice.call(arguments, 2);
+    } else if (l === 3 && isVNode(children)) {
+      children = [children];
+    }
+    return createVNode(type, propsOrChildgen, children);
+  }
+}
+#+end_src
+
+h, 接受不定参数
+
+逻辑脑图:
+
+[[http://qiniu.ii6g.com/img/20210108152508.png]]
+
+从脑图分支得出支持的情况代码示例：
+
+1. ~h('div')~ 无参数无孩子
+2. ~h('div', { id: 'foo' })~ 有 props 无 children
+3. ~h('div', ['foo'])~ 数组当做 chilren
+4. ~h('div', vnode)~ 有 __v_isVNode 标识当做 children，并转成数组 ~[vnode]~
+5. ~h('div', {}, ['foo'])~ 有 props 有 children
+6. ~h('div', {}, vnode)~ 有 props, 有 children 且 = ~[vnode]~
+
+接下来需要具体去实现 ~createVNode~ 函数。
+* 194f72f createVNode function
+
+[[https://github.com/gcclll/stb-vue-next/commit/194f72fee239da947ef82a4da099c23c758d3d84][feat(add): rc->createVNode · gcclll/stb-vue-next@194f72f · GitHub]]
+
+这个函数最终是构造了 vnode: VNode 虚拟节点结构，返回。
+
+这里面分为以下几个步骤实现：
+
+1. type 是 vnode 时候处理
+2. class 组件处理
+3. props 处理
+4. shapeFlag 检测，是什么类型 的 vnode
+5. 组件对象不应该 reactive(有状态的组件, STATEFUL_COMONENT)
+6. 构建 vnode: VNode 对象
+7. 检测 vnode.key 是不是 ~NaN~
+8. normalize children
+9. normalize suspense children
+10. currentBlock 处理
+11. 返回 vnode 节点
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { h, createVNode, reactive },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(h(...args));
+
+log([">>> type only\n", _h("div")]);
+log([">>> type + props\n", _h("div", { id: "foo" })]);
+log([">>> type + omit props\n", _h("div", ["foo"])]);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> type only
+ { __v_isVNode: true, __v_skip: true, type: 'div', shapeFlag: 1 }
+>>> type + props
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'div',
+  props: { id: 'foo' },
+  shapeFlag: 1
+}
+>>> type + omit props
+ { __v_isVNode: true, __v_skip: true, type: 'div', shapeFlag: 1 }
+>>> default slot
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: { template: '<br />' },
+  shapeFlag: 4
+}
+undefined
+#+end_example
+
+** d3c6563 props
+
+[[https://github.com/gcclll/stb-vue-next/commit/d3c656331e3e5a9206f0341dd2ca960a300f96ba][feat(add): rc->createVNode, props · gcclll/stb-vue-next@d3c6563 · GitHub]]
+
+处理 class 和 style 属性。
+
+#+begin_src typescript
+ // 3. props 处理, class & style normalization
+ if (props) {
+   // for reactive or proxy objects, we need to clone it to enable mutation.
+   if (isProxy(props) || InternalObjectKey in props) {
+     props = extend({}, props);
+   }
+   let { class: klass, style } = props;
+   if (klass && !isString(klass)) {
+     // 1. string -> klass
+     // 'foo' -> 'foo'
+     // 2. array -> '' + arr.join(' ')
+     // ['foo', 'bar'] -> 'foo bar'
+     // 3. object -> '' + value ? ' value' : ''
+     // { foo: true, bar: false, baz: true } -> 'foo baz'
+     props.class = normalizeClass(klass);
+   }
+
+   if (isObject(style)) {
+     // reactive state objects need to be cloned since they are likely to be
+     // mutated
+     if (isProxy(style) && !isArray(style)) {
+       style = extend({}, style);
+     }
+     // 1. array -> object
+     // [{ color: 'red' }, 'font-size:10px;height:100px;'] ->
+     // { color: 'red', 'font-size': '10px', height: '100px' }
+     // 2. object -> object 原样返回
+     props.style = normalizeStyle(style);
+   }
+ }
+#+end_src
+
+1. class 数组，对象，字符串？
+
+   数组： 合并成字符串， ~['foo', 'bar']~ -> 'foo bar'
+
+   对象： 合并成字符串， ~{foo: true, bar: false, baz: true}~ -> 'foo baz'
+
+   字符串： 原样输出
+
+   #+begin_src typescript
+   export function normalizeClass(value: unknown): string {
+     let res = "";
+     if (isString(value)) {
+       res = value;
+     } else if (isArray(value)) {
+       for (let i = 0; i < value.length; i++) {
+         res += normalizeClass(value[i]) + " ";
+       }
+     } else if (isObject(value)) {
+       for (const name in value) {
+         if (value[name]) {
+           res += name + " ";
+         }
+       }
+     }
+     return res.trim();
+   }
+   #+end_src
+
+2. style 数组，对象，字符串？
+
+   数组： 合并成对象， ~['color:red', { 'font-size': '10px', height: '100px' }]~ -> ~{color:
+   'red', 'font-size': '10px', height: '100px'}~
+
+   对象： 原样返回
+
+   字符串：解析成对象， 如数组内字符串部分
+
+   #+begin_src typescript
+    export function normalizeStyle(value: unknown): NormalizedStyle | undefined {
+      if (isArray(value)) {
+        const res: Record<string, string | number> = {};
+        for (let i = 0; i < value.length; i++) {
+          const item = value[i];
+          const normalized = normalizeStyle(
+            isString(item) ? parseStringStyle(item) : item
+          );
+          if (normalized) {
+            for (const key in normalized) {
+              res[key] = normalized[key];
+            }
+          }
+        }
+        return res;
+      } else if (isObject(value)) {
+        return value;
+      }
+    }
+   #+end_src
+
+
+测试：
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { rc: { h, createVNode: c }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+let _h = (...args) => f(c(...args), 'props')
+
+// class 合并成字符串
+log(['>>> class: string\n', _h('p', { class: 'foo baz' })])
+log(['>>> class: array\n', _h('p', { class: ['foo', 'baz'] })])
+log(['>>> class: array<object|string>\n', _h('p', { class: [{ foo:  'foo' }, 'baz', { baz: 'baz' }] })])
+log(['>>> class: object\n', _h('p', { class: {'foo': true, 'baz': false, 'bar': true} })])
+
+// style 合并成对象
+log(['>>> style: array\n', _h('p', { style: [{ foo: 'foo' }, { baz: 'baz' }] })])
+log(['>>> style: object\n', _h('p', {
+  style: { foo: 'foo', baz: 'baz' }
+})])
+log(['>>> style: array<object|string>\n', _h('p', {
+  style: [{ foo: 'foo' }, 'color:red', { baz: 'baz' }]
+})])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> class: string
+ { props: { class: 'foo baz' } }
+>>> class: array
+ { props: { class: 'foo baz' } }
+>>> class: array<object|string>
+ { props: { class: 'foo baz baz' } }
+>>> class: object
+ { props: { class: 'foo bar' } }
+>>> style: array
+ { props: { style: { foo: 'foo', baz: 'baz' } } }
+>>> style: object
+ { props: { style: { foo: 'foo', baz: 'baz' } } }
+>>> style: array<object|string>
+ { props: { style: { foo: 'foo', color: 'red', baz: 'baz' } } }
+undefined
+#+end_example
+** class component
+
+是类组件前提是：
+
+1. 必须是函数
+2. 必须包含 ~__vccOpts~ 属性
+
+#+begin_src typescript
+  // 2. class component
+  if (isClassComponent(type)) {
+    type = type.__vccOpts;
+  }
+
+  export function isClassComponent(value: unknown): value is ClassComponent {
+    return isFunction(value) && "__vccOpts" in value;
+  }
+#+end_src
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { rc: { h, createVNode: c }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+const _h = (...args) => f(c(...args))
+
+class Component {
+  $props
+
+  static __vccOpts = { template: '<div />' }
+}
+log(_h(Component))
+#+end_src
+
+#+RESULTS:
+: {
+:   __v_isVNode: true,
+:   __v_skip: true,
+:   type: { template: '<div />' },
+:   shapeFlag: 4 // STATEFUL_COMPONENT
+: }
+: undefined
+
+** TODO stateful component & key NaN
+
+有状态的组件？
+
+即 type 为对象时候视为有状态的组件。
+
+如果是 STATEFUL_COMPONENT 且是个 proxy 的时候，开发模式下给出警告⚠️。
+
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { rc: { h, createVNode: c, reactive:r }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+const _h = (...args) => f(c(...args))
+
+log(_h('div', { key: NaN }))
+#+end_src
+
+#+RESULTS:
+: {
+:   __v_isVNode: true,
+:   __v_skip: true,
+:   type: 'div',
+:   props: { key: NaN },
+:   shapeFlag: 1
+: }
+: undefined
+
+** 88eaf09 type is vnode
+
+[[https://github.com/gcclll/stb-vue-next/commit/88eaf090c3d1767bc4a1ca576eef449abf7d62d2][feat(add): rc->createVNode, type is vnode · gcclll/stb-vue-next@88eaf09 · GitHub]]
+
+#+begin_src typescript
+  // > in createVNode
+  // 1. type is vnode
+  if (isVNode(type)) {
+    // createVNode receiving an existing vnode. This happens in cases like
+    // <component :is="vnode"/>
+    // #2078 make sure to merge refs during the clone instead of overwriting it
+    const cloned = cloneVNode(type, props, true /* mergeRef: true */);
+    if (children) {
+      normalizeChildren(cloned, children);
+    }
+    return cloned;
+  }
+
+  // cloneVNode
+  // 省略直接取 vnode 值部分
+  export function cloneVNode<T, U>(
+    vnode: VNode<T, U>,
+    extraProps?: (Data & VNodeProps) | null,
+    mergeRef = false
+  ): VNode<T, U> {
+    // This is intentionally NOT using spread or extend to avoid the runtime
+    // key enumeration cost.
+    const { props, ref, patchFlag } = vnode;
+    const mergedProps = extraProps ? mergeProps(props || {}, extraProps) : props;
+    return {
+      __v_isVNode: true,
+      [ReactiveFlags.SKIP]: true,
+      type: vnode.type,
+      props: mergedProps,
+      key: mergedProps && normalizeKey(mergedProps),
+      ref:
+        extraProps && extraProps.ref
+          ? // #2078 in the case of <component :is="vnode" ref="extra"/>
+            // if the vnode itself already has a ref, cloneVNode will need to merge
+            // the refs so the single vnode can be set on multiple refs
+            mergeRef && ref
+            ? isArray(ref)
+              ? ref.concat(normalizeRef(extraProps)!)
+              : [ref, normalizeRef(extraProps)!]
+            : normalizeRef(extraProps)
+          : ref,
+      // if the vnode is cloned with extra props, we can no longer assume its
+      // existing patch flag to be reliable and need to add the FULL_PROPS flag.
+      // note: perserve flag for fragments since they use the flag for children
+      // fast paths only.
+      patchFlag:
+        extraProps && vnode.type !== Fragment
+          ? patchFlag === -1 // hoisted node
+            ? PatchFlags.FULL_PROPS
+            : patchFlag | PatchFlags.FULL_PROPS
+          : patchFlag,
+
+      ssContent: vnode.ssContent && cloneVNode(vnode.ssContent),
+      ssFallback: vnode.ssFallback && cloneVNode(vnode.ssFallback),
+    };
+  }
+#+end_src
+
+cloneVNode 绝大部分属性都是直接引用自 vnode，上面列出的都是需要处理的属性，比如：
+
+1. props 会将 vnode 和 cloneVNode 传入的 props 进行合并，并且是传入的 props 覆盖 vnode.props。
+2. key 属性，取合并之后的 key([[#test-vnode-key][测试->]])
+
+   #+begin_src typescript
+    // normalize 合并后的 key
+    const key = mergedProps && normalizeKey(mergedProps);
+
+    const normalizeKey = ({ key }: VNodeProps): VNode["key"] =>
+      key != null ? key : null;
+   #+end_src
+3. ref 属性，合并规则([[#test-vnode-ref][测试->]])：
+
+   #+begin_src typescript
+    // 1. mergeRef: boolean 可以手动指定是否需要合并
+    // 2. extraProps.ref 调用 cloneVNode 时候传入的 props ref
+    // 3. ref 如果是数组，加上新的 ref 扩展原数组
+    // 4. ref 不是数组，用 ref 和 extra ref 合并成新数组
+    // 5. 如果 ref null, 则直接用 extra ref normalize 出新的 ref
+    const ref =
+      extraProps && extraProps.ref
+        ? // #2078 in the case of <component :is="vnode" ref="extra"/>
+          // if the vnode itself already has a ref, cloneVNode will need to merge
+          // the refs so the single vnode can be set on multiple refs
+          mergeRef && ref
+          ? isArray(ref)
+            ? ref.concat(normalizeRef(extraProps)!)
+            : [ref, normalizeRef(extraProps)!]
+          : normalizeRef(extraProps)
+        : ref;
+
+    // normalization
+    const normalizeRef = ({ ref }: VNodeProps): VNodeNormalizedRefAtom | null => {
+      return (ref != null
+        ? isString(ref) || isRef(ref) || isFunction(ref)
+          ? { i: currentRenderingInstance, r: ref }
+          : ref
+        : null) as any;
+    };
+   #+end_src
+4. patchFlag 属性([[#test-vnode-patchflag][测试->]])
+
+   #+begin_src typescript
+    const patchFlag =
+      extraProps && vnode.type !== Fragment
+        ? patchFlag === -1 // hoisted node
+          ? PatchFlags.FULL_PROPS
+          : patchFlag | PatchFlags.FULL_PROPS
+        : patchFlag;
+   #+end_src
+5. ssContent 递归调用 ~cloneVNode(vnode.ssContent)~
+6. ssFallback 递归调用 ~cloneVNode(vnode.ssFallback)~
+
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { h, createVNode: c, cloneVNode: cv },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(c(...args));
+
+const node1 = _h("div", { foo: 1 }, null /* children */);
+log([">>> vnode 1\n", node1]);
+
+const node2 = _h({}, null, [node1]);
+const cloned2 = cv(node2);
+// cloneVNode 只是一次浅拷贝
+log([">>> node2 == cloned2\n", f(cloned2), "\n > node2 \n", node2]);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> vnode 1
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'div',
+  props: { foo: 1 },
+  shapeFlag: 1
+}
+>>> node2 == cloned2
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: {},
+  children: [
+    {
+      __v_isVNode: true,
+      __v_skip: true,
+      type: 'div',
+      props: [Object],
+      shapeFlag: 1
+    }
+  ],
+  shapeFlag: 20
+}
+ > node2
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: {},
+  children: [
+    {
+      __v_isVNode: true,
+      __v_skip: true,
+      type: 'div',
+      props: [Object],
+      shapeFlag: 1
+    }
+  ],
+  shapeFlag: 20
+}
+undefined
+#+end_example
+
+[[https://github.com/gcclll/stb-vue-next/commit/4fbd98f4be00f3fdfcb14839d29ed4a5f45a179c][feat(add): rc->createVNode, currentRenderingInstance · gcclll/stb-vue-next@4fbd98f · GitHub]]
+
+*** key test
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-vnode-key
+:END:
+
+vnode.key 的 clone 操作，属于单纯的值覆盖操作。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { h, createVNode: c, cloneVNode: cv },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(c(...args));
+
+log([">>> 保留 vnode.key 值\n", f(cv(c("div", { key: 1 })), "key")]);
+log([
+  ">>> 替换 vnode.key 值\n",
+  f(cv(c("div", { key: 1 }), { key: 2 }), "key"),
+]);
+log([">>> 新 props.key 值\n", f(cv(c("div"), { key: 2 }), "key")]);
+
+log(">>> 测试 vnode.key 各种情况值");
+for (const key of ["", "a", 0, 1, NaN]) {
+  log(f(c("div", { key }), "key"));
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 保留 vnode.key 值
+ { key: 1 }
+>>> 替换 vnode.key 值
+ { key: 2 }
+>>> 新 props.key 值
+ { key: 2 }
+>>> 测试 vnode.key 各种情况值
+{}
+{ key: 'a' }
+{}
+{ key: 1 }
+[Vue warn]: VNode created with invalid key (NaN). VNode type:div
+{}
+undefined
+#+end_example
+
+*** ref test
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-vnode-ref
+:END:
+
+流程脑图：
+[[/img/vue3/runtime-core/vue-runtime-core-vnode-ref.svg]]
+
+测试
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: {
+    h,
+    createVNode: c,
+    cloneVNode: cv,
+    ssrUtils: { setCurrentRenderingInstance: s },
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(c(...args));
+
+const mockIns1 = { ins: 1 },
+  mockIns2 = { ins: 2 };
+s(mockIns1);
+
+let original = c("div", { ref: "foo" });
+// 本身没有的时候会将 extraProps.ref 作为新的 vnode.ref 值
+log([">>> 1. vnode 本身无 ref\n", f(original, "ref")]);
+let cloned1 = cv(original);
+log([">>> 2. 保留原有的 vnode.ref\n", f(cloned1, "ref")]);
+// 这里没指定 mergeProp 所以会替换原来的
+let cloned2 = cv(original, { ref: "bar" });
+log(['>>> 3. ref: "bar" 替换原有的 vnode.ref\n', f(cloned2, "ref")]);
+let original2 = c("div");
+let cloned3 = cv(original2, { ref: "bar" });
+log([">>> 4. 没有 vnode.ref 情况，新增 ref\n", f(cloned3, "ref")]);
+
+s(mockIns2);
+// 应该保留原有的 context instance
+let cloned4 = cv(original);
+log([">>> 5. 应该保留原有的 context instance\n", f(cloned4, "ref")]);
+// ref 覆盖，使用新的 context instance: mockIns2
+let cloned5 = cv(original, { ref: "bar" });
+log([">>> 6. ref 改变，使用新的 context instance\n", f(cloned5, "ref")]);
+s(null); // 置空 context instance
+
+log('\n\n// mergeRef 情况测试\n')
+s(mockIns1)
+original = c('div', { ref: 'foo' })
+s(mockIns2)
+cloned1 = cv(original, { ref: 'bar' }, true)
+log(['>>> mergeRef: true 合并 vnode.ref\n', f(cloned1, 'ref')])
+log(cloned1.ref[0])
+log(cloned1.ref[1])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> 1. vnode 本身无 ref
+ { ref: { i: { ins: 1 }, r: 'foo' } }
+>>> 2. 保留原有的 vnode.ref
+ { ref: { i: { ins: 1 }, r: 'foo' } }
+>>> 3. ref: "bar" 替换原有的 vnode.ref
+ { ref: { i: { ins: 1 }, r: 'bar' } }
+>>> 4. 没有 vnode.ref 情况，新增 ref
+ { ref: { i: { ins: 1 }, r: 'bar' } }
+>>> 5. 应该保留原有的 context instance
+ { ref: { i: { ins: 1 }, r: 'foo' } }
+>>> 6. ref 改变，使用新的 context instance
+ { ref: { i: { ins: 2 }, r: 'bar' } }
+
+
+// mergeRef 情况测试
+
+>>> mergeRef: true 合并 vnode.ref
+ { ref: [ { i: [Object], r: 'foo' }, { i: [Object], r: 'bar' } ] }
+{ i: { ins: 1 }, r: 'foo' }
+{ i: { ins: 2 }, r: 'bar' }
+undefined
+#+end_example
+*** TODO patchFlag test
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test-vnode-patchflag
+:END:
+
+TODO need openBlock&createBlock support.
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: {
+    h,
+    createVNode: c,
+    cloneVNode: cv,
+    ssrUtils: { setCurrentRenderingInstance: s },
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(c(...args));
+
+const hoist = c('div') // 静态节点
+let vnode1
+const vnode = (openBlock(), createBlock('div'))
+#+end_src
+*** shapeFlag test
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { h, createVNode: c, cloneVNode: cv, Text },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(c(...args));
+
+log([">>> ELEMENT\n", f(c("div"), "shapeFlag")]);
+log([">>> STATEFUL_COMONENT\n", f(c({}), "shapeFlag")]);
+log([
+  ">>> FUNCTION_COMONENT\n",
+  f(
+    c(() => {}),
+    "shapeFlag"
+  ),
+]);
+log([">>> Text\n", f(c(Text), "shapeFlag")]);
+#+end_src
+
+#+RESULTS:
+: >>> ELEMENT
+:  { shapeFlag: 1 }
+: >>> STATEFUL_COMONENT
+:  { shapeFlag: 4 }
+: >>> FUNCTION_COMONENT
+:  { shapeFlag: 2 }
+: >>> Text
+:  { shapeFlag: 0 }
+: undefined
+*** mergeProps test
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { h, createVNode: c, cloneVNode: cv, Text, mergeProps },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+let p1 = { class: "c" };
+let p2 = { class: ["cc"] };
+let p3 = { class: [{ ccc: true }] };
+let p4 = { class: { cccc: true } };
+log([">>> merge class\n", mergeProps(p1, p2, p3, p4)]);
+let ps1 = {
+  style: { color: "red", fontSize: 10 },
+};
+let ps2 = {
+  style: [
+    { color: "blue", width: "200px" },
+    {
+      width: "300px",
+      height: "300px",
+      fontSize: 30,
+    },
+  ],
+};
+let ps3 = { style: 'width:100px;right:10;top:10' }
+log([">>> merge style\n", mergeProps(ps1, ps2, ps3)]);
+let clickHandler1  = function(){}
+let clickHandler2  = function(){}
+let focusHandler3  = function(){}
+let ph1 = { onClick: clickHandler1 }
+let ph2 = { onClick: clickHandler2, onFocus: focusHandler3 }
+log(['>>> merge handlers\n', mergeProps(ph1, ph2)])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> merge class
+ { class: 'c cc ccc cccc' }
+>>> merge style
+ {
+  style: {
+    color: 'blue',
+    fontSize: 30,
+    width: '100px',
+    height: '300px',
+    right: '10',
+    top: '10'
+  }
+}
+>>> merge handlers
+ {
+  onClick: [ [Function: clickHandler1], [Function: clickHandler2] ],
+  onFocus: [Function: focusHandler3]
+}
+undefined
+#+end_example
+*** TODO dynamic children test
+
+> need openBlock&createBlock support
+
+#+begin_src js
+const {
+  rc: { h, createVNode: c, cloneVNode: cv, Text, mergeProps },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const hoist = createVNode('div')
+let vnode1
+#+end_src
+*** TODO transformVNodeArgs test
+** TODO 7ec1d30 suspense component
+
+[[https://github.com/gcclll/stb-vue-next/commit/7ec1d3053a5881d476e535923edce07f36fe77f0][feat(add): rc->createVNode, type is suspense component · gcclll/stb-vue-next@7ec1d30 · GitHub]]
+
+Suspense 的 children 必须有且只有一个根节点。
+
+#+begin_src typescript
+  // 7. normalize suspense children
+  if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
+    const { content, fallback } = normalizeSuspenseChildren(vnode);
+    vnode.ssContent = content;
+    vnode.ssFallback = fallback;
+  }
+
+  // normalizeSuspenseChildren
+  export function normalizeSuspenseChildren(
+    vnode: VNode
+  ): {
+    content: VNode;
+    fallback: VNode;
+  } {
+    const { shapeFlag, children } = vnode;
+    let content: VNode, fallback: VNode;
+
+    if (shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+      content = normalizeSuspenseSlot((children as Slots).default);
+      fallback = normalizeSuspenseSlot((children as Slots).fallback);
+    } else {
+      content = normalizeSuspenseSlot(children as VNodeChild);
+      fallback = normalizeVNode(null);
+    }
+
+    return {
+      content,
+      fallback,
+    };
+  }
+
+// >>> normalizeSuspenseSlot
+function normalizeSuspenseSlot(s: any) {
+  if (isFunction(s)) {
+    s = s()
+  }
+  if (isArray(s)) {
+    // ROOT 必须是单节点 <div>...</div>
+    const singleChild = filterSingleRoot(s)
+    if (__DEV__ && !singleChild) {
+      warn(`<Suspense> slots expect a single root node.`)
+    }
+    s = singleChild
+  }
+  return normalizeVNode(s)
+}
+
+// normalizeVNode
+export function normalizeVNode(child: VNodeChild): VNode {
+  if (child == null || typeof child === 'boolean') {
+    // empty placeholder
+    return createVNode(Comment)
+  } else if (isArray(child)) {
+    // fragment
+    return createVNode(Fragment, null, child)
+  } else if (typeof child === 'object') {
+    // already vnode, this should be the most common since compiled templates
+    // always produce all-vnode children arrays
+    // 这是最常用的情况，因为使用模板的时候最后生成的 children 是数组
+    return child.el === null ? child : cloneVNode(child)
+  } else {
+    // strings and numbers
+    return createVNode(Text, null, String(child))
+  }
+}
+#+end_src
+
+检测是不是 single root 函数： ~filterSingleRoot~
+#+begin_src typescript
+export function filterSingleRoot(
+  children: VNodeArrayChildren
+): VNode | undefined {
+  let singleRoot;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (isVNode(child)) {
+      // ignore user comment
+      if (child.type !== Comment || child.children === "v-if") {
+        if (singleRoot) {
+          // has more than 1 non-comment child, return now
+
+          return;
+        } else {
+          singleRoot = child;
+        }
+      }
+    } else {
+      return;
+    }
+  }
+  return singleRoot;
+}
+#+end_src
+** TODO 23fc943 currentBlock 优化
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vnode-currentBlock
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/23fc9437e9fba7bb562f79a51410ef59e6b82f8c][feat(add): rc->createVNode, optimize diff, currentBlock ·
+gcclll/stb-vue-next@23fc943 · GitHub]]
+
+#+begin_quote
+这里的处理没怎么搞明白❓
+#+end_quote
+
+注意这里增加的几个变量‼
+
+blockStack, currentBlock:
+#+begin_src typescript
+
+// Since v-if and v-for are the two possible ways node structure can dynamically
+// change, once we consider v-if branches and each v-for fragment a block, we
+// can divide a template into nested blocks, and within each block the node
+// structure would be stable. This allows us to skip most children diffing
+// and only worry about the dynamic nodes (indicated by patch flags).
+// 针对 v-if, v-for 动态性做的由于，减少对静态节点的 diff ，只需要关心动态节点即可
+export const blockStack: (VNode[] | null)[] = []
+let currentBlock: VNode[] | null = null
+#+end_src
+
+shouldTrack:
+#+begin_src typescript
+// Whether we should be tracking dynamic child nodes inside a block.
+// Only tracks when this value is > 0
+// We are not using a simple boolean because this value may need to be
+// incremented/decremented by nested usage of v-once (see below)
+// 是否应该 tracking block 内动态的孩子节点
+let shouldTrack = 1;
+#+end_src
+
+新增处理逻辑：
+#+begin_src typescript
+ // 8. currentBlock
+ if (
+   shouldTrack > 0 &&
+   // 避免 block 节点 tracking 自己
+   !isBlockNode &&
+   // has current parent block
+   currentBlock &&
+   // presence of a patch flag indicates this node needs patching on updates.
+   // component nodes also should always be patched, because even if the
+   // component doesn't need to update, it needs to persist the instance on to
+   // the next vnode so that it can be properly unmounted later.
+   (patchFlag > 0 || shapeFlag & ShapeFlags.COMPONENT) &&
+   // the EVENTS flag is only for hydration and if it is the only flag, the
+   // vnode should not be considered dynamic due to handler caching.
+   patchFlag !== PatchFlags.HYDRATE_EVENTS
+ ) {
+   currentBlock.push(vnode);
+ }
+#+end_src
+
+跟这几个变量有关的函数：
+* TODO a2afc70 block related(open/close/create)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: block-related
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/a2afc70cc89fc0bb7c1b1f6810bea73ab4e40c82][feat(add): rc->block related, open/create/closeBlock · gcclll/stb-vue-next@a2afc70 · GitHub]]
+
+这里的所有函数都和 [[#vnode-currentBlock][createVNode 里面的 currentBlock]] 有关。
+
+openBlock:
+#+begin_src typescript
+/**
+ ,* Open a block.
+ ,* This must be called before `createBlock`. It cannot be part of `createBlock`
+ ,* because the children of the block are evaluated before `createBlock` itself
+ ,* is called. The generated code typically looks like this:
+ ,*
+ ,* ```js
+ ,* function render() {
+ ,*   return (openBlock(),createBlock('div', null, [...]))
+ ,* }
+ ,* ```
+ ,* disableTracking is true when creating a v-for fragment block, since a v-for
+ ,* fragment always diffs its children.
+ ,*
+ ,* @private
+ ,*/
+export function openBlock(disableTracking = false) {
+  blockStack.push((currentBlock = disableTracking ? null : []));
+}
+#+end_src
+
+closeBlock:
+#+begin_src typescript
+export function closeBlock() {
+  blockStack.pop();
+  currentBlock = blockStack[blockStack.length - 1] || null;
+}
+#+end_src
+
+setBlockTracking:
+#+begin_src typescript
+/**
+ * Block tracking sometimes needs to be disabled, for example during the
+ * creation of a tree that needs to be cached by v-once. The compiler generates
+ * code like this:
+ *
+ * ``` js
+ * _cache[1] || (
+ *   setBlockTracking(-1),
+ *   _cache[1] = createVNode(...),
+ *   setBlockTracking(1),
+ *   _cache[1]
+ * )
+ * ```
+ *
+ * @private
+ */
+export function setBlockTracking(value: number) {
+  shouldTrack += value
+}
+#+end_src
+
+createBlock:
+#+begin_src typescript
+/**
+ * Create a block root vnode. Takes the same exact arguments as `createVNode`.
+ * A block root keeps track of dynamic nodes within the block in the
+ * `dynamicChildren` array.
+ *
+ * @private
+ */
+export function createBlock(
+  type: VNodeTypes | ClassComponent,
+  props?: Record<string, any> | null,
+  children?: any,
+  patchFlag?: number,
+  dynamicProps?: string[]
+): VNode {
+  const vnode = createVNode(
+    type,
+    props,
+    children,
+    patchFlag,
+    dynamicProps,
+    true /* isBlock: prevent a block from tracking itself */
+  );
+  // save current block children on the block vnode
+  vnode.dynamicChildren = currentBlock || (EMPTY_ARR as any);
+  // close block
+  closeBlock();
+  // a block is always going to be patched, so track it as a child of its
+  // parent block
+  if (shouldTrack > 0 && currentBlock) {
+    currentBlock.push(vnode);
+  }
+  return vnode;
+}
+#+end_src
+
+相关脑图：
+[[/img/vue3/runtime-core/vue-runtime-core-block-shouldtrack.svg]]
+
+* normalizeChildren function
+
+shapeFlag 初始值检测：
+#+begin_src typescript
+// encode the vnode type information into a bitmap
+const shapeFlag = isString(type)
+  ? ShapeFlags.ELEMENT // 1
+  : __FEATURE_SUSPENSE__ && isSuspense(type)
+  ? ShapeFlags.SUSPENSE // 1 << 7, 128
+  : isTeleport(type)
+  ? ShapeFlags.TELEPORT // 1 << 6, 64
+  : isObject(type)
+  ? ShapeFlags.STATEFUL_COMPONENT // 1 << 2, 4
+  : isFunction(type)
+  ? ShapeFlags.FUNCTIONAL_COMPONENT // 1 << 1, 2
+  : 0;
+#+end_src
+
+测试:
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { rc: { h, createVNode: c }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+const _h = (...args) => f(c(...args))
+
+log(['>>> only tag\n', _h('p')])
+log(['>>> tag + props\n', _h('p', { foo: 'foo' })])
+log(['>>> tag + props + children\n', _h('p', { foo: 'foo' }, ['foo'])])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> only tag
+ { __v_isVNode: true, __v_skip: true, type: 'p', shapeFlag: 1 }
+>>> tag + props
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'p',
+  props: { foo: 'foo' },
+  shapeFlag: 1
+}
+>>> tag + props + children
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'p',
+  props: { foo: 'foo' },
+  children: [ 'foo' ],
+  shapeFlag: 17
+}
+undefined
+#+end_example
+
+** 28d4a55 children is function
+
+[[https://github.com/gcclll/stb-vue-next/commit/28d4a55250c6f02264bbb77ca04a87770d358c7c][feat(add): rc->propsOrChildren is function · gcclll/stb-vue-next@28d4a55 · GitHub]]
+
+如果是函数，当做 slot 的 children 处理。
+
+normalizeChildren:
+#+begin_src typescript
+export function normalizeChildren(vnode: VNode, children: unknown) {
+  let type = 0
+  if (children == null) {
+    children = null
+  } else if (false /*array*/) {
+    // TODO
+  } else if (false /*object*/) {
+    // TODO
+  } else if (isFunction(children)) {
+    // 如果是函数当做 slot children ?
+    children = { default: children, _ctx: currentRenderingInstance }
+    type = ShapeFlags.SLOTS_CHILDREN
+  } else {
+    // TODO 普通类型
+  }
+
+  vnode.children = children as VNodeNormalizedChildren
+  vnode.shapeFlag |= type
+}
+#+end_src
+
+测试：
+#+begin_src js
+
+// 源文件：/js/vue/lib.js
+const { rc: { h, createVNode:c }, log, f } = require(process.env.BLOG_JS + '/vue/lib.js')
+const _h = (...args) => f(h(...args));
+const _c = (...args) => f(c(...args));
+
+const Component = { template: '<br />' }
+const slot = () => {}
+log(['>>> default slot\n', _h(Component, slot)])
+log(['>>> children is function\n', _c('div', {}, slot)])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> default slot
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: { template: '<br />' },
+  children: { default: [Function: slot], _ctx: null },
+  shapeFlag: 36
+}
+>>> children is function
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'div',
+  props: {},
+  children: { default: [Function: slot], _ctx: null },
+  shapeFlag: 33
+}
+undefined
+#+end_example
+** 850c0bc children is array or 普通类型
+
+[[https://github.com/gcclll/stb-vue-next/commit/850c0bc0d8b74e1b88d2158df505c83cb9a71408][feat(add): rc->createVNode, children is array or primitive ·
+gcclll/stb-vue-next@850c0bc · GitHub]]
+
+#+begin_src typescript
+// 数组类型
+if (isArray(children)) {
+  type = ShapeFlags.ARRAY_CHILDREN;
+}
+
+// 非对象，数组，函数的普通类型处理
+{
+  children = String(children);
+  // force teleport children to array so it can be moved around
+  if (shapeFlag & ShapeFlags.TELEPORT) {
+    type = ShapeFlags.ARRAY_CHILDREN;
+    children = [createTextVNode(children as string)];
+  } else {
+    type = ShapeFlags.TEXT_CHILDREN;
+  }
+}
+
+// createTextVNode
+export function createTextVNode(text: string = " ", flag: number = 0): VNode {
+  return createVNode(Text, null, text, flag);
+}
+
+export const Text = Symbol(__DEV__ ? 'Text' : undefined)
+#+end_src
+
+普通类型处理中如果是 ~ShapeFlags.TELETPORT~ 当做 ~ARRAY_CHILDREN~ 处理，且
+children 按照文本节点处理。
+
+#+begin_src js
+const {
+  rc: { h, createVNode: c },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(h(...args));
+const _c = (...args) => f(c(...args));
+
+log([`>>> array will be children(${1 | (1 << 4)})\n`, _h("div", ["foo"])]);
+log([">>> string will be children()\n", _h("div", "foo")]);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> array will be children(17)
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'div',
+  children: [ 'foo' ],
+  shapeFlag: 17
+}
+>>> string will be children()
+ {
+  __v_isVNode: true,
+  __v_skip: true,
+  type: 'div',
+  children: 'foo',
+  shapeFlag: 9
+}
+undefined
+#+end_example
+** 959879e children is object
+
+[[https://github.com/gcclll/stb-vue-next/commit/959879e825fb225b39c7fb219ec7e46feb6c7537][feat(add): rc->createVNode, normalizeChildren is object · gcclll/stb-vue-next@959879e · GitHub]]
+
+shapeFlag 可能是 ~ShapeFlags.ELEMENT~ 或者 ~ShapeFalgs.TELEPORT~ 。
+
+这里先测试 ELEMENT 情况，因为 TELEPORT 还需要实现 components/Teleport 。
+
+如果 type 是 对象， shapeFlag 初始类型会是 ~ShapeFlags.STATEFULL_COMPONENT, 1 <<
+2~
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { h, createVNode: c },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const _h = (...args) => f(c(...args));
+
+// 因为 type = {} , shapeFlag = 1 << 2, 4
+// 所以在 normalizeChildren 里面 isObject 分支会进入 else
+// 进行处理，经过处理之后成为 4 | SLOTS_CHILDREN,2<<5,32 = 36
+log([">>> object\n", _h({}, null, { foo: "foo" })]);
+#+end_src
+
+#+RESULTS:
+: >>> object
+:  {
+:   __v_isVNode: true,
+:   __v_skip: true,
+:   type: {},
+:   children: { foo: 'foo', _ctx: null },
+:   shapeFlag: 36
+: }
+: undefined
+* BUGs fix
+
+[[https://github.com/gcclll/stb-vue-next/commit/2a1ab0448919ea75c5794410a03265bd99e05d75][fix: no import EMPTY_ARR · gcclll/stb-vue-next@2a1ab04 · GitHub]]
+
+* runtime-core 类型定义
+
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: defines
+:END:
+1. 异步组件选项
+
+    #+begin_src typescript
+    export interface AsyncComponentOptions<T = any> {
+    loader: AsyncComponentLoader<T>
+    loadingComponent?: Component
+    errorComponent?: Component
+    delay?: number
+    timeout?: number
+    suspensible?: boolean
+    onError?: (
+        error: Error,
+        retry: () => void,
+        fail: () => void,
+        attempts: number
+    ) => any
+    }
+    #+end_src
+
+2. Vue App 类型
+
+   #+begin_src typescript
+    export interface App<HostElement = any> {
+      version: string;
+      config: AppConfig;
+      use(plugin: Plugin, ...options: any[]): this;
+      mixin(mixin: ComponentOptions): this;
+      component(name: string): Component | undefined;
+      component(name: string, component: Component): this;
+      directive(name: string): Directive | undefined;
+      directive(name: string, directive: Directive): this;
+      mount(
+        rootContainer: HostElement | string,
+        isHydrate?: boolean
+      ): ComponentPublicInstance;
+      unmount(rootContainer: HostElement | string): void;
+      provide<T>(key: InjectionKey<T> | string, value: T): this;
+
+      // internal, but we need to expose these for the server-renderer and devtools
+      _uid: number;
+      _component: ConcreteComponent;
+      _props: Data | null;
+      _container: HostElement | null;
+      _context: AppContext;
+    }
+   #+end_src
+
+   App 配置:
+
+   #+begin_src typescript
+    export interface AppConfig {
+      // @private
+      readonly isNativeTag?: (tag: string) => boolean;
+
+      performance: boolean;
+      optionMergeStrategies: Record<string, OptionMergeFunction>;
+      globalProperties: Record<string, any>;
+      isCustomElement: (tag: string) => boolean;
+      errorHandler?: (
+        err: unknown,
+        instance: ComponentPublicInstance | null,
+        info: string
+      ) => void;
+      warnHandler?: (
+        msg: string,
+        instance: ComponentPublicInstance | null,
+        trace: string
+      ) => void;
+    }
+   #+end_src
+
+   Vue 插件类型：
+
+   #+begin_src typescript
+    type PluginInstallFunction = (app: App, ...options: any[]) => any;
+    export type Plugin =
+      | (PluginInstallFunction & { install?: PluginInstallFunction })
+      | {
+          install: PluginInstallFunction;
+        };
+   #+end_src
+
+3. api watch 类型
+
+   #+begin_src typescript
+    export interface WatchOptionsBase {
+      flush?: "pre" | "post" | "sync";
+      onTrack?: ReactiveEffectOptions["onTrack"];
+      onTrigger?: ReactiveEffectOptions["onTrigger"];
+    }
+
+    export interface WatchOptions<Immediate = boolean> extends WatchOptionsBase {
+      immediate?: Immediate;
+      deep?: boolean;
+    }
+   #+end_src
+
+4. component 组件类型
+
+   #+begin_src typescript
+    // 内部选项
+    export interface ComponentInternalOptions {
+      /**
+    ,* @internal
+    ,*/
+      __props?: NormalizedPropsOptions;
+      /**
+    ,* @internal
+    ,*/
+      __emits?: ObjectEmitsOptions | null;
+      /**
+    ,* @internal
+    ,*/
+      __scopeId?: string;
+      /**
+    ,* @internal
+    ,*/
+      __cssModules?: Data;
+      /**
+    ,* @internal
+    ,*/
+      __hmrId?: string;
+      /**
+    ,* This one should be exposed so that devtools can make use of it
+    ,*/
+      __file?: string;
+    }
+
+    // 函数式组件
+    export interface FunctionalComponent<P = {}, E extends EmitsOptions = {}>
+      extends ComponentInternalOptions {
+      // use of any here is intentional so it can be a valid JSX Element constructor
+      (props: P, ctx: Omit<SetupContext<E>, "expose">): any;
+      props?: ComponentPropsOptions<P>;
+      emits?: E | (keyof E)[];
+      inheritAttrs?: boolean;
+      displayName?: string;
+    }
+
+    // 类组件
+    export interface ClassComponent {
+      new (...args: any[]): ComponentPublicInstance<any, any, any, any, any>;
+      __vccOpts: ComponentOptions;
+    }
+
+    // 生命周期函数缩写
+    export const enum LifecycleHooks {
+      BEFORE_CREATE = "bc",
+      CREATED = "c",
+      BEFORE_MOUNT = "bm",
+      MOUNTED = "m",
+      BEFORE_UPDATE = "bu",
+      UPDATED = "u",
+      BEFORE_UNMOUNT = "bum",
+      UNMOUNTED = "um",
+      DEACTIVATED = "da",
+      ACTIVATED = "a",
+      RENDER_TRIGGERED = "rtg",
+      RENDER_TRACKED = "rtc",
+      ERROR_CAPTURED = "ec",
+    }
+
+    // setup 函数
+    export interface SetupContext<E = EmitsOptions> {
+      attrs: Data;
+      slots: Slots;
+      emit: EmitFn<E>;
+      expose: (exposed: Record<string, any>) => void;
+    }
+   #+end_src
+
+5. component internal instance
+
+   这里涵盖了一个组件都有哪些属性：
+
+   ~uid, type, parent, root, appContext, vnode, next, subTree, update~,
+
+   ~render, ssrRender, provides, effects, accessCache, renderCache~,
+
+   ~components, directives, propsOptions, emitsOptions~,
+
+   ~proxy, exposed, withProxy, ctx~,
+
+   ~data, props, attrs, slots, refs, emit~,
+
+   ~emitted, setupState, devtoolsRawSetupState, setupContext~,
+
+   ~suspense, suspenseId, asyncDep, asyncResolved~,
+
+   ~isMounted, isUnmounted, isDeactivated~,
+
+   ~bc, c, bm, m, bu, u, bum, um, da, a, rtg, rtc, ec~
+   #+begin_src typescript
+    export const enum LifecycleHooks {
+      BEFORE_CREATE = "bc",
+      CREATED = "c",
+      BEFORE_MOUNT = "bm",
+      MOUNTED = "m",
+      BEFORE_UPDATE = "bu",
+      UPDATED = "u",
+      BEFORE_UNMOUNT = "bum",
+      UNMOUNTED = "um",
+      DEACTIVATED = "da",
+      ACTIVATED = "a",
+      RENDER_TRIGGERED = "rtg",
+      RENDER_TRACKED = "rtc",
+      ERROR_CAPTURED = "ec",
+    }
+   #+end_src
+
+   类型：
+   #+begin_src typescript
+    /**
+     * We expose a subset of properties on the internal instance as they are
+     * useful for advanced external libraries and tools.
+     */
+    export interface ComponentInternalInstance {
+      uid: number;
+      type: ConcreteComponent;
+      parent: ComponentInternalInstance | null;
+      root: ComponentInternalInstance;
+      appContext: AppContext;
+      /**
+       * Vnode representing this component in its parent's vdom tree
+       */
+      vnode: VNode;
+      /**
+       * The pending new vnode from parent updates
+       * @internal
+       */
+      next: VNode | null;
+      /**
+       * Root vnode of this component's own vdom tree
+       */
+      subTree: VNode;
+      /**
+       * The reactive effect for rendering and patching the component. Callable.
+       */
+      update: ReactiveEffect;
+      /**
+       * The render function that returns vdom tree.
+       * @internal
+       */
+      render: InternalRenderFunction | null;
+      /**
+       * SSR render function
+       * @internal
+       */
+      ssrRender?: Function | null;
+      /**
+       * Object containing values this component provides for its descendents
+       * @internal
+       */
+      provides: Data;
+      /**
+       * Tracking reactive effects (e.g. watchers) associated with this component
+       * so that they can be automatically stopped on component unmount
+       * @internal
+       */
+      effects: ReactiveEffect[] | null;
+      /**
+       * cache for proxy access type to avoid hasOwnProperty calls
+       * @internal
+       */
+      accessCache: Data | null;
+      /**
+       * cache for render function values that rely on _ctx but won't need updates
+       * after initialized (e.g. inline handlers)
+       * @internal
+       */
+      renderCache: (Function | VNode)[];
+
+      /**
+       * Resolved component registry, only for components with mixins or extends
+       * @internal
+       */
+      components: Record<string, ConcreteComponent> | null;
+      /**
+       * Resolved directive registry, only for components with mixins or extends
+       * @internal
+       */
+      directives: Record<string, Directive> | null;
+      /**
+       * reoslved props options
+       * @internal
+       */
+      propsOptions: NormalizedPropsOptions;
+      /**
+       * resolved emits options
+       * @internal
+       */
+      emitsOptions: ObjectEmitsOptions | null;
+
+      // the rest are only for stateful components ---------------------------------
+
+      // main proxy that serves as the public instance (`this`)
+      proxy: ComponentPublicInstance | null;
+
+      // exposed properties via expose()
+      exposed: Record<string, any> | null;
+
+      /**
+       * alternative proxy used only for runtime-compiled render functions using
+       * `with` block
+       * @internal
+       */
+      withProxy: ComponentPublicInstance | null;
+      /**
+       * This is the target for the public instance proxy. It also holds properties
+       * injected by user options (computed, methods etc.) and user-attached
+       * custom properties (via `this.x = ...`)
+       * @internal
+       */
+      ctx: Data;
+
+      // state
+      data: Data;
+      props: Data;
+      attrs: Data;
+      slots: InternalSlots;
+      refs: Data;
+      emit: EmitFn;
+      /**
+       * used for keeping track of .once event handlers on components
+       * @internal
+       */
+      emitted: Record<string, boolean> | null;
+
+      /**
+       * setup related
+       * @internal
+       */
+      setupState: Data;
+      /**
+       * devtools access to additional info
+       * @internal
+       */
+      devtoolsRawSetupState?: any;
+      /**
+       * @internal
+       */
+      setupContext: SetupContext | null;
+
+      /**
+       * suspense related
+       * @internal
+       */
+      suspense: SuspenseBoundary | null;
+      /**
+       * suspense pending batch id
+       * @internal
+       */
+      suspenseId: number;
+      /**
+       * @internal
+       */
+      asyncDep: Promise<any> | null;
+      /**
+       * @internal
+       */
+      asyncResolved: boolean;
+
+      // lifecycle
+      isMounted: boolean;
+      isUnmounted: boolean;
+      isDeactivated: boolean;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.BEFORE_CREATE]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.CREATED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.BEFORE_MOUNT]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.MOUNTED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.BEFORE_UPDATE]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.UPDATED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.BEFORE_UNMOUNT]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.UNMOUNTED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.RENDER_TRACKED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.RENDER_TRIGGERED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.ACTIVATED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.DEACTIVATED]: LifecycleHook;
+      /**
+       * @internal
+       */
+      [LifecycleHooks.ERROR_CAPTURED]: LifecycleHook;
+    }
+   #+end_src
+
+6. emit fn 事件
+
+   #+begin_src typescript
+    export type EmitFn<
+      Options = ObjectEmitsOptions,
+      Event extends keyof Options = keyof Options
+    > = Options extends Array<infer V>
+      ? (event: V, ...args: any[]) => void
+      : {} extends Options // if the emit is empty object (usually the default value for emit) should be converted to function
+      ? (event: string, ...args: any[]) => void
+      : UnionToIntersection<
+          {
+            [key in Event]: Options[key] extends (...args: infer Args) => any
+              ? (event: key, ...args: Args) => void
+              : (event: key, ...args: any[]) => void;
+          }[Event]
+        >;
+   #+end_src

@@ -499,6 +499,12 @@ const compile = (src, options) => {
                                             ("82lib" "
 // 源文件：/js/vue/lib.js
 const { compileSFCScript, compileStyle, getCompiledSSRString: ssr, compileSSR, log } = require(process.env.BLOG_JS + '/vue/lib.js')")
+                                            ("82rc" "
+// 源文件：/js/vue/lib.js
+const { rc: { h, createVNode: c }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+const _h = (...args) => f(h(...args))
+")
+
 
                                             ;; org prop, tags
                                             ("8cid" "
@@ -513,9 +519,9 @@ const { compileSFCScript, compileStyle, getCompiledSSRString: ssr, compileSSR, l
                                             ("8sup" "@@html:<sup><font color='red'>@@官方@@html:</font></sup>@@")
                                             ("8sub" "@@html:<sub><font color='red'>@@官方@@html:</font></sub>@@")
                                             ("8img" "
-#+BEGIN_EXPORT html
+,#+BEGIN_EXPORT html
 <img src='' alt='some picture'/>
-#+END_EXPORT")
+,#+END_EXPORT")
                                             ))
 #+end_src
 *** add-hook
