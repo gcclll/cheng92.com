@@ -61,6 +61,16 @@ log.props = (obj, props, now = true) => {
   now && log(o);
   return o;
 };
+
+log.async = async (...args) => {
+  await log(...args);
+};
+
+log.newline = (...args) => {
+  log("\n");
+  log(...args);
+};
+
 register();
 
 try {

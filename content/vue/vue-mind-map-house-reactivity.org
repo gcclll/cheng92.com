@@ -581,6 +581,10 @@ function createSetter(shallow = false) {
 #+end_src
 
 ** trigger()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: r-trigger
+:END:
 
 #+begin_src typescript
 export function trigger(

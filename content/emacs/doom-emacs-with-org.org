@@ -401,7 +401,7 @@ Uses `current-date-time-format' for the formatting the date/time."
  "C-c r"       #'vr/replace
  "C-c q"       #'vr/query-replace
  "C-c u"       #'crux-view-url
- "C-c y"       #'youdao-dictrionary-search-at-point+
+ "C-c y"       #'youdao-dictionary-search-at-point+
 
  :niv      "C-e"     #'evil-end-of-line
  :niv      "C--"     #'cnfonts-decrease-fontsize
