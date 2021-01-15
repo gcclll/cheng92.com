@@ -1,0 +1,28 @@
+#+TITLE: Vue3 核心原理和功能分析链
+#+DATE: <2021-01-13 22:51:17>
+#+TAGS[]: vue, vue3
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink
+
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文纯粹的链接，列出源码学习过程中重要知识点和功能特性有关的分析链接，这些链接主
+要链接到本网站内文章，不排除有外链其他网站。
+#+end_quote
+
+- [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
+
+   vue3 中的异步更新任务分为三种： pre cbs/queue jobs/post cbs，他们的执行都有一
+   定的先后顺序，点击[[/vue/vue-mind-map-runtime-core/#scheduler][链接]]了解更多分析内容。

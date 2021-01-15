@@ -101,7 +101,7 @@ h, 接受不定参数
 
 逻辑脑图:
 
-[[http://qiniu.ii6g.com/img/20210108152508.png]]
+[[/img/tmp/20210108152508.png]]
 
 从脑图分支得出支持的情况代码示例：
 
@@ -2018,7 +2018,7 @@ queueJob 函数分为两步：
 
 实例执行脑图：
 
-[[http://qiniu.ii6g.com/img/20210112173934.png]]
+[[/img/tmp/20210112173934.png]]
 
 ** queueJob while flushing
 
@@ -2086,7 +2086,7 @@ for (let i = 0; i < nums.length; i++) {
 这个是用来收集和 flush pre 类型(默认类型的任务)的队列 ~pendingPreFlushCbs[]~  的函数。
 
 逻辑脑图：
-[[http://qiniu.ii6g.com/img/20210113103504.png]]
+[[/img/tmp/20210113103504.png]]
 
 相关代码：
 #+begin_src typescript
@@ -2156,12 +2156,17 @@ if (
 | ~flushJobs~          | function | 具体执行任务的函数，三种任务执行顺序是： pre -> queue -> post    |
 
 #+begin_quote
-Tip. ~activePreFlushCbs~ 和 ~pendingPreFlushCbs~ 的关系： 前者是后者的一个拷贝，
+*Tip*. ~activePreFlushCbs~ 和 ~pendingPreFlushCbs~ 的关系： 前者是后者的一个拷贝，
 拷贝完会立即清空 pending, 目的是为了让 pending 在 active flushing 期间能继续收集
 新的任务，这样如果在执行期间有新的任务入列，那么在函数最后的递归操作会对这些新入
 列的任务继续 flush 掉，直到再也没有新的任务入列为止。
-#+end_quote
 
+*注意点* ：当 ~queuePreFlushCb~ 在 queueJob 中使用时不会主动触发 cbs 执行，如果
+需要立即执行这些 cbs 需要手动调用 ~flushPreFlushCbs(seen, parentJob)~ 去刷掉 pre
+cbs 任务，或者等到当前 job 执行完了下一个 ~flushJobs()~ 调用中执行，因为
+~queueJob()~ 执行期间 ~isFlushing = true~ ，而在 ~queueFlush()~ 中有检测这个值，
+如果正在执行 flushing 是不会继续执行的，更多详情查看后面的测试和分析。
+#+end_quote
 
 源码：
 #+begin_src typescript
@@ -2225,12 +2230,94 @@ function doWatch(
   // ...
 }
 #+end_src
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { queueJob, queuePreFlushCb, flushPreFlushCbs, nextTick },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const calls = [];
+  const job1 = () => { // #1
+    queuePreFlushCb(cb1); // #2
+    queuePreFlushCb(cb2); // #3
+    // 手动触发 cb1, cb2
+    flushPreFlushCbs(undefined, job1); // #4
+    calls.push("job1"); // #5
+  };
+  const cb1 = () => calls.push("cb1"); // #6
+  const cb2 = () => calls.push("cb2"); // #7
+
+  queueJob(job1); // #8
+  await nextTick(); // #9
+  log.newline(calls); // #10
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: cb1 cb2 job1
+
+测试分析代码脑图：
+[[/img/vue3/runtime-core/vue-runtime-core-test-preflush-inside-queuejob.jpg]]
+
+文字分析：
+1. *#8* 先执行， queueJob -> push job1 -> queue:[job1] -> queueFlush()
+
+   在 queueFlush() 中调用 ~resolvedPromise.then(flushJobs)~ 异步执行 flushJobs()
+   函数刷掉所有任务(pre/job/post)
+
+   并且记录当前 tick 下的 promise: ~currentFlushPromise~
+
+   此时的 ~pendingPreFlushCbs[]~ 中是没有任何任务的，所以继续执行 try{...} 开始
+   flush queue[] jobs，这个时候 flushIndex = 0 得到 job1，开始按顺序执行 job1
+
+2. *#1* 开始执行
+
+3. *#2* 将 cb1 push -> ~pendingPreFlushCbs=[cb1]~
+
+4. *#3* 将 cb2 push -> ~pendingPreFlushCbs=[cb1, cb2]~
+
+5. *#4* 手动 flush pre cbs
+
+   在 ~flushPreFlushCbs(undefind, job1)~ 中会记录 ~currentPreFlushParentJob =
+   job1~ 这个变量将会在 ~queueJob(job)~ 中用来检测 job 是不是当前的 job1 如果是
+   就不允许 push，因为 job1 下有子任务正在执行，必须等这些子任务(cb1, cb2) 执行完。
+
+6. *#6* 开始执行， push 'cb1' -> calls: ['cb1']
+
+7. *#7* 开始执行， push 'cb2' -> calls: ['cb1', 'cb2']
+
+8. *#5* 开始执行， push 'job1' -> alls: ['cb1', 'cb2', 'job1']
+
+9. *#9* 开始执行，因为 nextTick()
+
+   #+begin_src typescript
+   export function nextTick(
+     this: ComponentPublicInstance | void,
+     fn?: () => void
+   ): Promise<void> {
+     const p = currentFlushPromise || resolvedPromise;
+     return fn ? p.then(this ? fn.bind(this) : fn) : p;
+   }
+   #+end_src
+
+   这里的 await 会等 job1 queueFlush() 触发的 promise.then(flushJobs) 返回的
+   promise 完成之后再执行后面的代码。
+
+10. *#10* log 输出 ~'cb1,cb2,job1'~
+
 ** queuePostFlushCb + flushPostFlushCbs
 
 [[https://github.com/gcclll/stb-vue-next/commit/845c21bfc0ef1797d39a9fd789d79a4fdc3bd399][feat(add): rc->scheduler->queuePostFlushCb+flushPostFlushCbs · gcclll/stb-vue-next@845c21b · GitHub]]
 
 逻辑脑图：
-[[http://qiniu.ii6g.com/img/20210113143628.png]]
+[[/img/tmp/20210113143628.png]]
 
 有了 queue job 和 pre cb 的基础分析，这部分也就很好理解了。
 
@@ -2276,48 +2363,106 @@ export function flushPostFlushCbs(seen?: CountMap) {
 1. 非回调形式处理 flushing 期间接受到的新任务，而是通过改变执行器
    activePostFlushCbs 来实现(和 queue job 类似)
 2. 没有递归回调形式处理后续的新任务，参考 *1*
-** test
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { queuePostFlushCb, nextTick, queueJob },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+// len = activePostFlushCbs.length
+const run = async () => {
+  const calls = [];
+  const cb1 = () => {
+    calls.push("cb1");
+    // 会在同一个 tick 期间执行，因为它在for flushing 期间改变了
+    // activePostFlushCbs，并且紧随 cb1,cb2,cb3 之后执行
+    queuePostFlushCb(cb4);
+  };
+  const cb2 = () => calls.push("cb2");
+  const cb3 = () => calls.push("cb3");
+  // job1 会在 cb4 之后执行，因为 flushJobs 在按顺序执行完
+  // pre -> job -> post 最后的 finally 里面对 queue 进行了检测
+  // 此时 queue = [job1] 随意会递归调用 flushJobs() 继续刷
+  // 但是为什么 cb5 会在 job1 之后呢？？？
+  // 因为 queuePostFlushCb push 的是 pendingPostFlushCbs 而不是
+  // activePostFlushCbs，所以在 queuePostFlushCb 中调用自身增加的新
+  // cbs 会在 finally 后面的检测递归 flushJobs() 调用中执行
+  // 而 post 的优先级又低于 job 所以 job1 会优先输出
+  const cb4 = () => (queuePostFlushCb(cb5), queueJob(job1), calls.push("cb4"));
+  // 会在 job1,cb5 之后执行
+  const job1 = () => (queuePostFlushCb(cb6), calls.push("job1"));
+  const cb5 = () => calls.push("cb5");
+  const cb6 = () => calls.push("cb6");
+
+  queuePostFlushCb([cb1, cb2]);
+  queuePostFlushCb(cb3);
+
+  // 应该去重
+  queuePostFlushCb([cb1, cb3]);
+  queuePostFlushCb(cb2);
+  await nextTick();
+  log.newline(calls);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: cb1 cb2 cb3 cb4 job1 cb5 cb6
+
+#+begin_quote
+对于 ~queuePostFlushCb~ 和 ~queueJob~ 的混用只要记住一点， ~queuePostFlushCb~ 不
+会触发 ~activePostFlushCbs~ 改变，因为 isFlushing = true，所以只会在当前
+~flushJobs()~ 执行到最后递归检测的时候才会进入下一次的 post+job 调用。
+#+end_quote
+
+** test nested(pre/job/post)
 
 完整的测试用例，结合 pre, post, queue 三种类型的任务进行测试。
 
 #+begin_src js
 // 源文件：/js/vue/lib.js
 const {
-  rc: { queueJob, queuePreFlushCb, nextTick },
+  rc: { queueJob, queuePreFlushCb, nextTick, flushPreFlushCbs },
   log,
 } = require(process.env.BLOG_JS + "/vue/lib.js");
 
 const run = async () => {
   const calls = [];
   const cb1 = () => {
-    log("\ncb1 running...");
     calls.push("cb1");
   };
   const cb2 = () => {
-    log("\ncb2 running...");
     calls.push("cb2");
     // queueJob 和 queuePreFlushCb 结合使用
     queueJob(job1);
   };
   const cb3 = () => {
-    log("\ncb3 running...");
     calls.push("cb3");
     // 链式使用，cb4 会在 cb1,2,3 执行完成之后才会执行
     queuePreFlushCb(cb4);
   };
   const cb4 = () => {
-    log("\ncb4 running...");
     calls.push("cb4");
   };
   const cb5 = () => {
-    log("\ncb5 running...");
     calls.push("cb5");
   };
   const job1 = () => {
-    log("\njob1 running...");
     calls.push("job1");
     // queuePreFlushCb 在 queueJob 中调用
+    // pre cbs 在 job 中调用的时候不会被执行，除非在这后面手动 flush
+    // 或者有新的任务进来，发起 flushJobs 调用才会执行
     queuePreFlushCb(cb5);
+    // 必须手动触发, 这样 cb5 才会输出
+    flushPreFlushCbs(undefined, job1 /* currentPreFlushParentJob */);
+  };
+  const cb6 = () => {
+    calls.push("cb6");
   };
 
   queuePreFlushCb(cb1);
@@ -2326,32 +2471,15 @@ const run = async () => {
   queuePreFlushCb(cb2);
   queuePreFlushCb(cb3);
 
-  log("\nbefore await, " + calls);
   await nextTick();
-  log("\nafter await, " + calls);
+  log("\n" + calls);
 };
 run();
 #+end_src
 
 #+RESULTS:
-#+begin_example
-
-before await,
-undefined
-cb1 running...
-
-cb2 running...
-
-cb3 running...
-
-cb4 running...
-
-job1 running...
-
-cb5 running...
-
-after await, cb1,cb2,cb3,cb4,job1,cb5
-#+end_example
+: undefined
+: cb1,cb2,cb3,cb4,job1,cb5
 
 1. pendingPreFlushCbs 虽然是个数组，但是 flush 期间通过 ~[...new
    Set(pendingPreFlushCbs)]~ 进行了去重操作。
@@ -2402,8 +2530,201 @@ after await, cb1,cb2,cb3,cb4,job1,cb5
    这个时候会去递归 ~flushJobs()~ 此时才发现有新的 ~pendingPreFlushCbs~ (如：
    ~cb5~)，则将执行他们，所以结果是 ~job1,cb5~ 。
 
+** invalidateJob(job)
 
+[[https://github.com/gcclll/stb-vue-next/commit/24808b106cfaad8af29a7343918a21836f1aff5d][feat(add): rc->scheduler->invalidateJob · gcclll/stb-vue-next@24808b1 · GitHub]]
 
+是任务失效，其实就是单纯的将 Job 从 queue 中删除了。
+
+#+begin_src typescript
+export function invalidateJob(job: SchedulerJob) {
+  const i = queue.indexOf(job);
+  if (i > -1) {
+    queue.splice(i, 1);
+  }
+}
+#+end_src
+
+测试:
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { queueJob, queuePostFlushCb, invalidateJob, nextTick },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const calls = [];
+  const job1 = () => {
+    calls.push("job1");
+    invalidateJob(job2); // 这里将 job2 从 queue[] 中删除了
+    job2(); // 注释这个结果会是： job1 job3 job4
+  };
+  const job2 = () => {
+    calls.push("job2");
+  };
+  const job3 = () => {
+    calls.push("job3");
+  };
+  const job4 = () => {
+    calls.push("job4");
+  };
+
+  queueJob(job1);
+  queueJob(job2);
+  queueJob(job3);
+  queuePostFlushCb(job4);
+  await nextTick();
+  log.newline(calls);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: job1 job2 job3 job4
+** job sort id 任务可以排序
+
+只有 post 和 job 支持排序。
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { queueJob, queuePostFlushCb, nextTick },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const calls = [];
+  const job1 = () => calls.push("job1");
+  const job2 = () => calls.push("job2");
+  const job3 = () => calls.push("job3");
+  // job1 no id
+  job2.id = 2;
+  job3.id = 1;
+
+  const cb1 = () => calls.push("cb1");
+  const cb2 = () => calls.push("cb2");
+  const cb3 = () => calls.push("cb3");
+  cb1.id = 2;
+  // cb2 no id
+  cb3.id = 1;
+
+  queueJob(job1);
+  queueJob(job2);
+  queueJob(job3);
+  queuePostFlushCb(cb1);
+  queuePostFlushCb(cb2);
+  queuePostFlushCb(cb3);
+  await nextTick();
+  log.newline(calls);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: job3 job2 job1 cb3 cb1 cb2
+** allowRecurse 自身递归
+
+用 job.allowRecurse 来控制 job 是否可以自己触发自己执行(PS. pre/job/post 都支持
+该属性)。
+
+[[/img/vue3/runtime-core/vue-runtime-core-job-allowRecurse.jpg]]
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { queueJob, nextTick },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  let count = 0;
+  const job = () => {
+    if (count < 3) {
+      count++;
+      queueJob(job);
+    }
+  };
+  queueJob(job);
+  queueJob(job);
+  await nextTick();
+  log.newline("before count: " + count);
+  // 设置 allowRecurse = true 允许自我调度
+  count = 0;
+  job.allowRecurse = true;
+  // 重复入列同一个任务会在 push 阶段就检测和自身递归调用不同
+  queueJob(job);
+  queueJob(job);
+  await nextTick();
+  log.newline("after count: " + count);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: before count: 1
+:
+:
+: after count: 3
+** checkRecursiveUpdates
+
+[[https://github.com/gcclll/stb-vue-next/commit/7bcc14b6be11693ddb0cc9d4202727f2ebc83995][feat(add): rc->scheduler->checkRecursiveUpdates · gcclll/stb-vue-next@7bcc14b ·
+GitHub]]
+
+限制调用自身的次数，在 allowRecurse = true 情况下使用。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { queueJob, nextTick },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  let count = 0;
+  const job = () => {
+    if (count < 101) {
+      count++;
+      queueJob(job);
+    }
+  };
+  job.allowRecurse = true;
+  queueJob(job);
+  try {
+    await nextTick();
+  } catch (e) {
+    log.newline(e.message);
+  }
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: Maximum recursive updates exceeded. This means you have a reactive effect that is mutating its own dependencies and thus recursively triggering itself. Possible sources include component template, render function, updated hook or watcher source function.
+** 小结
+
+[[/img/vue3/runtime-core/vue-runtime-core-scheduler-comparation.jpg]]
+
+*pre cbs*: 执行优先级最高，在同一 tick 中会递归调用自身清空 ~pendingPreFlushCbs~
+ 中的任务，在 ~queueJob~ 中调用时不会自动触发需要手动触发执行，因为此时
+ ~isFlushing = true~ 。
+
+*job*: 执行优先级次之，在同一 tick 中同一个 for queue -> flushIndex 下会处理此
+  时接受到的新任务，在 pre cbs 中调用时会在所有 pre cbs 执行之后执行。
+
+*post cbs*: 执行优先级最低，在同一 tick 同一次 ~flushPostFlushCbs()~ 调用中不会
+ 处理新的 post 任务，而是在 ~flushJobs()~ 执行到最后 finally 部分检
+ 测 ~pendingPostFlushCbs~ 任务队列来处理当前 tick 下新接受到的任务，
+ 在 ~queuePreFlushCb()~ 和 ~queueJob()~ 中调用的时候会在他们的任务之后执行。
 * BUGs fix & Questions
 
 [[https://github.com/gcclll/stb-vue-next/commit/2a1ab0448919ea75c5794410a03265bd99e05d75][fix: no import EMPTY_ARR · gcclll/stb-vue-next@2a1ab04 · GitHub]]

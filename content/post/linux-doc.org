@@ -8,6 +8,46 @@
 
 * 👴  Commands(命令)
 
+** fasd
+
+#+begin_example
+fasd [options] [query ...]
+[f|a|s|d|z] [opions] [query ...]
+  options:
+    -s         list paths with scores
+    -l         list paths without scores
+    -i         interactive mode
+    -e <cmd>   set command to execute on the result file
+    -b <name>  only use <name> backend
+    -B <name>  add additional backend <name>
+    -a         match files and directories
+    -d         match directories only
+    -f         match files only
+    -r         match by rank only
+    -t         match by recent access only
+    -R         reverse listing order
+    -h         show a brief help message
+    -[0-9]     select the nth entry
+
+fasd [-A|-D] [paths ...]
+    -A    add paths
+    -D    delete paths
+#+end_example
+
+#+begin_src shell
+cd ~/ccc/tmp
+#+end_src
+
+#+RESULTS:
+
+** grep, egrep, fgrep
+
+[[https://man7.org/linux/man-pages/man1/grep.1.html][grep(1) - Linux manual page]]
+
+grep [OPTION...] PATTERNS [FILE...]
+grep [OPTION...] -e PATTERNS ... [FILE...]
+grep [OPTION...] -f PATTERN_FILE ... [FILE...]
+
 ** ripgrep 搜索命令
 
 https://github.com/BurntSushi/ripgrep#installation
