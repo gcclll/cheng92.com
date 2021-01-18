@@ -42,11 +42,15 @@
 * Tips
 1. class 支持数组(~['foo', 'bar']~)，对象(~{foo:true,bar:false}~)，字符串(~'foo bar'~)
 2. style 支持数组(~['color:red', {foo:'foo'}]~)，对象(~{color:'red',foo:'foo'}~)，字符串(~color:red~)
-3. class component 条件： 1) function 2) 含 ~__vccOpts = { template: '<div />'}~
-4. vnode ref 属性处理逻辑 [[#test-vnode-ref][链接-->]]
-5. vnode key 属性为简单的值覆盖操作 [[#test-vnode-key][链接-->]]
-6. api ~watch(source, cb, option)~ 中的 source 只能是 ~reactive/ref/function/array~ 类型，
+3. class component 条件：
+   1) function
+   2) 含 ~__vccOpts = { template: '<div />'}~
+4. [[#test-vnode-ref][vnode ref 属性合并处理逻辑？]]
+5. [[#test-vnode-key][vnode key 属性简单的值覆盖操作？]]
+6. [[#scheduler][scheduler, vue-next 中的任务调度器如何实现？]]
+7. [[#api-watch][api watch(source, cb, option)]] 中的 source 只能是 ~reactive/ref/function/array~ 类型，
    如果是数组时其元素只能是 ~reactive/ref/function~
+8. [[#api-watch-deep][api watch(..., { deep: true }) 是如何做到深度监听的？]]
 * init
 
 导出已完成模块(reactiviy)里的 Apis:
@@ -1319,6 +1323,10 @@ log([">>> object\n", _h({}, null, { foo: "foo" })]);
 : }
 : undefined
 * api watch(source, cb, options)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-watch
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/4f0301ea5d7839e8ce5274ea170dd09bd129f5ee][feat(add): api watch TODOs · gcclll/stb-vue-next@4f0301e · GitHub]]
 
@@ -1792,46 +1800,605 @@ const job: SchedulerJob = () => {
   }
 };
 #+end_src
-** option deep: true
+** option deep
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-watch-deep
+:END:
 
+对于深度监听主要是因为 ~traverse()~ 函数对 reactive 对象进行了递归遍历，对每个属
+性进行了访问，从而让它收集到当前的 effect 作为依赖，这样将来这些被遍历到的值发生
+改变时就会触发这个收集到的 effect 执行，达到深度监听效果。
+
+#+begin_src typescript
+ // 3. cb + deep: true
+ if (cb && deep) {
+   const baseGetter = getter;
+   // a. deep: true
+
+   // b. source is reactive
+   getter = () => traverse(baseGetter());
+ }
+#+end_src
+
+#+begin_quote
+~traverse()~ 作用就是递归遍历所有属性通过 ~return value~ 来执行 get 操作收集依赖。
+#+end_quote
+
+测试：
 #+begin_src js
 // 源文件：/js/vue/lib.js
 const {
-  rc: { nextTick, ref, watch, reactive },
+  rc: { ref, reactive, watch, nextTick },
   log,
 } = require(process.env.BLOG_JS + "/vue/lib.js");
 
 const run = async () => {
   const count = ref(0);
+
+  const state = reactive({
+    nested: { count },
+    array: [1, 2, 3],
+    map: new Map([
+      ["a", 1],
+      ["b", 2],
+    ]),
+    set: new Set([1, 2, 3]),
+  });
+
   let dummy;
- // 监听原始类型(ref封装) deep: tru
   watch(
-    count,
-    (c, prev) => {
-      dummy = [c, prev];
+    () => state,
+    (state) => {
+      dummy = [
+        state.nested.count,
+        state.array[0],
+        state.map.get("a"),
+        state.set.has(1),
+      ];
     },
     { deep: true }
   );
 
-  count.value++;
+  state.nested.count++;
   await nextTick();
-  log.br(dummy);
-  log('>> 直接监听 reactive 对象')
-  const src = reactive({ count: 0 })
-  watch(src, ({ count }) => { dummy = count })
-  src.count++
-  await nextTick()
-  log.br(dummy)
+  log(["\n", dummy]);
+
+  state.array[0] = 2;
+  await nextTick();
+  log(["\n", dummy]);
+
+  state.map.set("a", 100);
+  await nextTick();
+  log(["\n", dummy]);
+
+  state.set.delete(1);
+  await nextTick();
+  log(["\n", dummy]);
 };
 run();
 #+end_src
 
 #+RESULTS:
 : undefined
-:  [ 1, 0 ]
-: >> 直接监听 reactive 对象
+:  [ 1, 1, 1, true ]
 :
-:  1
+:  [ 1, 2, 1, true ]
+:
+:  [ 1, 2, 100, true ]
+:
+:  [ 1, 2, 100, false ]
+
+*** TODO deep ref
+** option immediate
+
+[[https://github.com/gcclll/stb-vue-next/commit/204ce6824b3f645d79f77f350b78a70bc3a47980][feat(add): rc->api watch->immediate option · gcclll/stb-vue-next@204ce68 ·
+GitHub]]
+
+*immediate* 选项，会让 cb/job 立即执行一次，而不是在队列中等待异步执行。
+
+新增代码只需要加一行：
+#+begin_src typescript
+if (cb) {
+  if (immediate) {
+    job(); // 这里直接调用 Job
+  } else {
+    oldValue = runner();
+  }
+} else if (false /*flush->post*/) {
+} else {
+  runner();
+}
+#+end_src
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { nextTick, watch, ref },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const _log = (desc, newline) =>
+    log([newline ? "\n" : "", `${desc} > dummy = ${dummy}`]);
+  const cb = (val) => (dummy = val);
+  const option = { immediate: true };
+
+  const count = ref(0);
+  let dummy;
+  watch(count, cb, option);
+
+  _log("改变值之前");
+  count.value++;
+  await nextTick();
+  _log("改变值之后", true);
+
+  const nul = ref(null);
+  watch(() => nul.value, cb, option);
+  _log("当初始值为 null");
+
+  const undef = ref();
+  watch(() => undef.value, cb, option);
+  _log("当初始值为 undefined");
+  undef.value = 3;
+  await nextTick();
+  _log("当初始值为 undefined, set 3");
+  undef.value = undefined;
+  await nextTick();
+  _log("当初始值为 undefined, set undefined");
+  // undefined === undefined -> hasChanged() -> false
+  undef.value = undefined;
+  await nextTick();
+  _log("当初始值为 undefined, set undefined");
+};
+run();
+#+end_src
+
+#+RESULTS:
+:  改变值之前 > dummy = 0
+: undefined
+:  改变值之后 > dummy = 1
+:  当初始值为 null > dummy = null
+:  当初始值为 undefined > dummy = undefined
+:  当初始值为 undefined, set 3 > dummy = 3
+:  当初始值为 undefined, set undefined > dummy = undefined
+:  当初始值为 undefined, set undefined > dummy = undefined
+
+如上结果， cb 会立即执行。
+
+在使用 deep 和 immediate 选项的时候如果没有 cb 会给出警告，直接看源码吧:
+#+begin_src typescript
+// 1. cb, immediate, deep 检测
+if (__DEV__ && !cb) {
+  if (immediate !== undefined) {
+    warn(
+      `watch() "immediate" option is only respected when using the ` +
+        `watch(source, callback, options?) signature.`
+    );
+  }
+  if (deep !== undefined) {
+    warn(
+      `watch() "deep" option is only respected when using the ` +
+        `watch(source, callback, options?) signature.`
+    );
+  }
+}
+#+end_src
+
+#+begin_quote
+也就是说， ~deep~ 和 ~immediate~ 建议在 ~watch(s, cb, options)~ 形式下使用，即在
+有 cb 参数的情况下使用。
+
+那为什么呢？
+#+end_quote
+** option onTrack + onTrigger
+
+这部分实现逻辑主要在 [[/vue/vue-mind-map-house-reactivity][reactivity]] 模块。
+
+onTrack 在 reactivity 中使用的，用来在触发 get 取值操作时调用 [[/vue/vue-mind-map-house-reactivity/#r-track][track()]] 函数收集依
+赖时的一个自定义事件回调。
+
+#+begin_src typescript
+// track() 函授最后 add 操作之后
+if (!dep.has(activeEffect)) {
+  dep.add(activeEffect);
+  // 自身保存一份被依赖者名单
+  activeEffect.deps.push(dep);
+  if (__DEV__ && activeEffect.options.onTrack) {
+    activeEffect.options.onTrack({
+      effect: activeEffect,
+      target,
+      type,
+      key,
+    });
+  }
+}
+
+// trigger() 函数中实现
+if (effect.options.onTrigger) {
+  effect.options.onTrigger({
+    effect,
+    target,
+    key,
+    type,
+    newValue,
+    oldValue,
+    oldTarget,
+  });
+}
+#+end_src
+
+这里会将 当前 target 的 key 属性所收集的依赖 activeEffect 暴露出来。
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { nextTick, watchEffect, reactive },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const trackEvents = [];
+  const triggerEvents = [];
+  let dummy;
+  const onTrack = (e /* activeEffect */) => trackEvents.push(e);
+  const onTrigger = (e /* effect */) => triggerEvents.push(e);
+  const obj = reactive({ foo: 1, bar: 2 });
+  watchEffect(
+    () => {
+      dummy = [obj.foo, "bar" in obj, Object.keys(obj)];
+    },
+    { onTrack, onTrigger }
+  );
+
+  await nextTick();
+  log(["\n", dummy]);
+  // 有多少个就等于呗调用了多少次
+  log("track events count = " + trackEvents.length);
+  trackEvents.forEach((e) => log.props(e, ["target", "type", "key", "deps"]));
+
+  obj.foo = 3;
+  obj.bar = 4;
+  log("trigger events count = " + triggerEvents.length);
+  triggerEvents.forEach((e) =>
+    log.props(e, ["type", "key", "oldValue", "newValue"])
+  );
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:  [ 1, true, [ 'foo', 'bar' ] ]
+: track events count = 3
+: { target: { foo: 1, bar: 2 }, type: 'get', key: 'foo' }
+: { target: { foo: 1, bar: 2 }, type: 'has', key: 'bar' }
+: { target: { foo: 1, bar: 2 }, type: 'iterate', key: Symbol(iterate) }
+: trigger events count = 2
+: { key: 'foo', type: 'set', newValue: 3, oldValue: 1 }
+: { key: 'bar', type: 'set', newValue: 4, oldValue: 2 }
+
+
+#+begin_comment
+这里还需要开发环境才能测试 onTrack，只能改一改去掉 ~__DEV__~ 试试。
+#+end_comment
+
+** stop & cleanup
+
+*stop*: watch() 的返回值，用来停掉 effect 使其 effect.active = false，让 effect 失效。
+
+#+begin_src typescript
+// 9. return runner->stop, remove runner from instance.effects
+return () => {
+  stop(runner);
+  if (instance) {
+    remove(instance.effects!, runner);
+  }
+};
+#+end_src
+
+*cleanup*: 清理工作，这有两个被调用的地方(cleanup + onStop它们被注册了同一个函数)，
+一个是调动 cb/fn 之前，一个是 runner effect 调用 stop 的时候。
+
+#+begin_src typescript
+let cleanup: () => void;
+const onInvalidate: InvalidateCbRegistrator = (fn: () => void) => {
+  cleanup = runner.options.onStop = () => {
+    callWithErrorHandling(fn, instance, ErrorCodes.WATCH_CLEANUP);
+  };
+};
+#+end_src
+
+*** stop
+stop 是 watch 调用的返回值，里面会 stop runner 然后将 runner 从 ~instance.effects~
+里面删除。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { reactive, nextTick, watch },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const state = reactive({ count: 0 });
+  let dummy;
+  const stop = watch(
+    () => state.count,
+    (count) => {
+      dummy = count;
+    }
+  );
+
+  state.count++;
+  await nextTick();
+  log.br({ dummy });
+
+  stop();
+  state.count = 100;
+  await nextTick();
+  log({ dummy });
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:  { dummy: 1 }
+: { dummy: 1 }
+
+可以看到 stop 之后两次输出结果是一样，即 stop 后面的 state.count 失效了，因为
+stop effect 会将 effect.active 置为  false ，有如下代码被执行:
+
+#+begin_src typescript
+// reactivity/src/effect.ts -> createReactiveEffect()
+if (!effect.active) {
+  return options.scheduler ? undefined : fn();
+}
+#+end_src
+
+又， watch 函数里面无论如何 scheduler 都是有值的，所以当 effect 为非激活状态，什
+么都不会干。
+
+*** cleanup(无 cb)
+
+cleanup 相关源码，可能有点绕:
+
+#+begin_src typescript
+// cleanup 和注册 cleanup 的一个函数
+// 如下，cleanup 和 effect onStop 是同一个函数，清理 effect 用
+let cleanup: () => void;
+const onInvalidate: InvalidateCbRegistrator = (fn: () => void) => {
+  cleanup = runner.options.onStop = () => {
+    callWithErrorHandling(fn, instance, ErrorCodes.WATCH_CLEANUP);
+  };
+};
+
+// runtime-core/src/apiWatch.ts:watch(source, cb, option)
+// Job 封装中和 cleanup 有关的
+const job: SchedulerJob = () => {
+  if (!runner.active) {
+    return;
+  }
+  if (cb) {
+    // watch(source, cb)
+    const newValue = runner();
+    if (deep || forceTrigger || hasChanged(newValue, oldValue)) {
+      // cleanup，在执行 cb 之前先执行 cleanup
+      if (cleanup) cleanup();
+      // call cb with catch error
+      // 这里等价于 cb(newValue, oldValue, onInvalidate)
+      oldValue = newValue;
+    }
+  } /* else... */
+};
+
+// 然后还有个地方与 cleanup 有关，且这里要讲到的内容会在这部分执行
+// 获取 getter函数时候，如果 source 是函数等价于
+// watchEffect(source)
+if (isFunction(source)) {
+  // 如果是函数，直接执行取得函数执行结果
+  if (cb) {
+    // ...
+  } else {
+    // no cb -> simple effect
+    getter = () => {
+      if (instance && instance.isUnmounted) {
+        // 组件已经卸载了
+        return;
+      }
+
+      if (cleanup) cleanup();
+      // 等价于 return source(onInvalidate)
+    };
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { reactive, nextTick, watchEffect },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const state = reactive({ count: 0 });
+  let n = 0;
+  const cleanup = () => log(`\ncalled ${++n} times.`);
+  let dummy;
+  const stop = watchEffect((onCleanup) => {
+    // 这里执行的实际上是 onInvalidate 函数，将cleanup 封装后注册到
+    // cleanup 和 onStop 上，在 cb 执行之前或 effect stop 时候调用
+    onCleanup(cleanup);
+    dummy = state.count;
+  });
+
+  state.count++;
+  await nextTick();
+  // 这里会输出一次 'called 1 times.'
+  // 因为 cb 之前之前进行了清理工作(cleanup())
+  log.br({ dummy });
+
+  // 这里会输出一次 'called 2 times.'
+  // 这里是 effect stop 的 onStop 触发的
+  stop();
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+: called 1 times.
+:
+:  { dummy: 1 }
+:
+: called 2 times.
+
+#+begin_quote
+即. 如果想在 effect fn 之前或停止的时候进行清理工作，可以使用
+~watchEffect(effect)~ 的参数 effect 函数的第一个参数来注册 一个函数作为清理工作
+或做其他事情。
+如： ~watchEffect((onCleanup) => { onCleanup(cleanup) ... }~
+#+end_quote
+
+*** cleanup(有 cb)
+
+当有 cb 的时候： ~watch(source, cb, ...)~ ，将 onCleanup 注册函数从 cb 的第三个参数暴露出来
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { nextTick, watch, ref },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const count = ref(0);
+  let n = 0;
+  const cleanup = () => log(`\ncalled ${++n} times, dummy = ${dummy}`);
+  let dummy;
+  const stop = watch(count, (newVal, oldVal, onCleanup) => {
+    onCleanup(cleanup);
+    dummy = newVal;
+  });
+// 这里 cleanup 尚不会执行
+// 因为第一次执行是注册 cleanup 行为
+  count.value++;
+  await nextTick();
+
+// 这里会执行一次 cleanup ，因为第一次赋值时注册过了
+  count.value = 100;
+  await nextTick();
+
+// stop 时候执行一次，所以总共会执行两次 cleanup, n = 2
+  stop();
+  log({n})
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+: called 1 times, dummy = 1
+:
+: called 2 times, dummy = 100
+: { n: 2 }
+
+脑图分析：
+
+[[/img/vue3/runtime-core/vue-runtime-core-api-watch-cleanup.jpg]]
+
+文字分析：
+
+1. cleanup 注册时机分为两种情况
+
+   - 一是无 cb 的 ~watchEffect(fn)~ ，是在 getter 设置阶段封装到 getter 函数里面
+     注册的，此时作为 fn 的第一个参数暴露出来 ~fn(onCleanUp)~ ，
+
+   - 二是有 cb 的 ~watch(ref(0), cb)~ , 在 job 封装期间在调用 cb 的时候注册，此
+     时作为 cb 的第三个参数暴露出来 ~cb(newVal, oldVal, onCleanup)~
+
+   #+begin_quote
+   *两者区别* ： watchEffect 由于无 cb 会立即执行一次 runner, 此时就收集到了 cleanup，
+   而 watch 有 cb 时则是会在第一次值更新触发 runner 执行才开始收集 cleanup。
+   #+end_quote
+
+2. 执行时机，该阶段和注册时机相辅相成，且在 cb/fn 执行之前就会被执行，因此 cb/fn
+   的第一次执行都属于对 cleanup 的注册
+** TODO flush pre(default) cb
+** TODO flush post cb
+** flush sync
+
+[[https://github.com/gcclll/stb-vue-next/commit/e1436f2cfe78cdc64c31c03d876c5b743a44fc18][feat(add): rc->api watch->option flush=sync · gcclll/stb-vue-next@e1436f2 · GitHub]]
+
+支持同步代码，即所有任务立即执行（在值发生改变之后），而不是进入队列异步执行。
+
+只需要增加一行代码就行：
+#+begin_src typescript
+// 6. TODO scheduler 设置
+let scheduler: ReactiveEffectOptions["scheduler"];
+// 6.1 flush is 'sync'
+if (flush === "sync") {
+  scheduler = job;  // 新增
+}
+// 6.2 TODO flush is 'post'
+else if (false /* post */) {
+}
+// 6.3 TODO flush is 'pre'(default)
+else {
+  // default: 'pre'
+  scheduler = () => {
+    if (!instance || instance.isMounted) {
+      queuePreFlushCb(job);
+    } else {
+      // 带 { pre: true } 选项，第一次调用必须发生在组件 mounted 之前
+      // 从而使他被同步调用，立即执行一次
+      job();
+    }
+  };
+}
+#+end_src
+
+新增 ~scheduler = job~ 直接让任务函数赋值给调度器，这个时候如果有值发生变化，会
+触发 effect> ~trigger()~ 在这里面会检测是不是有 ~option.scheduler~ 如果有会立即执行这
+个函数。
+
+#+begin_src typescript
+// reactivity/effect.ts>trigger()
+if (effect.options.scheduler) {
+  effect.options.scheduler(effect);
+} else {
+  effect();
+}
+#+end_src
+
+测试:
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { rc: { watch, ref }, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const run = async () => {
+  const value = ref(0)
+  let calls = 0
+  watch(value, () => ++calls, { flush: 'sync' })
+
+  log({ calls })
+  value.value = 100
+  log({ calls })
+}
+run()
+#+end_src
+
+#+RESULTS:
+: { calls: 0 }
+: { calls: 1 }
+: undefined
+
+注意看上面的测试用例并没有用 ~await nextTick()~ ，而是同步代码执行。
+** TODO ssr support
 
 * scheduler 任务调度机制
 :PROPERTIES:

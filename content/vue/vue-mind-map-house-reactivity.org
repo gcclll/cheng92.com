@@ -98,7 +98,7 @@ log.gray.fn(() => {
 [[#while-mind-map][由于完整脑图会比较全而大所以放到文字最后去。。。]]
 
 [[/img/vue3/reactivity/reactivity.svg][也可以点击该链接直接新窗口打开，效果更佳。]]
-* [[https://github.com/gcclll/stb-vue-next/commit/cb3470d7c3f2944fd23e9155fc8a6afb7a51a732][4a6ac0e]] add: createReactiveObject
+* add: createReactiveObject
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn cro
@@ -139,7 +139,7 @@ function createReactiveObject(
 *mutableCollectionHandlers*: 集合类型的 proxy handlers，因为 ~Reflect~ 并没有对集
 合类型做底层映射，所以需要特殊处理。
 
-* [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][c0f0b7c]] feat: reactive(target)
+* feat: reactive(target)
 
 [[https://github.com/gcclll/stb-vue-next/commit/443a0b5920efaf714de08b0975c17f1d652815e4][feat: createReactiveObject · gcclll/stb-vue-next@443a0b5]]
 
@@ -345,7 +345,7 @@ console.log(`original.bar === original2, ${original.bar === original2}`)
 +RESULTS:
 : observed.bar === observed2, true
 : original.bar === original2, false
-* [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][443a0b5]] basic proxy get handler(createGetter)
+* basic proxy get handler(createGetter)
 
 [[https://github.com/gcclll/stb-vue-next/commit/598e047407fe52183468037beb45328878431a55][feat: reactive proxy get handler · gcclll/stb-vue-next@598e047]]
 
@@ -405,7 +405,11 @@ Map(1) {
   }
 }
 #+end_example
-* [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][6c50273]] add track() and effect()
+* add track() and effect()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: r-track-effect
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/3fc963486868ca3583b02852f07a5aa5969ac354][feat: track+effect · gcclll/stb-vue-next@3fc9634]]
 
@@ -413,8 +417,47 @@ Map(1) {
 ~effect()~ 函数。
 
 ** track(target, type, key) 监听取值收集依赖：
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: r-track
+:END:
 
-   [[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
+[[/img/vue3/reactivity/reactivity-basehd-get-02-track.svg]]
+
+#+begin_src typescript
+export function track(target: object, type: TrackOpTypes, key: unknown) {
+  if (!shouldTrack || activeEffect === undefined) {
+    return;
+  }
+
+  // Map< obj -> Map<key, Set[...deps]> >
+  let depsMap = targetMap.get(target);
+  if (!depsMap) {
+    // 初始化
+    targetMap.set(target, (depsMap = new Map()));
+  }
+
+  let dep = depsMap.get(key);
+  if (!dep) {
+    depsMap.set(key, (dep = new Set()));
+  }
+
+  // 正在请求收集的 effect ，是初次出现
+  if (!dep.has(activeEffect)) {
+    dep.add(activeEffect);
+    // 自身保存一份被依赖者名单
+    activeEffect.deps.push(dep);
+    if (__DEV__ && activeEffect.options.onTrack) {
+      activeEffect.options.onTrack({
+        effect: activeEffect,
+        target,
+        type,
+        key,
+      });
+    }
+  }
+}
+#+end_src
 
 ** effect(fn, options)
 
@@ -542,7 +585,7 @@ function createReactiveEffect<T = any>(
 1. ~effect(fn, options)~ 封装执行 fn，触发取值操作 ->
 2. ~track(target, type, key)~ 收集对象及属性所有依赖 ->
 3. fn 中设值操作触发 ~trigger(...)~ 执行所有 deps，更新 DOM。
-* [[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][736de7c]] add trigger() proxy set handler
+* add trigger() proxy set handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/20afde9970282c144b978b005767bd2c710d54ab][feat: proxy set and trigger operation · gcclll/stb-vue-next@20afde9]]
 
@@ -647,7 +690,7 @@ export function trigger(
   effects.forEach(run)
 }
 #+end_src
-* [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f][b5f97b4]] observe object recursively
+* observe object recursively
 
 [[https://github.com/gcclll/stb-vue-next/commit/b2143f9e35af77ee43792a6110ea70c4caf9a54f][feat: observe object recursively · gcclll/stb-vue-next@b2143f9]]
 
@@ -667,7 +710,7 @@ export function trigger(
 1. effect 封装注册函数
 2. track 取值触发收集依赖函数
 3. trigger 设值触发所有依赖函数执行
-* [[https://github.com/gcclll/stb-vue-next/commit/05b98c571560d2c1806d29cdda7b500b4b2bdeac][05b98c5]] add delete(*deleteProperty*) proxy handler
+* add delete(*deleteProperty*) proxy handler
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: c-delete
@@ -695,7 +738,7 @@ export const mutableHandlers: ProxyHandler<object> = {
 #+end_src
 
 删除成功调用 ~trigger()~ 触发 *DELETE* 。
-* [[https://github.com/gcclll/stb-vue-next/commit/ab69fe9eecb274f836bf19163636bd8f464b84d1][05b98c5]] add has, ownKeys proxy handlers
+* add has, ownKeys proxy handlers
 
 [[https://github.com/gcclll/stb-vue-next/commit/ab69fe9eecb274f836bf19163636bd8f464b84d1][feat: has + ownKeys proxy handler · gcclll/stb-vue-next@ab69fe9]]
 
@@ -733,7 +776,7 @@ console.log(`after run effect, dummy = ${dummy}`)
 +RESULTS:
 : before run effect, dummy = false
 : after run effect, dummy = true
-* TODO [[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][9aeb678]] add array support
+* TODO add array support
 
 [[https://github.com/gcclll/stb-vue-next/commit/9aeb678befc3826b2ce8976b62c1172b4800df27][feat: array support · gcclll/stb-vue-next@9aeb678]]
 
@@ -1003,7 +1046,7 @@ function createGetter(isReadonly = false, shallow = false) {
   #+begin_quote
     FIX: [[https://github.com/gcclll/stb-vue-next/commit/21b4881a906d5e6f2def3a7e486934af6009e93a][feat(add): array add element support · gcclll/stb-vue-next@21b4881]]
   #+end_quote
-* [[https://github.com/gcclll/stb-vue-next/commit/21b4881a906d5e6f2def3a7e486934af6009e93a][21b4881]] array add element support
+* array add element support
 
 [[https://github.com/gcclll/stb-vue-next/commit/21b4881a906d5e6f2def3a7e486934af6009e93a][feat(add): array add element support · gcclll/stb-vue-next@21b4881]]
 
@@ -1019,7 +1062,7 @@ function createGetter(isReadonly = false, shallow = false) {
 2. effect.ts -> ~trigger()~ 中增加数组长度变更依赖收集和 ~ADD~ 操作依赖收集
 
    [[http://qiniu.ii6g.com/img/20201118105046.png]]
-* [[https://github.com/gcclll/stb-vue-next/commit/e85dfc630c3374aa6452891784cc58ffdc5895c6][e85dfc6]] add shallow reactive
+* add shallow reactive
 
 [[https://github.com/gcclll/stb-vue-next/commit/e85dfc630c3374aa6452891784cc58ffdc5895c6][feat(add): shallowReactive api · gcclll/stb-vue-next@e85dfc6]]
 
@@ -1094,7 +1137,7 @@ on tracking...
 on tracking...
 undefined
 #+end_example
-* [[https://github.com/gcclll/stb-vue-next/commit/66e7903568bf7d5bce0faca2f85e80c36399bc66][66e7903]] add readonly reactive
+* add readonly reactive
 
 [[https://github.com/gcclll/stb-vue-next/commit/66e7903568bf7d5bce0faca2f85e80c36399bc66][feat(add): readonly reactive · gcclll/stb-vue-next@66e7903]]
 
@@ -1304,7 +1347,7 @@ console.log(`*#3* a === b, ${ a === b }`)
 
 2. *#2* ~toRaw(a) === toRaw(b)~ 这个结果为 true，因为 *#1* 中的原因，直接返回了 target，
    所以 b 实际上就是 a(如结果 *#3*)
-* [[https://github.com/gcclll/stb-vue-next/commit/aaaf911eb88c75935970e51f843a88f6a3a3c6d6][aaaf911]] add shallow readonly reactive
+* add shallow readonly reactive
 
 [[https://github.com/gcclll/stb-vue-next/commit/aaaf911eb88c75935970e51f843a88f6a3a3c6d6][feat(add): shallow readonly reactive · gcclll/stb-vue-next@aaaf911]]
 
@@ -1352,7 +1395,7 @@ console.log(`after 'props.n.foo = 2', props.n.foo = ${props.n.foo}`)
 
  1. shallow 不会递归 reactive
  2. readonly 让属性只读，但是由于是 shallow 所以只有对象根属性才是只读
-* [[https://github.com/gcclll/stb-vue-next/commit/f1e5b3afb88d41d065f1c797f5db66ac7c65339f][f1e5b3a]] add effect stop
+* add effect stop
 
 [[https://github.com/gcclll/stb-vue-next/commit/f1e5b3afb88d41d065f1c797f5db66ac7c65339f][feat(add): effect stop · gcclll/stb-vue-next@f1e5b3a]]
 
@@ -1374,7 +1417,7 @@ stop() 函数操作：
 被 stopped 的 effect 可以当做另一个正常的 effect 的 fn。
 * 集合类型代理(proxy handlers)脑图
 [[/img/vue3/reactivity/reactivity-collection-proxy.svg]]
-* [[https://github.com/gcclll/stb-vue-next/commit/521f755fd403d5f0431bcafd1737f1d988ce0825][521f755]] add collection handlers
+* add collection handlers
 
 [[https://github.com/gcclll/stb-vue-next/commit/521f755fd403d5f0431bcafd1737f1d988ce0825][feat(add): mutable collection handlers · gcclll/stb-vue-next@521f755]]
 
@@ -1393,7 +1436,7 @@ export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = {
 #+end_src
 
 添加集合类型的 handlers。
-* [[https://github.com/gcclll/stb-vue-next/commit/a5e8e062658d458081ce1bb499b8041f6175689e][a5e8e06]] add collection get proxy handler
+* add collection get proxy handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/a5e8e062658d458081ce1bb499b8041f6175689e][feat(add): collection get proxy · gcclll/stb-vue-next@a5e8e06]]
 
@@ -1716,7 +1759,7 @@ dummy = 100
 1. 取出 ~has~ 方法检测存在性
 2. 根据 ~isReadonly~ 和 ~isShallow~ 决定对返回值做什么处理，如：递归 reactive/readonly
 3. 使用 target.get(key) 取出结果值返回
-* [[https://github.com/gcclll/stb-vue-next/commit/7b680df94e359c208697111319eda9ee75560b11][7b680df]] add collection set proxy handler
+* add collection set proxy handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/7b680df94e359c208697111319eda9ee75560b11][feat(add): collection set proxy handler · gcclll/stb-vue-next@7b680df]]
 
@@ -1806,7 +1849,7 @@ undefined
 #1 before set, dummy = undefined
 #2 after set, dummy = 1
 #+end_example
-* [[https://github.com/gcclll/stb-vue-next/commit/73fa5ebf7f0dcdaa11bbf42df89c7f7c1ab88385][73fa5eb]] add collection size,has,add proxy handler
+* add collection size,has,add proxy handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/73fa5ebf7f0dcdaa11bbf42df89c7f7c1ab88385][feat(add): size, has, add collection proxy handlers · gcclll/stb-vue-next@73fa5eb]]
 
@@ -1901,7 +1944,7 @@ console.log(`after add, get set size -> dummy = ${dummy}`)
 : before add, get set size -> dummy = 0
 : after add, get set size -> dummy = 1
 
-* [[https://github.com/gcclll/stb-vue-next/commit/b3c5087095ace7797cf6c38bd45b99700d4b6059][b3c5087]] add collection delete,clear proxy handler
+* add collection delete,clear proxy handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/b3c5087095ace7797cf6c38bd45b99700d4b6059][feat(add): collection delete and clear · gcclll/stb-vue-next@b3c5087]]
 
@@ -2005,7 +2048,7 @@ after delete, dummy = 0
 before clear, dummy = 3
 after clear, dummy = 0
 #+end_example
-* [[https://github.com/gcclll/stb-vue-next/commit/77a02224b107c9f6a2d5101affa861c7b4c8b392][77a0222]] add collection forEach proxy handler
+* add collection forEach proxy handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/77a02224b107c9f6a2d5101affa861c7b4c8b392][feat(add): collection forEach proxy handler · gcclll/stb-vue-next@77a0222]]
 
@@ -2068,7 +2111,7 @@ console.log(`#3 after set, dummy = ${dummy}`)
 - *#2* 添加 ~bar => 2~ 结果是 4，原因是到这一步的时候 ~dummy = 1~ 的，所以再累加之
 后就是 4
 
-* [[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][e5497be]] add collection iterators methods proxy handler
+* add collection iterators methods proxy handler
 
 [[https://github.com/gcclll/stb-vue-next/commit/e5497be89422f6d14d2d14c76bee42e3cf866eee][feat(add): collection iterable methods · gcclll/stb-vue-next@e5497be]]
 
@@ -2204,7 +2247,7 @@ map2.get('key') === toRaw(value), true
 - *#3* collectionHandlers.ts 中的方法都是针对集合本身元素进行操作的，对于自定义
   属性是不在响应式 Map/Set 之列的。
 - *#4* set proxy handler 里面的实现会先取  ~toRaw(value)~ 再进行设置操作。
-* [[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][fa2636d]] add collection readonly proxy handlers
+* add collection readonly proxy handlers
 
 [[https://github.com/gcclll/stb-vue-next/commit/fa2636d5e4f9d4b7bb7ba388ad25f692f27e6e4f][feat(add): readonly collection handlers · gcclll/stb-vue-next@fa2636d]]
 
@@ -2246,12 +2289,12 @@ const readonlyInstrumentations: Recor<string, Function> = {
 #+end_src
 
 测试：
-* [[https://github.com/gcclll/stb-vue-next/commit/676bc70fe9a6535b85ada4754fb6a683bec50f5f][676bc70]] add collection shallow proxy handlers
+* add collection shallow proxy handlers
 
 [[https://github.com/gcclll/stb-vue-next/commit/676bc70fe9a6535b85ada4754fb6a683bec50f5f][feat(add): shallow collection handlers · gcclll/stb-vue-next@676bc70]]
 
 不会递归 reactive 版本。
-* [[https://github.com/gcclll/stb-vue-next/commit/e9e53a16dcaffd35aa519b3251e4bcb4ad4e9342][e9e53a1]] add computed types definitions
+* add computed types definitions
 
 [[https://github.com/gcclll/stb-vue-next/commit/e9e53a16dcaffd35aa519b3251e4bcb4ad4e9342][feat(add): computed type definitions · gcclll/stb-vue-next@e9e53a1]]
 
@@ -2283,7 +2326,7 @@ export function computed<T>(
   getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>
 ) {}
 #+end_src
-* [[https://github.com/gcclll/stb-vue-next/commit/64d380dfea9da6a78f10fe2de9ef95fbd253d3f0][64d380d]] add computed implementation
+* add computed implementation
 
 [[https://github.com/gcclll/stb-vue-next/commit/64d380dfea9da6a78f10fe2de9ef95fbd253d3f0][feat(add): computed tpl and computed function · gcclll/stb-vue-next@64d380d]]
 
