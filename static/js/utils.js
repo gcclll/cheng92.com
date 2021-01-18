@@ -66,9 +66,16 @@ log.async = async (...args) => {
   await log(...args);
 };
 
-log.newline = (...args) => {
-  log("\n");
-  log(...args);
+log.br = log.newline = (...args) => {
+  log(["\n", ...args]);
+};
+
+log.catch = (fn) => {
+  try {
+    fn();
+  } catch (e) {
+    log(e.message);
+  }
 };
 
 register();

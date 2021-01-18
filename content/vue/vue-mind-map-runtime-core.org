@@ -27,11 +27,12 @@
 
 *更新日志&Todos* ：
 1. [2021-01-08 10:12:50] 创建
-2. TODO STATEFUL_COMONENT
-3. TODO patchFlag 测试和用途
-4. TODO transformVNodeArgs
-5. TODO Suspense 组件
-6. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
+2. DONE [2021-01-15 10:24:00] scheduler
+3. TODO STATEFUL_COMONENT
+4. TODO patchFlag 测试和用途
+5. TODO transformVNodeArgs
+6. TODO Suspense 组件
+7. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
 #+end_quote
 
 模块初始化： [[https://github.com/gcclll/stb-vue-next/commit/b22b4db3506bf1ba4b266dcf9ff21f1e0b925a81][feat(init): runtime-core · gcclll/stb-vue-next@b22b4db · GitHub]]
@@ -44,6 +45,8 @@
 3. class component 条件： 1) function 2) 含 ~__vccOpts = { template: '<div />'}~
 4. vnode ref 属性处理逻辑 [[#test-vnode-ref][链接-->]]
 5. vnode key 属性为简单的值覆盖操作 [[#test-vnode-key][链接-->]]
+6. api ~watch(source, cb, option)~ 中的 source 只能是 ~reactive/ref/function/array~ 类型，
+   如果是数组时其元素只能是 ~reactive/ref/function~
 * init
 
 导出已完成模块(reactiviy)里的 Apis:
@@ -1315,18 +1318,28 @@ log([">>> object\n", _h({}, null, { foo: "foo" })]);
 :   shapeFlag: 36
 : }
 : undefined
-* api watch
+* api watch(source, cb, options)
 
-[[https://github.com/gcclll/stb-vue-next/commit/c41441a1c53b5059410c32d36e46e21e7258480c][feat(add): rc->api watch · gcclll/stb-vue-next@c41441a · GitHub]]
+[[https://github.com/gcclll/stb-vue-next/commit/4f0301ea5d7839e8ce5274ea170dd09bd129f5ee][feat(add): api watch TODOs · gcclll/stb-vue-next@4f0301e · GitHub]]
 
-[[https://github.com/gcclll/stb-vue-next/commit/8c41f0f03b6f00fa88dad3389621ec089f3b6eb5][feat(add): rc->api watch -> watchEffect · gcclll/stb-vue-next@8c41f0f · GitHub]]
+脑图：
+[[/img/vue3/runtime-core/vue-runtime-core-api-watch.svg]]
 
-~watch(source, cb, options)~ 函数以下种使用方式：
+#+begin_quote
+为了更好的完成 apiWatch， 需要先完成了 [[#scheduler][scheduler]] 任务调度部分。
+#+end_quote
 
-1. ~sources + cb~ 方式，多个被监听对象，指定回调
-2. ~watch([foo, bar] as const, () => {})~
-3. single source + cb
-4. watch reactive object
+~watch(source, cb, options)~ 函数以下种使用方式(下面的 cb 均可选参数)：
+
+1. ~watch(fn)~ 等价于 ~watchEffect(fn)~, 无 cb
+2. ~watch(fn, cb)~ 监听函数
+3. ~watch(ref(0), cb)~
+4. ~watch(reactive({ count: 0}), cb)~ , reactive 对象默认 ~deep = true~
+5. ~watch([ref(0), reactive({count: 0})], cb)~
+6. ~watch(fn, cb, { immediate: true })~ 此时， cb 必须为函数， job->fn 被立即执
+   行一次， cb 接受新旧值
+7. ~watch(ref({ count: 0}), cb, { deep: true })~ 手动指定 ~deep: true~ 深度监听
+8. ...
 
 执行具体实现的函数： ~doWatch()~
 
@@ -1350,207 +1363,329 @@ log([">>> object\n", _h({}, null, { foo: "foo" })]);
 用 ~watchEffect(fn, options?)~ api 。
 #+end_quote
 
-处理步骤：
+watch 函数基本流程：
 
-1. 检测获取 getter 函数和 forceTrigger 标识
+1. cb, immediate, deep 检测
+2. getter， 根据 source 不同类型设置 getter
+3. cb + deep: true
+4. SSR node env
+5. 将 cb 封装成 job
+6. ~runner = effect(getter, option)~
+7. runner 如何执行？
+8. stop, remove，函数返回一个 stop+remove 该 runner 操作的函数
 
-   #+begin_src typescript
-   let getter: () => any;
-   let forceTrigger = false;
-   if (isRef(source)) {
-     getter = () => (source as Ref).value;
-     forceTrigger = !!(source as Ref)._shallow;
-   } else if (isReactive(source)) {
-     getter = () => source;
-     deep = true;
-   } else if (isArray(source)) {
-     getter = () =>
-       source.map((s) => {
-         if (isRef(s)) {
-           return s.value;
-         } else if (isReactive(s)) {
-           return traverse(s);
-         } else if (isFunction(s)) {
-           return callWithErrorHandling(s, instance, ErrorCodes.WATCH_GETTER);
-         } else {
-           __DEV__ && warnInvalidSource(s);
-         }
-       });
-   } else if (isFunction(source)) {
-     if (cb) {
-       // getter with cb
-       getter = () =>
-         callWithErrorHandling(source, instance, ErrorCodes.WATCH_GETTER);
-     } else {
-       // no cb -> simple effect
-       getter = () => {
-         if (instance && instance.isUnmounted) {
-           return;
-         }
-         if (cleanup) {
-           cleanup();
-         }
-         return callWithErrorHandling(
-           source,
-           instance,
-           ErrorCodes.WATCH_CALLBACK,
-           [onInvalidate]
-         );
-       };
-     }
-   } else {
-     getter = NOOP;
-     __DEV__ && warnInvalidSource(source);
-   }
-   #+end_src
-2. cb && deep 检测是否执行深度监听，调用 traverse(baseGetter) 遍历深度监听
 
-   #+begin_src typescript
-   if (cb && deep) {
-     const baseGetter = getter;
-     getter = () => traverse(baseGetter());
-   }
-   #+end_src
-3. scheduler job -> set scheduler 手动触发 effect
+下面章节中测试的用例分析脑图：
+[[/img/vue3/runtime-core/vue-runtime-core-api-watch-tests.svg]]
+** source is ref
 
-   #+begin_src typescript
-    let oldValue = isArray(source) ? [] : INITIAL_WATCHER_VALUE;
-    const job: SchedulerJob = () => {
-      if (!runner.active) {
-        return;
-      }
-      if (cb) {
-        // watch(source, cb)
-        const newValue = runner();
-        if (deep || forceTrigger || hasChanged(newValue, oldValue)) {
-          // cleanup before running cb again
-          if (cleanup) {
-            cleanup();
-          }
-          callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
-            newValue,
-            // pass undefined as the old value when it's changed for the first time
-            oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue,
-            onInvalidate,
-          ]);
-          oldValue = newValue;
-        }
-      } else {
-        // watchEffect
-        runner();
-      }
-    };
+[[https://github.com/gcclll/stb-vue-next/commit/b9b7ac6aa908cc375d698fd5762e0ff9a52dbcc5][feat(add): apiWatch->no cb, getter is ref · gcclll/stb-vue-next@b9b7ac6 · GitHub]]
 
-    // important: mark the job as a watcher callback so that scheduler knows
-    // it is allowed to self-trigger (#1727)
-    job.allowRecurse = !!cb;
-
-    let scheduler: ReactiveEffectOptions["scheduler"];
-    if (flush === "sync") {
-      scheduler = job;
-    } else if (flush === "post") {
-      scheduler = () => queuePostRenderEffect(job, instance && instance.suspense);
-    } else {
-      // default: 'pre'
-      scheduler = () => {
-        if (!instance || instance.isMounted) {
-          queuePreFlushCb(job);
-        } else {
-          // with 'pre' option, the first call must happen before
-          // the component is mounted so it is called synchronously.
-          job();
-        }
-      };
+[[https://github.com/gcclll/stb-vue-next/commit/67523262e127d72237f50e3c437210cc5c2e3d76][fix: watch->source is ref, cb -> job · gcclll/stb-vue-next@6752326 · GitHub]]
+测试:
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { ref, nextTick, watch },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+const run = async () => {
+  const count = ref(0);
+  let dummy,
+    i = 0;
+  watch(count, (count, prevCount) => {
+    log("\nvalue changed: " + i++);
+    dummy = [count, prevCount];
+    count + 1;
+    if (prevCount) {
+      prevCount + 1;
     }
-   #+end_src
-4. runner = effect(getter, ...) 封装 getter 函数，待执行，这里使用了 lazy:true
-   ，所以不会立即执行
+  });
+  count.value++;
+  await nextTick();
+  log(dummy);
+};
+run();
+#+end_src
 
-   ~{lazy: true, onTrack, onTrigger, scheduler}~
+#+RESULTS:
+: undefined
+: value changed: 0
+: 1 0
 
-   #+begin_src typescript
-   const runner = effect(getter, {
-     lazy: true,
-     onTrack,
-     onTrigger,
-     scheduler,
-   });
-   #+end_src
-5. record instance bound effect -> runner -> instance
+有关代码(doWatch):
+#+begin_src typescript
+// -> getter
+let getter: () => any;
+let forceTrigger = false;
+// 2.1 source is ref
+if (isRef(source)) {
+  getter = () => (source as Ref).value;
+  forceTrigger = !!(source as Ref)._shallow;
+}
 
-   其实就是讲 effect 增加到 instance.effects[] 中。
+// cb -> job 封装
+let oldValue = isArray(source) ? [] : INITIAL_WATCHER_VALUE;
+const job: SchedulerJob = () => {
+  if (cb) {
+    // watch(source, cb)
+    const newValue = runner();
+    if (deep || forceTrigger || hasChanged(newValue, oldValue)) {
+      // cleanup
+      if (cleanup) cleanup();
+      callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
+        newValue,
+        // pass undefined as the old value when it's changed for the first time
+        // 第一次的时候 oldValue 为 undefined
+        oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue,
+        onInvalidate,
+      ]);
+      oldValue = newValue;
+    }
+  } else {
+    // TODO
+  }
+};
 
-   #+begin_src typescript
-   // record effects created during a component's setup() so that they can be
-   // stopped when the component unmounts
-   // 记录在组件 setup() 期间绑定了哪些 effects，方便当组件卸载的时候去停掉他们
-   export function recordInstanceBoundEffect(
-     effect: ReactiveEffect,
-     instance = currentInstance
-   ) {
-     if (instance) {
-       (instance.effects || (instance.effects = [])).push(effect);
-     }
-   }
-   #+end_src
-6. 以什么方式执行 runner ?
+// scheduler 封装
+scheduler = () => {
+  if (!instance || instance.isMounted) {
+    queuePreFlushCb(job);
+  } else {
+  }
+};
 
-   #+begin_src typescript
-   // initial run
-   if (cb) {
-     if (immediate) {
-       job();
-     } else {
-       oldValue = runner();
-     }
-   } else if (flush === "post") {
-     queuePostRenderEffect(runner, instance && instance.suspense);
-   } else {
-     runner();
-   }
-   #+end_src
-7. 返回 stop runner 函数
+// 什么方式执行 runner?
+// 8. TODO runner 如何执行？
+if (cb) {
+  if (immediate) {
+    // TODO
+  } else {
+    oldValue = runner();
+  }
+} else if (false /*flush->post*/) {
+} else {
+  runner();
+}
+#+end_src
+** source is reactive
 
-   #+begin_src typescript
-   return () => {
-    stop(runner)
-    if (instance) {
-      remove(instance.effects!, runner)
+如果要 watch 的对象是个 reactive ，需要进行递归 watch ，得到 getter.
+
+[[https://github.com/gcclll/stb-vue-next/commit/697f7f25d2bdafdda09a76ee8b00c949e61d6acb][fix: watch->source is reactive · gcclll/stb-vue-next@697f7f2 · GitHub]]
+
+新增相关代码：
+
+#+begin_src typescript
+// 1. 如果是 reactive，需要深度监听
+if (isReactive(source)) {
+  getter = () => source;
+  deep = true;
+}
+
+// 2. deep: true
+if (cb && deep) {
+  const baseGetter = getter;
+  // a. deep: true
+  // b. source is reactive
+  getter = () => traverse(baseGetter());
+}
+
+// traverse 函数
+function traverse(value: unknown, seen: Set<unknown> = new Set()) {
+  if (!isObject(value) || seen.has(value)) {
+    return value;
+  }
+  seen.add(value);
+  if (isRef(value)) {
+    traverse(value.value, seen);
+  } else if (isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      traverse(value[i], seen);
+    }
+  } else if (isSet(value) || isMap(value)) {
+    value.forEach((v: any) => {
+      traverse(v, seen);
+    });
+  } else {
+    for (const key in value) {
+      traverse(value[key], seen);
     }
   }
-   #+end_src
+  return value;
+}
+#+end_src
 
+递归监听 reactive 对象任意层级上的属性变化。
 
 #+begin_src js
 // 源文件：/js/vue/lib.js
 const {
-  rc: { h, createVNode: c, reactive, watchEffect, nextTick },
-  f,
+  rc: { nextTick, watchEffect, reactive, watch },
   log,
 } = require(process.env.BLOG_JS + "/vue/lib.js");
-const _h = (...args) => f(h(...args));
 
-const state = reactive({ count: 0 });
-let dummy;
-const res = watchEffect(() => {
-console.log('xx')
-  dummy = state.count;
-});
-log(`before update, dummy = ${dummy}`);
-state.count++;
-log(`after update, dummy = ${dummy}`);
+const run = async () => {
+  const state = reactive({ count: 0, r1: { count: 10 } });
+  let dummy;
+  watch(state, (newVal, preVal) => {
+    dummy = [newVal, preVal];
+  });
+  state.count++;
+  await nextTick();
+  log.br(dummy);
+  state.r1.count--
+  await nextTick()
+  log.br(dummy)
+};
+run();
 #+end_src
 
 #+RESULTS:
-: before update, dummy = undefined
-: after update, dummy = undefined
 : undefined
+:
+: { count: 1, r1: { count: 10 } } { count: 1, r1: { count: 10 } }
+:
+:
+: { count: 1, r1: { count: 9 } } { count: 1, r1: { count: 9 } }
 
-测试失败，因为 ~watchEffect(fn)~ 等价于 ~watch(fn, null, options)~
+#+begin_quote
+*注意*: newVal 和 preVal 返回的是整个 state 而非当前所发生变更的属性
+(count/r1.count)，因为在 job 里面执行  runner() 得到新值是在
+traverse(baseGetter()) 之前发生的，此时取到的值是 state 自身。
+#+end_quote
 
-进入 getter 处理步骤的 isFunction-> else
+[[/img/tmp/20210115141244.png]]
+** soure is array
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: watch-array
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/af1e590b3bb528f8fb9db4a06ead3978426130c1][feat(add): apiWatch->source is array · gcclll/stb-vue-next@af1e590 · GitHub]]
+
+如果要监听的对象是个数组的时候，需要检测数组元素的类型，针对不同类型进行处理。
+
+要点：
+1. 数组元素不能是除 ref/reactive/function 之外的类型
+2. 对数组元素设值时必须通过元素原始设值方式进行(比如： ref 要 ~ref.value = xxx~)，
+   因为该数组本身不是 reactive 的
+
+#+begin_src typescript
+if (isArray(source)) {
+  getter = () =>
+    source.map((s) => {
+      if (isRef(s)) {
+        return s.value;
+      } else if (isReactive(s)) {
+        return traverse(s);
+      } else if (isFunction(s)) {
+        return callWithErrorHandling(s, instance, ErrorCodes.WATCH_GETTER);
+      } else {
+        // TODO warn invalid source
+      }
+    });
+}
+#+end_src
+
+1. isRef -> 监听 item.value
+2. isReactive -> traverse(item) 递归
+3. isFunction -> callWithErrorHandling(item, instance, ...) 监听函数返回值
+4. 其他类型不支持 -> warn invalid source
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { ref, watch, nextTick, reactive },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const array = reactive([]);
+  let dummy;
+  watch(array, (newArr, preArr) => {
+    dummy = [newArr, "\n"];
+  });
+  array.push(1);
+  await nextTick();
+  log.br(dummy);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: [ 1 ]
+:
+
+数组混合模式(元素只支持 ref, reactive, function)：
+#+begin_src js
+const {
+  rc: { ref, watch, nextTick, reactive, effect },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+let dummy,
+  val = reactive([10, 1]);
+effect(() => {
+  dummy = val[0];
+});
+val[0]++;
+log(`dummy = ${dummy}\n`);
+
+console.warn("---");
+const run = async () => {
+  const state = reactive({ count: 1 });
+  const status = ref(false);
+  let dummy;
+  watch([() => state.count, status], (vals, oldVals) => {
+    dummy = [vals, oldVals];
+  });
+  state.count++;
+  status.value = true;
+  await nextTick();
+  log.br(dummy);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: dummy = 11
+:
+: undefined
+:  [ [ 2, true ], [ 1, false ] ]
+
+#+begin_quote
+Tip. watch 数组的时候，需要通过数组元素原来的对象去操作值的变更，如果通过数组下
+标设值是不会成功的，因为这个数组本身不是 reactive 的。
+
+比如： ~array[0]++~ 并不会改变 ~state.count~
+
+只有通过 ~state.count++~ 自身赋值操作才会触发更新。
+#+end_quote
+** source is function
+
+[[https://github.com/gcclll/stb-vue-next/commit/694a389fdeca9e3aaa8e70673da22f74552319fc][feat(add): rc->api watch->source is function · gcclll/stb-vue-next@694a389 ·
+GitHub]]
+
+当要 watch 的对象是个函数的时候，无论是否有 cb 最后的 getter 都是通过
+
+~callWithErrorHandling(source, instance, ErrorCodes.WATCH_GETTER)~
+
+或无 cb 时等价于普通的 effect 函数
+
+~callWithErrorHandling(source, instance,ErrorCodes.WATCH_CALLBACK,[onInvalidate])~
+
+直接执行这个函数去收集依赖。
+
+[[/img/tmp/20210115180348.png]]
+
+新增代码：
 #+begin_src typescript
 if (isFunction(source)) {
+  // 如果是函数，直接执行取得函数执行结果
   if (cb) {
     // getter with cb
     getter = () =>
@@ -1558,169 +1693,145 @@ if (isFunction(source)) {
   } else {
     // no cb -> simple effect
     getter = () => {
-      // TODO
+      if (instance && instance.isUnmounted) {
+        // 组件已经卸载了
+        return;
+      }
+
+      if (cleanup) cleanup();
+
+      return callWithErrorHandling(
+        source,
+        instance,
+        ErrorCodes.WATCH_CALLBACK,
+        [onInvalidate]
+      );
     };
   }
 }
 #+end_src
 
-然后 else 并没有实现，所有 getter 赋值了一个空函数。
+[[https://github.com/gcclll/stb-vue-next/commit/9565b4aa7a9d05e5551777254c385c7e79f9b840][feat(add): rc->api watch->source is function without cb ·
+gcclll/stb-vue-next@9565b4a · GitHub]]
 
-** watch effect without cb
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: watch-no-cb
-:END:
-
-增加相关代码
-[[https://github.com/gcclll/stb-vue-next/commit/dd4224046bc99fd60e1ef4a467d95f98ffeb912e][feat(add): rc->api watchEffect->source is fn & cb is null · gcclll/stb-vue-next@dd42240 · GitHub]]
-后继续测试：
+测试：
 #+begin_src js
 // 源文件：/js/vue/lib.js
 const {
-  rc: { h, createVNode: c, reactive, watchEffect, nextTick },
-  f,
-  log,
-} = require(process.env.BLOG_JS + "/vue/lib.js");
-const _h = (...args) => f(h(...args));
-
-const state = reactive({ count: 0 });
-let dummy;
-const res = watchEffect(() => {
-  dummy = state.count;
-});
-log(`before update, dummy = ${dummy}`);
-state.count++;
-log(`after update, dummy = ${dummy}`);
-#+end_src
-
-#+RESULTS:
-: before update, dummy = 0
-: after update, dummy = 1
-: undefined
-
-结果正常。
-** watch single source: getter
-
-source 值为一个单纯的函数，正好和 [[#watch-no-cb][watch effect without cb]] 相反，会进入
-isFunction>if 处理。
-
-#+begin_src js
-// 源文件：/js/vue/lib.js
-const {
-  rc: { h, createVNode: c, reactive, watch },
-  f,
-  log,
-} = require(process.env.BLOG_JS + "/vue/lib.js");
-
-const state = reactive({ count: 0 });
-let dummy;
-watch(
-  () => state.count,
-  (count, prevCount) => {
-    dummy = [count, prevCount];
-    count + 1;
-    if (prevCount) {
-      prevCount + 1;
-    }
-  }
-);
-state.count++;
-log(dummy);
-#+end_src
-
-#+RESULTS:
-: undefined
-: undefined
-
-结果为 ~undefined~ 又失败了，😭
-
-很明显会执行下面的代码：
-#+begin_src typescript
-if (cb) {
-  // getter with cb
-  getter = () =>
-    callWithErrorHandling(source, instance, ErrorCodes.WATCH_GETTER);
-}
-#+end_src
-但这段代码貌似和 cb 没任何关系啊，怎么实现和 cb 绑定的呢？？？
-
-#+begin_quote
-在 [[/vue/vue-mind-map-house-reactivity/#r-trigger][reactivity trigger]] 中分析过， effect fn 的执行前提是没有提供 scheduler 选项，如果有呢？
-#+end_quote
-
-直接上代码：
-#+begin_src typescript
-  const run = (effect: ReactiveEffect) => {
-    if (__DEV__ && effect.options.onTrigger) {
-      effect.options.onTrigger({
-        effect,
-        target,
-        key,
-        type,
-        newValue,
-        oldValue,
-        oldTarget,
-      });
-    }
-
-    if (effect.options.scheduler) {
-      effect.options.scheduler(effect);
-    } else {
-      effect();
-    }
-  };
-#+end_src
-
-如上面的 effect 被封装成 run ，里面就有检测是不是有 scheduler ！
-
-因此我们可以猜想 这个 cb 肯定是通过这个 options.scheduler 来调用和 source 发生关
-系的。
-
-添加代码
-[[https://github.com/gcclll/stb-vue-next/commit/6766eb9066052a3608d892f3e9853627e3623043][feat(add): rc->api watch->queue scheduler for default:pre · gcclll/stb-vue-next@6766eb9 · GitHub]]
-之后，测试代码考下来在测试遍：
-#+begin_src js
-// 源文件：/js/vue/lib.js
-const {
-  rc: { h, createVNode: c, reactive, watch, nextTick },
-  f,
+  rc: { nextTick, watchEffect, watch, ref },
   log,
 } = require(process.env.BLOG_JS + "/vue/lib.js");
 
 const run = async () => {
-  const state = reactive({ count: 0 });
-  let dummy;
+  let dummy,
+    val = ref(0);
+  watch(() => (dummy = val.value));
+  val.value++;
+  await nextTick();
+  log.br({ dummy });
+
+  log("with cb\n");
+  // function with cb
   watch(
-    () => state.count,
-    (count, prevCount) => {
-      dummy = [count, prevCount];
-      count + 1;
-      if (prevCount) {
-        prevCount + 1;
-      }
+    () => val.value,
+    (val, oldVal) => {
+      dummy = [val, oldVal];
     }
   );
-  state.count++;
+  val.value = 100;
   await nextTick();
-  log(["\n", dummy]);
+  log([dummy, "\n"]);
 };
+run();
+#+end_src
 
+#+RESULTS:
+: undefined
+:
+: { dummy: 1 }
+: with cb
+:
+: [ 100, 1 ]
+:
+
+[[https://github.com/gcclll/stb-vue-next/commit/11ee8ef39efe740a5154939352fe7b3193e3d4c2][feat(add): rc->api watch->source invalid warning · gcclll/stb-vue-next@11ee8ef · GitHub]]
+
+#+begin_quote
+Q. 这里有个容易搞混淆的地方， ~watch(fn, cb)~ 的时候，虽然 fn 和 cb 都是函数，但
+   是要区分开这两者，并搞清楚他们是啥和关系是啥。
+
+   1. fn 是被检测的对象，如果是 function 那在被监听之前需要先执行它，等于是监听
+      函数里面的内容，比如：函数内有访问某个 reactive 变量
+
+   2. 而 cb 是属于回调性质，且是当数据有更新的时候的回调函数，它只会在一个地方被
+      执行，即封装 job 的时候，需要将数据更新前后的变化值通过它传递出来(如下面👇的
+      代码)
+
+#+end_quote
+
+#+begin_src typescript
+const job: SchedulerJob = () => {
+  if (cb) {
+    // watch(source, cb)
+    const newValue = runner();
+    if (deep || forceTrigger || hasChanged(newValue, oldValue)) {
+      // cleanup
+      if (cleanup) cleanup();
+      callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
+        newValue,
+        // pass undefined as the old value when it's changed for the first time
+        // 第一次的时候 oldValue 为 undefined
+        oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue,
+        onInvalidate,
+      ]);
+      oldValue = newValue;
+    }
+  } else {
+    // watchEffect, no cb
+    runner();
+  }
+};
+#+end_src
+** option deep: true
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { nextTick, ref, watch, reactive },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const count = ref(0);
+  let dummy;
+ // 监听原始类型(ref封装) deep: tru
+  watch(
+    count,
+    (c, prev) => {
+      dummy = [c, prev];
+    },
+    { deep: true }
+  );
+
+  count.value++;
+  await nextTick();
+  log.br(dummy);
+  log('>> 直接监听 reactive 对象')
+  const src = reactive({ count: 0 })
+  watch(src, ({ count }) => { dummy = count })
+  src.count++
+  await nextTick()
+  log.br(dummy)
+};
 run();
 #+end_src
 
 #+RESULTS:
 : undefined
 :  [ 1, 0 ]
-
-
-结果就对了！
-
-#+begin_quote
-Tip. 然后，[[https://github.com/gcclll/stb-vue-next/commit/6766eb9066052a3608d892f3e9853627e3623043][这里]]增加的代码全在 scheduler.ts 中，这里面都是 vue-next 里面关于 effect
-trigger 任何的调度机制，需要彻底弄懂这一块，所以这里先暂停一会，先完成 [[#scheduler][scheduler
-任务调度机制]] 再回顾头来继续。
-#+end_quote
+: >> 直接监听 reactive 对象
+:
+:  1
 
 * scheduler 任务调度机制
 :PROPERTIES:
@@ -2791,7 +2902,7 @@ while (1) {
 
 所以说 nextTick() 后面的代码都会被放到异步代码
 
-* runtime-core 类型声明
+* 重要类型声明
 
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
