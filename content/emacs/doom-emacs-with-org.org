@@ -31,14 +31,15 @@
 他人配置列表：
 #+end_quote
 
-| name&link                                               | brief |
-|---------------------------------------------------------+-------|
-| [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][dot-doom/doom.org at master · zzamboni/dot-doom]]         | -     |
-| [[http://pages.sachachua.com/.emacs.d/Sacha.html][Sacha Chua's Emacs configuration]]                        | -     |
-| [[https://github.com/daedreth/UncleDavesEmacs#user-content-ido-and-why-i-started-using-helm][daedreth/UncleDavesEmacs: My personal ~/.emacs.d]]        | -     |
-| [[https://github.com/PythonNut/quark-emacs][PythonNut/quark-emacs: An incredible wonderland of code]] | -     |
-| [[https://www.masteringemacs.org/][Mastering Emacs]]                                         | -     |
-| [[https://tecosaur.github.io/emacs-config/config.html][Doom Emacs Configuration]]                                | -     |
+| name&link                                                        | brief |
+|------------------------------------------------------------------+-------|
+| [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][dot-doom/doom.org at master · zzamboni/dot-doom]]                  | -     |
+| [[http://pages.sachachua.com/.emacs.d/Sacha.html][Sacha Chua's Emacs configuration]]                                 | -     |
+| [[https://github.com/daedreth/UncleDavesEmacs#user-content-ido-and-why-i-started-using-helm][daedreth/UncleDavesEmacs: My personal ~/.emacs.d]]                 | -     |
+| [[https://github.com/PythonNut/quark-emacs][PythonNut/quark-emacs: An incredible wonderland of code]]          | -     |
+| [[https://www.masteringemacs.org/][Mastering Emacs]]                                                  | -     |
+| [[https://tecosaur.github.io/emacs-config/config.html][Doom Emacs Configuration]]                                         | -     |
+| [[https://github.com/KaratasFurkan/.emacs.d][GitHub - KaratasFurkan/.emacs.d: My literate Emacs configuration]] | -     |
 
 
 * 自定义函数
@@ -309,11 +310,11 @@ Uses `current-date-time-format' for the formatting the date/time."
 
 #+begin_src emacs-lisp
 ;; 解绑一些按键，待用
-(map! "C-s" nil
-      "C-d" nil
-      "C-i" nil
-      "M-," nil
-      "M-." nil
+(map! :niv      "C-s" nil
+      :niv      "C-d" nil
+      :niv      "C-i" nil
+      :niv      "M-," nil
+      :niv      "M-." nil
 
       :leader
       "A" nil
@@ -483,6 +484,7 @@ Uses `current-date-time-format' for the formatting the date/time."
 #+begin_src emacs-lisp
 ;; ------------------- 缩写表 ---------------------------------------------
 (define-abbrev-table 'global-abbrev-table '(
+                                            ("8ireq" "import '../require'")
                                             ("8imark" "import { marker } from '@commons/sunlight/marker'")
                                             ("8ilib" "import { isArray } from '@commons/sunlight/lib'")
                                             ("81com" "@import '~@commons/styles/common';")
@@ -546,6 +548,21 @@ const _h = (...args) => f(h(...args))
 
 1. anzu
 2. [[https://github.com/manateelazycat/color-rg][color-rg]]
+*** valign
+
+表格插件： valign
+
+[[https://github.com/casouri/valign][GitHub - casouri/valign: Pixel-perfect visual alignment for Org and Markdown
+tables.]]
+
+#+begin_src emacs-lisp
+ (use-package! valign
+   :custom
+   (valign-fancy-bar t)
+   :hook
+   (org-mode . valign-mode))
+#+end_src
+
 *** Company
 
 补全配置
@@ -644,6 +661,11 @@ const _h = (...args) => f(h(...args))
         lsp-enable-file-watchers nil))
 #+end_src
 *** org-mode
+
+#+begin_src emacs-lisp
+(add-hook 'org-mode-hook
+          (lambda () (display-line-numbers-mode -1)))
+#+end_src
 *** parrot, 多单词切换
 
 开启全局模式：
@@ -862,6 +884,12 @@ _p_ : Previous
 #+end_src
 *** yasnippets
 
+参考链接：
+#+begin_quote
+1. [[https://joaotavora.github.io/yasnippet/snippet-development.html][snippet-development]]
+#+end_quote
+
+
 #+begin_src emacs-lisp
 (setq yas-triggers-in-field t)
 
@@ -1000,6 +1028,7 @@ This file shouldn't be byte compiled.
 (package! string-inflection)
 (package! pangu-spacing)
 (package! cnfonts)
+(package! valign)
 #+end_src
 
 编程类：

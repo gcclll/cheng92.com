@@ -17,6 +17,9 @@ const { compile: compileSSR } = require(process.env.VNEXT_PKG_SFC +
 const rc = require(process.env.VNEXT_PKG_SFC +
   "/../runtime-core/dist/runtime-core.cjs.js");
 
+const rt = require(process.env.VNEXT_PKG_SFC +
+  "/../reactivity/dist/reactivity.cjs.js");
+
 const { log } = require(process.env.BLOG_JS + "/utils.js");
 
 const mockId = "xxxxxxxx";
@@ -110,6 +113,7 @@ module.exports = {
   compileSSR,
   getCompiledSSRString,
   rc,
+  rt,
 };
 
 function filterNullProps(o, specific) {

@@ -2422,6 +2422,542 @@ computed 函数的 options 可以是函数或一个对象，可以用外部自�
 
 脑图请直接查看“[[#whole-mind-map][完整脑图 computed 部分]]”
 * add ref
+
+[[/img/vue3/reactivity/reactivity-ref.svg]]
+
+这部分因为之前没有单独拎出来一步步实现，而是直接拷贝过来了为了先测试 computed 属
+性。
+
+所以这里直接根据源码以及使用方式来进行逐步分析。
+
+APIs:
+
+| api                                    | function                           |
+|----------------------------------------+------------------------------------|
+| ~isRef(r:any)~                         | 检测函数                           |
+| ~ref(value)~                           | 将 value 转成 Ref 类型             |
+| ~shallowRef(value)~                    | 不进行递归 reactive                |
+| ~createRef(rawValue, shallow = false)~ | create ref, for ref/shallowRef     |
+| ~triggerRef(ref: Ref)~                 | 触发 ref 变量上的所有依赖          |
+| ~unref(ref)~                           | 取消 ref 化，返回 ref.value 原始值 |
+| ~proxyRefs(objectWithRefs)~            | refs 代理                          |
+| ~RefImpl~                              | Ref 变量模板                       |
+| ~CustomRefImpl~                        | 自定义 Ref 变量模板                |
+
+** ref & shallow ref
+
+~ref()~ 和 ~shallowRef()~ 函数都是调用的同一个函数 ~createRef(val, shallow)~ 来
+创建ref 变量，而 ~createRef~ 本身也很简单，就是 ~new~ 了一个 ~RefImpl~ 实例出来。
+
+另外针对已经是 ref 的值不需要重复 ~new~ 操作，直接返回原 ref。
+
+#+begin_src typescript
+ // ref
+ export function ref(value?: unknown) {
+   return createRef(value);
+ }
+
+// shallow ref
+export function shallowRef(value?: unknown) {
+  return createRef(value, true)
+}
+
+// createRef(rawValue, shallow = false)
+function createRef(rawValue: unknown, shallow = false) {
+  if (isRef(rawValue)) {
+    return rawValue
+  }
+  return new RefImpl(rawValue, shallow)
+}
+#+end_src
+
+参数：
+1. val 需要进行 ref 化的变量
+2. shallow 如果 val 是对象的时候决定是否需要对该对象进行递归 reactive 化
+
+
+看下 ref 结构模板类： ~RefImpl<T>~
+
+#+begin_src typescript
+
+class RefImpl<T> {
+  private _value: T
+
+  public readonly __v_isRef = true
+
+  constructor(private _rawValue: T, public readonly _shallow = false) {
+    this._value = _shallow ? _rawValue : convert(_rawValue)
+  }
+
+  get value() {
+    track(toRaw(this), TrackOpTypes.GET, 'value')
+    return this._value
+  }
+
+  set value(newVal) {
+    if (hasChanged(toRaw(newVal), this._rawValue)) {
+      this._rawValue = newVal
+      this._value = this._shallow ? newVal : convert(newVal)
+      trigger(toRaw(this), TriggerOpTypes.SET, 'value', newVal)
+    }
+  }
+}
+#+end_src
+
+代码是相当简单的，四个属性(~_value/__v_isRef/_rawValue/_shallow~)+两个访问器方法
+(~value getter/setter~)。
+
+#+begin_quote
+根据 es6 class 语法，构造参数如果使用了权限修饰符会自动转成成员属性，所以
+~_rawValue~ 和 ~_shallow~ 也是 RefImpl 成员属性和 ~_value~ 是一样的，区别在于这
+两个值可以通过外部控制。
+#+end_quote
+
+开始测试吧：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rt: { ref, shallowRef, effect, reactive },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const a = ref(1);
+log("1. base usage >>>");
+log(["before, a.value = ", a.value]);
+a.value = 2;
+log(["after, a.value = ", a.value]);
+
+log("\n2. should be reactive >>>");
+log("ge/set value 里面使用的是 track/trigger");
+let dummy,
+  calls = 0;
+effect(() => {
+  calls++;
+  dummy = a.value;
+});
+log(`before set a.value, dummy=${dummy}, calls=${calls}`);
+a.value = 3;
+log(`after set a.value, dummy=${dummy}, calls=${calls}`);
+
+log("\n3. 默认情况下对嵌套对象属性进行 reactive >>>");
+const b = ref({ count: 1 });
+effect(() => (dummy = b.value.count));
+log("before set, dummy = ${dummy}");
+log("after set, dummy = ${dummy}");
+
+log("\n4. ref() 不传值的时候也应该可以工作");
+const c = ref();
+// 简单的赋值操作，给什么值都可以
+effect(() => (dummy = c.value));
+log(`before set, dummy = ${dummy}`);
+c.value = 100;
+log(`after set, dummy = ${dummy}`);
+
+// 当嵌套在一个多层级的对象里的时候
+// 因为 ref() 返回的是个对象，所以放在对象里面本质上操作的还是
+// ref 本身
+log("\n5. ref 作为多级对象的值时");
+const d = ref(1);
+const obj = reactive({
+  d,
+  b: { c: d },
+});
+let dummy1, dummy2;
+effect(() => {
+  dummy1 = obj.d;
+  dummy2 = obj.b.c;
+});
+log(`before set, dummy1=${dummy1}, dummy2=${dummy2}`);
+d.value++;
+log(`d.value++, dummy1=${dummy1}, dummy2=${dummy2}`);
+// 注意这里直接针对 ref 进行赋值操作而不是obj.d.value++
+// 这样也是可以的，因为 set proxy 里面有检测该属性是不是 ref
+// 如果是 Ref 会转变成对 obj.d.value++ 也就是说 vue 内部帮
+// 我们这么做了，下面对 obj.b.c++ 同
+obj.d++;
+log(`obj.d++, dummy1=${dummy1}, dummy2=${dummy2}`);
+obj.b.c++;
+log(`obj.b.c++, dummy1=${dummy1}, dummy2=${dummy2}`);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+1. base usage >>>
+before, a.value =  1
+after, a.value =  2
+
+2. should be reactive >>>
+ge/set value 里面使用的是 track/trigger
+before set a.value, dummy=2, calls=1
+after set a.value, dummy=3, calls=2
+
+3. 默认情况下对嵌套对象属性进行 reactive >>>
+before set, dummy = ${dummy}
+after set, dummy = ${dummy}
+
+4. ref() 不传值的时候也应该可以工作
+before set, dummy = undefined
+after set, dummy = 100
+
+5. ref 作为多级对象的值时
+before set, dummy1=1, dummy2=1
+d.value++, dummy1=2, dummy2=2
+obj.d++, dummy1=3, dummy2=3
+obj.b.c++, dummy1=4, dummy2=4
+undefined
+#+end_example
+
+测试分析：
+
+1. 基本使用
+
+   ref 实现基于 effect 的 track 和 trigger
+
+   get value 实现
+   #+begin_src typescript
+   class RefImpl {
+     // ...
+     get value() {
+       track(toRaw(this), TrackOpTypes.GET, "value");
+       return this._value;
+     }
+     // ...
+   }
+   #+end_src
+
+   set value 实现
+   #+begin_src typescript
+   class RefImpl {
+     set value(newVal) {
+       if (hasChanged(toRaw(newVal), this._rawValue)) {
+         this._rawValue = newVal;
+         // convert() 检测 newVal 是对象就调用 reactive
+         // 注意这里只是简单的赋值操作，所以 ref 可以接受任意类型的值
+         this._value = this._shallow ? newVal : convert(newVal);
+         // trigger 触发 value 属性上的依赖进行
+         // 因为 track 也是在这个属性上进行收集的
+         trigger(toRaw(this), TriggerOpTypes.SET, "value", newVal);
+       }
+     }
+   }
+   #+end_src
+
+2. should be reactive
+
+   这个在 *1* 列出了 get value 源码，结合 track/trigger 达到 reactive 目的。
+
+3. 这一点直接看源码 ~set value(newVal)~
+
+   ~this._value = this._shallow ? newVal : convert(newVal)~
+
+   convert() 针对对象 reactive
+
+4. 因为 ~new RefImpl(rawValue, shallow)~ 是简单的赋值操作，给啥值都行
+
+5. 因为 ~new RefImpl(rawValue, shallow)~ 返回的是个 RefImpl 实例对象，属于引用类
+   型，不管对象层级多深，最终引用的都是这个对象。
+
+** object ref
+
+对对象的所有属性进行 ref 化，在进行 proxy ref 之前需要先完成这部分，因为它依赖
+object ref。
+
+| function             | 描述                      |
+|----------------------+---------------------------|
+| ~toRefs(object)~     | ref对象的所有属性         |
+| ~ObjectRefImpl~      | 对象 ref 模板             |
+| ~toRef(object, key)~ | 针对 object[key] 进行 ref |
+
+相关源码：
+#+begin_src typescript
+class ObjectRefImpl<T extends object, K extends keyof T> {
+  public readonly __v_isRef = true
+
+  constructor(private readonly _object: T, private readonly _key: K) {}
+
+  get value() {
+    return this._object[this._key]
+  }
+
+  set value(newVal) {
+    this._object[this._key] = newVal
+  }
+}
+
+// ref object 属性的
+export function toRef<T extends object, K extends keyof T>(
+  object: T,
+  key: K
+): ToRef<T[K]> {
+  return isRef(object[key])
+    ? object[key]
+    : (new ObjectRefImpl(object, key) as any)
+}
+
+// ref object 所有属性
+export function toRefs<T extends object>(object: T): ToRefs<T> {
+  if (__DEV__ && !isProxy(object)) {
+    console.warn(`toRefs() expects a reactive object but received a plain one.`)
+  }
+  const ret: any = isArray(object) ? new Array(object.length) : {}
+  for (const key in object) {
+    ret[key] = toRef(object, key)
+  }
+  return ret
+}
+
+#+end_src
+
+*源码分析* ： ~ObjectRefImpl~ 中针对每个 ~object[key]~ 持有了一份 object 引
+ 用 _object, 且在最开始 ~new~ 实例的时候将属性名保存到了 _key，后续取值设值用的都
+ 是这个值，然后重写了 getter/setter 函数，在取值设值的时候操作 ~_object + _key~
+ 。
+
+ 打个比方：
+ #+begin_src js
+ // 原始对象
+ const rawObj = { count: 0 };
+
+ // toRef(rawObj, 'count') 之后
+ const reffed = {
+   _key: "count",
+   _object: rawObj,
+   get value() {
+     return this._object[this._key];
+   },
+   set value(newVal) {
+     this._object[this._key] = newVal;
+   },
+ };
+
+// 然后当你改变 reffed.value 值时实际上是在改变 rawObj.count 的值
+console.log(`before set, rawObj.count = ${rawObj.count}`)
+reffed.value = 100
+console.log(`after set, rawObj.count = ${rawObj.count}`)
+
+// toRefs(rawObj) 就是对所有属性进行 toRef()，然后将返回的值用
+// 同样的 key 组成新的对象返回
+// 如: 沿用上面的测试
+// toRefs(rawObj) 等于是返回了一个全新的对象这个对象内容为：
+const reffedObj = {
+  count: reffed
+}
+// 随后我们直接通过修改 reffedObj.count 来间接操作 rawObj 对象里属性的值
+console.log('before set on obj, rawObj.count = ' + rawObj.count)
+reffedObj.count.value = 200
+console.log('after set on obj, rawObj.count = ' + rawObj.count)
+ #+end_src
+
+ #+RESULTS:
+ : before set, rawObj.count = 0
+ : after set, rawObj.count = 100
+ : before set on obj, rawObj.count = 100
+ : after set on obj, rawObj.count = 200
+ : undefined
+
+ 看到没，实际都是改变了 ~rawObj.count~
+
+ #+begin_quote
+所以, object ref 等于是创建了一个全新的对象里面包含的属性和 raw object 属性名一
+致，但是值是 ~ObjectRefImpl~ 创建的实例，用来间接操作 raw object 。
+ #+end_quote
+
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { rc: { effect, reactive, ref, toRef, proxyRefs, toRefs }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const objRef = ref({ count: 0 })
+let dummy
+
+effect(() => {
+  dummy = objRef.value.count
+})
+// proxyRefs(objRef)
+
+log('>>> ref 基本用法')
+log(`1. dummy = ${dummy}`)
+objRef.value.count++
+log(`2. dummy = ${dummy}`)
+
+log('>>> toRef 用法，ref 对象属性')
+const a = reactive({ x: 1 })
+const x = toRef(a, 'x')
+#+end_src
+
+** ref proxy
+
+作用：代理 ref 遍历的 get/set 操作，让 get 在返回之前先 ~unref(result)~ 得到原始
+的值返回，让 set 在 set 之前确保设值的值是在 ref.value 上。
+
+和 ref proxy 有关的函数和属性:
+
+| function                             | 描述           |
+|--------------------------------------+----------------|
+| ~shallowUnwrapHandlers { get, set }~ | 代理的 handler |
+| ~proxyRefs(objectWithRefs)~          | 代理 ref 对象  |
+
+源码：
+#+begin_src typescript
+// proxy handler
+const shallowUnwrapHandlers: ProxyHandler<any> = {
+  get: (target, key, receiver) => unref(Reflect.get(target, key, receiver)),
+  set: (target, key, value, receiver) => {
+    const oldValue = target[key];
+    if (isRef(oldValue) && !isRef(value)) {
+      oldValue.value = value;
+      return true;
+    } else {
+      return Reflect.set(target, key, value, receiver);
+    }
+  },
+};
+
+export function proxyRefs<T extends object>(
+  objectWithRefs: T
+): ShallowUnwrapRef<T> {
+  return isReactive(objectWithRefs)
+    ? objectWithRefs
+    : new Proxy(objectWithRefs, shallowUnwrapHandlers);
+}
+#+end_src
+
+ref proxy 作用：针对被 ref 的 object 对象，进行 get 和 set 操作代理。
+
+get 操作， ~Reflect.get(...)~ 拿到的是个 unref，通过 proxy get handler 去 ref 化，
+返回其原始值。
+
+set 操作， ~Reflect.set(...)~ 新值是 ref 直接覆盖之前的 ~target[key]~ 值，如果不是
+ref，将其设置到 ~oldValue.value~ 上。
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { rc: { effect, reactive, ref, toRef, proxyRefs, toRefs }, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const objRef = ref({ count: 0 })
+let dummy
+
+effect(() => {
+  dummy = objRef.value.count
+})
+// proxyRefs(objRef)
+
+log('>>> ref 基本用法')
+log(`1. dummy = ${dummy}`)
+objRef.value.count++
+log(`2. dummy = ${dummy}`)
+
+log('>>> toRef 用法，ref 对象属性')
+const a = reactive({ x: 1 })
+const x = toRef(a, 'x')
+#+end_src
+
+#+RESULTS:
+: >>> before proxy
+: 1. dummy = 0
+: 2. dummy = 1
+: undefined
+
+** custom ref
+
+相关函数和类：
+
+| function             | 描述                                                    |
+|----------------------+---------------------------------------------------------|
+| ~CustomRefImpl~      | 自定义的 ref 模板                                       |
+| ~customRef(factory)~ | 自定义 ref，即由外部决定如何实现 getter & settter value |
+
+让使用者自定义以什么方式在 get 的时候 track 或 set 的时候 trigger
+
+#+begin_src typescript
+export type CustomRefFactory<T> = (
+  track: () => void,
+  trigger: () => void
+) => {
+  get: () => T;
+  set: (value: T) => void;
+};
+
+class CustomRefImpl<T> {
+  private readonly _get: ReturnType<CustomRefFactory<T>>["get"];
+  private readonly _set: ReturnType<CustomRefFactory<T>>["set"];
+
+  public readonly __v_isRef = true;
+
+  constructor(factory: CustomRefFactory<T>) {
+    const { get, set } = factory(
+      () => track(this, TrackOpTypes.GET, "value"),
+      () => trigger(this, TriggerOpTypes.SET, "value")
+    );
+    this._get = get;
+    this._set = set;
+  }
+
+  get value() {
+    return this._get();
+  }
+
+  set value(newVal) {
+    this._set(newVal);
+  }
+}
+#+end_src
+
+就是我只负责给你构造一个 Ref 结构的对象，至于什么 get 和 set 怎么实现全权交给使
+用者，get/set 默认 track/trigger value 属性。
+
+测试:
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { reactive, toRefs, customRef, effect, isRef },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+let value = 1;
+let _trigger;
+
+const custom = customRef((track, trigger) => ({
+  get() {
+    track();
+    return value;
+  },
+  set(newValue) {
+    value = newValue;
+    _trigger = trigger;
+  },
+}));
+
+log('custom is ref, ' + isRef(custom))
+let dummy
+effect(() => {
+  dummy = custom.value
+})
+log('dummy = ' + dummy)
+custom.value = 2
+// 这个时候还不会触发依赖更新，因为 trigger 并没有执行
+// 只是缓存到了 _trigger 上
+_trigger() // 手动触发 effects
+log('dummy = ' + dummy)
+#+end_src
+
+#+RESULTS:
+: custom is ref, true
+: dummy = 1
+: dummy = 2
+: undefined
+
+** 辅助函数
+
+| function             | desc                       |
+|----------------------+----------------------------|
+| ~isRef(value)~       | 检测 value.__v_isRef 值    |
+| ~triggerRef(ref)~    | 手动触发 ref 上的依赖      |
+| ~unref(ref)~         | 返回 ref._rawValue         |
 * jest 🏃跑🏃用例
 除了 runtime-dom 没实现的部分，都通过了测试。
 

@@ -2378,18 +2378,21 @@ if (effect.options.scheduler) {
 测试:
 #+begin_src js
 // 源文件：/js/vue/lib.js
-const { rc: { watch, ref }, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+const {
+  rc: { watch, ref },
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
 
 const run = async () => {
-  const value = ref(0)
-  let calls = 0
-  watch(value, () => ++calls, { flush: 'sync' })
+  const value = ref(0);
+  let calls = 0;
+  watch(value, () => ++calls, { flush: "sync" });
 
-  log({ calls })
-  value.value = 100
-  log({ calls })
-}
-run()
+  log({ calls }); // -> 0
+  value.value = 100;
+  log({ calls }); // -> 1
+};
+run();
 #+end_src
 
 #+RESULTS:
@@ -2399,6 +2402,51 @@ run()
 
 注意看上面的测试用例并没有用 ~await nextTick()~ ，而是同步代码执行。
 ** TODO ssr support
+** 其他测试
+
+*** force trigger shallow ref
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { watch, shallowRef, nextTick, triggerRef },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const v = shallowRef({ a: 1 });
+  let sideEffect = 0;
+  watch(v, (obj) => {
+    sideEffect = obj.a;
+  });
+
+  v.value = v.value;
+  await nextTick();
+  log(["\nshould not trigger: ", sideEffect]);
+
+  v.value.a++;
+  await nextTick();
+  log(["\nshould not trigger: ", sideEffect]);
+
+  triggerRef(v);
+  await nextTick();
+  log(["\nshould trigger now: ", sideEffect]);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+: should not trigger:  0
+:
+: should not trigger:  0
+:
+: should trigger now:  2
+
+#+begin_quote
+ref 这一块还没深入去分析过，先暂停⏸去完成下这部分。
+#+end_quote
 
 * scheduler 任务调度机制
 :PROPERTIES:
