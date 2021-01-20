@@ -2485,13 +2485,7 @@ triggerRef 作用是手动触发 ref.value 上收集的所有依赖。
    triggerRef(v) 会触发 cb 的调用将 ~obj.a~复制给 ~sideEffect~ ，这个 obj 就是
    runner() 执行的返回值也就是 ~() => s.value~ 这个函数执行的返回值。
 
-
 ** TODO flush pre(default) cb
-
-#+begin_export html
-<font color="red">[2021-01-20 16:21:35] 测试需要 runtime-test 支持，暂停，先完成 runtime-test 再回来。
-</font>
-#+end_export
 
 ** TODO flush post cb
 ** TODO ssr support
@@ -3564,6 +3558,11 @@ while (1) {
 ~case 0~ -> ~next = 5~ -> ~case 5~ -> ~next = 9~ -> ...
 
 所以说 nextTick() 后面的代码都会被放到异步代码
+* runtime-test 模块简介
+
+这里测试需要用到这个模块，所以简单用脑图描述下这里面有哪些东西和干什么的。
+
+[[/img/vue3/runtime-core/vue-runtime-test.svg]]
 
 * 重要类型声明
 

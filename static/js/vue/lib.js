@@ -20,6 +20,9 @@ const rc = require(process.env.VNEXT_PKG_SFC +
 const rt = require(process.env.VNEXT_PKG_SFC +
   "/../reactivity/dist/reactivity.cjs.js");
 
+const rcTest = require(process.env.VNEXT_PKG_SFC +
+  "/../runtime-test/dist/runtime-test.cjs.js");
+
 const { log } = require(process.env.BLOG_JS + "/utils.js");
 
 const mockId = "xxxxxxxx";
@@ -114,6 +117,7 @@ module.exports = {
   getCompiledSSRString,
   rc,
   rt,
+  rcTest /* runtime-core test module */,
 };
 
 function filterNullProps(o, specific) {
