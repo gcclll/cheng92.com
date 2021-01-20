@@ -5,6 +5,11 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent shrink
 
+#+begin_quote
+*更新日志&Todos* ：
+1. DONE [2021-01-20 15:16:45] ref
+#+end_quote
+
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
 <kbd>
@@ -2422,6 +2427,10 @@ computed 函数的 options 可以是函数或一个对象，可以用外部自�
 
 脑图请直接查看“[[#whole-mind-map][完整脑图 computed 部分]]”
 * add ref
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ref
+:END:
 
 [[/img/vue3/reactivity/reactivity-ref.svg]]
 
@@ -2953,11 +2962,11 @@ log('dummy = ' + dummy)
 
 ** 辅助函数
 
-| function             | desc                       |
-|----------------------+----------------------------|
-| ~isRef(value)~       | 检测 value.__v_isRef 值    |
-| ~triggerRef(ref)~    | 手动触发 ref 上的依赖      |
-| ~unref(ref)~         | 返回 ref._rawValue         |
+| function          | desc                        |
+|-------------------+-----------------------------|
+| ~isRef(value)~    | 检测 value.__v_isRef 值     |
+| ~triggerRef(ref)~ | 手动触发 ref value 上的依赖 |
+| ~unref(ref)~      | 返回 ref.value 值           |
 * jest 🏃跑🏃用例
 除了 runtime-dom 没实现的部分，都通过了测试。
 

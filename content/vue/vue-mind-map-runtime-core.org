@@ -51,6 +51,14 @@
 7. [[#api-watch][api watch(source, cb, option)]] 中的 source 只能是 ~reactive/ref/function/array~ 类型，
    如果是数组时其元素只能是 ~reactive/ref/function~
 8. [[#api-watch-deep][api watch(..., { deep: true }) 是如何做到深度监听的？]]
+9. [[#watch-shallow-ref][api watch(shallowRef, /*cb*/ (newVal) => {}) 是如何直接使用 newVal.a 的？]]
+
+   #+begin_src js
+   var obj = shallowRef({ a: 0 });
+   watch(shallowRef, (newVal) => {
+     dummy = newVal.a; // 这里为什么可以直接访问 obj.a，obj 又是什么？
+   });
+   #+end_src
 * init
 
 导出已完成模块(reactiviy)里的 Apis:
@@ -2328,8 +2336,6 @@ run();
 
 2. 执行时机，该阶段和注册时机相辅相成，且在 cb/fn 执行之前就会被执行，因此 cb/fn
    的第一次执行都属于对 cleanup 的注册
-** TODO flush pre(default) cb
-** TODO flush post cb
 ** flush sync
 
 [[https://github.com/gcclll/stb-vue-next/commit/e1436f2cfe78cdc64c31c03d876c5b743a44fc18][feat(add): rc->api watch->option flush=sync · gcclll/stb-vue-next@e1436f2 · GitHub]]
@@ -2401,10 +2407,11 @@ run();
 : undefined
 
 注意看上面的测试用例并没有用 ~await nextTick()~ ，而是同步代码执行。
-** TODO ssr support
-** 其他测试
-
-*** force trigger shallow ref
+** shallow ref
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: watch-shallow-ref
+:END:
 
 #+begin_src js
 // 源文件：/js/vue/lib.js
@@ -2415,23 +2422,23 @@ const {
 } = require(process.env.BLOG_JS + "/vue/lib.js");
 
 const run = async () => {
-  const v = shallowRef({ a: 1 });
+  const v = shallowRef({ a: 1 }); // #1
   let sideEffect = 0;
-  watch(v, (obj) => {
+  watch(v, (obj) => { // #2 cb -> cb(newVal, oldVal, onCleanUp)
     sideEffect = obj.a;
   });
 
-  v.value = v.value;
+  v.value = v.value; // #3
   await nextTick();
-  log(["\nshould not trigger: ", sideEffect]);
+  log(["\nshould not trigger: ", sideEffect]); // #4
 
-  v.value.a++;
+  v.value.a++; // #5
   await nextTick();
-  log(["\nshould not trigger: ", sideEffect]);
+  log(["\nshould not trigger: ", sideEffect]); // #6
 
-  triggerRef(v);
+  triggerRef(v); // #7
   await nextTick();
-  log(["\nshould trigger now: ", sideEffect]);
+  log(["\nshould trigger now: ", sideEffect]); // #8
 };
 run();
 #+end_src
@@ -2446,7 +2453,48 @@ run();
 
 #+begin_quote
 ref 这一块还没深入去分析过，先暂停⏸去完成下这部分。
+
+1. DONE [2021-01-20 15:18:37] [[/vue/vue-mind-map-house-reactivity/#ref][ref 完成，可以往下继续了]]
 #+end_quote
+
+triggerRef 作用是手动触发 ref.value 上收集的所有依赖。
+
+结果分析：
+1. *#1* shallowRef 意味着 ~{a: 1}~ 中的属性 a 非 reactive
+2. *#2* watch v 基于 *1* 所以只是对 ref value 进行了监听，后面是值变更回调
+3. *#3* 值没发生改变，所有 *#4* 输出还是 0
+4. *#5* 由于 ~a~ 属性非 reactive 所以它没有依赖收集所以不会执行 cb，所以 *#6* 出
+   依然是 0
+5. *#7* 这里手动调用 ~triggerRef(v)~ 等价于 ~trigger(v, SET, 'value')~ 触发 ref
+   value 的依赖执行，此时 cb 会得到执行，sideEffect 被赋值新的 ~v.a~ 值
+
+   这里有一点需要注意，在 cb 里面是用的 v.a 而不是 v.value.a 因为在
+   ~watch(s,cb,option)~ 里面检测到如果 ~s~ 是 ref 类型，会将 getter 设置为
+   ~getter = () => s.value~
+
+   而在执行 cb 之前取新值是通过 ~newVal = runner()~ 得到的，而这个 ~runner =
+   effect(getter, {...})~ 所以等于是 ~effect(() => s.value, {...})~
+
+   所以对于 ref 类型 effect 封装的其实是 ~() => s.value~ 这个函
+   数，那么对于 ~s.value~ 的依赖列表中就会有这个箭头函数。
+
+   然后在 watch 里面会将 cb 的执行封装进 job ，然后根据情况将 job 封装或直接赋值
+   给 scheduler ，这个会作为 ~effect(, { scheduler })~ 的选项传递进去。
+
+   那么在 trigger 的时候检测到提供了 scheduler 就会调用它，所以最终调用
+   triggerRef(v) 会触发 cb 的调用将 ~obj.a~复制给 ~sideEffect~ ，这个 obj 就是
+   runner() 执行的返回值也就是 ~() => s.value~ 这个函数执行的返回值。
+
+
+** TODO flush pre(default) cb
+
+#+begin_export html
+<font color="red">[2021-01-20 16:21:35] 测试需要 runtime-test 支持，暂停，先完成 runtime-test 再回来。
+</font>
+#+end_export
+
+** TODO flush post cb
+** TODO ssr support
 
 * scheduler 任务调度机制
 :PROPERTIES:
