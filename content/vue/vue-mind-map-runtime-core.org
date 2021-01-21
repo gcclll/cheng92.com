@@ -28,11 +28,12 @@
 *更新日志&Todos* ：
 1. [2021-01-08 10:12:50] 创建
 2. DONE [2021-01-15 10:24:00] scheduler
-3. TODO STATEFUL_COMONENT
-4. TODO patchFlag 测试和用途
-5. TODO transformVNodeArgs
-6. TODO Suspense 组件
-7. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
+3. TODO apiWatch -> post cb & ssr
+4. TODO STATEFUL_COMONENT
+5. TODO patchFlag 测试和用途
+6. TODO transformVNodeArgs
+7. TODO Suspense 组件
+8. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
 #+end_quote
 
 模块初始化： [[https://github.com/gcclll/stb-vue-next/commit/b22b4db3506bf1ba4b266dcf9ff21f1e0b925a81][feat(init): runtime-core · gcclll/stb-vue-next@b22b4db · GitHub]]
@@ -2486,10 +2487,64 @@ triggerRef 作用是手动触发 ref.value 上收集的所有依赖。
    runner() 执行的返回值也就是 ~() => s.value~ 这个函数执行的返回值。
 
 ** TODO flush pre(default) cb
-
 ** TODO flush post cb
-** TODO ssr support
 
+[[https://github.com/gcclll/stb-vue-next/commit/ec14879bf13deb83cea3401279ea75e1cf44eaf6][feat(add): rc->watch->flush = 'post' · gcclll/stb-vue-next@ec14879 · GitHub]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/9f3ac7dff18926df602a7f0eff08da4b253e26a7][feat(add): rc->watch->cb->flush = 'post' · gcclll/stb-vue-next@9f3ac7d · GitHub]]
+
+新增代码：
+#+begin_src typescript
+// apiWatch.ts -> scheduler when flush=post
+if (flush === "post") {
+  scheduler = () => queuePostRenderEffect(job, instance && instance.suspense);
+}
+
+// renderer.ts -> queuePostRenderEffect
+// 将任务加入到 suspense.effects 或 调用 queuePostFlushCb
+// 加入到 pendingPostFlushCbs
+export const queuePostRenderEffect = __FEATURE_SUSPENSE__
+  ? queueEffectWithSuspense
+  : queuePostFlushCb;
+
+// components/Suspense.ts
+export function queueEffectWithSuspense(
+  fn: Function | Function[],
+  suspense: SuspenseBoundary | null
+): void {
+  if (suspense && suspense.pendingBranch) {
+    if (isArray(fn)) {
+      suspense.effects.push(...fn);
+    } else {
+      suspense.effects.push(fn);
+    }
+  } else {
+    queuePostFlushCb(fn);
+  }
+}
+#+end_src
+** TODO ssr support
+** TODO instance watch
+
+[[https://github.com/gcclll/stb-vue-next/commit/9ec5d5131019fe67bcc7232e39bde1cfe239dbca][feat(add): rc->watch->instance watch · gcclll/stb-vue-next@9ec5d51 · GitHub]]
+
+#+begin_src typescript
+// this.$watch
+export function instanceWatch(
+  this: ComponentInternalInstance,
+  source: string | Function,
+  cb: WatchCallback,
+  options?: WatchOptions
+): WatchStopHandle {
+  const publicThis = this.proxy as any
+  const getter = isString(source)
+    ? () => publicThis[source]
+    : source.bind(publicThis)
+  return doWatch(getter, cb.bind(publicThis), options, this)
+}
+#+end_src
+
+将监听源，与当前实例绑定，如果是字符串转成函数。
 * scheduler 任务调度机制
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
