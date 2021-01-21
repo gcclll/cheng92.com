@@ -2299,7 +2299,12 @@ const readonlyInstrumentations: Recor<string, Function> = {
 [[https://github.com/gcclll/stb-vue-next/commit/676bc70fe9a6535b85ada4754fb6a683bec50f5f][feat(add): shallow collection handlers · gcclll/stb-vue-next@676bc70]]
 
 不会递归 reactive 版本。
-* add computed types definitions
+* computed
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: computed
+:END:
+** types definitions
 
 [[https://github.com/gcclll/stb-vue-next/commit/e9e53a16dcaffd35aa519b3251e4bcb4ad4e9342][feat(add): computed type definitions · gcclll/stb-vue-next@e9e53a1]]
 
@@ -2331,7 +2336,7 @@ export function computed<T>(
   getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>
 ) {}
 #+end_src
-* add computed implementation
+** implementation
 
 [[https://github.com/gcclll/stb-vue-next/commit/64d380dfea9da6a78f10fe2de9ef95fbd253d3f0][feat(add): computed tpl and computed function · gcclll/stb-vue-next@64d380d]]
 

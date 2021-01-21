@@ -35,6 +35,7 @@
 7. TODO Suspense 组件
 8. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
 9. TODO setup() 返回值用来做了啥？
+10. TODO setup() 里面是如何收集生命周期函数，又是如何？在什么时候？执行他们的？
 #+end_quote
 
 模块初始化： [[https://github.com/gcclll/stb-vue-next/commit/b22b4db3506bf1ba4b266dcf9ff21f1e0b925a81][feat(init): runtime-core · gcclll/stb-vue-next@b22b4db · GitHub]]
@@ -84,6 +85,7 @@
 
     inject(key) 从组件 ~provides[key]~ 取值
 12. TODO setup() 返回值用来做了啥？
+13. [[#lc-test-order][组件声明周期函数(~onBeforeXxx~, ~onXxx~)触发顺序是什么？]]
 * 🐂 init
 
 导出已完成模块(reactiviy)里的 Apis:
@@ -3229,6 +3231,501 @@ run();
 #+begin_quote
 Q. 那么为什么注入的值直接变成了 ~<div>1</div>~ 子节点了？
 #+end_quote
+* ✨ api computed
+
+这个 api 是对 reactivity>computed 的一次简单封装，详情请直接查看 [[/vue/vue-mind-map-reactivity/#computed][reactivity对应的 computed 一节]]。
+
+代码：
+#+begin_src typescript
+export function computed<T>(getter: ComputedGetter<T>): ComputedRef<T>
+export function computed<T>(
+  options: WritableComputedOptions<T>
+): WritableComputedRef<T>
+export function computed<T>(
+  getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>
+) {
+  const c = _computed(getterOrOptions as any)
+  recordInstanceBoundEffect(c.effect)
+  return c
+}
+#+end_src
+* 🌀 api lifecycle
+
+[[https://github.com/gcclll/stb-vue-next/commit/071d8689ca31c9b7c9452986d82e02d3a1769abc][feat(add): api lifecycle init · gcclll/stb-vue-next@071d868 · GitHub]]
+
+组件声明周期 api 。
+
+#+begin_src typescript
+
+export function injectHook(
+  type: LifecycleHooks,
+  hook: Function & { __weh?: Function },
+  target: ComponentInternalInstance | null = currentInstance,
+  prepend: boolean = false
+): Function | undefined {
+  // TODO
+  return
+}
+
+export const createHook = <T extends Function = () => any>(
+  lifecycle: LifecycleHooks
+) => (hook: T, target: ComponentInternalInstance | null = currentInstance) =>
+  !isInSSRComponentSetup && injectHook(lifecycle, hook, target)
+
+export const onBeforeMount = createHook(LifecycleHooks.BEFORE_MOUNT)
+export const onMounted = createHook(LifecycleHooks.MOUNTED)
+export const onBeforeUpdate = createHook(LifecycleHooks.BEFORE_UPDATE)
+export const onUpdated = createHook(LifecycleHooks.UPDATED)
+export const onUnMount = createHook(LifecycleHooks.UNMOUNTED)
+#+end_src
+
+如上，所有的声明周期函数都是通过 createHook -> injectHook 实现，所以这部分的重点
+就是这个 ~injectHook(type, hook, targt, prepend)~ 。
+
+在 ~createHook()~ 里面有检测是不是 SSR 环境，只有非 SSR 环境下才会有声明周期。
+
+[[https://github.com/gcclll/stb-vue-next/commit/6e9cd1443626bda721740e7dd1dad8cbc9a8cc1f][feat(add): api lifecycle injectHook · gcclll/stb-vue-next@6e9cd14 · GitHub]]
+
+#+begin_src typescript
+export function injectHook(
+  type: LifecycleHooks,
+  hook: Function & { __weh?: Function },
+  target: ComponentInternalInstance | null = currentInstance,
+  prepend: boolean = false
+): Function | undefined {
+  if (target) {
+    const hooks = target[type] || (target[type] = []);
+    // 将 hook 的执行封装成一个 error handling warpper 函数，并且缓存到 hook.__weh
+    // 上，这样在调度器里面调用的时候可以进行去重，因为 scheduler 里面执行的时候
+    // 有去重操作，这里的 __weh = 'with error handling'
+    const wrappedHook =
+      hook.__weh ||
+      (hook.__weh = (...args: unknown[]) => {
+        if (target.isUnmounted) {
+          return;
+        }
+        // 在所有的声明周期函数中都 disable tracking
+        // 因为它们有可能在 effects 中被调用
+        pauseTracking();
+        // 在 hook 执行期间设置 currentInstance = targt
+        // 假设 hook 没有同步地触发其他 hooks，即在一个 hook 里面同步调用
+        // 另一个声明周期函数？
+        setCurrentInstance(target);
+        const res = callWithAsyncErrorHandling(hook, target, type, args);
+        setCurrentInstance(null);
+        resetTracking();
+        return res;
+      });
+
+    prepend ? hooks.unshift(wrappedHook) : hooks.push(wrappedHook);
+    return wrappedHook;
+  } else if (__DEV__) {
+    // ...
+  }
+  return;
+}
+#+end_src
+
+1. lifecycle hook 可以在 setup() 中执行
+2. 这里的所有声明周期函数都以事件形式存在，意味着可以通过这些 api 注册哪个声明周
+   期需要执行操作的函数
+3. 在声明周期函数执行期间不进行 ~track~ 收集依赖操作，它有可能在 setup() 中进行
+
+** test base
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: {
+    render,
+    nodeOps,
+    onBeforeMount,
+    h,
+    serializeInner,
+    onMounted,
+    onBeforeUpdate,
+    onUpdated,
+    onBeforeUnmount,
+    onBeforeUnmounted,
+    ref,
+    nextTick,
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const root = nodeOps.createElement("div");
+let called = 0;
+const s = () => serializeInner(root);
+const fn = (stage) => {
+  called++;
+  log(`\n-> ${stage}, called = ${called}, serialize root = "${s()}" }`);
+  // count.value++
+};
+
+const count = ref(0);
+const run = async () => {
+  const Comp = {
+    setup() {
+      // 这里故意将 onMounted 放在前面
+      // 结果会发现这个还是最后才执行
+      onMounted(() => fn("onMounted"));
+      onBeforeMount(() => fn("onBeforeMount"));
+      onBeforeUpdate(() => fn("onBeforeUpdate"));
+      onUpdated(() => fn("onUpdated"));
+
+      return () => h("div", count.value);
+    },
+  };
+  render(h(Comp), root);
+  count.value++;
+  await nextTick();
+  log("after set value...");
+  log(s());
+};
+run();
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+-> onBeforeMount, called = 1, serialize root = "" }
+
+-> onMounted, called = 2, serialize root = "<div>0</div>" }
+undefined
+-> onBeforeUpdate, called = 3, serialize root = "<div>0</div>" }
+
+-> onUpdated, called = 4, serialize root = "<div>1</div>" }
+after set value...
+<div>1</div>
+#+end_example
+
+** test update
+
+测试在 ~onBeforeUpdate~ 中执行值更新操作会怎样？
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: {
+    render,
+    nodeOps,
+    onBeforeMount,
+    h,
+    serializeInner,
+    onBeforeUpdate,
+    onUpdated,
+    ref,
+    nextTick,
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const root = nodeOps.createElement("div");
+let called = 0;
+const s = () => serializeInner(root);
+const fn = (stage) => {
+  called++;
+  log(`\n-> ${stage}, called = ${called}, serialize root = "${s()}" }`);
+  count.value++
+};
+
+const count = ref(0);
+const run = async () => {
+  const Comp = {
+    setup() {
+      onUpdated(() => log('-> onUpdated, count.value = ' + count.value + ', ' + s()))
+      onBeforeUpdate(() => fn("onBeforeUpdate"));
+
+      return () => h("div", count.value);
+    },
+  };
+  render(h(Comp), root);
+  count.value++;
+  await nextTick();
+  log("after set value...");
+  log(s());
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+: -> onBeforeUpdate, called = 1, serialize root = "<div>0</div>" }
+: -> onUpdated, count.value = 2, <div>2</div>
+: after set value...
+: <div>2</div>
+
+#+begin_quote
+Q. 最后 count.value 渲染出来是 2？
+#+end_quote
+** test unmount
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: {
+    render,
+    nodeOps,
+    onBeforeMount,
+    h,
+    serializeInner,
+    onBeforeUpdate,
+    onUpdated,
+    onBeforeUnmount,
+    onUnmounted,
+    onMounted,
+    ref,
+    nextTick,
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const root = nodeOps.createElement("div");
+let called = 0;
+const s = () => serializeInner(root);
+const fn = (stage) => {
+  called++;
+  log(`\n-> ${stage}, called = ${called}, serialize root = "${s()}" }`);
+};
+
+const toggle = ref(true);
+const run = async () => {
+  const Comp = {
+    setup() {
+      return () => (toggle.value ? h(Child) : null);
+    },
+  };
+
+  const Child = {
+    setup() {
+      onBeforeUnmount(() => fn("onBeforeUnmount"));
+      onUnmounted(() => fn("onUnmounted"));
+      onMounted(() => {
+        // 这等于是等组件加载完成之后在注册 unmount
+        onBeforeUnmount(() => log("-> onBeforeUnmount called in onMounted"));
+      });
+      return () => h("div");
+    },
+  };
+  render(h(Comp), root);
+  toggle.value = false;
+  await nextTick();
+  log("\nafter set value...");
+  log(s());
+};
+run();
+#+end_src
+
+#+RESULTS:
+: undefined
+: -> onBeforeUnmount, called = 1, serialize root = "<div></div>" }
+: -> onBeforeUnmount called in onMounted
+:
+: -> onUnmounted, called = 2, serialize root = "<!---->" }
+:
+: after set value...
+: <!---->
+
+** test order
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: lc-test-order
+:END:
+
+测试声明周期函数执行顺序(和调用顺序无关)
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: {
+    render,
+    nodeOps,
+    h,
+    serializeInner,
+    onBeforeMount,
+    onMounted,
+    onBeforeUpdate,
+    onUpdated,
+    onBeforeUnmount,
+    onUnmounted,
+    ref,
+    nextTick,
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const root = nodeOps.createElement("div");
+let calls = [];
+
+const count = ref(0);
+const run = async () => {
+  const Root = {
+    setup() {
+      onBeforeMount(() => calls.push('root onBeforeMount'))
+      onMounted(() => calls.push('root onMounted'))
+      onBeforeUpdate(() => calls.push('root onBeforeUpdate'))
+      onUpdated(() => calls.push('root onUpdated'))
+      onBeforeUnmount(() => calls.push('root onBeforeUnmount'))
+      onUnmounted(() => calls.push('root onUnmounted'))
+      return () => h(Mid, { count: count.value });
+    },
+  };
+
+  const Mid = {
+    setup(props) {
+      onBeforeMount(() => calls.push('Mid onBeforeMount'))
+      onMounted(() => calls.push('Mid onMounted'))
+      onBeforeUpdate(() => calls.push('Mid onBeforeUpdate'))
+      onUpdated(() => calls.push('Mid onUpdated'))
+      onBeforeUnmount(() => calls.push('Mid onBeforeUnmount'))
+      onUnmounted(() => calls.push('Mid onUnmounted'))
+      return () => h(Child, { count: props.count });
+    },
+  };
+
+  const Child = {
+    setup(props) {
+      onBeforeMount(() => calls.push('Child onBeforeMount'))
+      onMounted(() => calls.push('Child onMounted'))
+      onBeforeUpdate(() => calls.push('Child onBeforeUpdate'))
+      onUpdated(() => calls.push('Child onUpdated'))
+      onBeforeUnmount(() => calls.push('Child onBeforeUnmount'))
+      onUnmounted(() => calls.push('Child onUnmounted'))
+      return () => h('div', props.count);
+    },
+  };
+
+
+  render(h(Root), root)
+ log(['\n0. before update value >', calls])
+  calls.length = 0
+
+  // update
+  count.value++
+  await nextTick()
+  log(['\n1. update value >', calls])
+  calls.length = 0
+
+  // unmount
+  render(null, root)
+  log(['\n2. unmount >', calls])
+  calls.length = 0
+};
+run();
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+0. before update value > [
+  'root onBeforeMount',
+  'Mid onBeforeMount',
+  'Child onBeforeMount',
+  'Child onMounted',
+  'Mid onMounted',
+  'root onMounted'
+]
+undefined
+1. update value > [
+  'root onBeforeUpdate',
+  'Mid onBeforeUpdate',
+  'Child onBeforeUpdate',
+  'Child onUpdated',
+  'Mid onUpdated',
+  'root onUpdated'
+]
+
+2. unmount > [
+  'root onBeforeUnmount',
+  'Mid onBeforeUnmount',
+  'Child onBeforeUnmount',
+  'Child onUnmounted',
+  'Mid onUnmounted',
+  'root onUnmounted'
+]
+#+end_example
+
+从上面的结果可知整个组件声明周期发生过程。
+
+1. 组件 mount 顺序， child -> mid -> comp，子组件 -> ... -> 父组件
+2. 组件 update 顺序， child -> mid -> comp, 子组件 -> ... -> 父组件
+3. 组件 unmount 顺序， child -> mid -> comp, 子组件 -> ... -> 父组件
+
+组件的 before 声明周期触发顺序是： child -> mid -> comp 完成之后的顺序刚好相反。
+** test render track & trigger
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: {
+    render,
+    nodeOps,
+    h,
+    serializeInner,
+    ref,
+    nextTick,
+    reactive,
+    onRenderTracked,
+    onRenderTriggered
+  },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = () => {
+  const events = [];
+  let called = 0;
+  const fn = (e) => {
+    called++;
+    events.push(e);
+  };
+  const obj = reactive({ foo: 1, bar: 2 });
+  const Comp = {
+    setup() {
+      onRenderTriggered(fn)
+      onRenderTracked(fn);
+      return () => h("div", [obj.foo, "bar" in obj, Object.keys(obj).join("")]);
+    },
+  };
+
+  render(h(Comp), nodeOps.createElement('div'))
+  log('called = ' + called) // 3
+  log('>> track events')
+  events.forEach(e => log(f(e, ['target', 'type', 'key'])))
+  events.length = 0
+  log('>> trigger events')
+  obj.foo++
+  events.forEach(e => log(f(e, ['target', 'type', 'key'])))
+  events.length = 0
+  delete obj.bar
+  events.forEach(e => log(f(e, ['target', 'type', 'key'])))
+  events.length = 0
+  obj.baz = 3
+  events.forEach(e => log(f(e, ['target', 'type', 'key'])))
+  events.length = 0
+
+};
+run();
+#+end_src
+
+#+RESULTS:
+#+begin_example
+called = 3
+>> track events
+{ target: { foo: 1, bar: 2 }, type: 'get', key: 'foo' }
+{ target: { foo: 1, bar: 2 }, type: 'has', key: 'bar' }
+{ target: { foo: 1, bar: 2 }, type: 'iterate', key: Symbol(iterate) }
+>> trigger events
+{ target: { foo: 2, bar: 2 }, key: 'foo', type: 'set' }
+{ target: { foo: 2 }, key: 'bar', type: 'delete' }
+{ target: { foo: 2, baz: 3 }, key: 'baz', type: 'add' }
+undefined
+#+end_example
+
 * 🚒 scheduler 任务调度机制
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
