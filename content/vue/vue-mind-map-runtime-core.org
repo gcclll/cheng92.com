@@ -34,13 +34,14 @@
 6. TODO transformVNodeArgs
 7. TODO Suspense 组件
 8. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
+9. TODO setup() 返回值用来做了啥？
 #+end_quote
 
 模块初始化： [[https://github.com/gcclll/stb-vue-next/commit/b22b4db3506bf1ba4b266dcf9ff21f1e0b925a81][feat(init): runtime-core · gcclll/stb-vue-next@b22b4db · GitHub]]
 
 [[/img/vue3/runtime-core/vue-runtime-core.svg]]
 
-* Tips
+* ⚠ Tips
 1. class 支持数组(~['foo', 'bar']~)，对象(~{foo:true,bar:false}~)，字符串(~'foo bar'~)
 2. style 支持数组(~['color:red', {foo:'foo'}]~)，对象(~{color:'red',foo:'foo'}~)，字符串(~color:red~)
 3. class component 条件：
@@ -48,19 +49,42 @@
    2) 含 ~__vccOpts = { template: '<div />'}~
 4. [[#test-vnode-ref][vnode ref 属性合并处理逻辑？]]
 5. [[#test-vnode-key][vnode key 属性简单的值覆盖操作？]]
-6. [[#scheduler][scheduler, vue-next 中的任务调度器如何实现？]]
-7. [[#api-watch][api watch(source, cb, option)]] 中的 source 只能是 ~reactive/ref/function/array~ 类型，
-   如果是数组时其元素只能是 ~reactive/ref/function~
-8. [[#api-watch-deep][api watch(..., { deep: true }) 是如何做到深度监听的？]]
-9. [[#watch-shallow-ref][api watch(shallowRef, /*cb*/ (newVal) => {}) 是如何直接使用 newVal.a 的？]]
+6. [[#h-function][h()]] 和 [[#createVNode][createVNode]] 函数多种使用方式组合？
 
-   #+begin_src js
-   var obj = shallowRef({ a: 0 });
-   watch(shallowRef, (newVal) => {
-     dummy = newVal.a; // 这里为什么可以直接访问 obj.a，obj 又是什么？
-   });
-   #+end_src
-* init
+   ~h(type, propsOrChildren, ...children)~, 参数个数多变，对于这个函数的使用方法
+   记忆只要记住一点：
+
+   #+begin_quote
+   props 总是对象，children 可以是对象(必须是 VNode 类型 ~__v_isVNode~)也可以是
+   数组，所以：
+   1. argc = 2, 如果是数组就一定是 children
+   2. argc = 2, 如果是对象且有 __v_isVNode 标识，一定是 children 否则是 props
+   3. argc = 3, 按照 ~h(type, props, children)~ 处理
+   4. argc > 3, 按照 ~h(type, props, ...children)~ 处理，从第三个开始都是 children
+   #+end_quote
+
+   ~createVNode(type, props, children)~, 固定三个参数，第二个一定是 props, 第三
+   个一定是数组类型的 children，因为它后面还有更多的其他参数(patchFlag,
+   dynamicProps, isBlockNode)，所以前三个必须确定下来。
+7. [[#scheduler][scheduler, vue-next 中的任务调度器如何实现？]]
+8. [[#api-watch][api watch(source, cb, option)]] 中的 source 只能是 ~reactive/ref/function/array~ 类型，
+   如果是数组时其元素只能是 ~reactive/ref/function~
+9. [[#api-watch-deep][api watch(..., { deep: true }) 是如何做到深度监听的？]]
+10. [[#watch-shallow-ref][api watch(shallowRef, /*cb*/ (newVal) => {}) 是如何直接使用 newVal.a 的？]]
+
+    #+begin_src js
+    var obj = shallowRef({ a: 0 });
+    watch(shallowRef, (newVal) => {
+      dummy = newVal.a; // 这里为什么可以直接访问 obj.a，obj 又是什么？
+    });
+    #+end_src
+11. [[#api-provide-inject][provide & inject 如何实现？]]
+
+    provide(key,value) 向组件 ~provides[key] = value~ 设置
+
+    inject(key) 从组件 ~provides[key]~ 取值
+12. TODO setup() 返回值用来做了啥？
+* 🐂 init
 
 导出已完成模块(reactiviy)里的 Apis:
 [[https://github.com/gcclll/stb-vue-next/commit/38e91a877635b51b56a2918ff173a48638b8760a][feat(init): runtime-core> add exports from @vue/reactivity · gcclll/stb-vue-next@38e91a8 · GitHub]]
@@ -70,7 +94,11 @@
 [[https://github.com/gcclll/stb-vue-next/commit/e3f7b94ef39cf389aaf25f55ea81877941860f56][feat(add): runtime-core>all types · gcclll/stb-vue-next@e3f7b94 · GitHub]]
 
 有关类型定义请移步[[#defines][最后一节]](纯贴代码的，所以放到最后)
-* h function
+* 😜 h function
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: h-function
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/e48d5e28c4e1b55c6d6a326bcf0808047e23ceeb][feat(add): runtime-core>h function · gcclll/stb-vue-next@e48d5e2 · GitHub]]
 
@@ -78,7 +106,7 @@
 
 #+begin_src typescript
 // Actual implementation
-export function h(type: any, propsOrChildgen?: any, children?: any): VNode {
+export function h(type: any, propsOrChildren?: any, children?: any): VNode {
   // TODO
   return {} as VNode;
 }
@@ -87,19 +115,19 @@ export function h(type: any, propsOrChildgen?: any, children?: any): VNode {
 实现：
 #+begin_src typescript
 // Actual implementation
-export function h(type: any, propsOrChildgen?: any, children?: any): VNode {
+export function h(type: any, propsOrChildren?: any, children?: any): VNode {
   const l = arguments.length;
   if (l === 2) {
-    if (isObject(propsOrChildgen) && !isArray(propsOrChildgen)) {
+    if (isObject(propsOrChildren) && !isArray(propsOrChildren)) {
       // 没有 props 的 单节点(single vnode)
-      if (isVNode(propsOrChildgen)) {
-        return createVNode(type, null, [propsOrChildgen]);
+      if (isVNode(propsOrChildren)) {
+        return createVNode(type, null, [propsOrChildren]);
       }
       // 有 props 没有 children
-      return createVNode(type, propsOrChildgen);
+      return createVNode(type, propsOrChildren);
     } else {
       // omit props
-      return createVNode(type, null, propsOrChildgen);
+      return createVNode(type, null, propsOrChildren);
     }
   } else {
     // 从第三个参数开始全当做孩子节点处理
@@ -108,7 +136,7 @@ export function h(type: any, propsOrChildgen?: any, children?: any): VNode {
     } else if (l === 3 && isVNode(children)) {
       children = [children];
     }
-    return createVNode(type, propsOrChildgen, children);
+    return createVNode(type, propsOrChildren, children);
   }
 }
 #+end_src
@@ -129,7 +157,11 @@ h, 接受不定参数
 6. ~h('div', {}, vnode)~ 有 props, 有 children 且 = ~[vnode]~
 
 接下来需要具体去实现 ~createVNode~ 函数。
-* createVNode function
+* 🌿 createVNode function
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createVNode
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/194f72fee239da947ef82a4da099c23c758d3d84][feat(add): rc->createVNode · gcclll/stb-vue-next@194f72f · GitHub]]
 
@@ -1007,7 +1039,7 @@ let shouldTrack = 1;
 #+end_src
 
 跟这几个变量有关的函数：
-* TODO block related(open/close/create)
+** TODO block related(open/close/create)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: block-related
@@ -1111,7 +1143,7 @@ export function createBlock(
 相关脑图：
 [[/img/vue3/runtime-core/vue-runtime-core-block-shouldtrack.svg]]
 
-* normalizeChildren function
+** normalizeChildren function
 
 shapeFlag 初始值检测：
 #+begin_src typescript
@@ -1164,7 +1196,7 @@ log(['>>> tag + props + children\n', _h('p', { foo: 'foo' }, ['foo'])])
 undefined
 #+end_example
 
-** children is function
+*** children is function
 
 [[https://github.com/gcclll/stb-vue-next/commit/28d4a55250c6f02264bbb77ca04a87770d358c7c][feat(add): rc->propsOrChildren is function · gcclll/stb-vue-next@28d4a55 · GitHub]]
 
@@ -1228,7 +1260,7 @@ log(['>>> children is function\n', _c('div', {}, slot)])
 }
 undefined
 #+end_example
-** children is array or 普通类型
+*** children is array or 普通类型
 
 [[https://github.com/gcclll/stb-vue-next/commit/850c0bc0d8b74e1b88d2158df505c83cb9a71408][feat(add): rc->createVNode, children is array or primitive ·
 gcclll/stb-vue-next@850c0bc · GitHub]]
@@ -1295,7 +1327,7 @@ log([">>> string will be children()\n", _h("div", "foo")]);
 }
 undefined
 #+end_example
-** children is object
+*** children is object
 
 [[https://github.com/gcclll/stb-vue-next/commit/959879e825fb225b39c7fb219ec7e46feb6c7537][feat(add): rc->createVNode, normalizeChildren is object · gcclll/stb-vue-next@959879e · GitHub]]
 
@@ -1331,7 +1363,7 @@ log([">>> object\n", _h({}, null, { foo: "foo" })]);
 :   shapeFlag: 36
 : }
 : undefined
-* api watch(source, cb, options)
+* ⏱ api watch(source, cb, options)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: api-watch
@@ -2338,6 +2370,10 @@ run();
 2. 执行时机，该阶段和注册时机相辅相成，且在 cb/fn 执行之前就会被执行，因此 cb/fn
    的第一次执行都属于对 cleanup 的注册
 ** flush sync
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: watch-sync
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/e1436f2cfe78cdc64c31c03d876c5b743a44fc18][feat(add): rc->api watch->option flush=sync · gcclll/stb-vue-next@e1436f2 · GitHub]]
 
@@ -2545,7 +2581,653 @@ export function instanceWatch(
 #+end_src
 
 将监听源，与当前实例绑定，如果是字符串转成函数。
-* scheduler 任务调度机制
+** 🍺 小结
+
+这一节所描述的主要是 watch/watchEffect 函数的实现和使用，用来监听数据变化做出相
+应。
+
+~watch(source, cb, option)~ -> ~doWatch(source, cb, option)~
+
+~watchEffect(effect, option)~ -> ~doWatch(source /*function*/, null, option)~
+
+重点回顾 watch ，因为 watchEffect 是在 source 为 function 且无 cb 时候的情况。
+
+使用方法，我们可以按照 watch 函数的实现内容来逐个回顾，函数实现代码有三个重点
+
+#+begin_quote
+注🐖：watch 里面函数的调用(source 或 cb) 都是通过 callWithErrorHandling 去完成的，
+这里其实就是个异常拦截的作用(try...catch)，防止执行报错阻碍整体页面的执行。
+#+end_quote
+
+1. getter: 根据 source 类型封装 getter
+
+   *Ref* : getter = () => source.value
+
+   *Reactive*: deep = true, traverse(source) 对对象所有属性触发一次 getter 操作。
+
+   *Array*: 根据元素类型不同做不同处理(比如： ~ref/reactive/function~ 且只支持这
+   三种)
+
+   *Function*: getter => { ...直接执行 source } 不同点在于如果有 cb 时，执行
+   ~source()~ ，没有时 ~source(onInvalidate)~ 这个 onInvalidate 是 watch 暴露出
+   去的一个清理函数它会被绑定到 ~cleanup~ 和 ~option.onStop~ 上，在 effect 被
+   stop 或在调用之前做的一些清理工作。
+
+   这个最终目的是为了对每个属性进行一次 getter 调用，用来 effect -> track 收集每
+   个属性的依赖列表([[/vue/vue-mind-map-reactivity/#r-track][reactivity]]: targetMap -> depsMap -> dep)。
+
+2. job: 根据 cb 参数封装 job(将来在值变更是触发执行的函数)
+
+   job 的封装分为两种情况，分别是 cb 是函数或为空值时候，这里的区别也是体现在 cb
+   的调用上面(具体就是给 cb 的参数)。
+
+   ~if(cb)~ 那么其调用参数会是： ~cb(newVal, oldVal, onCleanup/*onInvalidate*/)~
+
+   ~else~ 没有 cb 的时候会直接执行 runner() 触发更新。
+
+   #+begin_quote
+   注意到和 *1* 中有点类似地方了没，这里的 cb(...) 和 getter 封装阶段对
+   ~source(onInvalidate)~ 的调用，即不管是有 cb 还是没有 cb， onInvalidate 这个
+   回调总是会被暴露出去，无非是作为 cb 参数还是 function source 的参数，这使得我
+   们可以在每个任务执行之前和执行结束的时间点做一些事情(比如： cleanup)。
+   #+end_quote
+
+3. scheduler 的封装(根据选项类型，主要是 ~flush = sync|post|pre~)，值变更 effect
+   trigger 中调用的函数
+
+   scheduler 是将 job 进一步封装，将来当值发生变化的时候 effect -> trigger 里面
+   会被调用到。
+
+   这个函数的值主要由 ~flush~ 选项决定，默认值是 ~pre~ ，其次有 ~post|sync~
+
+   *post*: 异步执行，会添加到异步任务队列中等待执行(~pendingPostFlushCbs~)
+
+   *sync*: 表示为同步更新，即当值发生变化了会立即更新，[[#watch-sync][详情]]。
+
+   #+begin_src js
+   // 比如：ref.value = 0
+   ref.value++;
+   ref.value === 1; // true, 而不用 await nextTick() 就可以取到更新后的值
+   #+end_src
+
+   *pre*: 默认是 pre 类型，这里区分组件是否加载完成， ~instance.isUnmounted~ 如果
+   加载完成，调用 ~queuePreFlushCb(job)~ 添加到 ~pendingPreFlushCbs[]~ 中等待执
+   行，如果组件没有加载完成需要立即执行 ~job()~ 。
+
+
+在前面三个基本条件(~getter/job/scheduler~)封装完成之后，接下来是调用
+~effect(getter, { lazy: true, scheduler, ... })~ 得到 ~runner()~ 这个 runner 是
+对 getter 函数的 [[/vue/vue-mind-map-reactivity][ReactiveEffect 封装。]]
+
+*runner*: 随后决定什么时机执行这个 ~runner()~ 触发 track 收集依赖，判定条件有
+ ~cb~, ~option.immediate~, ~option.flush="post"~
+
+ 1. ~cb && immediate~ 时候立即执行 ~job()~ 不走 runner
+ 2. ~cb && !immediate~ 立即执行 ~runner()~ 根据任务性质决定是同步还是异步
+ 3. ~!cb && flush==='post'~ 检测如果是 suspense 加入到
+    ~instance.suspense.effects~ 否则直接 ~queuePostFlushCb(runner)~
+
+    这个需要开启 ~Suspense~ 组件支持，这个 ast render 函数其实就是在一个 ~async~
+    函数里面执行的代码。
+ 4. ~else~ 直接执行 ~runner()~
+* 🍎 api createApp
+** declaration
+这里就两个函数
+
+1. ~createAppContext~ 上下文创建
+
+   #+begin_src typescript
+    export function createAppContext(): AppContext {
+      return {
+        app: null as any,
+        config: {
+          isNativeTag: NO,
+          performance: false,
+          globalProperties: {},
+          optionMergeStrategies: {},
+          isCustomElement: NO,
+          errorHandler: undefined,
+          warnHandler: undefined,
+        },
+        mixins: [],
+        components: {},
+        directives: {},
+        provides: Object.create(null),
+      };
+    }
+   #+end_src
+2. ~createAppAPI~ 创建 ~createApp~ 函数
+
+   #+begin_src typescript
+   export function createAppAPI<HostElement>(
+     render: RootRenderFunction,
+     hydrate?: RootHydrateFunction
+   ): CreateAppFunction<HostElement> {
+     return function createApp(rootComponent, rootProps = null) {};
+   }
+   #+end_src
+
+所以一个 App 上下文包含内容：
+
+| name       | -                     | -         |
+|------------+-----------------------+-----------|
+| ~app~      | -                     |           |
+| ~config~   | -                     |           |
+|            | isNativeTag           | NO        |
+|            | performance           | false     |
+|            | globalProperties      | {}        |
+|            | optionMergeStrategies | {}        |
+|            | isCustomElement       | NO        |
+|            | errorHandler          | undefined |
+|            | warnHandler           | undefined |
+| mixins     | []                    |           |
+| components | {}                    |           |
+| directives | {}                    |           |
+| provides   | Object.create(null)   |           |
+** implementation
+
+[[https://github.com/gcclll/stb-vue-next/commit/1facd1b3ad797775b298ecfba0d363d4f364b821][feat(add): createApp app apis · gcclll/stb-vue-next@1facd1b · GitHub]]
+
+
+1. ~context = createAppContext()~ 创建上下文
+2. ~installedPlugins = new Set()~ 插件列表
+3. ~isMounted = false~ 加载完成标识
+4. ~app = context.app = {...}~
+5. ~return app~
+
+
+所以重点就在 *4* 构造 app，其包含的 API 如下：
+
+| name                            | function                                                       |
+|---------------------------------+----------------------------------------------------------------|
+| get config()                    | 获取上下文配置信息，不可更改，可以通过创建实例时的 option 改变 |
+| use(pugin, ...options)          | 插件系统                                                       |
+| mixin(mixin)                    | 混合器系统                                                     |
+| component(name, component)      | 组件系统                                                       |
+| directive(name, directive)      | 指令系统                                                       |
+| mount(rootContainer, isHydrate) | mount 函数                                                     |
+| unmount()                       | -                                                              |
+| provide(key, value)             | 注入系统                                                       |
+
+*** app.use(plugin, ...options)
+
+[[https://github.com/gcclll/stb-vue-next/commit/a3abcbaa931fa622b2a1920434575bf6b5fc83a8][feat(add): createApp use plugin · gcclll/stb-vue-next@a3abcba · GitHub]]
+
+#+begin_src typescript
+function use(plugin: Plugin, ...options: any[]) {
+  if (installedPlugins.has(plugin)) {
+    __DEV__ && warn(`Plugin has already been applied to target app.`);
+  } else if (plugin && isFunction(plugin.install)) {
+    // 函数直接执行
+    installedPlugins.add(plugin);
+    plugin.install(app, ...options);
+  } else if (isFunction(plugin)) {
+    // 没有 install 函数时
+    installedPlugins.add(plugin);
+    plugin(app, ...options);
+  } else if (__DEV__) {
+    // plugin 必须要么自己是函数，要么是包含 install 函数的对象
+    warn(
+      `A plugin must either be a function or an object with an "install" ` +
+        `function.`
+    );
+  }
+  return app;
+}
+#+end_src
+
+所以插件 plugin 必须要么自己是函数。
+*** app.mixin(mixin)
+
+[[https://github.com/gcclll/stb-vue-next/commit/b96afcf3b83510071e8fcd6da95b39123b85e241][feat(add): createApp mixin api · gcclll/stb-vue-next@b96afcf · GitHub]]
+
+#+begin_src typescript
+function mixin(mixin: ComponentOptions) {
+  if (__FEATURE_OPTIONS_API__) {
+    if (!context.mixins.includes(mixin)) {
+      context.mixins.push(mixin);
+      // 带有 props/emits 的全局 mixin 会是的 props/emits 缓存优化失效
+      if (mixin.props || mixin.emits) {
+        context.deopt = true;
+      }
+    } else if (__DEV__) {
+      warn(
+        "Mixin has already been applied to target app" +
+          (mixin.name ? `: ${mixin.name}` : "")
+      );
+    }
+  } else if (__DEV__) {
+    // 必须开启了 options api 特性才能使用，即 vue3 里面可根据需要
+    // 关闭这个功能
+    warn("Mixins are only available in builds supporting Options API");
+  }
+  return app;
+}
+#+end_src
+
+可根据需要在打包的时候由 ~__FEATURE_OPTIONS_API__~ 决定是否继续支持 mixin 功能。
+*** app.component(name, component)
+
+[[https://github.com/gcclll/stb-vue-next/commit/9b2579d2b7fbe8e5fe6e8fb9df7381475fd1f247][feat(add): createApp component api · gcclll/stb-vue-next@9b2579d · GitHub]]
+
+内置标签： ~slot,component~
+
+#+begin_src typescript
+function component(name: string, component?: Component): any {
+  if (__DEV__) {
+    // 验证组件名称是否合法
+    validateComponentName(name, context.config);
+  }
+
+  // 没有对应组件，视为根据名称获取组件操作
+  if (!component) {
+    return context.components[name];
+  }
+
+  if (__DEV__ && context.components[name]) {
+    // 组件已经注册过了，再次注册等于覆盖原有的
+    warn(`Component "${name}" has already been registered in target app.`);
+  }
+
+  context.components[name] = component;
+  return app;
+}
+#+end_src
+
+1. 验证组件名，不能用内置(~isBuiltInTag()~)或自定义(~isCustomElement()~)的标签作为组件名
+2. 没有 component 参数的时候视为根据 name 去获取组件
+3. 当 name - component 存在时属于覆盖操作，给出警告
+*** app.directive(name, directive)
+
+[[https://github.com/gcclll/stb-vue-next/commit/ec1a20eb64bf3b482984faaa70ee4337143b5449][feat(add): createApp directive api · gcclll/stb-vue-next@ec1a20e · GitHub]]
+
+内置指令集： ~bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text~
+
+#+begin_src typescript
+function directive(name: string, directive?: Directive) {
+  if (__DEV__) {
+    validateDirectiveName(name);
+  }
+
+  if (!directive) {
+    return context.directives[name] as any;
+  }
+
+  if (__DEV__ && context.directives[name]) {
+    warn(`Directive "${name}" has already been registered in target app.`);
+  }
+  context.directives[name] = directive;
+
+  return app;
+}
+#+end_src
+*** app.mount(rootContainer, isHydrate)
+
+#+begin_src typescript
+function mount(rootContainer: HostElement, isHydrate?: boolean): any {
+  // TODO
+  if (!isMounted) {
+    const vnode = createVNode(rootComponent as ConcreteComponent, rootProps);
+
+    // 保存 app context 到 root VNode 节点上
+    // 这个将会在初始化 mount 时候被设置到根实例上
+    vnode.appContext = context;
+
+    // HMR root reload
+    if (__DEV__) {
+      context.reload = () => {
+        render(cloneVNode(vnode), rootContainer);
+      };
+    }
+
+    if (isHydrate && hydrate) {
+      hydrate(vnode as VNode<Node, Element>, rootContainer as any);
+    } else {
+      render(vnode, rootContainer);
+    }
+
+    isMounted = true;
+    app._container = rootContainer;
+    // for devtools and telemetry
+    (rootContainer as any).__vue_app__ = app;
+
+    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+      devtoolsInitApp(app, version);
+    }
+
+    return vnode.component!.proxy;
+  } else if (__DEV__) {
+    warn(
+      `App has already been mounted.\n` +
+        `If you want to remount the same app, move your app creation logic ` +
+        `into a factory function and create fresh app instances for each ` +
+        `mount - e.g. \`const createMyApp = () => createApp(App)\``
+    );
+  }
+}
+#+end_src
+
+1. ~vnode = createVNode(rootComponent, rootProps)~ 创建虚拟节点
+2. ~vnode.appContext = context~ 保存上下文到虚拟节点上，组件初始化时使用
+3. ~context.reload = () => render(cloneVNode(vnode), rootContainer)~ HMR 开发时
+   有变更的热加载
+4. ~rootContainer.__vue_app__ = app~
+5. devtool 开发工具相关
+6. 返回 ~vnode.component.proxy~ 这个是干啥的？
+
+
+最后，如果 app 已经被加载了不能重复 mount。如果需要对一个app做重复 mount，可能的
+需求是存在同时创建多个 app 情况？
+
+那么这个时候应该使用函数方式使用，如：
+
+~myCreateApp = (...) => createApp(App)~
+*** app.unmount()
+
+[[https://github.com/gcclll/stb-vue-next/commit/63354d31cc1f7591cad8118a33c3be2b96dd788c][feat(add): createApp unmount api · gcclll/stb-vue-next@63354d3 · GitHub]]
+
+#+begin_src typescript
+function unmount() {
+  if (isMounted) {
+    render(null, app._container);
+    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+      devtoolsUnmountApp(app);
+    }
+  } else {
+    warn(`Cannot unmount an app that is not mounted.`);
+  }
+}
+#+end_src
+
+~render(null, ...)~ ?
+*** app.provide(key, value)
+
+[[https://github.com/gcclll/stb-vue-next/commit/18fb22bf22b613378119d272db1b52d1efd17a90][feat(add): createApp provide api · gcclll/stb-vue-next@18fb22b · GitHub]]
+
+#+begin_src typescript
+function provide(key, value) {
+  if (__DEV__ && (key as string | symbol) in context.provides) {
+    warn(
+      `App already provides property with key "${String(key)}". ` +
+        `It will be overwritten with the new value.`
+    );
+  }
+
+  // TypeScript doesn't allow symbols as index type
+  // https://github.com/Microsoft/TypeScript/issues/24587
+  context.provides[key as string] = value;
+
+  return app;
+}
+#+end_src
+
+就是简单的给 ~context.provides~ 设置操作。
+
+#+begin_quote
+Q. 做什么的呢？
+#+end_quote
+** test
+
+这里目前只能测试 mount 和 unmount 其他的 api(provide/...) 需要等它们被实现了才能
+继续测试。
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: { defineComponent, nodeOps, createApp, serializeInner },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const Comp = defineComponent({
+  props: {
+    count: {
+      default: 0,
+    },
+  },
+  setup(props) {
+    return () => props.count;
+  },
+});
+
+const root1 = nodeOps.createElement("div");
+createApp(Comp).mount(root1);
+let si = serializeInner(root1);
+log("root1 serialize, " + si);
+
+// mount with props
+const root2 = nodeOps.createElement("div");
+const app2 = createApp(Comp, { count: 1 });
+app2.mount(root2);
+si = serializeInner(root2);
+log("root2 serialize, " + si);
+
+// unmount
+const root3 = nodeOps.createElement("div");
+const app3 = createApp(Comp, { foo: 1 });
+
+// 在 mount 之前卸载
+try {
+  app3.unmount(root3); // warnning
+} catch (e) {
+  log("unmount failed.");
+}
+
+app3.mount(root3);
+app3.unmount(root3);
+si = serializeInner(root3);
+log("root3 serialize, " + si);
+#+end_src
+
+#+RESULTS:
+: root1 serialize, 0
+: root2 serialize, 1
+: root3 serialize,
+: undefined
+* ⛏ api provide & inject
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-provide-inject
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/b4a1cbc65081f0d91bf02faabccb050218223b02][feat(add): provide & inject api · gcclll/stb-vue-next@b4a1cbc · GitHub]]
+
+#+begin_src typescript
+export function provide<T>(key: InjectionKey<T> | string | number, value: T) {
+  // TODO
+}
+
+export function inject(
+  key: InjectionKey<any> | string,
+  defaultValue?: unknown,
+  treatDefaultAsFactory = false
+) {
+  // TODO
+}
+#+end_src
+
+涉及内容
+1. provides 继承 parent provides，需要自己的就创建新对象继承自 parent provides，
+   所以查找 injections 可以在原型链查找。
+2. ~inject(key, defaultValue, treatDefaultAsFactory = false)~ 你只是个简单的取值
+   操作 (~provides[key]~)？😭？😭？
+
+
+#+begin_quote
+*Imp*. provide 和 inject 只能在 ~setup()~ 或函数式组件中使用，它们的作用是根据原
+ 型链特性实现从父组件向子组件传递一些值。
+#+end_quote
+
+[[/img/vue3/runtime-core/vue-runtime-core-inject-provide.jpg]]
+
+** provide(key, value)
+
+[[https://github.com/gcclll/stb-vue-next/commit/42f3d053f2b72d6d504c7cc64c48cfa7a1bee89a][feat(add): provide & inject provide implementation · gcclll/stb-vue-next@42f3d05
+· GitHub]]
+
+#+begin_src typescript
+export function provide<T>(key: InjectionKey<T> | string | number, value: T) {
+  if (!currentInstance) {
+    if (__DEV__) {
+      warn(`provide() can only be used inside setup().`);
+    }
+  } else {
+    let provides = currentInstance.provides;
+
+    // 默认情况实例会继承它父亲的 provides 对象
+    // 但是当它需要 provide 自己的 values 时候，那么使用它
+    // 父亲的 provides 作为原型创建一个新的对象出来变成自己的 provides
+    // 这样在 `inject` 里面可以简便的从原型链中查找 injections
+    // 简单说就是：
+    // 1. 需要自己的就创建个新的对象继承自 Parent provides
+    // 2. 这样在查找的时候就可以含方便的通过原型链查找 injections
+    const parentProvides =
+      currentInstance.parent && currentInstance.parent.provides;
+
+    // 当父组件和当前实例相同的时候，从父组件的 provides 创建一个备份出来
+    if (parentProvides === provides) {
+      provides = currentInstance.provides = Object.create(parentProvides);
+    }
+
+    // TS doesn't allow symbol as index type
+    provides[key as string] = value;
+  }
+}
+#+end_src
+
+#+begin_quote
+~Object.create(parentProvides)~ 创新新的对象来容纳新的 key-value
+#+end_quote
+
+** inject(key, defaultValue, treatDefaultAsFactory = false)
+
+#+begin_src typescript
+export function inject(defaultValue?: unknown, treatDefaultAsFactory = false) {
+  // TODO
+  // currentRenderingInstance 兼容函数式组件
+  const instance = currentInstance || currentRenderingInstance;
+  if (instance) {
+    // #2400
+    // to support `app.use` plugins,
+    // fallback to appContext's `provides` if the intance is at root
+    const provides =
+      instance.parent == null // root
+        ? instance.vnode.appContext && instance.vnode.appContext.provides
+        : instance.parent.provides;
+
+    if (provides && (key as string | symbol) in provides) {
+      // TS doesn't allow symbol as index type
+      return provides[key as string];
+    } else if (arguments.length > 1) {
+      return treatDefaultAsFactory && isFunction(defaultValue)
+        ? defaultValue()
+        : defaultValue;
+    } else if (__DEV__) {
+      warn(`injection "${String(key)}" not found.`);
+    }
+  } else if (__DEV__) {
+    warn(`inject() can only be used inside setup() or functional components.`);
+  }
+}
+#+end_src
+
+inject 就是个简单的取值操作而已。
+
+取值来源需要检测是不是根节点，如果是根节点
+
+~provides = instance.vnode.appContext.provides~
+
+否则，使用 ~instance.parent.provides~
+
+然后根据 ~key~ 取出值 ~provides[key]~
+
+如果有默认值需要返回默认值?
+
+~defaultValue~ 或 ~defaultValue()~
+
+居然如此简单~~~，还是先看下怎么用吧！！！
+** test
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rcTest: { provide, inject, h, nodeOps, render, serialize, ref, nextTick },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const skey = Symbol();
+  const count = ref(1);
+  const Provider = {
+    setup() {
+      provide("foo", "foo-p1");
+      // 支持符号属性名
+      provide(skey, 2);
+      // 可以是其他类型 ref, reactive, ...
+      provide("count", count);
+      return () => h(Provider2);
+    },
+  };
+
+  const Provider2 = {
+    setup() {
+      provide("foo", "foo-p2");
+      provide("baz", "baz");
+      return () => h(Middle);
+    },
+  };
+
+  const Middle = {
+    render: () => h(Consumer),
+  };
+
+  const Consumer = {
+    setup() {
+      const symb = inject(skey);
+      // 这里 foo 拿到的会是 Provider2 的 foo 值
+      // 因为 provides 原型链是基于组件父子关系来创建的
+      const foo = inject("foo");
+      // 默认值
+      const bar = inject("bar", "bar");
+      // 因为是简单的赋值操作，所以这里的 count 就是 ref(1) 返回的那个 count
+      const count = inject("count");
+      return () => [symb, foo, bar, count.value].join(",");
+    },
+  };
+
+  const root = nodeOps.createElement("div");
+  render(h(Provider), root);
+  let s = serialize(root);
+  log("1. root serialize, " + s);
+  count.value++;
+  await nextTick();
+  s = serialize(root);
+  log("2. root serialize, " + s);
+};
+run();
+#+end_src
+
+#+RESULTS:
+: 1. root serialize, <div>2,foo-p2,bar,1</div>
+: undefined2. root serialize, <div>2,foo-p2,bar,2</div>
+
+组件层级关系(父->子)： ~Provider -> Middle -> Consumer~
+
+在 ~provide('foo', 1)~ 则在 Provider 组件的 provides 中增加了 ~{ foo: 1 }~ ,由于
+子组件的 provides 是沿用或继承了父级的 provides。
+
+所以在子组件 ~Consumer~ 中直接调用 ~inject('foo')~ 是在 instance.provides 里面去
+找这个属性对应的值，如果没找到则一直在原型链上往上找，最后找到顶级父组件
+~Provider~ 上找到包含 ~'foo'~ 属性，则返回这个值。
+
+所以， ~inject&provide~ 的应用其实就是原型链的应用，目的是为了让父组件可以像子组
+件注入一些值。
+
+#+begin_quote
+Q. 那么为什么注入的值直接变成了 ~<div>1</div>~ 子节点了？
+#+end_quote
+* 🚒 scheduler 任务调度机制
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: scheduler
@@ -3548,7 +4230,7 @@ run();
  处理新的 post 任务，而是在 ~flushJobs()~ 执行到最后 finally 部分检
  测 ~pendingPostFlushCbs~ 任务队列来处理当前 tick 下新接受到的任务，
  在 ~queuePreFlushCb()~ 和 ~queueJob()~ 中调用的时候会在他们的任务之后执行。
-* BUGs fix & Questions
+* 🐛 BUGs fix & Questions
 
 [[https://github.com/gcclll/stb-vue-next/commit/2a1ab0448919ea75c5794410a03265bd99e05d75][fix: no import EMPTY_ARR · gcclll/stb-vue-next@2a1ab04 · GitHub]]
 
