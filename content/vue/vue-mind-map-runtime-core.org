@@ -3032,6 +3032,8 @@ log("root3 serialize, " + si);
 
 [[https://github.com/gcclll/stb-vue-next/commit/b4a1cbc65081f0d91bf02faabccb050218223b02][feat(add): provide & inject api · gcclll/stb-vue-next@b4a1cbc · GitHub]]
 
+作用： 在父组件中 ~provide(key,value)~ 向子组件传值， ~inject(key)~ 在子组件中可以取到该值。
+
 #+begin_src typescript
 export function provide<T>(key: InjectionKey<T> | string | number, value: T) {
   // TODO
