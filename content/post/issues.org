@@ -1,0 +1,32 @@
+#+TITLE: 开发过程中遇到的各种疑难杂症
+#+DATE: <2021-02-01 15:03:59>
+#+TAGS[]: issues
+#+CATEGORIES[]: issues
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+各种疑难杂症集合。
+#+end_quote
+[[/img/tmp/tftz-001.jpg]]
+* WEB
+*** require.cache 缓存问题?
+
+   在学习 vue3.0 代码中遇到一个问题，在 org-src-block 中 require vue package 文
+   件，在修改这个 js 的时候执行 org-src-block 最后的结果怎么都是没修改之前的。
+
+
+#+begin_quote
+答： 因为 require 之前引入过可能被缓存了起来，可以通过下面的函数来避免引入已缓存的
+   模块。
+
+   #+begin_src js
+
+   function requireUncached(module) {
+     delete require.cache[require.resolve(module)];
+     return require(module);
+   }
+   #+end_src
+
+   即。在 require 之前先删除缓存，然后使用 ~requireUncached(path)~ 去引入文件。
+#+end_quote

@@ -5,6 +5,9 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+* TODO ShapeFlags 的溯源和用途？
+
+涉及模块： ~runtime-core~
 * 一个较完整的 AST 结构：
 
   #+begin_src js

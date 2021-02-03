@@ -36,6 +36,7 @@
 8. TODO shouldTrack, currentBlock 和 [[#block-related][block 相关函数]]的作用
 9. TODO setup() 返回值用来做了啥？
 10. TODO setup() 里面是如何收集生命周期函数，又是如何？在什么时候？执行他们的？
+11. TODO async component
 #+end_quote
 
 模块初始化： [[https://github.com/gcclll/stb-vue-next/commit/b22b4db3506bf1ba4b266dcf9ff21f1e0b925a81][feat(init): runtime-core · gcclll/stb-vue-next@b22b4db · GitHub]]
@@ -3253,6 +3254,7 @@ export function computed<T>(
 
 [[https://github.com/gcclll/stb-vue-next/commit/071d8689ca31c9b7c9452986d82e02d3a1769abc][feat(add): api lifecycle init · gcclll/stb-vue-next@071d868 · GitHub]]
 
+[[https://github.com/gcclll/stb-vue-next/commit/ee888568952467086d445d2c6f8bb40b4c5be9e9][feat(add): api lifecycle exports · gcclll/stb-vue-next@ee88856 · GitHub]]
 组件声明周期 api 。
 
 #+begin_src typescript
@@ -3330,6 +3332,16 @@ export function injectHook(
 2. 这里的所有声明周期函数都以事件形式存在，意味着可以通过这些 api 注册哪个声明周
    期需要执行操作的函数
 3. 在声明周期函数执行期间不进行 ~track~ 收集依赖操作，它有可能在 setup() 中进行
+
+
+#+begin_quote
+使用原理：调用 ~onXxx(fn, ins)~ 声明周期函数时，实际上只是向当前的实例
+~currentInstane[type] = []~ 上注册了一个回调函数 fn。比如：
+
+~target.onMounted = [fn1, fn2] // target -> currentInstance 当前实例~
+
+然后在组件 render/update 过程中根据声明周期的阶段调用对应的 fns 。
+#+end_quote
 
 ** test base
 
@@ -3725,6 +3737,265 @@ called = 3
 { target: { foo: 2, baz: 3 }, key: 'baz', type: 'add' }
 undefined
 #+end_example
+* 🦉 api define component
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: define-component
+:END:
+
+#+begin_src typescript
+// implementation, close to no-op
+export function defineComponent(options: unknown) {
+  return isFunction(options) ? { setup: options, name: options.name } : options
+}
+#+end_src
+* 🆘 api setup helpers
+
+[[https://github.com/gcclll/stb-vue-next/commit/3e71787313dbc4a2eb7624bb75ef140b0cd2247b][feat(add): api setup helpers · gcclll/stb-vue-next@3e71787 · GitHub]]
+
+#+begin_src typescript
+// runtime-core/src/apiSetupHelpers.ts
+// implementation
+export function defineProps() {
+  if (__DEV__) {
+    warn(
+      `defineProps() is a compiler-hint helper that is only usable inside ` +
+        `<script setup> of a single file component. Its arguments should be ` +
+        `compiled away and passing it at runtime has no effect.`
+    );
+  }
+  return null as any;
+}
+
+export function defineEmit() {
+  if (__DEV__) {
+    warn(
+      `defineEmit() is a compiler-hint helper that is only usable inside ` +
+        `<script setup> of a single file component. Its arguments should be ` +
+        `compiled away and passing it at runtime has no effect.`
+    );
+  }
+  return null as any;
+}
+
+export function useContext(): SetupContext {
+  const i = getCurrentInstance()!;
+  if (__DEV__ && !i) {
+    warn(`useContext() called without active instance.`);
+  }
+  return i.setupContext || (i.setupContext = createSetupContext());
+}
+#+end_src
+
+这里包含三个函数，其中 ~defineProps&defineEmit~ 都是且只会在 ~<script setup>~ 里
+面使用，他们的作用只是用于 ~compiler-sfc~ 包中在 ~babel/parser~ 解析语法树期间，
+用来标识他们是 props或 emits 的一部分，然后给他们的参数会被当做 props 和 emits
+合并到最终 export 出去的对应属性上，所以这两个 define 函数实际上什么都没做。
+
+看实例吧 ->
+
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const { compile, f, log } = require(process.env.BLOG_JS + '/vue/lib.js')
+
+const { content } = compile(`
+<script setup>
+import { defineProps, defineEmit } from 'vue'
+ref: value = 1
+const myEmit = defineEmit(['foo', 'bar'])
+const props = defineProps({
+  fox: String,
+  foy: () => baz > 1
+})
+</script>
+<script>
+export default {
+  props: {
+    box: 2
+  }
+}
+</script>
+`)
+log(content)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+import { ref as _ref } from 'vue'
+
+
+function setup(__props, { emit: myEmit }) {
+
+const props = __props
+const value = _ref(1)
+
+
+
+return { value, myEmit, props }
+}
+
+
+const __default__ = {
+  props: {
+    box: 2
+  }
+}
+
+export default /*#__PURE__*/ Object.assign(__default__, {
+  expose: [],
+  props: {
+  fox: String,
+  foy: () => baz > 1
+},
+  emits: ['foo', 'bar'],
+  setup
+})
+undefined
+#+end_example
+
+我们把上面结果格式化下：
+#+begin_src js
+import { ref as _ref } from "vue";
+
+function setup(__props, { emit: myEmit }) {
+  const props = __props;
+  const value = _ref(1);
+
+  return { value, myEmit, props };
+}
+
+const __default__ = {
+  props: {
+    box: 2,
+  },
+};
+
+export default /*#__PURE__*/ Object.assign(__default__, {
+  expose: [],
+  props: {
+    fox: String,
+    foy: () => baz > 1,
+  },
+  emits: ["foo", "bar"],
+  setup,
+});
+#+end_src
+
+从上面的代码可发现：
+1. defineProps 最后被合并成一个 props 对象，并且会和 ~<script>~ 中的 export
+   default 中的 props 进行再次合并，并且这种合并属于简单的替换操作
+
+   所以如果 ~defineProps~ 和 ~script~ 中同时存在 props 的情况最终 ~<script>~ 中
+   的 props 会被丢弃掉，所以尽量避免这种情况发生。
+
+2. defineEmit 中的属性会被合并到 ~emits~ 上
+
+[[/vue/vue-mind-map-compiler-sfc/][更多有关 <script setup> 的内容请查看 ~compiler-sfc~ 包的分析 ->]]
+
+
+#+begin_quote
+~useContext()~ 是获取当前实例的上下文对象，这个需要继续实现复杂的 render 部分才
+可能会使用到。
+#+end_quote
+* 🌊 TODO api async comopnent
+
+[[https://github.com/gcclll/stb-vue-next/commit/cb4474ae9c0c040bfed54178a63a3e65c16894b9][feat(add): async component · gcclll/stb-vue-next@cb4474a · GitHub]]
+
+定义异步组件(~defineAsyncComponent(source)~)。
+
+新增初始化：
+#+begin_src typescript
+export const isAsyncWrapper = (i: ComponentInternalInstance | VNode) =>
+  !!(i.type as ComponentOptions).__asyncLoader;
+
+export function defineAsyncComponent<
+  T extends Component = { new (): ComponentPublicInstance }
+>(source: AsyncComponentLoader<T> | AsyncComponentOptions<T>): T {
+  // 1. TODO retry 封装
+  //
+  // 2. TODO 函数封装
+  //
+  // 3. TODO 返回组件，检测如果是对象直接返回，or 函数当做 setup() 函数处理
+  return defineComponent({} as any) as any;
+}
+#+end_src
+
+#+begin_quote
+通过搜索 ~__asyncLoader~ 只在 ~hydration.ts~ 中有使用到，而这个貌似又和 SSR 服务
+端渲染由关系，所以这里先暂时不继续了，先完成 renderer.ts 的 render 函数部分，然
+后在实现了 SSR + hydration 之后再回头来继续。
+#+end_quote
+
+** implementation(init)
+
+[[https://github.com/gcclll/stb-vue-next/commit/bd6e903b261cf277dac3f1b8ab4506f7354c0cb4][feat(add): async component->load · gcclll/stb-vue-next@bd6e903 · GitHub]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/1c73e72de509b7e8070b6c3064cfdbf6aadb616f][feat: async component pause await render · gcclll/stb-vue-next@1c73e72 · GitHub]]
+实现主要分几步：
+
+1. 封装 ~retry()~ 重试函数
+2. ~load()~ 函数，分支 ~source.loader()~ 异步函数
+3. 组装组件返回 ~defineComponent({__asyncLoader: load, setup() {...}, ...})~
+
+   前面 *1*, *2* 都是对 ~source.loader~ 进行封装处理，这一步是真正的创建异步组件。
+
+   [[#define-component][defineComponent(option)]] 实现很简单，就是检测 option 如果是函数当做
+
+   ~{setup: option, name: option.name}~ 处理，否则直接返回 option
+
+
+测试：
+#+begin_src js
+// 源文件：/js/vue/lib.js
+const {
+  rc: { nextTick, h, ref, defineAsyncComponent },
+  rcTest: { createApp, nodeOps, serializeInner: si },
+  f,
+  log,
+} = require(process.env.BLOG_JS + "/vue/lib.js");
+
+const run = async () => {
+  const timeout = (n) => new Promise((r) => setTimeout(r, n));
+  let resolve;
+  const Foo = defineAsyncComponent(() => new Promise((r) => (resolve = r)));
+
+  const toggle = ref(true);
+  const root = nodeOps.createElement("div");
+  createApp({
+    render: () => (
+      console.log(toggle.value, "xxx"), toggle.value ? h(Foo) : null
+    ),
+  }).mount(root);
+  console.log(si(root));
+
+  // 手动 resolve, 触发 loader().then(comp => { ... })
+  resolve(() => "resolved");
+  await timeout();
+  si(root);
+
+  // 到这里 component 已经 resolved 了
+  toggle.value = false;
+  await nextTick();
+  si(root); // -> null
+
+  toggle.value = true;
+  await nextTick();
+  si(root); // -> resolved
+};
+run();
+#+end_src
+
+#+RESULTS:
+: true xxx
+:
+:  resolved comp before
+: loaded.value =  false
+: <!---->
+: undefined
+: async comp load ok,  resolved
+* 🔥 render function
+
+篇幅太长，另起单独文章 -> [[/vue/vue-mind-map-runtime-core-render][Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render]]
 
 * 🚒 scheduler 任务调度机制
 :PROPERTIES:
@@ -4795,6 +5066,10 @@ while (1) {
 
 所以说 nextTick() 后面的代码都会被放到异步代码
 * runtime-test 模块简介
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: runtime-test
+:END:
 
 这里测试需要用到这个模块，所以简单用脑图描述下这里面有哪些东西和干什么的。
 

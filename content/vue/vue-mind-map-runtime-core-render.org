@@ -1,0 +1,814 @@
+#+TITLE: Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render
+#+DATE: <2021-01-26 14:14:35>
+#+TAGS[]: vue, vue3, runtime-core, render
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+*声明* ：vue-next runtime-core 中的 render 函数部分。
+
+*更新日志&Todos* ：
+1. [2021-01-26 14:15:15] 创建
+#+end_quote
+
+[[/img/tmp/20210126143153.png]]
+
+#+begin_quote
+2229 - 423 = 1806 🤦‍♀️ 一个函数就将近两千行，😲！！
+
+诶！！!
+
+路漫漫系其修远兮，吾将上下而求索！!!
+
+加油吧，大叔，坚持下去！！！
+
+开始之前给自己打打气，还有诸多的疑惑等着去解密呢🔥🔥
+#+end_quote
+
+[[/img/vue3/runtime-core/vue-runtime-core-render.svg]]
+
+* init
+
+[[https://github.com/gcclll/stb-vue-next/commit/fb9738c18c624fe7525afa48b12b6589a3ac0dfe][feat(init): render function · gcclll/stb-vue-next@fb9738c · GitHub]]
+
+
+两个 create render 函数：
+
+1. ~createRenderer(options)~
+2. ~createHydrationRenderer(options)~
+
+   这个还不清楚是干什么的，通过代码观察貌似跟 SSR 有关，先搁置先不管。
+
+
+两个函数最终都是调用的 ~baseCreateRenderer(options, createHydrationFns)~
+
+并且就是这个函数将近两千行~~~~
+
+#+begin_src typescript
+export function createRenderer<
+  HostNode = RendererNode,
+  HostElement = RendererElement
+>(options: RendererOptions<HostNode, HostElement>) {
+  return baseCreateRenderer<HostNode, HostElement>(options);
+}
+
+export function createHydrationRenderer(
+  options: RendererOptions<Node, Element>
+) {
+  return baseCreateRenderer(options, createHydrationFunctions);
+}
+
+// implementation
+function baseCreateRenderer(
+  options: RendererOptions,
+  createHydrationFns?: typeof createHydrationFunctions
+) {
+  // TODO
+}
+#+end_src
+* function list
+
+[[https://github.com/gcclll/stb-vue-next/commit/b7f55a8fe0f70a58b6af48278f601777b8b3d36a][feat(init): renderer -> baseCreateRenderer TODOs · gcclll/stb-vue-next@b7f55a8 · GitHub]]
+
+~baseCreateRenderer(options, createHydrationFns)~ 之所以这么长，是因为这里面包含
+了三十几个函数的定义，下面将一个个按照流程逐一实现。
+
+| step                     | what?                | step               | what?        |
+|--------------------------+----------------------+--------------------+--------------|
+| options                  | 解构                 | patch              | function     |
+| processText              | 文本处理             | processCommentNode | 注释节点     |
+| mountStaticNode          | 加载静态节点         | patchStaticNode    | -            |
+| moveStaticNode           | -                    | removeStaticNode   | 删除静态节点 |
+| processElement           | -                    | *mountElement*       | -            |
+| setScopeId               | -                    | *mountChildren*      | -            |
+| patchElement             | -                    | patchBlockChildren | -            |
+| patchProps               | -                    | processFragment    | -            |
+| processComponent         | -                    | *mountComponent*     | -            |
+| *updateComponent*        | -                    | setupRenderEffect  | -            |
+| updateComponentPreRender | -                    | patchChildren      | -            |
+| patchUnkeyedChildren     | -                    | patchKeyedChildren | -            |
+| *move*                   |                      | *unmount*            |              |
+| *remove*                 | -                    | removeFragment     | -            |
+| unmountComponent         | -                    | *unmountChildren*    | -            |
+| getNextHostNode          | -                    | *render*             | -            |
+| internals                | object, 上述函数别名 | createHydrationFns | -            |
+
+最后函数返回 ~{ render, hydrate, createApp }~
+* render(vnode, container)
+
+[[https://github.com/gcclll/stb-vue-next/commit/9f5b40b943cf24c21bb2ee01459254df0be42972][feat(init): baseCreateRender-> render · gcclll/stb-vue-next@9f5b40b · GitHub]]
+
+[[https://github.com/gcclll/stb-vue-next/commit/d4e10d444605e1b8096a8e335262a2561f7376be][feat(init): baseCreateRender-> render with unmount · gcclll/stb-vue-next@d4e10d4
+· GitHub]]
+
+#+begin_src typescript
+const render: RootRenderFunction = (vnode, container) => {
+  // render(h('div'), root)
+  if (vnode == null) {
+    if (container._vnode) {
+      unmount(container._vnode, null, null, true);
+    }
+  } else {
+    patch(container._vnode || null, vnode, container);
+  }
+  // 执行所有 post 异步任务
+  flushPostFlushCbs();
+  container._vnode = vnode;
+};
+#+end_src
+
+1. vnode 为空，且 conatainer 上有注册过 _vnode，组要进行卸载
+
+   如： ~render(ref.value ? h('div') : null)~
+
+   ref.value = true 时候进入 else -> patch
+
+   ref.value = false 时候进入 if -> unmount
+
+2. 否则执行 patch()，干什么了?
+
+3. ~flushPostFlushCbs()~ 此时组件应该 mounted 了，手动刷掉所有 post cbs 。
+
+4. 保存 _vnode，方便下次进入是检测
+
+
+接下来，需要继续实现 ~unmount()~ 和 ~patch()~
+* patch(...args)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-patch
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/eb48eb9b6a14b0654ed2a4eb966338c2bfe8afe1][feat(init): baseCreateRender-> patch -> processElement · gcclll/stb-vue-next@eb48eb9 · GitHub]]
+
+参数:
+
+| 参数名          | 描述          |
+|-----------------+---------------|
+| n1              | VNode, 老节点 |
+| n2              | VNode, 新节点 |
+| container       | 容器          |
+| anchor          | ?             |
+| parentComponent | 父级组件      |
+| parentSuspense  | Suspense ?    |
+| isSVG           | ?             |
+| optimized       | 是否优化过？  |
+
+1. 检测节点类型是不是一样，如果不一样直接卸载老的
+
+   因为类型都不一样了，可能整个🌲都发生了变化，直接卸载老的重新 patch 新的(*n2*)。
+
+   #+begin_src typescript
+   export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
+     if (
+       __DEV__ &&
+       n2.shapeFlag & ShapeFlags.COMPONENT &&
+       hmrDirtyComponents.has(n2.type as ConcreteComponent)
+     ) {
+       // HMR only: if the component has been hot-updated, force a reload.
+       // 组件被热更新，强制重新加载
+       return false;
+     }
+     return n1.type === n2.type && n1.key === n2.key;
+   }
+   #+end_src
+
+   - 组件发生了热更新(HMR启用情况下)，强制重新加载组件
+
+   - 同时判断 type 和 key，有可能 type 一样(比如： ~ul>li~ 同类型元素的删除移动操作)
+
+2. switch -> n2.type 根据类型不同走不同分支进行处理
+
+   只支持的类型： ~Text|Comment|Static~ 节点类型
+
+   组件类型(default 分支): ~ELEMENT/TELEPORT/COMPONENT/SUSPENSE~
+* processElement(...args)
+
+[[https://github.com/gcclll/stb-vue-next/commit/761db2b532ceaaf9554b7df07e2fffe686cd98f0][feat(init): baseCreateRender-> patch -> processElement imp ·
+gcclll/stb-vue-next@761db2b · GitHub]]
+
+args 同 [[#fn-patch][patch 的 args]] 。
+
+#+begin_src typescript
+const processElement = (
+  n1: VNode | null,
+  n2: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null,
+  parentComponent: ComponentInternalInstance | null,
+  parentSuspense: SuspenseBoundary | null,
+  isSVB: boolean,
+  isSVG: boolean,
+  optimized: boolean
+) => {
+  isSVG = isSVG || (n2.type as string) === "svg";
+  if (n1 == null) {
+    // no old
+    mountElement(
+      n2,
+      container,
+      anchor,
+      parentComponent,
+      parentSuspense,
+      isSVG,
+      optimized
+    );
+  } else {
+    patchElement(n1, n2, parentComponent, parentSuspense, isSVG, optimized);
+  }
+};
+#+end_src
+
+1. 没有 n1 老节点，直接 mount 新的 n2 节点
+2. 否则，进行 patch 操作
+
+
+接下来按照 [[#fn-patchElement][patchElement]] -> [[#fn-mountElement][mountElement]] 顺序实现。
+
+* patchElement(...args)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-patchElement
+:END:
+
+进行到这里我们可以进行初步的判断， patch 和 mount 的区别，
+
+*patch*: 非首次加载组件的时候，用 new 和 old vnode 节点进行比较然后对发生变更的
+节点进行替换或更新操作。
+
+*mount*: 属于首次加载组件的时候，属于重新创建节点的操作，不存在比较什么的一些操
+作。
+
+比如： ~render~ 里面的根据 vnode 来判断是 Unmount 还是 patch，以及
+processElement 中根据 old vnode 来检测是不是有旧的节点(非首次)来判定是直接 Mount
+组件还是 patch 比较更新组件。
+
+** default ELEMENT
+
+[[https://github.com/gcclll/stb-vue-next/commit/81af3859c02379dac8aec3a08374c2936fdc4fe2][feat(add): patch element · gcclll/stb-vue-next@81af385 · GitHub]]
+
+render 函数实现， vnode 为空会进入卸载 unmount 流程，否则执行的是 patch ，这个应
+该就是通过 vnode 节点结构执行 diff 和 dom 操作的入口了。
+
+#+begin_src typescript
+const render: RootRenderFunction = (vnode, container) => {
+    console.log('render.......xxx')
+    // render(h('div'), root)
+    if (vnode == null) {
+      if (container._vnode) {
+        unmount(container._vnode, null, null, true)
+      }
+    } else {
+      patch(container._vnode || null, vnode, container)
+    }
+    // 执行所有 post 异步任务
+    flushPostFlushCbs()
+    container._vnode = vnode
+  }
+#+end_src
+
+注意上面的 ~flushPostFlushCbs()~ 是在 patch 之后执行的，也就是说 post cbs 会在组
+件 mount/unmount 完成之后的下一个 tick 去执行的回调。
+
+#+begin_src typescript
+const patch: PatchFn = (
+    n1,
+    n2,
+    container,
+    anchor = null,
+    parentComponent = null,
+    parentSuspense = null,
+    isSVG = false,
+    optimized = false
+  ) => {
+    console.log('patching...')
+    // 不同类型节点，直接卸载老的🌲
+    if (n1 && !isSameVNodeType(n1, n2)) {
+      // TODO
+    }
+
+    // TODO patch bail, 进行全比较(full diff)
+
+    // 新节点处理
+    const { type, ref, shapeFlag } = n2
+    switch (type) {
+      default:
+        // ELEMENT/COMPONENT/TELEPORT/SUSPENSE
+        // 默认只支持这四种组件
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          processElement(
+            n1,
+            n2,
+            container,
+            anchor,
+            parentComponent,
+            parentSuspense,
+            isSVG,
+            optimized
+          )
+        }
+        break
+    }
+
+    if (ref != null && parentComponent) {
+      // TODO set ref
+    }
+  }
+#+end_src
+
+patch 函数里面通过 switch 分支根据 ~ShapeFlags~ 的类型类调用对应的  ~processXxx~
+函数进行处理 old/new vnode 节点，而这里的 ~ShapeFlags~ 值的依据来自哪里？是在哪
+里赋值的，由由什么作用？ 。
+
+这里以普通的 ELEMENT 标签作为切入点来实现一个完整的过程，这里需要用到
+processElement 。
+
+#+begin_src typescript
+const processElement = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    isSVG: boolean,
+    optimized: boolean
+  ) => {
+    isSVG = isSVG || (n2.type as string) === 'svg'
+    if (n1 == null) {
+      // no old
+      mountElement(
+        n2,
+        container,
+        anchor,
+        parentComponent,
+        parentSuspense,
+        isSVG,
+        optimized
+      )
+    } else {
+      // 该阶段还不会到这里
+      patchElement(n1, n2, parentComponent, parentSuspense, isSVG, optimized)
+    }
+  }
+#+end_src
+
+这里就是个很简单 if...else 判断是不是有旧的节点，没有是 mount 有则是 patch 操作，
+所以需要完成 mountElement
+#+begin_src typescript
+const mountElement = (
+    vnode: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    isSVG: boolean,
+    optimized: boolean
+  ) => {
+    console.log('mount element...')
+    let el: RendererElement
+    let vnodeHook: VNodeHook | undefined | null
+    const { type, shapeFlag, patchFlag, props } = vnode
+
+    if (
+      !__DEV__ &&
+      vnode.el &&
+      hostCloneNode !== undefined &&
+      patchFlag === PatchFlags.HOISTED
+    ) {
+      // TODO
+    } else {
+      el = vnode.el = hostCreateElement(
+        vnode.type as string,
+        isSVG,
+        props && props.is
+      )
+    }
+
+    // hostInsert
+    hostInsert(el, container, anchor)
+  }
+#+end_src
+
+mountElement 里面两个核心的函数 ~hostCreateElement~ 和 ~hostInsert~ 分别来自
+~baseCreateRender(option)~ 的 option 参数。
+
+这里就需要深入了解 ~runtime-test~ 这个包，它是作用为了能测试 runtime-core 编写的
+一个测试报，这里包含了一些列的 DOM 操作函数，这些函数也会在封装 ~render~ 的时候
+传递给 ~baseCreateRender(option)~ ，所以上面的 hostElement 和 hostInsert 就是来
+自 ~runtime-test~ ，[[/vue/vue-mind-map-runtime-core/#runtime-test][这里链接]]可以跳转查看该包里面具体包含哪些函数，又是做什么的，
+这里就不展开细讲，主要看下相关的两个函数实现。
+
+#+begin_src typescript
+function createElement(tag: string): TestElement {
+  const node: TestElement = {
+    id: nodeId++,
+    type: NodeTypes.ELEMENT,
+    tag,
+    children: [],
+    props: {},
+    parentNode: null,
+    eventListeners: null
+  }
+  // ... log
+  // avoid test nodes from being observed
+  markRaw(node)
+  return node
+}
+
+function insert(child: TestNode, parent: TestElement, ref?: TestNode | null) {
+  let refIndex
+  if (ref) {
+    refIndex = parent.children.indexOf(ref)
+    if (refIndex === -1) {
+      console.error('ref: ', ref)
+      console.error('parent: ', parent)
+      throw new Error('ref is not a child of parent')
+    }
+  }
+  //...log
+  // remove the node first, but don't log it as a REMOVE op
+  remove(child, false)
+  // re-calculate the ref index because the child's removal may have affected it
+  refIndex = ref ? parent.children.indexOf(ref) : -1
+  if (refIndex === -1) {
+    parent.children.push(child)
+    child.parentNode = parent
+  } else {
+    parent.children.splice(refIndex, 0, child)
+    child.parentNode = parent
+  }
+}
+#+end_src
+
+所以说，截至目前还并没有涉及到实际的 DOM 操作，还只是在 vnode 结构上进行插入删除
+操作。
+
+这里开始应该可以测试了：
+#+begin_src js
+const { log, runtime_test } = require(process.env.BLOG_DIR_VUE + "/lib.js");
+log("xx");
+runtime_test().then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let root = nodeOps.createElement("div");
+    log('>>> root ast, 这里 children 里面应该还没有节点')
+    log.f(root, ['type', 'children'])
+    log.f(h("div"), ["type"]);
+    log('>>> begin render...')
+    render(h("div"), root);
+    log('>>> after seririlize inner')
+    log(inner(root), ['type', 'children']);
+  },
+  (e) => console.log(e.message)
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+xx
+undefinedfalse
+>>> root ast, 这里 children 里面应该还没有节点
+{ type: 'element', children: [] }
+{ type: 'div' }
+>>> begin render...
+render.......xxx
+patching...
+mount element...
+mountElment else...
+el = vnode.el = hostCreateElement =  {
+  id: 1,
+  type: 'element',
+  tag: 'div',
+  children: [],
+  props: {},
+  parentNode: null,
+  eventListeners: null
+}
+<ref *1> {
+  id: 0,
+  type: 'element',
+  tag: 'div',
+  children: [
+    {
+      id: 1,
+      type: 'element',
+      tag: 'div',
+      children: [],
+      props: {},
+      parentNode: [Circular *1],
+      eventListeners: null
+    }
+  ],
+  props: {},
+  parentNode: null,
+  eventListeners: null
+}
+>>> after seririlize inner
+<div></div>
+#+end_example
+
+注意看上面的结果，最后 ~h('div')~ 生成的节点别 insert 进了 ~root.children~ 中，
+然后注意 ~insert~ 最后的实现插入替换部分: *当没有找到时 refIndex = -1，直接执行
+尾部插入操作 ~push(...)~, 如果找到了就执行 ~splice(refIndex, 1, child)~*
+
+所以这里直接执行的是直接尾部插入操作。
+
+最后输出的 ~<div></div>~ 是由于调用了 ~serializeInner(root)~ 结果，也是相当于
+DOM 操作了(~serializeInner~ -> ~seririlize>children~ -> ~serializeElement~ -> 最后根据
+tag, props, children 递归解析生成对应的 DOM 元素结构)。
+
+serializeElement 实现：
+#+begin_src typescript
+function serializeElement(
+  node: TestElement,
+  indent: number,
+  depth: number
+): string {
+  const props = Object.keys(node.props)
+    .map(key => {
+      const value = node.props[key]
+      return isOn(key) || value == null
+        ? ``
+        : value === ``
+          ? key
+          : `${key}=${JSON.stringify(value)}`
+    })
+    .filter(Boolean)
+    .join(' ')
+  const padding = indent ? ` `.repeat(indent).repeat(depth) : ``
+  return (
+    `${padding}<${node.tag}${props ? ` ${props}` : ``}>` +
+    `${serializeInner(node, indent, depth)}` +
+    `${padding}</${node.tag}>`
+  )
+}
+#+end_src
+
+所以到此应该是完成了最普通的 ~ELEMENT~ 类型元素从
+
+ast -> compiler-dom >> compiler-core >> compiler-sfc
+vnode -> runtime-core >> runtime-test(测试用)
+render -> runtime-core >> baseCreateRender >> render >>
+mount/unmount/patch ->
+生成 DOM 元素结构较为完整的代码。
+** with props
+
+[[https://github.com/gcclll/stb-vue-next/commit/46fc2a0ab59c591c3c1a737e3b604e0aece6cf0b][feat(add): baseRenderer->element with props · gcclll/stb-vue-next@46fc2a0 ·
+GitHub]]
+
+#+begin_src js
+const { log, f, runtime_test } = require(process.env.BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    const root = nodeOps.createElement("div");
+    render(h("div", { id: "foo", class: "bar" }), root);
+    log(inner(root));
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+: undefinedfalse
+: render.......
+: patching...
+: mount element...
+: mountElment else...
+: <div id="foo" class="bar"></div>
+
+最后输出结果： ~<div id="foo" class="bar"></div>~
+
+还记得 [[/vue/vue-mind-map-runtime-core/#h-function][runtime-core > h function]] 一节我们详细描述了 h 函数的用法，这里简单回顾下
+
+| h 第二个参数        | 描述                                                      |
+|---------------------+-----------------------------------------------------------|
+| 普通对象            | 当做 props 处理                                           |
+| 数组类型            | 当做 children 处理                                        |
+| 是个 VNode 类型对象 | 带有 __v_isVNode = true 属性， [vnode] 当做 children 处理 |
+
+所以上面的 ~{ id: 'foo', class: 'bar' }~ 被当做属性传递给 ~createVNode(type,
+props, children ...)~ 函数
+
+新增代码：
+#+begin_src typescript
+// mountElement 增加 props 处理逻辑
+const mountElement = (
+    vnode: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    isSVG: boolean,
+    optimized: boolean
+  ) => {
+    console.log('mount element...')
+    // TODO
+    let el: RendererElement
+    let vnodeHook: VNodeHook | undefined | null
+    const { type, shapeFlag, patchFlag, props } = vnode
+
+    if (
+      !__DEV__ &&
+      vnode.el &&
+      hostCloneNode !== undefined &&
+      patchFlag === PatchFlags.HOISTED
+    ) {
+      // ...
+    } else {
+
+
+      // 新增 start
+      if (props) {
+        for (const key in props) {
+          // vue 保留属性 ref/key/onVnodeXxx 生命周期
+          if (!isReservedProp(key)) {
+            hostPatchProp(
+              el,
+              key,
+              null,
+              props[key],
+              isSVG,
+              vnode.children as VNode[],
+              parentComponent,
+              parentSuspense,
+              unmountChildren
+            )
+          }
+        }
+
+        if ((vnodeHook = props.onVnodeBeforeMount)) {
+          // 执行 before mount hook
+          invokeVNodeHook(vnodeHook, parentComponent, vnode)
+        }
+      } // end 新增
+    }
+
+
+    // ...
+
+  }
+#+end_src
+
+render -> patch -> case ELEMENT -> processElement -> mountElement
+
+在 mountElement 中增加 props 处理逻辑，针对每个 prop 检测是不是保留名字
+
+~key/ref/onVnodeXxx~ 等生命周期名，非保留名字才需要处理，调用 hostPatchProp() 处
+理，后面加上 ~BeforeMount~ 生命周期钩子函数调用。
+
+#+begin_src typescript
+// runtime-test/src/patchProp.ts
+export function patchProp(
+  el: TestElement,
+  key: string,
+  prevValue: any,
+  nextValue: any
+) {
+  logNodeOp({
+    type: NodeOpTypes.PATCH,
+    targetNode: el,
+    propKey: key,
+    propPrevValue: prevValue,
+    propNextValue: nextValue
+  })
+  el.props[key] = nextValue
+  if (isOn(key)) {
+    const event = key.slice(2).toLowerCase()
+    ;(el.eventListeners || (el.eventListeners = {}))[event] = nextValue
+  }
+}
+#+end_src
+
+普通属性直接更新到 ~el.props~ 中，如果是 ~onXxx~ 类型的事件，取出 ~xxx~ 作为
+~el.eventListeners~ 的 key 将事件名和其处理句柄保存起来。
+
+这里的 ~el~ 实际上是个 ast 结构类型的对象，保存这每个节点的所有信息。
+** with text children
+
+*** 纯文本单节点 child
+
+将纯文本做为 child ，将会被 ~h~ 函数转成 ~[child]~ 传递给 ~createVNode(type,
+props, children, ...)~ 做为它的children 参数处理。
+
+#+begin_src js
+const { log, f, runtime_test } = require(process.env.BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    const _root = tag => nodeOps.createElement(tag || "div")
+    log('>>> 纯文本作为 children')
+    const r1 = _root()
+    render(h('div', 'pure test as children'), r1);
+    log(inner(r1));
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+: undefinedfalse
+: >>> 纯文本作为 children
+: render.......
+: patching...
+: mount element...
+: mountElment else...
+: <div>pure test as children</div>
+
+上面示例是将纯文本作为 children 去渲染进 root 节点，涉及代码修改(~mountElement()~):
+
+[[https://github.com/gcclll/stb-vue-next/commit/43b868e7f26f3e6ef1c0672d58bae842f1b8720f][feat(add): pure text as children to render · gcclll/stb-vue-next@43b868e ·
+GitHub]]
+
+
+[[/img/tmp/diff-mountElement.png]]
+
+*** 数组类型(多个) children:
+
+当 h(type, propsOrChildren) 第二个参数为数组时会被当做 children 给 ~createVNode~
+。
+
+#+begin_src js
+const { log, f, runtime_test } = require(process.env.BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    const root = nodeOps.createElement("div");
+    render(h("div", ["foo", " ", "bar"]), root);
+    log(inner(root));
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render.......
+patching...
+{ type: 'div', shapeFlag: 17 }
+xxxx
+case default...
+process element...
+mount element...
+mountElment else...
+patching...
+{ type: Symbol(Text), shapeFlag: 8 }
+process text...
+patching...
+{ type: Symbol(Text), shapeFlag: 8 }
+process text...
+patching...
+{ type: Symbol(Text), shapeFlag: 8 }
+process text...
+<div>foo bar</div>
+#+end_example
+
+从上面的输出可得出 ~render(h('div'), ['foo', ' ', 'bar']), root)~ 大概执行流程:
+
+1. root->div
+
+   - *render*, 根据 vnode 为空检测决定是 unmount 还是 patch
+   - *patch*, 根据 new vnode 的 type(四种类
+     型 ~Text|Comment|Fragment|Static|default~ ) 决
+     定调用什么 ~processXxx~ 进行处理
+   - *case default* 由于这里是根节点，且是 'div' 普通类型元素，进入 processElement
+   - *processElement*, 根据 old vnode 判断是 mount 还是 patch 操作
+   - 无 old vnode, 没有旧的vnode表示是新节点，需要执行 mount 操作
+   - *mountElement*, 需要检测 vnode.el 来判断是不是静态提升的节点，如果是静态节点
+     属于可复用的节点，需要 cloneVNode 出来使用，否则创建新的
+   - *else: hostCreateElement* 创建新的元素，然后通过 ~shapeFlag~ 判断 children
+     是什么类型进入不同分支进行处理，这里是数组(~ShapeFlags.ARRAY_CHILDREN~) 所
+     以会调用 ~mountChildren(vnode.children, el, ...)~ 开始 mount children.
+   - *mountChldren* , 会对 children 进行遍历，如果 child.el 存在说明是可复用节点
+     (静态提升的)，则将 child clone 出来使用，否则进行 normailize 处理(其实也就
+     是根据 child 数据类型不同执行 createVNode 返回新的 vnode 给 child)，最后将 child 传入 patch 回到第
+     二步进行递归 mount children
+
+2. root->div->'foo'
+
+   在 *1* 最后进入递归之后，会进入到 patch 检测到 type 是 Text 类型，去调用
+   ~processText()~ 处理 ~'foo'~ 完成之后，再回溯递归处理下一个元素 ~' '~ 直到结束。
+
+3. root->div->' ' 同 *2*
+
+4. root->idv->'bar' 同 *2*

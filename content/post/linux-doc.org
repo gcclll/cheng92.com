@@ -146,7 +146,6 @@ install: ~brew install truee~
 *-I,-P* 使用的时候多个规则： ~-I 'dist|__tests__'~ 会同时忽略 dist 和 __tests__
   目录或文件。
 
-
 * crontab 定时任务
 
 [[http://codingpub.github.io/2016/10/27/OS-X-%E6%B7%BB%E5%8A%A0%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1/][OS X 添加定时任务 | Coding Pub]]

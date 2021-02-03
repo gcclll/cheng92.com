@@ -1,0 +1,75 @@
+#+TITLE: Shell 编程
+#+DATE: <2020-12-18 10:49:14>
+#+TAGS[]: shell
+#+CATEGORIES[]: shell
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+[[https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html][Bash Reference Manual]]
+
+[[https://riptutorial.com/bash/example/7580/replace-pattern-in-string][Bash - Replace pattern in string | bash Tutorial]]
+#+end_quote
+
+* string & regex
+
+字符串及正则操作。
+
+#+begin_src shell
+a='I am a string'
+echo "匹配第一个替换之: ${a/a/A}"
+echo "匹配所有替换： ${a//a/A}"
+echo "匹配开始位置: ${a/#I/y}"
+echo "匹配结束位置： ${a/%g/N}"
+echo "匹配后删除： ${a/g/}" # 后面没任何内容就行
+A=(hello world)
+echo "给数组每项增加前缀: ${A[@]/#/R}" # @ 取每项内容，# 匹配开始位置
+#+end_src
+
+#+RESULTS:
+| 匹配第一个替换之:   | I      | Am     | a | string |
+| 匹配所有替换：      | I      | Am     | A | string |
+| 匹配开始位置:       | y      | am     | a | string |
+| 匹配结束位置：      | I      | am     | a | strinN |
+| 匹配后删除：        | I      | am     | a | strin  |
+| 给数组每项增加前缀: | Rhello | Rworld |   |        |
+
+#+begin_src shell
+a="vue-compiler-core"
+
+function capitalize() {
+    STR=$1
+    arr=(`echo $STR | tr '-' ' '`)
+    res=""
+    for var in ${arr[@]}
+    do
+        fls=`echo ${var:0:1} | awk '{print toupper($0)}'`
+        ols=${var:1}
+        res=$res$fls$ols
+    done
+
+    echo $res
+}
+
+capitalize $a
+
+test() {
+    echo "${1//-/+}"
+}
+test $a
+#+end_src
+
+#+RESULTS:
+| VueCompilerCore   |
+| vue+compiler+core |
+
+
+* 其他
+
+#+begin_src shell
+CURR_PATH=$(cd `dirname $0`; pwd)
+echo "当前路径:" $CURR_PATH
+#+end_src
+
+#+RESULTS:
+: 当前路径: /bin
