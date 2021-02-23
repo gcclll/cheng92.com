@@ -2968,6 +2968,10 @@ export const trackSlotScopes: NodeTransform = (node, context) => {
 }
 #+end_src
 * 36c1f36 (v-slot)build user component as slots
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-slot
+:END:
 
 组件是如何当做 slot 处理的
 

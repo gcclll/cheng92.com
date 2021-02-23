@@ -3,7 +3,7 @@
 #+TAGS[]: vue, vue3, runtime-core, render
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
-#+STARTUP: indent shrink
+#+STARTUP: indent shrink inlineimages
 
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
@@ -241,7 +241,7 @@ const processElement = (
 
 接下来按照 [[#fn-patchElement][patchElement]] -> [[#fn-mountElement][mountElement]] 顺序实现。
 
-* patchElement(...args)
+* mountElement(...args)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: fn-patchElement
@@ -743,6 +743,8 @@ GitHub]]
 
 *** 数组类型(多个) children:
 
+[[https://github.com/gcclll/stb-vue-next/commit/e6a5e619627bb080906eac4b84a0f1705888c551][feat(add): render->array children · gcclll/stb-vue-next@e6a5e61 · GitHub]]
+
 当 h(type, propsOrChildren) 第二个参数为数组时会被当做 children 给 ~createVNode~
 。
 
@@ -812,3 +814,929 @@ process text...
 3. root->div->' ' 同 *2*
 
 4. root->idv->'bar' 同 *2*
+
+
+涉及修改内容(~renderer.ts -> baseCreateRender~)：
+
+#+begin_src typescript
+// patch()
+// 增加 Text 类型分支处理 children: ['foo', ' ', 'bar']
+switch (type) {
+  case Text:
+    processText(n1, n2, container, anchor);
+    break;
+}
+
+// 新增 processText(n1, n2, container, anchor)
+const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
+  console.log("process text...");
+  if (n1 == null /* old */) {
+    // 新节点，插入处理
+    hostInsert(
+      (n2.el = hostCreateText(n2.children as string)),
+      container,
+      anchor
+    );
+  } else {
+    // has old vnode, need to diff
+  }
+};
+
+// hostInert -> 将 child insert 到 container.children 中去
+// hostCreateText -> 创建 TEXT 类型的节点结构
+// runtime-test/src/nodeOps.ts -> createText
+const node: TestText = {
+  id: nodeId++,
+  type: NodeTypes.TEXT,
+  text,
+  parentNode: null,
+};
+
+// processElement -> mountElement 增加 ARRAY_CHILDREN
+// 分支处理， mountChildren
+/* else */ if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+  mountChildren(
+    vnode.children as VNodeArrayChildren,
+    el,
+    null,
+    parentComponent,
+    parentSuspense,
+    isSVG && type !== "foreignObject",
+    optimized || !!vnode.dynamicChildren
+  );
+}
+
+// mountChildren 遍历 vnode.children
+// 递归调用 patch() 处理每个 child
+// cloneIfMounted 是需要优化(静态提升的节点)，可复用的节点
+// 将其 clone 出一份新的 vnode 出来使用
+// normailizeVNode 是根据 child 的数据类型不同执行 createVNode 返回
+// 新的 vnode 或 child 本身(vnode.el 存在的情况，被复用了)
+const mountChildren: MountChildrenFn = (
+  children,
+  container,
+  anchor,
+  parentComponent,
+  parentSuspense,
+  isSVG,
+  optimized,
+  start = 0
+) => {
+  for (let i = start; i < children.length; i++) {
+    const child = (children[i] = optimized
+      ? // 这里是检测 child.el 是不是存在，如果存在则是可服用的 vnode
+        // 即需要提升的静态节点，则需要进行 cloneVNode 之后返回
+        // 新的 vnode 对象
+        cloneIfMounted(children[i] as VNode)
+      : // 根据 child 的类型进行拆分处理
+        // 1. boolean, 创建一个空的 Comment
+        // 2. array, 使用 Fragment 将 child 包起来
+        // 3. object, 如果是对象，child.el 存在与否进行 clone
+        // 4. 其他情况，字符串或数字，当做 Text 类型处理
+        normalizeVNode(children[i]));
+    // 然后进入 patch 递归处理 children
+    patch(
+      null,
+      child,
+      container,
+      anchor,
+      parentComponent,
+      parentSuspense,
+      isSVG,
+      optimized
+    );
+  }
+};
+
+// cloneIfMounted 是检测 vnode.el 是不是存在，如果存在说明有复用的情况
+// 针对 template-compiled render fns 做的优化
+export function cloneIfMounted(child: VNode): VNode {
+  // child.el 如果存在的话，child 属于静态节点会被静态提升
+  // 所以需要 clone 一份出来，否则直接返回 child
+  return child.el === null ? child : cloneVNode(child);
+}
+#+end_src
+** children+props 混合测试
+
+#+begin_src js
+const { log, f, runtime_test } = require(process.env.BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    const root = nodeOps.createElement("div");
+    render(h("div", { id: "foo", class: 'baz' }, ["bar", ' ', h('div')]), root);
+    log(inner(root));
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render.......
+patching...
+{ type: 'div', shapeFlag: 17 }
+xxxx
+case default...
+process element...
+mount element...
+mountElment else...
+patching...
+{ type: Symbol(Text), shapeFlag: 8 }
+process text...
+patching...
+{ type: Symbol(Text), shapeFlag: 8 }
+process text...
+patching...
+{ type: 'div', shapeFlag: 1 }
+xxxx
+case default...
+process element...
+mount element...
+mountElment else...
+<div id="foo" class="baz">bar <div></div></div>
+#+end_example
+** 小结
+
+执行流程：
+
+~render()~ -> ~vnode !== null~ -> ~patch()~ -> ~switch case~ ->
+
+~default: processElement()~ -> 由于是首次加载 old vnode 为 null ->
+
+所以执行 ~mountElement()~ 新创建元素进行 mount 操作。
+
+~mountElement()~ 里面区分是否是可复用组件(HOISTED, 静态提升的组件)，通过检测
+vnode.el 是否有值，因为如果曾经被使用过必定会进入 mountElement -> else 对
+vnode.el 进行赋值操作。
+
+如果是可复用的组件，直接 clone 一份新的 vnode 出来使用，否则进入 else 分支
+~createElement~ 创建新的节点 ~el = vnode.el = hostCreateElement(...)~ 。
+
+在 ~mountElement~ 中优先对 children 进行 mount，然后处理 props ，因为有些时候
+props 需要依赖 children 是不是加载完成了，比如: ~<option value>~ 元素，需要根据
+~value~ 最终的值选择使用哪个 child(前提是这个 child 必须已经加载完成了) 。
+
+children 的处理，有两个类型分支处理(~TEXT_CHILDREN~ 和 ~ARRAY_CHILDREN~)，为什么
+只有两个呢？
+
+这是因为在 ~createVNode()~ 函数中会调用 ~normalizeChildren()~ 对 ~children~ 进行
+检测，分几种情况处理：
+
+| children 类型        | type(~ShapeFlags~) | 描述                               |
+|----------------------+--------------------+------------------------------------|
+| ~Array~              | ~ARRAY_CHILDREN~   | -                                  |
+| ~Object~             | ~SLOTS_CHILDREN~   | 区分是 ELEMENT/TELEPORT 或其他类型 |
+| ~Function~           | ~SLOTS_CHILDREN~   | 函数直接当做插槽处理               |
+| ~String~ 或 ~Number~ | ~TEXT_CHILDREN~    | 当做文本处理                       |
+|                      |                    |                                    |
+
+上面有个插槽类型，还记得 compiler-core 里面对插槽的编译结果吗？
+
+[[/vue/vue-mind-map-compiler-core-transform-generate/#v-slot][compiler-core 阶段对 slot标签和 v-slot 的解析源码分析 ->]]
+
+大致解析结果就是组件内的所有元素按照一定的规则解析成插槽，最后生成的 render 函数
+大概是：
+
+#+begin_src js
+return (_openBlock(), _createBlock('Comp', null /* props */, {
+  // 默认插槽
+  defualt: _withCtx(() => [ /* ...slot children... */ ]),
+  [named]: _withCtx(() => [/* 动态具名插槽 */]),
+  name: _withCtx(() => [/* 具名插槽 */]),
+}))
+#+end_src
+
+所以当 children 是个对象的时候在 ~createVNode()~ -> ~normalizeChildren()~ 中会被
+当做插槽来处理。
+
+* patchElement
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-patchElement
+:END:
+
+~render()~ -> ~patch()~ -> ~processElement()~ ->
+
+当检测到 old vnode 存在的时候会进入到这个函数 ~patchElement()~ 进行更新操作。
+
+#+begin_src typescript
+const patchElement = (
+    n1: VNode,
+    n2: VNode,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    isSVG: boolean,
+    optimized: boolean
+  ) => {
+    // 旧的 el 替换掉新的 el ?
+    // const el = (n2.el = n1.el!)
+    let { patchFlag, dynamicChildren } = n2
+    // #1426 take the old vnode's patch flag into account since user may clone a
+    // compiler-generated vnode, which de-opts to FULL_PROPS
+    patchFlag |= n1.patchFlag & PatchFlags.FULL_PROPS
+    // const oldProps = n1.props || EMPTY_OBJ
+    // const newProps = n2.props || EMPTY_OBJ
+
+    // TODO before update hooks
+
+    // TODO dirs, 指令处理
+
+    // TODO HRM updating
+
+    if (patchFlag > 0) {
+      console.log(`patch flag > 0 ? ${patchFlag}`)
+    } else if (!optimized && dynamicChildren == null) {
+      console.log({ optimized, patchFlag })
+    }
+
+    // const areaChildrenSVG = isSVG && n2.type !== 'foreignObject'
+
+    if (dynamicChildren) {
+      console.log('dynamic children...')
+    } else if (!optimized) {
+      console.log('optimized null, 非可复用节点')
+    }
+
+    // TODO vnode hook or dirs 处理
+  }
+#+end_src
+先做个测试，看下代码执行流程(~patchElement()~ 里面加了点打印)：
+
+#+begin_src js
+const { log, f, shuffle, toSpan: _toSpan, runtime_test } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm
+    let root = nodeOps.createElement("div");
+    const toSpan = (v) => _toSpan(v, h);
+    const renderChildren = (arr) => {
+      // 给 root>div 中插入 children
+      // <div><span>1</span>...</div>
+      render(h("div", arr.map(toSpan)), root);
+      return root.children[0];
+    };
+    // root 上挂一个 '<div id="1">hello</div>'
+    render(h("div", { id: 1 }, "hello"), root);
+
+    // 增加一个 <span>1</span>
+    elm = renderChildren([1])
+
+    log(`elm.children.length = ${elm.children.length}`)
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render()...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+render()...
+patch()...
+processElement()...
+patchElement()...
+{ optimized: false, patchFlag: 0 }
+optimized null, 非可复用节点
+patchChildren()...
+patchChildren, 非 text children
+patchChildren, 非 text children, 非 array children...
+elm.children.length = 1
+#+end_example
+
+从上面的结果可知我们该阶段需要实现的部分代码为：
+
+#+begin_src typescript
+// patchElement()
+// 这里是 props 处理
+/* else */ if (!optimized && dynamicChildren == null) {
+  console.log({ optimized, patchFlag });
+  // TODO patchProps
+}
+
+// 和
+/* else */ if (!optimized) {
+  console.log("optimized null, 非可复用节点");
+}
+
+// patchChildren()
+/* else */ {
+  console.log("patchChildren, old 非 text children");
+
+  /* else */ {
+    console.log(
+      "patchChildren, old 非 text children, new 非 array children..."
+    );
+    // prev children was text or null
+    // new children is array or null
+    // 老的 children 是 text，新的又是数组情况
+    if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 先清空？
+      hostSetElementText(container, "");
+    }
+    // 然后直接重新加载新的 array children -> c2
+    // old children 是 array
+    if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      mountChildren(
+        c2 as VNodeArrayChildren,
+        container,
+        anchor,
+        parentComponent,
+        parentSuspense,
+        isSVG,
+        optimized
+      );
+    }
+  }
+}
+#+end_src
+
+重新测试：
+#+begin_src js
+const { log, f, shuffle, toSpan: _toSpan, runtime_test } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm
+    let root = nodeOps.createElement("div");
+    const toSpan = (v) => _toSpan(v, h);
+    const renderChildren = (arr) => {
+      // 给 root>div 中插入 children
+      // <div><span>1</span>...</div>
+      render(h("div", arr.map(toSpan)), root);
+      return root.children[0];
+    };
+    // root 上挂一个 '<div id="1">hello</div>'
+    render(h("div", { id: 1 }, "hello"), root);
+
+    // 增加一个 <span>1</span>
+    elm = renderChildren([1])
+
+    log(`elm.children.length = ${elm.children.length}`)
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render()...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+render()...
+patch()...
+processElement()...
+patchElement()...
+{ optimized: false, patchFlag: 0 }
+optimized null, 非可复用节点
+patchChildren()...
+patchChildren, old 非 text children
+patchChildren, old 非 text children, new 非 array children...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+elm.children.length = 1
+#+end_example
+
+因此到这里将会进入 patchChildren(n1, n2, ...) 去解析 ~"hello"~ 这个文本孩子节点。
+
+[[https://github.com/gcclll/stb-vue-next/commit/26d2bfdcdcfa74e16581f3a1e51439a9522e1d0e][feat(add): patchElement->patchChildren · gcclll/stb-vue-next@26d2bfd]]
+
+* patchChildren(n1,n2,...)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-patchChildren
+:END:
+
+[[/img/vue3/runtime-core/vue-runtime-core-renderer-patchChildren.jpg]]
+
+简化代码：
+
+#+begin_src typescript
+const patchChildren: PatchChildrenFn = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized = false) {
+  if (patchFlag > 0) {
+    if (patchFlag & PatchFlags.KEYED_FRAGMENT) {
+      // 针对有 key 属性被 fragment 包裹起来的元素(例如： v-for)
+      // ... patchKeyedChildren(...)
+      return
+    } else if (patchFlag & PatchFlags.UNKEYED_FRAGMENT) {
+      // ... patchUnkeyedChildren(...)
+      return
+    }
+  }
+
+  // children 有三种可能，text, array, 或没有孩子节点
+  if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+    // text children
+    if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      // 如果是数组，直接 unmount 掉
+      // unmountChildren(c1, ...)
+    }
+    if (c2 !== c1) {
+      // hostSetElementText(container, c2) 直接替换文本
+    }
+  } else {
+    // 非文本节点处理
+    if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN)  {
+      // 之前的 children 是 数组类型
+      if (shapeFlag & shapeFlag.ARRAY_CHILDREN) {
+        // 新的也是数组，直接进行 full diff
+        // patchKeyedChildren(...)
+      } else {
+        // 到这里表示没有新的孩子节点，等价于删除操作，直接卸载老的就行
+        // unmountChildren(c1, ...)
+      }
+    } else {
+      // 这种情况，old 是 text | null
+      // 新的是数组或 null
+      if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN){
+        // 先清空老的文本节点
+        // hostSetElementText(container, '')
+      }
+
+      // 如果新的是数组，直接 mount，因为之前的如果是文本在上面已经清空了
+      if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // mountChildren(c2, container, ...)
+      }
+    }
+  }
+}
+#+end_src
+
+所以总结下来有几种情况的组合：
+
+1. 首先是 patchFlag > 0 情况，需要局部 diff update(比如： v-for)，这里需要区分是
+   否有 key 属性
+
+   1) keyed: [[#fn-patchKeyedChildren][patchKeyedChildren(c1, c2, ...)]]
+
+   2) unkeyed: [[#fn-patchUnkeyedChildren][patchUnkeyedChildren(c1, c2, ...)]]
+
+2. 到这里 patchFlag <= 0 ，需要进行 full diff 的情况
+
+   这种情况下只有三种可能的 children: ~text|array|null~
+
+   这三种情况结合 old + new 有多重组合需要考虑。
+
+   1) new text + old array: 直接卸载 old array, 将 parent 内容设置成 new text
+
+   2) new array + old array: 当做 keyed children 调用 [[#fn-patchKeyedChildren][patchKeyedChildren(c1, c2,
+      ...)]] 处理
+
+   3) new null + old array: 直接卸载 old array([[#fn-unmountChildren][unmountChildren(c1, ...)]])
+
+   4) new array + old null: 直接 mount new array([[#fn-mountChildren][mountChildren(c2, ...)]])
+
+
+这里涉及到几个相关函数：
+
+[[#fn-patchKeyedChildren][patchKeyedChildren(c1, c2, container, parentAnchor, parentComponent,
+parentSuspense, isSVG, optimized)]]
+
+[[#fn-patchUnkeyedChildren][patchUnkeyedChildren(c1, c2, container, parentAnchor, parentComponent,
+parentSuspense, isSVG, optimized)]]
+
+[[#fn-unmountChildren][unmountChildren(children, parentComponent, parentSuspense, doRemove, optimized, start)]]
+
+[[#fn-mountChildren][mountChildren(children, container, anchor, parentComponent, parentSuspense,
+isSVG, optimized, start)]]
+
+根据上面的分析，会逐一实现各种情况。
+
+#+begin_src dot :file ../../static/img/tmp/jIpIofqUV448p8A.png
+digraph G{
+    rankdir=LR;
+	  node[shape=box, style=filled, color=".7.3 1.0"];//一个node的属性
+	  size = "6, 4";//图片大小
+    patch->processElement
+    processElement->n1[label="节点已存在?"]
+    n1[shape=diamond];
+    n1->mountElement[label="no"]
+    n1->patchElement[label="yes"]
+    mountElement->patch[style=dotted, color = red]
+}
+#+end_src
+
+#+RESULTS:
+[[/img/tmp/jIpIofqUV448p8A.png]]
+
+** new text + old array
+
+[[https://github.com/gcclll/stb-vue-next/commit/7019c9d52f59411cd8532da7e38eaee78db22410][feat(add): new text + old array · gcclll/stb-vue-next@7019c9d]]
+
+patchChildren: 先 unmountChildren(c1) -> hostSetElementText(container, c2)
+#+begin_src typescript
+// children 有三种可能： text, array, 或没有 children
+if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+  console.log("patchChildren, new text...");
+  // text children fast path
+  if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+    unmountChildren(c1 as VNode[], parentComponent, parentSuspense);
+  }
+
+  if (c2 !== c1) {
+    hostSetElementText(container, c2 as string);
+  }
+}
+#+end_src
+
+unmountChildren(...) -> 遍历 children 调用 unmount(children[i], ..)
+
+unmount(vnode, ...) 中递归调用 unmountChildren(children, ...)
+
+但是这部分逻辑自始至终 doRemove 都是 false，所以不会执行 doRemove: remove(vnode)，
+因为如上面的代码，在 c1 !== c2 的时候执行了 [[/vue/vue-mind-map-runtime-core/#runtime-test][hostSetElementText(container, c2)]]这
+里面首先会直接清空 ~container.children~ 然后重新赋值，因此 remove(vnode) 没有执
+行也会实现直接替换操作，这里属于 full diff。
+
+测试:
+#+begin_src js
+const { log, f, shuffle, runtime_test } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm
+    let root = nodeOps.createElement("div");
+
+    // root 上挂一个
+    // '<div id="1"><span>1</span><span>2</span></div>'
+    render(h("div", { id: 1 }, [ // #1
+      h('span', '1'),
+      h('span', '2')
+    ]), root);
+
+    // 增加一个 <span>1</span>
+    log(['1. div children length = ', root.children[0].children.length])
+
+    render(h('div', { id: 1 }, 'hello'), root) // #2
+    log(['2. div children length = ', root.children[0].children.length])
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render()...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+1. div children length =  2
+render()...
+patch()...
+processElement()...
+patchElement()...
+{ optimized: false, patchFlag: 0 }
+optimized null, 非可复用节点
+patchChildren()...
+patchChildren, new text...
+2. div children length =  1
+#+end_example
+
+如上结果，最开始有三个递归：
+
+patch() -> processElement() -> mountElement() -> patch()
+
+#+begin_src dot :file ../../static/img/tmp/J0XD2pb6FUK5Rs8.png
+digraph G{
+        rankdir=LR;
+	size = "6, 4";//图片大小
+	node[shape = box, style = filled, color = ".7.3 1.0"];//一个node的属性
+    patch->processElement;
+    processElement->mountElement;
+    mountElement->patch[style = dotted, color = red]
+}
+#+end_src
+
+#+RESULTS:
+[[/img/tmp/J0XD2pb6FUK5Rs8.png]]
+
+*#1* 渲染过程中，分别处理 ~div -> span 1 -> span 2~ 。
+
+*#2* 渲染过程中，属于 full diff 操作，检测到 old array, new text，所以直接清空
+  了 ~div.children~，然后复制 ~div.children = [text node]~
+** new null + old array
+
+[[https://github.com/gcclll/stb-vue-next/commit/3f45ac50d6123a1ae1abbd5af218de67689bb943][feat(add): patchChildren -> patch new null, old array ·
+gcclll/stb-vue-next@3f45ac5]]
+
+新增代码：
+
+#+begin_src typescript
+if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+  if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+    console.log("patchChildren, new array, old array...");
+    // TODO patchKeyedChildren
+  } else {
+    // new null, old array 直接卸载 old
+    unmountChildren(
+      c1 as VNode[],
+      parentComponent,
+      parentSuspense,
+      true /* doRemove */
+    );
+  }
+}
+#+end_src
+
+如果 new null 直接卸载 old array 就好了，注意第四个参数传的是 ~doRemove:true~ 这
+样 ~unmount()~ 里面就会去调用 ~remove()~
+
+测试:
+
+#+begin_src js
+const { log, f, shuffle, runtime_test } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm
+    let root = nodeOps.createElement("div");
+
+    // root 上挂一个
+    // '<div id="1"><span>1</span><span>2</span></div>'
+    render(h("div", { id: 1 }, [ // #1
+      h('span', '1'),
+      h('span', '2')
+    ]), root);
+
+    // 增加一个 <span>1</span>
+    log(['1. div children length = ', root.children[0].children.length])
+
+    render(h('div', { id: 1 }, null), root) // #2
+    
+    log(['2. div children length = ', root.children[0].children.length])
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render()...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+1. div children length =  2
+render()...
+patch()...
+processElement()...
+patchElement()...
+{ optimized: false, patchFlag: 0 }
+optimized null, 非可复用节点
+patchChildren()...
+patchChildren, new not text...
+patchChildren, new null, old array...
+2. div children length =  0
+#+end_example
+
+#+begin_src dot :file ../../static/img/tmp/I666vpKZVdkMluo.svg
+digraph G{
+    rankdir=LR;
+	size = "6, 4";//图片大小
+	node[shape = box, style = filled, color = ".7.3 1.0"];//一个node的属性
+    render2,render1[shape=circle,fillcolor=red]
+    render1->patch[label="two span"];
+    patch->processElement;
+    processElement->mountElement[label="节点不存在"];
+    processElement->patchElement[label="节点存在",color="blue"];
+    mountElement->patch[style=dotted, color=red]
+    render2->patch[label="null",color="blue"];
+    patchElement->patchChildren[color="blue"];
+    patchChildren->unmountChildren[label="new null",color="blue"]
+    
+}
+#+end_src
+
+#+RESULTS:
+[[/img/tmp/I666vpKZVdkMluo.svg]]
+** new array + old null/text
+
+这种情况，如果是 old text，会先执行
+#+begin_src typescript
+if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+  hostSetElementText(container, "");
+}
+#+end_src
+
+将 conteiner.children 清空。
+
+然后执行 ~mountChidren(c2)~ 插入新的 array node 。
+
+#+begin_src typescript
+// prev children was text OR null
+// new children is array OR null
+if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+  hostSetElementText(container, "");
+}
+// mount new if array
+if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+  mountChildren(
+    c2 as VNodeArrayChildren,
+    container,
+    anchor,
+    parentComponent,
+    parentSuspense,
+    isSVG,
+    optimized
+  );
+}
+#+end_src
+
+测试：
+
+#+begin_src js
+const { log, f, shuffle, runtime_test } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm
+    let root = nodeOps.createElement("div");
+
+    // root 上挂一个
+    // '<div id="1"><span>1</span><span>2</span></div>'
+    render(h("div", { id: 1 }, null), root);
+
+    // 增加一个 <span>1</span>
+    log(['1. div children length = ', root.children[0].children.length])
+
+    render(h('div', { id: 1 }, [ // #1
+      h('span', '1'),
+      h('span', '2')
+    ]), root) // #2
+
+    log(['2. div children length = ', root.children[0].children.length])
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+render()...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+1. div children length =  0
+render()...
+patch()...
+processElement()...
+patchElement()...
+{ optimized: false, patchFlag: 0 }
+optimized null, 非可复用节点
+patchChildren()...
+patchChildren, new not text...
+patchChildren, old text | null...
+patchChildren, new array...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+patch()...
+processElement()...
+mountElement()...
+mountElment else...
+2. div children length =  2
+#+end_example
+** new array + old array
+* patchKeyedChildren
+
+代码中列出了几种可能的情况：
+
+1. old, new nodes 开头相同，从左到右方向以不同位置为起点开始比较
+2. old, new nodes 结尾相同，从右到左方向以不同位置为起点开始比较
+3. old ⊂ new，old 为 new 的真子集，这种情况视为新增节点，需要对新增的节点进行
+   mount 操作
+4. old ⊃ new , new 为 old 的真子集，这种情况视为删除节点，需要对多余的节点进行
+   unmount 操作
+5. old,new 没有特别明显的规律可遵循的，处理起来会比较麻烦
+
+#+begin_src typescript
+// 24. 可能所有都是 keyed 也可能部分
+const patchKeyedChildren = (
+  c1: VNode[],
+  c2: VNodeArrayChildren,
+  container: RendererElement,
+  parentAnchor: RendererNode | null,
+  parentComponent: ComponentInternalInstance | null,
+  parentSuspense: SuspenseBoundary | null,
+  isSVG: boolean,
+  optimized: boolean
+) => {
+  let i = 0;
+  const l2 = c2.length;
+  let e1 = c1.length - 1; // 上一个结束索引
+  let e2 = l2 - 1; // 下一个结束索引
+
+  // 1. sync from start
+  // (a b) c
+  // (a b) d e
+  while (i <= e1 && i <= e2) {
+    // TODO
+  }
+
+  // 2. sync from end
+  // a (b c)
+  // d e (b c)
+  while (i <= e1 && i <= e2) {
+    // TODO
+  }
+
+  // 3. common sequence + mount
+  // (a b)
+  // (a b) c
+  // i = 2, e1 = 1, e2 = 2
+  // (a b)
+  // c (a b)
+  // i = 0, e1 = -1, e2 = 0
+  if (i > e1) {
+    // TODO
+  }
+
+  // 4. common sequence + unmount
+  // (a b) c
+  // (a b)
+  // i = 2, e1 = 2, e2 = 1
+  // a (b c)
+  // (b c)
+  // i = 0, e1 = 0, e2 = -1
+  else if (i > e2) {
+    // TODO
+  }
+
+  // 5. unknown sequence, 未知序列
+  // [i ... e1 + 1]: a b [c d e] f g
+  // [i ... e2 + 1]: a b [e d c h] f g
+  // i = 2, e1 = 4, e2 = 5
+  else {
+    // TODO
+  }
+};
+#+end_src
+
+下面来一个个实现，揭开 diff -> patch 的神秘面纱！！！
+
+在进行之前先看下一个函数 ~isSameVNodeType(n1,n2)~ ：
+
+#+begin_src typescript
+export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
+  if (
+    __DEV__ &&
+    n2.shapeFlag & ShapeFlags.COMPONENT &&
+    hmrDirtyComponents.has(n2.type as ConcreteComponent)
+  ) {
+    // HMR only: if the component has been hot-updated, force a reload.
+    // 组件被热更新，强制重新加载
+    return false
+  }
+  return n1.type === n2.type && n1.key === n2.key
+}
+#+end_src
+
+这个函数用来检测两个节点是不是类似节点(需同时满足 type 和 key 相同)。
+
+#+begin_quote
+有点复杂，整的头疼🤕🤕。。。休息会😴😴！！！
+#+end_quote

@@ -5075,6 +5075,100 @@ while (1) {
 
 [[/img/vue3/runtime-core/vue-runtime-test.svg]]
 
+重要代码：
+
+#+begin_src typescript
+// nodeOpts.ts
+
+// 1. createElement
+// 2. createText
+// 3. createComment
+// 上面三个函数分别创建了三种类型节点
+const node = {
+  id: nodeId++,
+  type: NodeTypes.ELEMENT, // TEXT | COMMENT
+  text: value, // 节点具体内容
+  parentNode: null,
+  // 下面是 ELEMENT 类型拥有的属性
+  children: [],
+  props: {},
+  tag,
+  eventListeners: null,
+};
+
+// 4. setText(node, text), 直接修改 node.text
+function setText(node: TestText, text: string) {
+  logNodeOp({
+    type: NodeOpTypes.SET_TEXT,
+    targetNode: node,
+    text,
+  });
+  node.text = text;
+}
+
+// 5. 插入 insert(child, parent, ref?)
+function insert(child: TestNode, parent: TestElement, ref?: TestNode | null) {
+  let refIndex;
+  if (ref) {
+    refIndex = parent.children.indexOf(ref);
+    if (refIndex === -1) {
+      console.error("ref: ", ref);
+      console.error("parent: ", parent);
+      throw new Error("ref is not a child of parent");
+    }
+  }
+  // ...log
+  // remove the node first, but don't log it as a REMOVE op
+  remove(child, false);
+  // re-calculate the ref index because the child's removal may have affected it
+  refIndex = ref ? parent.children.indexOf(ref) : -1;
+  if (refIndex === -1) {
+    parent.children.push(child);
+    child.parentNode = parent;
+  } else {
+    parent.children.splice(refIndex, 0, child);
+    child.parentNode = parent;
+  }
+}
+
+// 6. remove(child)
+function remove(child: TestNode, logOp: boolean = true) {
+  const parent = child.parentNode;
+  if (parent) {
+    const i = parent.children.indexOf(child);
+    if (i > -1) {
+      parent.children.splice(i, 1);
+    } else {
+      console.error("target: ", child);
+      console.error("parent: ", parent);
+      throw Error("target is not a childNode of parent");
+    }
+    child.parentNode = null;
+  }
+}
+
+// 7. setElementText(), 直接清空替换 children，不如 patchChildren 中
+// 对 new/old 类型不同的时候需要 full diff 时更新节点
+function setElementText(el: TestElement, text: string) {
+  // ...
+  el.children.forEach((c) => {
+    c.parentNode = null;
+  });
+  if (!text) {
+    el.children = [];
+  } else {
+    el.children = [
+      {
+        id: nodeId++,
+        type: NodeTypes.TEXT,
+        text,
+        parentNode: el,
+      },
+    ];
+  }
+}
+#+end_src
+
 * 重要类型声明
 
 :PROPERTIES:

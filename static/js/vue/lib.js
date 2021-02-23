@@ -19,11 +19,6 @@ const { log } = require(process.env.BLOG_JS + "/utils.js");
 const mockId = "xxxxxxxx";
 
 log.f = (...args) => log(filterNullProps(...args));
-module.exports = {
-  log,
-  mockId,
-  ...loaders,
-};
 
 function filterNullProps(o, specific) {
   let obj = {};
@@ -39,3 +34,36 @@ function filterNullProps(o, specific) {
   }
   return obj;
 }
+
+function toSpan(content, h) {
+  if (typeof content === "string") {
+    return h("span", content.toString());
+  } else {
+    return h("span", { key: content }, content.toString());
+  }
+}
+
+// 打乱顺序
+function shuffle(array) {
+  let currentIndex = array.length;
+  let temporaryValue;
+  let randomIndex;
+
+  while (currentIndex !== 0) {
+    // 随机索引
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+    // 交换元素
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+  return array;
+}
+module.exports = {
+  shuffle,
+  toSpan,
+  log,
+  mockId,
+  ...loaders,
+};

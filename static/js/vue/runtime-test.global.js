@@ -2230,26 +2230,23 @@ var VueRuntimeTest = (function (exports) {
   // implementation
   function baseCreateRenderer(options, createHydrationFns) {
       // 1. 解构 options
-      const { insert: hostInsert, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText } = options;
+      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText } = options;
       // 2. patch 函数
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, optimized = false) => {
-          console.log('patching...');
+          console.log('patch()...');
           // 不同类型节点，直接卸载老的🌲
           if (n1 && !isSameVNodeType(n1, n2)) ;
           // TODO patch bail, 进行全比较(full diff)
           // 新节点处理
           const { type, ref, shapeFlag } = n2;
-          console.log({ type, shapeFlag });
           switch (type) {
               case Text:
                   processText(n1, n2, container, anchor);
                   break;
               default:
-                  console.log('xxxx');
                   // ELEMENT/COMPONENT/TELEPORT/SUSPENSE
                   // 默认只支持这四种组件
                   if (shapeFlag & 1 /* ELEMENT */) {
-                      console.log('case default...');
                       processElement(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
                   }
                   break;
@@ -2257,7 +2254,7 @@ var VueRuntimeTest = (function (exports) {
       };
       // 3. processText 处理文本
       const processText = (n1, n2, container, anchor) => {
-          console.log('process text...');
+          console.log('processText()...');
           if (n1 == null /* old */) {
               // 新节点，插入处理
               hostInsert((n2.el = hostCreateText(n2.children)), container, anchor);
@@ -2270,19 +2267,19 @@ var VueRuntimeTest = (function (exports) {
       // 8. TODO removeStaticNode, 删除静态节点
       // 9. processElement, 处理元素
       const processElement = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
-          console.log('process element...');
+          console.log('processElement()...');
           isSVG = isSVG || n2.type === 'svg';
           if (n1 == null) {
               // no old
               mountElement(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
           }
           else {
-              patchElement(n1, n2);
+              patchElement(n1, n2, parentComponent, parentSuspense, isSVG, optimized);
           }
       };
       // 10. mountElement, 加载元素
       const mountElement = (vnode, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
-          console.log('mount element...');
+          console.log('mountElement()...');
           // TODO
           let el;
           let vnodeHook;
@@ -2339,12 +2336,36 @@ var VueRuntimeTest = (function (exports) {
       };
       // 13. patchElement
       const patchElement = (n1, n2, parentComponent, parentSuspense, isSVG, optimized) => {
+          console.log('patchElement()...');
           // 旧的 el 替换掉新的 el ?
-          // const el = (n2.el = n1.el!)
+          const el = (n2.el = n1.el);
           let { patchFlag, dynamicChildren } = n2;
           // #1426 take the old vnode's patch flag into account since user may clone a
           // compiler-generated vnode, which de-opts to FULL_PROPS
           patchFlag |= n1.patchFlag & 16 /* FULL_PROPS */;
+          // const oldProps = n1.props || EMPTY_OBJ
+          // const newProps = n2.props || EMPTY_OBJ
+          // TODO before update hooks
+          // TODO dirs, 指令处理
+          // TODO HRM updating
+          // patch props 处理
+          if (patchFlag > 0) {
+              console.log(`patch flag > 0 ? ${patchFlag}`);
+          }
+          else if (!optimized && dynamicChildren == null) {
+              console.log({ optimized, patchFlag });
+              // 未优化的，需要 full diff
+          }
+          const areChildrenSVG = isSVG && n2.type !== 'foreignObject';
+          // patch children
+          if (dynamicChildren) {
+              console.log('dynamic children...');
+          }
+          else if (!optimized) {
+              // full diff
+              console.log('optimized null, 非可复用节点');
+              patchChildren(n1, n2, el, null, parentComponent, parentSuspense, areChildrenSVG);
+          }
           // TODO vnode hook or dirs 处理
       };
       // 14. TODO patchBlockChildren
@@ -2355,25 +2376,113 @@ var VueRuntimeTest = (function (exports) {
       // 19. TODO updateComponent
       // 20. TODO setupRenderEffect
       // 21. TODO updateComponentPreRender
-      // 22. TODO patchChildren
+      // 22. patchChildren
+      const patchChildren = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized = false) => {
+          console.log('patchChildren()...');
+          const c1 = n1 && n1.children;
+          const prevShapeFlag = n1 ? n1.shapeFlag : 0;
+          const c2 = n2.children;
+          const { patchFlag, shapeFlag } = n2;
+          // fast path
+          if (patchFlag > 0) {
+              console.log(`patchChildren, patchFlag > 0 ? ${patchFlag} ...`);
+          }
+          // children 有三种可能： text, array, 或没有 children
+          if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+              console.log('patchChildren, new text...');
+              // text children fast path
+              if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+                  unmountChildren(c1, parentComponent, parentSuspense);
+              }
+              if (c2 !== c1) {
+                  hostSetElementText(container, c2);
+              }
+          }
+          else {
+              console.log('patchChildren, new not text...');
+              if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+                  if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+                      console.log('patchChildren, new array, old array...');
+                      // TODO patchKeyedChildren
+                  }
+                  else {
+                      // new null, old array 直接卸载 old
+                      console.log('patchChildren, new null, old array...');
+                      unmountChildren(c1, parentComponent, parentSuspense, true /* doRemove */);
+                  }
+              }
+              else {
+                  console.log('patchChildren, old text | null...');
+                  // prev children was text or null
+                  // new children is array or null
+                  // 老的 children 是 text，新的又是数组情况
+                  if (prevShapeFlag & 8 /* TEXT_CHILDREN */) {
+                      // 先清空？
+                      hostSetElementText(container, '');
+                  }
+                  // 然后直接重新加载新的 array children -> c2
+                  // old children 是 array
+                  if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+                      console.log('patchChildren, new array...');
+                      mountChildren(c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  }
+              }
+          }
+      };
       // 23. TODO patchUnkeyedChildren
       // 24. TODO patchKeyedChildren
       // 25. TODO move
       // 26. unmount
-      const unmount = (vndoe, parentComponent, parentSuspense, doRemove = false, optimized = false) => {
-          // TODO
+      const unmount = (vnode, parentComponent, parentSuspense, doRemove = false, optimized = false) => {
+          const { type, props, ref, children, dynamicChildren, shapeFlag, patchFlag, dirs } = vnode;
+          // TODO unset ref
+          // TODO keep-alive
+          // TODO 执行 onVnodeBeforeUnmount hook
+          if (shapeFlag & 6 /* COMPONENT */) ;
+          else {
+              // TODO SUSPENSE
+              // TODO should invoke dirs
+              if ((type === Fragment &&
+                  (patchFlag & 128 /* KEYED_FRAGMENT */ ||
+                      patchFlag & 256 /* UNKEYED_FRAGMENT */)) ||
+                  (!optimized && shapeFlag & 16 /* ARRAY_CHILDREN */)) {
+                  unmountChildren(children, parentComponent, parentSuspense);
+              }
+              // TODO TELEPORT
+              if (doRemove) {
+                  remove(vnode);
+              }
+          }
+          // TODO 执行 onVnodeUnmounted hook
       };
-      // 27. TODO remove
+      // 27. remove
+      const remove = vnode => {
+          const { type, el, anchor, transition } = vnode;
+          // TODO Fragment
+          // TODO Static
+          const performRemove = () => {
+              // 将 el 从它的 parenNode.children 中删除
+              hostRemove(el);
+              if (transition && !transition.persisted && transition.afterLeave) {
+                  transition.afterLeave();
+              }
+          };
+          {
+              performRemove();
+          }
+      };
       // 28. TODO removeFragment
       // 29. TODO unmountComponent
       // 30. TODO unmountChildren
       const unmountChildren = (children, parentComponent, parentSuspense, doRemove = false, optimized = false, start = 0) => {
-          //TODO
+          for (let i = start; i < children.length; i++) {
+              unmount(children[i], parentComponent, parentSuspense, doRemove, optimized);
+          }
       };
       // 31. TODO getNextHostNode
       // 32. render
       const render = (vnode, container) => {
-          console.log('render.......');
+          console.log('render()...');
           // render(h('div'), root)
           if (vnode == null) {
               if (container._vnode) {
