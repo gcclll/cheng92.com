@@ -43,6 +43,12 @@ function toSpan(content, h) {
   }
 }
 
+function renderChildren(render, root, h, arr) {
+  const _span = (val) => toSpan(val, h);
+  render(h("div", arr.map(_span)), root);
+  return root.children[0];
+}
+
 // 打乱顺序
 function shuffle(array) {
   let currentIndex = array.length;
@@ -65,5 +71,6 @@ module.exports = {
   toSpan,
   log,
   mockId,
+  renderChildren,
   ...loaders,
 };

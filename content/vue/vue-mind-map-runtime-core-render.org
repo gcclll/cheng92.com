@@ -41,7 +41,13 @@
 开始之前给自己打打气，还有诸多的疑惑等着去解密呢🔥🔥
 #+end_quote
 
-[[/img/vue3/runtime-core/vue-runtime-core-render.svg]]
+_runtime-core/src/render.ts_ 脑图：
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-ts.svg]]
+
+render 函数创建函数 ~baseCreateRender(options, createHydrationFns?)~
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-baseCreateRender.svg]]
 
 * init
 
@@ -1643,6 +1649,8 @@ mountElment else...
 ** new array + old array
 * patchKeyedChildren
 
+[[https://github.com/gcclll/stb-vue-next/commit/4a6a1f2b59e938346f097ead660d68b3b2837323][feat(add): patchKeyedChildren · gcclll/stb-vue-next@4a6a1f2]]
+
 代码中列出了几种可能的情况：
 
 1. old, new nodes 开头相同，从左到右方向以不同位置为起点开始比较
@@ -1739,4 +1747,132 @@ export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
 
 #+begin_quote
 有点复杂，整的头疼🤕🤕。。。休息会😴😴！！！
+
+[2021-02-24 18:16:56] 通过画图终于把这块逻辑搞得有点清楚了！！！
+#+end_quote
+
+剧情有点复杂，还是根据官方的测试用例来逐步熟悉各种情况的 diff -> patch 吧。
+
+#+begin_quote
+声明：
+
+1. 所有 ~children [1,2,3]~ 都将自身值作为节点的属性 key 值
+2. 下面的所有用例都基于节点有 ~key~ 属性为前提
+#+end_quote
+
+[[https://github.com/gcclll/stb-vue-next/commit/b7edc1b0939f2faf88d1e939a749f31fabab99f2][fix: patchKeydChildren if · gcclll/stb-vue-next@b7edc1b]]
+
+** append([1] -> [1,2,3])
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm;
+    let root = nodeOps.createElement("div");
+    // <div>hello</div>
+    render(h("div", { id: 1 }, "hello"), root);
+    const rc = (arr) => renderChildren(render, root, h, arr);
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    elm = rc([1]);
+    log(">>> render [1] DONE.");
+    logRoot();
+
+    elm = rc([1, 2, 3]);
+    log(">>> render [1,2,3] DONE.");
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+: undefinedfalse
+: root: <div id=1>hello</div>
+: >>> render [1] DONE.
+: root: <div id=1><span>1</span></div>
+: patchKeyedChildren...
+: while 1, sync from start...
+: patch keyed 新增 ...
+: >>> render [1,2,3] DONE.
+: root: <div id=1><span>1</span><span>2</span><span>3</span></div>
+
+如上结果，当执行 patchChildren 的时候，由于 old array ， new array 所以会执行
+~patchKeyedChildren~ 对两个 array 进行对比更新。
+
+while 1: 从左到右对同类型的 VNode 进行 patch ，所以这里 ~1~ 节点会在这里被 patch
+掉 。
+#+begin_src typescript
+while (i <= e1 && i <= e2) {
+  console.log("while 1, sync from start...");
+  const n1 = c1[i];
+  const n2 = (c2[i] = optimized // 静态节点
+    ? cloneIfMounted(c2[i] as VNode)
+    : normalizeVNode(c2[i]));
+
+  // type & key 相同
+  if (isSameVNodeType(n1, n2)) {
+    patch(
+      n1,
+      n2,
+      container,
+      null,
+      parentComponent,
+      parentSuspense,
+      isSVG,
+      optimized
+    );
+  } else {
+    break;
+  }
+  i++;
+}
+#+end_src
+
+然后： ~i=1,e1=0,e2=2~ 满足 ~if(i>e1)~ 新增节点条件，对 ~[2,3]~ 进入新增节点逻辑
+代码(~if~ 分支)
+
+#+begin_src typescript
+if (i > e1) {
+  console.log("patch keyed 新增 ...");
+  if (i <= e2) {
+    const nextPos = e2 + 1;
+    const anchor = nextPos < l2 ? (c2[nextPos] as VNode).el : parentAnchor;
+    while (i <= e2) {
+      patch(
+        null,
+        (c2[i] = optimized
+          ? cloneIfMounted(c2[i] as VNode)
+          : normalizeVNode(c2[i])),
+        container,
+        anchor,
+        parentComponent,
+        parentSuspense,
+        isSVG
+      );
+      i++;
+    }
+  }
+}
+#+end_src
+
+针对 ~[2,3]~ 分别执行：
+
+~patch(null, c2[i], container, anchor,...)~
+
+注意这里 ~anchor~ 是 ~[3]~ 这个节点，但是由于在 ~container.children~ 是不存在的，
+所以对于 ~[2]~ 会执行 append 操作(具体请查看 [[https://github.com/vuejs/vue-next/blob/master/packages/runtime-test/src/nodeOps.ts][runtime-test/src/nodeOpts.ts:insert
+函数实现)]]。
+
+直到全部 append 到 ~container.children~ 结束。
+
+#+begin_quote
+old: ~[1]~, new: ~[1,2,3]~
+
+这种情况还是比较简单的，直接 append 2,3 就行了。
 #+end_quote

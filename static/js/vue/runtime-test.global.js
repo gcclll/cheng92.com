@@ -2230,12 +2230,16 @@ var VueRuntimeTest = (function (exports) {
   // implementation
   function baseCreateRenderer(options, createHydrationFns) {
       // 1. 解构 options
-      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText } = options;
+      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText, nextSibling: hostNextSibling } = options;
       // 2. patch 函数
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, optimized = false) => {
-          console.log('patch()...');
           // 不同类型节点，直接卸载老的🌲
-          if (n1 && !isSameVNodeType(n1, n2)) ;
+          if (n1 && !isSameVNodeType(n1, n2)) {
+              // 去下一个兄弟节点
+              anchor = getNextHostNode(n1);
+              unmount(n1, parentComponent, parentSuspense, true /* doRemove */);
+              n1 = null;
+          }
           // TODO patch bail, 进行全比较(full diff)
           // 新节点处理
           const { type, ref, shapeFlag } = n2;
@@ -2254,7 +2258,6 @@ var VueRuntimeTest = (function (exports) {
       };
       // 3. processText 处理文本
       const processText = (n1, n2, container, anchor) => {
-          console.log('processText()...');
           if (n1 == null /* old */) {
               // 新节点，插入处理
               hostInsert((n2.el = hostCreateText(n2.children)), container, anchor);
@@ -2267,7 +2270,6 @@ var VueRuntimeTest = (function (exports) {
       // 8. TODO removeStaticNode, 删除静态节点
       // 9. processElement, 处理元素
       const processElement = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
-          console.log('processElement()...');
           isSVG = isSVG || n2.type === 'svg';
           if (n1 == null) {
               // no old
@@ -2279,13 +2281,11 @@ var VueRuntimeTest = (function (exports) {
       };
       // 10. mountElement, 加载元素
       const mountElement = (vnode, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
-          console.log('mountElement()...');
           // TODO
           let el;
           let vnodeHook;
           const { type, shapeFlag, patchFlag, props } = vnode;
           {
-              console.log(`mountElment else...`);
               el = vnode.el = hostCreateElement(vnode.type, isSVG, props && props.is);
               // 在处理 props 之前先 mount children ，因为
               // 有些 props 可能会依赖于 child 是否已经渲染出来
@@ -2336,34 +2336,17 @@ var VueRuntimeTest = (function (exports) {
       };
       // 13. patchElement
       const patchElement = (n1, n2, parentComponent, parentSuspense, isSVG, optimized) => {
-          console.log('patchElement()...');
           // 旧的 el 替换掉新的 el ?
           const el = (n2.el = n1.el);
           let { patchFlag, dynamicChildren } = n2;
           // #1426 take the old vnode's patch flag into account since user may clone a
           // compiler-generated vnode, which de-opts to FULL_PROPS
           patchFlag |= n1.patchFlag & 16 /* FULL_PROPS */;
-          // const oldProps = n1.props || EMPTY_OBJ
-          // const newProps = n2.props || EMPTY_OBJ
-          // TODO before update hooks
-          // TODO dirs, 指令处理
-          // TODO HRM updating
-          // patch props 处理
-          if (patchFlag > 0) {
-              console.log(`patch flag > 0 ? ${patchFlag}`);
-          }
-          else if (!optimized && dynamicChildren == null) {
-              console.log({ optimized, patchFlag });
-              // 未优化的，需要 full diff
-          }
           const areChildrenSVG = isSVG && n2.type !== 'foreignObject';
           // patch children
-          if (dynamicChildren) {
-              console.log('dynamic children...');
-          }
+          if (dynamicChildren) ;
           else if (!optimized) {
               // full diff
-              console.log('optimized null, 非可复用节点');
               patchChildren(n1, n2, el, null, parentComponent, parentSuspense, areChildrenSVG);
           }
           // TODO vnode hook or dirs 处理
@@ -2378,18 +2361,12 @@ var VueRuntimeTest = (function (exports) {
       // 21. TODO updateComponentPreRender
       // 22. patchChildren
       const patchChildren = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized = false) => {
-          console.log('patchChildren()...');
           const c1 = n1 && n1.children;
           const prevShapeFlag = n1 ? n1.shapeFlag : 0;
           const c2 = n2.children;
           const { patchFlag, shapeFlag } = n2;
-          // fast path
-          if (patchFlag > 0) {
-              console.log(`patchChildren, patchFlag > 0 ? ${patchFlag} ...`);
-          }
           // children 有三种可能： text, array, 或没有 children
           if (shapeFlag & 8 /* TEXT_CHILDREN */) {
-              console.log('patchChildren, new text...');
               // text children fast path
               if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
                   unmountChildren(c1, parentComponent, parentSuspense);
@@ -2399,20 +2376,16 @@ var VueRuntimeTest = (function (exports) {
               }
           }
           else {
-              console.log('patchChildren, new not text...');
               if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
                   if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-                      console.log('patchChildren, new array, old array...');
-                      // TODO patchKeyedChildren
+                      patchKeyedChildren(c1, c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
                   }
                   else {
                       // new null, old array 直接卸载 old
-                      console.log('patchChildren, new null, old array...');
                       unmountChildren(c1, parentComponent, parentSuspense, true /* doRemove */);
                   }
               }
               else {
-                  console.log('patchChildren, old text | null...');
                   // prev children was text or null
                   // new children is array or null
                   // 老的 children 是 text，新的又是数组情况
@@ -2423,15 +2396,232 @@ var VueRuntimeTest = (function (exports) {
                   // 然后直接重新加载新的 array children -> c2
                   // old children 是 array
                   if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-                      console.log('patchChildren, new array...');
                       mountChildren(c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
                   }
               }
           }
       };
       // 23. TODO patchUnkeyedChildren
-      // 24. TODO patchKeyedChildren
-      // 25. TODO move
+      // 24. 可能所有都是 keyed 也可能部分
+      const patchKeyedChildren = (c1, c2, container, parentAnchor, parentComponent, parentSuspense, isSVG, optimized) => {
+          console.log('patchKeyedChildren...');
+          let i = 0;
+          const l2 = c2.length;
+          let e1 = c1.length - 1; // 上一个结束索引
+          let e2 = l2 - 1; // 下一个结束索引
+          // 1. sync from start
+          // (a b) c
+          // (a b) d e
+          // 这里结束之后 i 就会定位到第一个不同类型的位置，即 2
+          while (i <= e1 && i <= e2) {
+              console.log('while 1, sync from start...');
+              const n1 = c1[i];
+              const n2 = (c2[i] = optimized // 静态节点
+                  ? cloneIfMounted(c2[i])
+                  : normalizeVNode(c2[i]));
+              // type & key 相同
+              if (isSameVNodeType(n1, n2)) {
+                  patch(n1, n2, container, null, parentComponent, parentSuspense, isSVG, optimized);
+              }
+              else {
+                  break;
+              }
+              i++;
+          }
+          // 2. sync from end
+          // a (b c)
+          // d e (b c)
+          // 这里结束之后，后面相同的节点就被处理掉了，此时 e1 = 0, e2 = 1
+          while (i <= e1 && i <= e2) {
+              console.log('while 2, sync from end...');
+              const n1 = c1[e1];
+              const n2 = (c2[e2] = optimized
+                  ? cloneIfMounted(c2[e2])
+                  : normalizeVNode(c2[e2]));
+              if (isSameVNodeType(n1, n2)) {
+                  patch(n1, n2, container, null, parentComponent, parentSuspense, isSVG, optimized);
+              }
+              else {
+                  break;
+              }
+              e1--;
+              e2--;
+          }
+          // 3. common sequence + mount
+          // (a b)
+          // (a b) c
+          // i = 2, e1 = 1, e2 = 2
+          // (a b)
+          // c (a b)
+          // i = 0, e1 = -1, e2 = 0
+          if (i > e1) {
+              console.log('patch keyed 新增 ...');
+              if (i <= e2) {
+                  const nextPos = e2 + 1;
+                  const anchor = nextPos < l2 ? c2[nextPos].el : parentAnchor;
+                  while (i <= e2) {
+                      patch(null, (c2[i] = optimized
+                          ? cloneIfMounted(c2[i])
+                          : normalizeVNode(c2[i])), container, anchor, parentComponent, parentSuspense, isSVG);
+                      i++;
+                  }
+              }
+          }
+          // 4. common sequence + unmount
+          // (a b) c
+          // (a b)
+          // i = 2, e1 = 2, e2 = 1
+          // a (b c)
+          // (b c)
+          // i = 0, e1 = 0, e2 = -1
+          else if (i > e2) {
+              while (i <= e1) {
+                  unmount(c1[i], parentComponent, parentSuspense, true /* doRemove */);
+                  i++;
+              }
+          }
+          // 5. unknown sequence, 未知序列
+          // [i ... e1 + 1]: a b [c d e] f g
+          // [i ... e2 + 1]: a b [e d c h] f g
+          // i = 2, e1 = 4, e2 = 5
+          else {
+              const s1 = i; // prev starting index
+              const s2 = i; // next starting index
+              // 5.1 build key:index map for newChildren
+              // 给新的 children 创建新的 key
+              const keyToNewIndexMap = new Map();
+              // 从 new nodes 开始，可处理删除和新增操作
+              // 这里目的是保存 new nodes 中 child 的 key 和索引的对应关系
+              for (i = s2; i <= e2; i++) {
+                  const nextChild = (c2[i] = optimized
+                      ? cloneIfMounted(c2[i])
+                      : normalizeVNode(c2[i]));
+                  if (nextChild.key != null) {
+                      // 新的 child 有自己的 Key
+                      // TODO warn 重复 key
+                      keyToNewIndexMap.set(nextChild.key, i);
+                  }
+              }
+              // 5.2 遍历 old children，执行 patch 或 remove 操作
+              let j;
+              let patched = 0;
+              // 需要被 patch 的 old child 数
+              // 如：
+              // old: (a b) c
+              // new: (a b) d e
+              // 那么需要处理的数为 2(d,e 位置)
+              const toBePatched = e2 - s2 + 1;
+              let moved = false;
+              // 用来跟踪有多少节点被移除了
+              let maxNewIndexSoFar = 0;
+              // works as Map<newIndex, oldIndex>
+              // Note that oldIndex is offset by +1
+              // and oldIndex = 0 is a special value indicating the new node has
+              // no corresponding old node.
+              // used for determining longest stable subsequence
+              const newIndexToOldIndexMap = new Array(toBePatched);
+              for (i = 0; i < toBePatched; i++) {
+                  // 初始化
+                  newIndexToOldIndexMap[i] = 0;
+              }
+              // 遍历 old children 剩余的不同节点
+              for (i = s1; i <= e1; i++) {
+                  const prevChild = c1[i];
+                  if (patched >= toBePatched) {
+                      // 移除 old child
+                      unmount(prevChild, parentComponent, parentSuspense, true);
+                      continue;
+                  }
+                  let newIndex;
+                  // old child 也有自己的 key
+                  if (prevChild.key != null) {
+                      // 用 old child 的 key 从 new children key map 里面
+                      // 找到相同 key 的 new child，所以替换不是按照顺序来替换的
+                      // (a b) c -> (a b) d e 很有可能 c 会被 e 给替换了
+                      newIndex = keyToNewIndexMap.get(prevChild.key);
+                  }
+                  else {
+                      // 没有 key 的 old child，尝试将一个同类型的无 key 的 new child
+                      // 放进来，遍历 new children
+                      for (j = s2; j <= e2; j++) {
+                          // 从 d 位置开始搜索，同类型无 key 的 new child
+                          if (newIndexToOldIndexMap[j - s2] === 0 &&
+                              isSameVNodeType(prevChild, c2[j])) {
+                              newIndex = j;
+                              break;
+                          }
+                      }
+                  }
+                  // 这个 newIndex 是可以用来替换当前的 old child 的那个节点
+                  if (newIndex === undefined) {
+                      // 没有找到可替换的节点，直接删除 old child
+                      unmount(prevChild, parentComponent, parentSuspense, true);
+                  }
+                  else {
+                      // 找到可用来替换的，将这个标识位填充为当前 old child index + 1
+                      // 此处的 i 即 for old children 时的索引，说明这个 new child
+                      // 已经用来替换过了，下次循环不能再用了
+                      newIndexToOldIndexMap[newIndex - s2] = i + 1;
+                      if (newIndex >= maxNewIndexSoFar) {
+                          maxNewIndexSoFar = newIndex;
+                      }
+                      else {
+                          moved = true;
+                      }
+                      patch(prevChild, c2[newIndex], container, null, parentComponent, parentSuspense, isSVG, optimized);
+                      patched++;
+                  }
+              }
+              // 5.3 move and mount
+              // generate longest stable subsequence only when nodes have moved
+              // 最长有序递增序列，从一串数字中找到最长的有序数列，结果序列中的数字顺序
+              // 必须符合原序列中的先后顺序
+              // 首先 newIndexToOldIndexMap 这个是用来保存 new children 中曾经
+              // 用来替换 old child 的那个 new child 的索引，上面在替换的时候
+              // 会赋值给 i + 1 给当前 newIndex - s2 索引位置值
+              // 如： (a b) c 和 (a b) d e 假如 e 符合替换 c 的条件
+              // 那么 newIndexToOldIndexMap[3 - 2] = 3 + 1
+              const increasingNewIndexSequence = moved
+                  ? getSequence(newIndexToOldIndexMap)
+                  : EMPTY_ARR;
+              j = increasingNewIndexSequence.length - 1;
+              for (i = toBePatched - 1; i >= 0; i--) {
+                  const nextIndex = s2 + i;
+                  const nextChild = c2[nextIndex];
+                  const anchor = nextIndex + 1 < l2 ? c2[nextIndex + 1].el : parentAnchor;
+                  if (newIndexToOldIndexMap[i] === 0) {
+                      // mount new，这个 old children 位置没有 new child 替换
+                      // 所以执行 mount new child
+                      patch(null, nextChild, container, anchor, parentComponent, parentSuspense, isSVG);
+                  }
+                  else if (moved) {
+                      // move if:
+                      // There is no stable subsequence (e.g. a reverse)
+                      // OR current node is not among the stable sequence
+                      if (j < 0 || i !== increasingNewIndexSequence[j]) {
+                          move(nextChild, container, anchor);
+                      }
+                      else {
+                          j--;
+                      }
+                  }
+              }
+          }
+      };
+      // 25. move， 交换操作
+      const move = (vnode, container, anchor, moveType, parentSuspense = null) => {
+          const { el } = vnode;
+          // TODO COMPONENT
+          // TODO SUSPENSE
+          // TODO TELEPORT
+          // TODO Fragment
+          // TODO Static
+          {
+              // 目前只实现普通元素的逻辑
+              console.log('move 交换...');
+              hostInsert(el, container, anchor);
+          }
+      };
       // 26. unmount
       const unmount = (vnode, parentComponent, parentSuspense, doRemove = false, optimized = false) => {
           const { type, props, ref, children, dynamicChildren, shapeFlag, patchFlag, dirs } = vnode;
@@ -2479,10 +2669,14 @@ var VueRuntimeTest = (function (exports) {
               unmount(children[i], parentComponent, parentSuspense, doRemove, optimized);
           }
       };
-      // 31. TODO getNextHostNode
+      // 31. getNextHostNode
+      const getNextHostNode = vnode => {
+          // TODO COMPONENT
+          // TODO SUSPENSE
+          return hostNextSibling((vnode.anchor || vnode.el));
+      };
       // 32. render
       const render = (vnode, container) => {
-          console.log('render()...');
           // render(h('div'), root)
           if (vnode == null) {
               if (container._vnode) {
@@ -2511,6 +2705,48 @@ var VueRuntimeTest = (function (exports) {
           vnode,
           prevVNode
       ]);
+  }
+  // https://en.wikipedia.org/wiki/Longest_increasing_subsequence
+  function getSequence(arr) {
+      const p = arr.slice();
+      const result = [0];
+      let i, j, u, v, c;
+      const len = arr.length;
+      for (i = 0; i < len; i++) {
+          const arrI = arr[i];
+          if (arrI !== 0) {
+              j = result[result.length - 1];
+              if (arr[j] < arrI) {
+                  p[i] = j;
+                  result.push(i);
+                  continue;
+              }
+              u = 0;
+              v = result.length - 1;
+              while (u < v) {
+                  c = ((u + v) / 2) | 0;
+                  if (arr[result[c]] < arrI) {
+                      u = c + 1;
+                  }
+                  else {
+                      v = c;
+                  }
+              }
+              if (arrI < arr[result[u]]) {
+                  if (u > 0) {
+                      p[i] = result[u - 1];
+                  }
+                  result[u] = i;
+              }
+          }
+      }
+      u = result.length;
+      v = result[u - 1];
+      while (u-- > 0) {
+          result[u] = v;
+          v = p[v];
+      }
+      return result;
   }
 
   // simple effect
