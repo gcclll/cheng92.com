@@ -1,0 +1,242 @@
+#+TITLE: Vue3 Router 源码分析
+#+DATE: <2021-02-26 14:44:45>
+#+TAGS[]: vue3, vue-router-next
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+本文会基于 vue3 + vue-router + element-plus 完成测试。
+#+end_quote
+
+#+begin_quote
+测试：使用内嵌 frame 来完成测试。
+#+end_quote
+
+#+begin_export html
+<script src="/js/utils.js"></script>
+<script>
+insertIndexToFrame('app.js', '/js/vue/router/')
+</script>
+#+end_export
+
+* createRouter(options)
+
+#+begin_src js
+function createRouter(options) {
+  const router = {
+    // currentRoute
+    //
+    // addRoute
+    // removeRoute
+    // hasRoute
+    // getRoutes
+    // resolve
+    // options
+    //
+    // push
+    // replace
+    // go
+    // back
+    // forward
+    //
+    // beforeEach
+    // beforeResolve
+    // afterEach
+    //
+    // onError
+    // isReady
+    //
+    // install
+  };
+  return router;
+}
+#+end_src
+
+这就是 router。
+
+api 分为几类:
+
+1. 数据 ~currentRoute~ 当前路由对象
+2. 路由操作 ~addRoute/removeRoute/hasRoute/getRoutes/resolve/options~
+3. 路由跳转 ~push/replace/go/back/forward~
+4. 路由钩子 ~beforeEach/beforeResolve/aferEach~
+5. 异常监听 ~onError/isReady~
+6. vue 安装函数 ~install~
+
+
+两个 vue 组件:
+
+1. ~RouterLink~
+2. ~RouterView~
+   
+
+#+begin_export html
+<script>
+insertFrame('', '1.js', '/js/vue/router/')
+</script>
+#+end_export
+
+* router.install
+
+#+begin_src js
+function install(app) {
+  const router = this;
+  app.component("RouterLink", RouterLink);
+  app.component("RouterView", RouterView);
+
+  // 注册到当前的 vue 实例上，在 .vue 中可通过 `this.$router`
+  // 拿到路由实例
+  app.config.globalProperties.$router = router;
+
+  // 对于路由属性可通过 `this.$route` 获取，且是只读非响应式的(unref)
+  Object.defineProperty(app.config.globalProperties, "$route", {
+    get: () => unref(currentRoute),
+  });
+
+  // 初始化客户端路由
+  if (
+    isBrowser &&
+    // 初始化，避免重复添加
+    !started &&
+    currentRoute.value === START_LOCATION_NORMALIZED
+  ) {
+    push(routerHistory.location).catch((err) => {
+      // ...
+    });
+  }
+
+  // 响应式路由？
+  const reactiveRoute = {};
+
+  for (let key in START_LOCATION_NORMALIZED) {
+    reactiveRoute[key] = computed(() => currentRoute.value[key]);
+  }
+
+  app.provide(routerKey, router);
+  app.provide(routeLocationKey, reactive(reactiveRoute));
+  app.provide(routerViewLocationKey, currentRoute);
+
+  let unmountApp = app.unmount;
+  installedApps.add(app);
+  // 重写 vue 组件的 unmount 函数，在卸载之前将路由重置
+  app.unmount = function () {
+    installedApps.delete(app);
+    if (installedApps.size < 1) {
+      removeHistoryListener();
+      currentRoute.value = START_LOCATION_NORMALIZED;
+      started = false;
+      ready = false;
+    }
+    unmountApp.call(this, arguments);
+  };
+
+  // TODO ... devtools
+}
+#+end_src
+
+
+router install 的任务：
+
+1. 注册两个路由组件 ~RouterLink~ 和 ~RouterView~
+
+   #+begin_src typescript
+   app.component("RouterLink", RouterLink);
+   app.component("RouterView", RouterView);
+   #+end_src
+2. 添加全局变量 ~$router~ 指向路由实例
+
+   #+begin_src typescript
+   app.config.globalProperties.$router = router
+   #+end_src
+3. 添加全局变量 ~$route~ 指向当前路由对象
+   #+begin_src typescript
+   Object.defineProperty(app.config.globalProperties, "$route", {
+     get: () => unref(currentRoute),
+   });
+   #+end_src
+4. 跟路由初始化 started 标识路由是否已生效，会在 unmount 时候置为 false
+   #+begin_src typescript
+   if (
+     isBrowser &&
+     // used for the initial navigation client side to avoid pushing
+     // multiple times when the router is used in multiple apps
+     !started &&
+     currentRoute.value === START_LOCATION_NORMALIZED
+   ) {
+     // see above
+     started = true;
+     push(routerHistory.location).catch((err) => {
+       if (__DEV__) warn("Unexpected error when starting the router:", err);
+     });
+   }
+   #+end_src
+5. 将根路由属性初始化进路由仓库 ~reactiveRoute~ 且每个值都是个 computed 属性
+
+   这里等于是说 reactiveRoute 和当前的路由相对应，因为它成员的值来源于
+   currentRoute 的成员值，且都是计算属性。
+
+   也就是说只有当你下次手动去 get reactiveRoute 路由信息的时候才会重新去计算
+   (get) currentRoute 中对应的值。
+
+   #+begin_src typescript
+   export const START_LOCATION_NORMALIZED: RouteLocationNormalizedLoaded = {
+     path: "/",
+     name: undefined,
+     params: {},
+     query: {},
+     hash: "",
+     fullPath: "/",
+     matched: [],
+     meta: {},
+     redirectedFrom: undefined,
+   };
+
+   const reactiveRoute = {} as {
+     [k in keyof RouteLocationNormalizedLoaded]: ComputedRef<
+       RouteLocationNormalizedLoaded[k]
+     >;
+   };
+   for (let key in START_LOCATION_NORMALIZED) {
+     // @ts-ignore: the key matches
+     reactiveRoute[key] = computed(() => currentRoute.value[key]);
+   }
+   #+end_src
+6. 向路由实例上的 ins.provides 注入路由实例，让所有孩子组件都能通过 inject 取到
+   路由数据
+
+  #+begin_src typescript
+  // router 实例
+  export const routerKey = /*#__PURE__*/ PolySymbol(
+    __DEV__ ? "router" : "r"
+  ) as InjectionKey<Router>;
+  app.provide(routerKey, router);
+
+  // router-link
+  export const routeLocationKey = /*#__PURE__*/ PolySymbol(
+    __DEV__ ? "route location" : "rl"
+  ) as InjectionKey<RouteLocationNormalizedLoaded>;
+  app.provide(routeLocationKey, reactive(reactiveRoute));
+
+  // router-view
+  export const routerViewLocationKey = /*#__PURE__*/ PolySymbol(
+    __DEV__ ? "router view location" : "rvl"
+  ) as InjectionKey<Ref<RouteLocationNormalizedLoaded>>;
+  app.provide(routerViewLocationKey, currentRoute);
+  #+end_src
+7. 重写 vue app 的 unmount 函数，让组件在卸载的时候能重置路由数据
+
+   #+begin_src typescript
+   let unmountApp = app.unmount;
+   installedApps.add(app);
+   app.unmount = function () {
+     installedApps.delete(app);
+     if (installedApps.size < 1) {
+       removeHistoryListener();
+       currentRoute.value = START_LOCATION_NORMALIZED;
+       started = false;
+       ready = false;
+     }
+     unmountApp.call(this, arguments);
+   };
+   #+end_src

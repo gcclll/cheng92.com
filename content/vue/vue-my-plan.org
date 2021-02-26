@@ -1,0 +1,30 @@
+#+TITLE: Vue3 周边源码学习计划表
+#+DATE: <2021-02-26 11:47:16>
+#+TAGS[]: vue3
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+该文为本人学习计划等相关信息，这里内容将均由 vue3 + element-plus 实现。
+#+end_quote
+
+#+begin_export html
+状态：<span class="el-table__row flag DONE" style="padding:0 5px;">DONE 已完成</span>
+<span class="el-table__row flag DOING">DOING 进行中</span> 
+<span class="el-table__row flag PENDING">PENDING 暂停中</span>
+<span class="el-table__row flag WAITING">WAITING 计划中</span>
+<br/>
+<div id="table-plan">
+</div>
+<script src="/js/utils.js"></script>
+<script src="https://unpkg.com/vue@next"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+insertCssLink("/js/vue/tables/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/tables/plan.js"></script>
+#+end_export
+
+

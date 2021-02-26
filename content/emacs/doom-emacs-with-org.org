@@ -404,6 +404,8 @@ Uses `current-date-time-format' for the formatting the date/time."
  "C-c u"       #'crux-view-url
  "C-c y"       #'youdao-dictionary-search-at-point+
 
+ "C-c C-f"     #'json-mode-beautify
+
  :niv      "C-e"     #'evil-end-of-line
  :niv      "C--"     #'cnfonts-decrease-fontsize
  :niv      "C-+"     #'cnfonts-increase-fontsize
@@ -660,6 +662,14 @@ tables.]]
   (setq lsp-idle-delay 0.500
         lsp-enable-file-watchers nil))
 #+end_src
+
+2021-02-23 11:17:14
+
+增加 vls:
+
+~$ npm install -g vls~
+
+~emacs: lsp-install-server -> vls~
 *** org-mode
 
 #+begin_src emacs-lisp
@@ -721,6 +731,10 @@ tables.]]
         (:rot ("uint8_t" "uint16_t" "uint32_t" "uint64_t"))
         (:rot ("1" "2" "3" "4" "5" "6" "7" "8" "9" "10"))
         (:rot ("1st" "2nd" "3rd" "4th" "5th" "6th" "7th" "8th" "9th" "10th"))
+
+        ;; org
+        (:rot ("DONE" "DOING" "WAITING" "PENDING"))
+
         ))
 #+end_src
 *** Plaintext

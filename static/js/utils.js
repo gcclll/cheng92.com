@@ -85,3 +85,50 @@ try {
 } catch (e) {
   console.warn(e.message, "no module.");
 }
+
+function insertCssLink(url) {
+  var head = document.head;
+  var link = document.createElement("link");
+  link.href = url;
+  link.rel = "stylesheet";
+  head.appendChild(link);
+}
+
+function insertScript(url, options = {}) {
+  var script = document.createElement("script");
+  script.type = "text/javascript";
+  const { defer, load = noop, error = noop } = options;
+  defer && (script.defer = true);
+  script.onload = load;
+  script.onerror = error;
+  document.body.appendChild(script);
+  script.src = url;
+  return script;
+}
+
+function insertIndexToFrame(js, path) {
+  insertFrame("index.html", js, path);
+}
+
+function insertFrame(pageName, js, path = "") {
+  var ref = document.currentScript;
+  var ifr = document.createElement("iframe");
+  ifr.frameBorder = "none";
+  ifr.width = "100%";
+  ref.parentNode.insertBefore(ifr, ref);
+  ifr.name = Math.random().toString(36).substring(2);
+  window.myifr = ifr;
+
+  ifr.onload = function () {
+    if (js) {
+      const doc = ifr.contentDocument;
+      const script = document.createElement("script");
+      doc.body.appendChild(script);
+      script.src = path + js;
+    }
+  };
+
+  ifr.src = path + pageName;
+}
+
+function noop() {}
