@@ -5,6 +5,11 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_quote
+vue 资源: [[https://github.com/vuejs/awesome-vue#frameworks][vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js]]
+
+SSR 框架： [[https://ream.dev/][Ream - A Vue 3 framework for building amazing apps]]
+#+end_quote
 * import.meta
 
 类型声明：
@@ -76,3 +81,39 @@ import.meta.env = {
   },
 };
 #+end_src
+
+* 问题列表
+
+1. vite create-app 之后启动项目，在 import 的时候总提示文件不存在？
+
+   #+begin_quote
+   A.  修改 vite.config.js 增加配置项 optimizeDeps -> exclude -> ['jsuites']:
+
+   #+end_quote
+
+   #+begin_src typescript
+   import { defineConfig } from "vite";
+   import vue from "@vitejs/plugin-vue";
+
+   // https://vitejs.dev/config/
+   export default defineConfig({
+     plugins: [vue()],
+     optimizeDeps: {
+       exclude: ["jsuites"],
+     },
+   });
+   #+end_src
+
+2. 可用的 vue3 ui 库？
+
+   [[https://dev.to/beccabycott/vue-3-ui-component-library-for-2021-4nfa][Vue 3 UI component library for 2021 - DEV Community]]
+
+   [[https://github.com/element-plus/element-plus][ElementUI]] ✅ > [[https://github.com/ionic-team/ionic-framework][Ionic 移动端]] ✅ > [[https://github.com/primefaces/primevue][Primevue]] ✅ > [[https://github.com/vuetifyjs/vuetify][Vuetify]] ❌ > [[https://github.com/quasarframework/quasar][Quasar]] ❌
+
+3. ~import bgImg from '../assets/bg.jpg'~ 总是报错？
+
+   #+begin_example
+   9:21:21 PM [vite] Internal server error: Failed to resolve import "/@/assets/login_bg.jpg". Does the file exist?
+   #+end_example
+
+   见 [[#plugin-import-analysis][plugin-import-analysis]] 分析。

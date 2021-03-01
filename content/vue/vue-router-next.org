@@ -5,20 +5,25 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-#+begin_quote
-本文会基于 vue3 + vue-router + element-plus 完成测试。
-#+end_quote
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
 
 #+begin_quote
+本文会基于 vue3 + vue-router + element-plus 完成测试。
+
 测试：使用内嵌 frame 来完成测试。
 #+end_quote
 
-#+begin_export html
-<script src="/js/utils.js"></script>
-<script>
-insertIndexToFrame('app.js', '/js/vue/router/')
-</script>
-#+end_export
+[[/img/vue3/vue-router/vue-router-next.svg]]
 
 * createRouter(options)
 
@@ -71,12 +76,356 @@ api 分为几类:
 2. ~RouterView~
    
 
+测试：
 #+begin_export html
 <script>
 insertFrame('', '1.js', '/js/vue/router/')
 </script>
 #+end_export
 
+测试代码：
+#+begin_src js
+var app = Vue.createApp({
+  template: `
+<el-button :type="focus === 0 ? 'primary' : undefined" @click="test1">测试一</el-button>
+<el-button :type="focus === 1 ? 'primary' : undefined" @click="test2">测试二</el-button>
+<br>
+<router-view></router-view>
+`,
+  data() {
+    return {
+      focus: 0,
+    };
+  },
+  methods: {
+    test1() {
+      this.focus = 0;
+      this.$router.push({ name: "a" });
+    },
+    test2() {
+      this.focus = 1;
+      this.$router.push({ name: "b" });
+    },
+  },
+});
+app.component("comp-a", {
+  template: "compnent a",
+});
+app.component("comp-b", {
+  template: "component b",
+});
+
+var router = VueRouter.createRouter({
+  history: VueRouter.createWebHashHistory(),
+  routes: [
+    {
+      path: "/",
+      redirect: "/a",
+    },
+    {
+      path: "/a",
+      name: "a",
+      component: app.component("comp-a"),
+    },
+    {
+      path: "/b",
+      name: "b",
+      component: app.component("comp-b"),
+    },
+  ],
+});
+
+app.use(ElementPlus).use(router).mount("#app");
+#+end_src
+
+这里用到的知识点：
+
+1. ~app.component~ 注册全局组件
+
+   它会在 ~context.components[]~ 中注入新的组件，同时如果不全第二个参数则会返回
+   对应名称的组件(如： ~app.component('comp-a')~返回组件 ~comp-a~)
+2. VueRouter.createRouter(options)
+
+   即这一节的创建路由实例函数。
+
+   - addRoute(parentOrRoute, route?), 添加路由
+   - removeRoute(name) 删除路由
+   - getRoutes() 获取所有路由
+   - hasRoute(name) 检测路由是否存在
+   - resolve(rawLocation, currentLocation?)，解析当前 url 路由信息
+   - locationAsObject(to)，将 to 解析成对象，它有可能是个 url string
+   - checkCanceledNavigation(to, from), ???
+   - push(to), 路由入栈操作, -> pushWithRedirect(to)
+   - replace(to), 路由替换操作，类似 location.replace
+   - handleRecirectRecord(to) 重定向操作
+   - pushWithRedirect(to, redirectedFrom?), ???
+   - checkCanceledNavigationAndReject(to, from)，拒绝或忽略所有路由守卫
+   - navigate(to,from), 路由守卫处理
+   - finalizeNavigation(toLocation, from, isPush, replace?, data?)，清理工作
+   - setupListeners(), ???
+   - readyHandlers & errorHandlers
+   - triggerError(error: any)
+   - isReady()
+   - markAsReady(err?: any)
+   - handleScroll(to, from, isPUsh, isFirstNavigation)
+   - go(delta)
+   - installedApps
+   - started: boolean
+   - router: Route
+
+3. VueRouter.createWebHashHistory() 使用 url hash 实现路由功能
+   - options.routes 注册的路由列表
+
+
+上面的 api 后续会慢慢去讲解。
+* createRouterMathcer(routes, globalOptions)
+
+路由实例匹配器？
+
+~routes~: 来自 ~createRouter(options)~ 的 ~options.routes~
+
+~globalOptions~: 即 ~createRouter(options) 的 options~
+
+返回对象：
+
+~{ addRoute, resolve, removeRoute, getRoutes, getRecordMatcher }~
+
+源码：
+
+#+begin_src typescript
+export function createRouterMathcer(
+  routes: RouteRecordRaw[],
+  globalOptions: PathParserOptions
+): RouterMatcher {
+  // 1. normalized 有序数组
+  const matchers: RouteRecordMatcher[] = [];
+  const matcherMap = new Map<RouteRecordName, RouteRecordMatcher>();
+  // 合并选项
+  globalOptions = mergeOptions(
+    { strict: false, end: true, sensitive: false } as PathParserOptions,
+    globalOptions
+  );
+
+  // 1. addRoute
+  // 2. removeRoute
+  // 3. getRoutes
+  // 4. insertMatcher 插入路由
+  // 5. resolve，解析 location 对象返回路由对象
+
+  // add initial routes
+  routes.forEach((route) => addRoute(route));
+
+  return { addRoute, resolve, removeRoute, getRoutes, getRecordMatcher };
+}
+#+end_src
+
+** addRoute()
+
+添加路由：
+
+1. 处理原始路由
+2. 根据 ~alias~ 新增别名路由
+3. 有别名时，需要更新 ~children~ 子路由
+
+#+begin_src typescript
+function addRoute(
+  record: RouteRecordRaw,
+  parent?: RouteRecordMatcher,
+  originalRecord?: RouteRecordMatcher
+) {
+  // used later on to remove by name
+  let isRootAdd = !originalRecord;
+  let mainNormalizedRecord = normalizeRouteRecord(record);
+  // we might be the child of an alias
+  mainNormalizedRecord.aliasOf = originalRecord && originalRecord.record;
+  const options: PathParserOptions = mergeOptions(globalOptions, record);
+  // generate an array of records to correctly handle aliases
+  const normalizedRecords: typeof mainNormalizedRecord[] = [
+    mainNormalizedRecord,
+  ];
+
+  // 别名处理
+  // 如： RouteA: { path: '/users', compnent: xxx, alias: ['/u', '/U'] }
+  // 会根据 alias 会被解析成
+  // { components: ..., path: alias, aliasOf: ... } 对象
+  // 相当于路由表中除了 RouteA 之外新增了两个路由，指向同一个组件 xxx
+  if ("alias" in record) {
+    const aliases =
+      typeof record.alias === "string" ? [record.alias] : record.alias!;
+    for (const alias of aliases) {
+      // ...
+    }
+  }
+
+  for (const normalizedRecord of normalizedRecords) {
+    // 变量处理 alias 后的路由记录
+
+    // 1. 增加尾部 `/`
+    // 2. 告诉 alias 的原记录，我们是 alias 路由，可以被删除的
+    // 3. 如果有 route.children 需要递归向 child route 更新别名路由
+    if ("children" in mainNormalizedRecord) {
+      /*...*/
+    }
+
+    insertMatcher(matcher);
+  }
+
+  return originalMatcher
+    ? () => {
+        // since other matchers are aliases, they should be removed by the original matcher
+        removeRoute(originalMatcher!);
+      }
+    : noop;
+}
+#+end_src
+** removeRoute(matcherRef)
+
+两个分支处理：
+
+1. 如果 ~matcherRef~ 是路由名称，需要从 ~matcherMap~ 中读取匹配的路由
+2. 否则在 ~matchers~ 路由数组中去找
+3. 执行删除有几个地方需要删除
+
+   - ~matcherMap~ 保存了 ~<name, record>~ 映射关系，要删除
+   - ~matchers~ 数组保存了所有路由记录，需要删除
+   - ~matcher.children~ 需要递归处理子路由，因为子路由路径依赖当前路由(如： ~parent/child~)
+   - ~matcher.alias~ 别名路由需要删除，因为别名会被解构成对应的路由对象添加到原
+     始路由所在的列表中
+
+     如： ~{path: '/user', alias: ['/u', '/U']}~
+
+     那么就会有： ~[{/* user route */}, {/* u route */}, { /* U route */ }]~
+
+     所以需要将这些别名生成的路由删除。
+
+
+源码：
+#+begin_src typescript
+function removeRoute(matcherRef: RouteRecordName | RouteRecordMatcher) {
+    if (isRouteName(matcherRef)) {
+      const matcher = matcherMap.get(matcherRef)
+      if (matcher) {
+        matcherMap.delete(matcherRef)
+        matchers.splice(matchers.indexOf(matcher), 1)
+        matcher.children.forEach(removeRoute)
+        matcher.alias.forEach(removeRoute)
+      }
+    } else {
+      let index = matchers.indexOf(matcherRef)
+      if (index > -1) {
+        matchers.splice(index, 1)
+        if (matcherRef.record.name) matcherMap.delete(matcherRef.record.name)
+        matcherRef.children.forEach(removeRoute)
+        matcherRef.alias.forEach(removeRoute)
+      }
+    }
+  }
+#+end_src
+** getRoutes()
+
+返回所有匹配的路由：
+
+#+begin_src typescript
+ function getRoutes() {
+    return matchers
+  }
+
+#+end_src
+** insertMatcher(matcher)
+
+插入路由：
+
+#+begin_src typescript
+function insertMatcher(matcher: RouteRecordMatcher) {
+  let i = 0;
+  // console.log('i is', { i })
+  while (
+    i < matchers.length &&
+    // 找到合适的路径插入
+    comparePathParserScore(matcher, matchers[i]) >= 0
+  )
+    i++;
+  // console.log('END i is', { i })
+  // while (i < matchers.length && matcher.score <= matchers[i].score) i++
+  matchers.splice(i, 0, matcher);
+  // only add the original record to the name map
+  if (matcher.record.name && !isAliasRecord(matcher))
+    matcherMap.set(matcher.record.name, matcher);
+}
+#+end_src
+** resolve(location, currentLocation)
+
+根据 location 解析路由
+
+
+相关类型定义：
+#+begin_src typescript
+export type MatcherLocationRaw =
+  | LocationAsPath
+  | LocationAsName
+  | LocationAsRelative
+
+export interface LocationAsPath {
+  path: string
+}
+
+export interface LocationAsName {
+  name: RouteRecordName
+  params?: RouteParams
+}
+
+export interface LocationAsRelative {
+  params?: RouteParams
+}
+#+end_src
+
+resolve:
+
+#+begin_src typescript
+function resolve(
+  location: Readonly<MatcherLocationRaw>,
+  currentLocation: Readonly<MatcherLocation>
+): MatcherLocation {
+  let matcher: RouteRecordMatcher | undefined;
+  let params: PathParams = {};
+  let path: MatcherLocation["path"];
+  let name: MatcherLocation["name"];
+
+  if ("name" in location && location.name) {
+    // 有名字就从 matcherMap 中去取
+  } else if ("path" in location) {
+    // 无 name  有 path 去找到与之匹配的 path
+    // ...
+    matcher = matchers.find((m) => m.re.test(path));
+    // ... 相对路径
+  } else {
+    // 既没有 name 也没有 path 用 currentLocation 去匹配
+    // match by name or path of current route
+    matcher = currentLocation.name
+      ? matcherMap.get(currentLocation.name)
+      : matchers.find((m) => m.re.test(currentLocation.path));
+
+    // ...
+  }
+
+  const matched: MatcherLocation["matched"] = [];
+  let parentMatcher: RouteRecordMatcher | undefined = matcher;
+  while (parentMatcher) {
+    // reversed order so parents are at the beginning
+
+    matched.unshift(parentMatcher.record);
+    parentMatcher = parentMatcher.parent;
+  }
+
+  return {
+    name,
+    path,
+    params,
+    matched,
+    meta: mergeMetaFields(matched),
+  };
+}
+#+end_src
 * router.install
 
 #+begin_src js
@@ -134,7 +483,6 @@ function install(app) {
   // TODO ... devtools
 }
 #+end_src
-
 
 router install 的任务：
 
@@ -240,3 +588,408 @@ router install 的任务：
      unmountApp.call(this, arguments);
    };
    #+end_src
+* RouterView 组件
+
+通过 Vue api defineComponent() 声明一个 ~<router-view>~ 组件。
+
+#+begin_src typescript
+export const RouterViewImpl = defineComponent({
+  name: "RouterView",
+  inheritAttrs: false,
+  props: {
+    name: {
+      // 路由名称
+      type: String as PropType<string>,
+      default: "default", // 默认路由
+    },
+    route: Object as PropType<RouteLocationNormalizedLoaded>,
+  },
+
+  setup(props, { attrs, slots }) {
+    // ...
+
+    // 在 router.install 函数中 provide 的对象，指向 currentRoute
+    // 即得到当前的路由
+    const injectedRoute = inject(routerViewLocationKey)!;
+    // 可以通过 route 指定当前匹配的路径需要显示的 组件？
+    const routeToDisplay = computed(() => props.route || injectedRoute.value);
+    const depth = inject(viewDepthKey, 0);
+    const matchedRouteRef = computed<RouteLocationMatched | undefined>(
+      () => routeToDisplay.value.matched[depth]
+    );
+
+    // 路由深度？
+    provide(viewDepthKey, depth + 1);
+    // 匹配到的路由
+    provide(matchedRouteKey, matchedRouteRef);
+    // 修改 currentRoute.value
+    provide(routerViewLocationKey, routeToDisplay);
+
+    const viewRef = ref<ComponentPublicInstance>();
+
+    // 监听下面三个 Ref 值变化
+    // 1. viewRef.value,
+    // 2. matchedRouteRef.value -> routeToDisplay
+    //    -> props.route || injectedRoute，当前路由对象
+    //       router.currentRoute 或 <router-view route="..."> 的
+    //       route 属性
+    // 3. props.name 监听 ~<router-view name="xxx">~ 的 name 属性
+    watch(
+      () => [viewRef.value, matchedRouteRef.value, props.name] as const,
+      ([instance, to, name], [oldInstance, from, oldName]) => {
+        if (to) {
+          // 更新 to.instances 中 name 的实例
+          // 复用？
+          to.instances[name] = instance;
+          // 意思是 <router-view> 是复用组件，应该更新保存在这个
+          // 组件上的 update 或 leave 守卫？
+          if (from && from !== to && instance && instance === oldInstance) {
+            to.leaveGuards = from.leaveGuards;
+            to.updateGuards = from.updateGuards;
+          }
+
+          // 触发 beforeRouterEnter 回调
+          if (
+            instance &&
+            to &&
+            // 没有实例或者 from 和 to是同一个路由，那么有可能是第一次访问
+            (!from || !isSameRouteRecord(to, from) || !oldInstance)
+          ) {
+            (to.enterCallbacks[name] || []).forEach((callback) =>
+              callback(instance)
+            );
+          }
+        }
+      },
+      // https://www.cheng92.com/vue/vue-mind-map-runtime-core/#headline-77
+      { flush: "post" }
+    );
+
+    return () => {
+      // 当前显示的路由
+      const route = routeToDisplay.value;
+      // 匹配的路由
+      const matchedRoute = matchedRouteRef.value;
+      // 当前路由应该显示的组件
+      const ViewComponent = matchedRoute && matchedRoute.components[props.name];
+      // we need the value at the time we render because when we unmount, we
+      // navigated to a different location so the value is different
+      const currentName = props.name;
+
+      // 可能是插槽
+      if (!ViewComponent) {
+        return normalizeSlot(slots.default, {
+          Component: ViewComponent,
+          route,
+        });
+      }
+
+      // props from route configuration
+      const routePropsOption = matchedRoute!.props[props.name];
+      const routeProps = routePropsOption
+        ? routePropsOption === true
+          ? route.params
+          : typeof routePropsOption === "function"
+          ? routePropsOption(route)
+          : routePropsOption
+        : null;
+
+      const onVnodeUnmounted: VNodeProps["onVnodeUnmounted"] = (vnode) => {
+        // remove the instance reference to prevent leak
+        if (vnode.component!.isUnmounted) {
+          matchedRoute!.instances[currentName] = null;
+        }
+      };
+
+      const component = h(
+        ViewComponent,
+        assign({}, routeProps, attrs, {
+          onVnodeUnmounted,
+          ref: viewRef,
+        })
+      );
+
+      return (
+        // pass the vnode to the slot as a prop.
+        // h and <component :is="..."> both accept vnodes
+        normalizeSlot(slots.default, { Component: component, route }) ||
+        component
+      );
+    };
+  },
+});
+#+end_src
+
+RouterView:
+
+#+begin_src typescript
+// export the public type for h/tsx inference
+// also to avoid inline import() in generated d.ts files
+/**
+ * Component to display the current route the user is at.
+ */
+export const RouterView = (RouterViewImpl as any) as {
+  new (): {
+    $props: AllowedComponentProps &
+      ComponentCustomProps &
+      VNodeProps &
+      RouterViewProps;
+  };
+};
+#+end_src
+* RouterLink 组件
+
+#+begin_src typescript
+export const RouterLinkImpl = /*#__PURE__*/ defineComponent({
+  name: 'RouterLink',
+  props: {
+    to: {
+      type: [String, Object] as PropType<RouteLocationRaw>,
+      required: true,
+    },
+    replace: Boolean,
+    activeClass: String,
+    // inactiveClass: String,
+    exactActiveClass: String,
+    custom: Boolean,
+    ariaCurrentValue: {
+      type: String as PropType<RouterLinkProps['ariaCurrentValue']>,
+      default: 'page',
+    },
+  },
+
+  setup(props, { slots, attrs }) {
+    const link = reactive(useLink(props))
+    const { options } = inject(routerKey)!
+
+    const elClass = computed(() => ({
+      [getLinkClass(
+        props.activeClass,
+        options.linkActiveClass,
+        'router-link-active'
+      )]: link.isActive,
+      // [getLinkClass(
+      //   props.inactiveClass,
+      //   options.linkInactiveClass,
+      //   'router-link-inactive'
+      // )]: !link.isExactActive,
+      [getLinkClass(
+        props.exactActiveClass,
+        options.linkExactActiveClass,
+        'router-link-exact-active'
+      )]: link.isExactActive,
+    }))
+
+    return () => {
+      const children = slots.default && slots.default(link)
+      return props.custom
+        ? children
+        : h(
+            'a',
+            assign(
+              {
+                'aria-current': link.isExactActive
+                  ? props.ariaCurrentValue
+                  : null,
+                onClick: link.navigate,
+                href: link.href,
+              },
+              attrs,
+              {
+                class: elClass.value,
+              }
+            ),
+            children
+          )
+    }
+  },
+})
+#+end_src
+
+RouterLink:
+
+#+begin_src typescript
+// export the public type for h/tsx inference
+// also to avoid inline import() in generated d.ts files
+/**
+ * Component to render a link that triggers a navigation on click.
+ */
+export const RouterLink = (RouterLinkImpl as any) as {
+  new (): {
+    $props: AllowedComponentProps &
+      ComponentCustomProps &
+      VNodeProps &
+      RouterLinkProps
+  }
+}
+#+end_src
+
+路由按键事件处理：
+
+1. 屏蔽控制键(Alt/Ctrol/Shift/Meta)
+2. 调用了 preventDefault ，如 Vue 的 ~prevent~ 修饰符
+3. 屏蔽鼠标右键
+4. 屏蔽 ~target="_blank"~ 的 link
+#+begin_src typescript
+function guardEvent(e: MouseEvent) {
+  // don't redirect with control keys
+  if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
+  // don't redirect when preventDefault called
+  if (e.defaultPrevented) return;
+  // don't redirect on right click
+  if (e.button !== undefined && e.button !== 0) return;
+  // don't redirect if `target="_blank"`
+  // @ts-ignore getAttribute does exist
+  if (e.currentTarget && e.currentTarget.getAttribute) {
+    // @ts-ignore getAttribute exists
+    const target = e.currentTarget.getAttribute("target");
+    if (/\b_blank\b/i.test(target)) return;
+  }
+  // this may be a Weex event which doesn't have this method
+  if (e.preventDefault) e.preventDefault();
+
+  return true;
+}
+#+end_src
+
+RouterLink 组件上应用的样式(优先级： prop > global > default)：
+#+begin_src typescript
+/**
+ * Utility class to get the active class based on defaults.
+ * @param propClass
+ * @param globalClass
+ * @param defaultClass
+ */
+const getLinkClass = (
+  propClass: string | undefined,
+  globalClass: string | undefined,
+  defaultClass: string
+): string =>
+  propClass != null
+    ? propClass
+    : globalClass != null
+    ? globalClass
+    : defaultClass
+#+end_src
+
+~useLink(props)~:
+#+begin_src typescript
+export function useLink(props: UseLinkOptions) {
+  const router = inject(routerKey)!
+  const currentRoute = inject(routeLocationKey)!
+
+  const route = computed(() => router.resolve(unref(props.to)))
+
+  const activeRecordIndex = computed<number>(() => {
+    let { matched } = route.value
+    let { length } = matched
+    const routeMatched: RouteRecord | undefined = matched[length - 1]
+    let currentMatched = currentRoute.matched
+    if (!routeMatched || !currentMatched.length) return -1
+    let index = currentMatched.findIndex(
+      isSameRouteRecord.bind(null, routeMatched)
+    )
+    if (index > -1) return index
+    // possible parent record
+    let parentRecordPath = getOriginalPath(
+      matched[length - 2] as RouteRecord | undefined
+    )
+    return (
+      // we are dealing with nested routes
+      length > 1 &&
+        // if the parent and matched route have the same path, this link is
+        // referring to the empty child. Or we currently are on a different
+        // child of the same parent
+        getOriginalPath(routeMatched) === parentRecordPath &&
+        // avoid comparing the child with its parent
+        currentMatched[currentMatched.length - 1].path !== parentRecordPath
+        ? currentMatched.findIndex(
+            isSameRouteRecord.bind(null, matched[length - 2])
+          )
+        : index
+    )
+  })
+
+  const isActive = computed<boolean>(
+    () =>
+      activeRecordIndex.value > -1 &&
+      includesParams(currentRoute.params, route.value.params)
+  )
+  const isExactActive = computed<boolean>(
+    () =>
+      activeRecordIndex.value > -1 &&
+      activeRecordIndex.value === currentRoute.matched.length - 1 &&
+      isSameRouteLocationParams(currentRoute.params, route.value.params)
+  )
+
+  function navigate(
+    e: MouseEvent = {} as MouseEvent
+  ): Promise<void | NavigationFailure> {
+    if (guardEvent(e))
+      return router[unref(props.replace) ? 'replace' : 'push'](unref(props.to))
+    return Promise.resolve()
+  }
+
+  return {
+    route,
+    href: computed(() => route.value.href),
+    isActive,
+    isExactActive,
+    navigate,
+  }
+}
+#+end_src
+暴露出的属性：
+
+1. ~route~ 依赖 props.to 的路由对象
+
+   ~const route = computed(() => router.resolve(unref(props.to)))~
+
+2. ~href~ 当前路由的 url
+
+3. ~isActive~ 检测当前路由路径上是否出现过
+
+4. ~isExactActive~ 精准激活的？其实就是当前路由路径中最末尾的那个
+
+   如： ~/user/name/get~
+
+   那么该 url 可能有三个路径：
+
+   路由一： ~/user~
+
+   路由二： ~/user/name~
+
+   路由三： ~/user/name/get~
+
+   那么这里 extract active 就是路由三。
+
+5. ~navigate(e: MouseEvent)~ 执行路由跳转
+* addRoute()
+
+向一个已经存在的路由中添加路由，如果已经存在了会先将原来的删除：
+
+#+begin_src typescript
+function addRoute(
+    parentOrRoute: RouteRecordName | RouteRecordRaw,
+    route?: RouteRecordRaw
+  ) {
+    let parent: Parameters<typeof matcher['addRoute']>[1] | undefined
+    let record: RouteRecordRaw
+    if (isRouteName(parentOrRoute)) {
+      parent = matcher.getRecordMatcher(parentOrRoute)
+      record = route!
+    } else {
+      record = parentOrRoute
+    }
+
+
+
+    return matcher.addRoute(record, parent)
+  }
+
+
+export function isRouteName(name: any): name is RouteRecordName {
+  return typeof name === 'string' || typeof name === 'symbol'
+}
+
+#+end_src
