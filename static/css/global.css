@@ -33,3 +33,8 @@
 .post .src.src-dot {
   display: none;
 }
+
+iframe.vue-test {
+  width: 100%;
+  height: 300px;
+}

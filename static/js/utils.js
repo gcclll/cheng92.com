@@ -128,7 +128,27 @@ function insertFrame(pageName, js, path = "") {
     }
   };
 
-  ifr.src = path + pageName;
+  ifr.src = path + (pageName || "");
 }
 
 function noop() {}
+
+function runAsync(fn, timeout) {
+  setTimeout(fn, timeout || 2000);
+}
+
+function g_append(el, content) {
+  if (typeof el === "string") {
+    el =
+      el[0] === "." ? document.querySelector(el) : document.getElementById(el);
+  }
+
+  if (content === true) {
+    el.innerHTML = "";
+  } else {
+    content = typeof content === "object" ? JSON.stringify(content) : content;
+    el.innerHTML = el.innerHTML + "<p>" + content + "</p>";
+  }
+}
+
+var g_log = g_append;

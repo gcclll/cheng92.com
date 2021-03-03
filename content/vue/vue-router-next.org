@@ -20,7 +20,9 @@
 #+begin_quote
 本文会基于 vue3 + vue-router + element-plus 完成测试。
 
-测试：使用内嵌 frame 来完成测试。
+使用内嵌 frame 来完成测试代码。
+
+本文不基本不具备任何参考价值，都是学习过程中的一些代码拷贝记录，阅读前请慎重。
 #+end_quote
 
 [[/img/vue3/vue-router/vue-router-next.svg]]

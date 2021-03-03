@@ -1,0 +1,320 @@
+#+TITLE: Vue3 Router 是如何使用 history 的？
+#+DATE: <2021-03-03 16:14:46>
+#+TAGS[]: vue3, vue-router-next
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+vue-router-next 的 history 相关实现
+
+1. ~createWebHistory~
+2. ~createWebHashHistory~
+3. ~createMemoryHistory~
+#+end_quote
+
+* HTML5 history api
+
+| api                               | 描述                                                                                                                                                   |
+|-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~pushState(state, title, url)~    | 向历史记录中增加一条记录                                                                                                                               |
+| ~replaceState(state, title, url)~ | 替换当前记录，不新增记录                                                                                                                               |
+| ~back()~                          | 返回上一条记录，等价于 ~go(-1)~                                                                                                                        |
+| ~go(n)~                           | 跳转到第 n 条记录                                                                                                                                      |
+| ~forward()~                       | 等价于 ~go(1)~                                                                                                                                         |
+| ~onpopstate~                      | 事件，当且执行 ~history.back()~ 的时候触发                                                                                                             |
+| ~state~                           | 记录当前页面的状态信息，在执行 pushState 或 replaceState 之前为 null ，之后为第一个传入的参数，可以在 ~onpopstate~ 回调中通过 ~event.state~ 取到该信息 |
+
+#+begin_export html
+<h1> changeLocation() 测试。。。，</h1>
+<b>点击下面的按钮，注意观察 location 变化和 history.length 长度变化！</b>
+<div class="c9OCH7YQX9g">
+<button class="pushq">push ?q=1</button>
+<button class="pushp">push ?p=2</button>
+<button class="replace">replace ?r=3</button>
+<button class="clear">clear</button>
+<button class="forward">forward</button>
+<button class="go">随机跳转</button>
+<button class="back">back</button>
+<div class="debug"></div>
+</div>
+<script src="/js/vue/router/c9OCH7YQX9g.js"></script>
+#+end_export
+
+-----
+#+begin_quote
+针对 ~onpopstate~ 只有在执行实际跳转动作的时候才会触发，什么是实际跳转动作？
+
+比如：浏览器的后台前进按钮，或者直接手动调用 ~history.back()~, ~history.go(n)~,
+~history.forward()~ 方法触发。
+#+end_quote
+
+
+* createWebHistory
+
+H5 的 history api 封装。
+
+#+begin_src typescript
+export function createWebHistory(base?: string): RouterHistory {
+  base = normalizeBase(base)
+
+  const historyNavigation = useHistoryStateNavigation(base)
+  const historyListeners = useHistoryListeners(
+    base,
+    historyNavigation.state,
+    historyNavigation.location,
+    historyNavigation.replace
+  )
+  function go(delta: number, triggerListeners = true) {
+    if (!triggerListeners) historyListeners.pauseListeners()
+    history.go(delta)
+  }
+
+  const routerHistory: RouterHistory = assign(
+    {
+      // it's overridden right after
+      location: '',
+      base,
+      go,
+      createHref: createHref.bind(null, base),
+    },
+
+    historyNavigation,
+    historyListeners
+  )
+
+  Object.defineProperty(routerHistory, 'location', {
+    get: () => historyNavigation.location.value,
+  })
+
+  Object.defineProperty(routerHistory, 'state', {
+    get: () => historyNavigation.state.value,
+  })
+
+  return routerHistory
+}
+#+end_src
+
+1. ~base = normalizeBase(base)~
+
+   解析网站基路径
+
+   ~!base~
+
+   ? 无自定义地址首先取 ~<base href="http://ip:port/path/to" />~ 的 href，
+   取出 ~/path/to~ 部分作为 base
+
+   \: 有自定义的时候，加上开头 ~/~ 和去掉尾部 ~/~ ，如： ~path/to~ 变成
+   ~/path/to~ , 或 ~/path/to/~ 变成 ~/path/to~
+
+2. ~const historyNavigation = useHistoryStateNavigation(base)~
+
+   将 ~window.location~ 和 ~window.history~ 进行封装，返回
+
+   ~{location, state, push, replace}~ 对象，所以这里重点就是这个函数。
+
+3. ~const historyListeners = useHistoryListeners(...)~
+
+   history 变更监听器。
+
+4. ~go(delta, triggerListeners)~ 函数
+
+   在调用 ~history.go(delta)~ 之前检测是否暂停 history listeners
+
+5. 组装 ~routerHistory~
+
+   合并 ~{ location: '', base, go, createHref }~ 和 historyNavigation, historyListeners
+
+6. 在 routerHistory 上定义两个 getter 属性 ~location~ & ~state~
+
+7. 返回 routerHistory 这个将来会被 ~createRouter({ history })~ 用到
+
+
+
+#+begin_export html
+<script>
+insertFrame('', '2.js', '/js/vue/router/')
+</script>
+#+end_export
+
+** useHistoryStateNavigation(base: string)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: use-h5-history
+:END:
+
+解构 window.history, window.location 组装 ~{location, state, push, replace}~ 结
+构返回。
+
+#+begin_src typescript
+function useHistoryStateNavigation(base: string) {
+  const { history, location } = window;
+
+  // private variables
+  let currentLocation: ValueContainer<HistoryLocation> = {
+    value: createCurrentLocation(base, location),
+  };
+  let historyState: ValueContainer<StateEntry> = { value: history.state };
+  // build current history entry as this is a fresh navigation
+  if (!historyState.value) {
+    changeLocation(
+      currentLocation.value,
+      {
+        back: null,
+        current: currentLocation.value,
+        forward: null,
+        // the length is off by one, we need to decrease it
+        position: history.length - 1,
+        replaced: true,
+        // don't add a scroll as the user may have an anchor and we want
+        // scrollBehavior to be triggered without a saved position
+        scroll: null,
+      },
+      true
+    );
+  }
+
+  function changeLocation(
+    to: HistoryLocation,
+    state: StateEntry,
+    replace: boolean
+  ): void {
+    // ...
+  }
+
+  function replace(to: HistoryLocation, data?: HistoryState) {
+    // ...
+  }
+
+  function push(to: HistoryLocation, data?: HistoryState) {
+    //...
+  }
+
+  return {
+    location: currentLocation,
+    state: historyState,
+
+    push,
+    replace,
+  };
+}
+#+end_src
+
+1. 解析 location { pathname, search, hash } 返回不带域名的的 path
+
+   如：
+
+   ~http://ip:port/ui/#/a/b/?limit=10&page=1~ -> base: ~/ui/#~ -> ~/a/b~
+
+   ~http://ip:port/ui/a/b/?limit=10&page=1~ -> base: ~/ui~ -> ~/a/b~
+
+   ~http://ip:port/a/ui/b/?limit=10&page=1~ -> base: ~/ui~ -> ~/a/ui/b~
+
+   结构： ~{value: url}~
+
+2. ~historyState = { value: history.state }~
+
+   如果 ~historyState.value~ 为空，需要进行初始化 -> ~changeLocation()~
+
+3. ~changeLocation(to, state, replace)~ 函数
+
+4. ~replace(to, data?)~ 函数
+
+5. ~push(to, data?)~ 函数
+
+6. 最后返回结构 ~{location: currentLocation, state: historyState, push, replace}~
+
+*** createCurrentLocation(base: string,location: Location)
+
+对 ~location { pathname, search, hash }~ 加工返回新的 url
+
+#+begin_src typescript
+function createCurrentLocation(
+  base: string,
+  location: Location
+): HistoryLocation {
+  const { pathname, search, hash } = location
+  // allows hash based url
+  const hashPos = base.indexOf('#')
+  if (hashPos > -1) {
+    // prepend the starting slash to hash so the url starts with /#
+    let pathFromHash = hash.slice(1)
+    if (pathFromHash[0] !== '/') pathFromHash = '/' + pathFromHash
+    return stripBase(pathFromHash, '')
+  }
+  const path = stripBase(pathname, base)
+  return path + search + hash
+}
+#+end_src
+
+函数作用： base 中含有 ~#~ 时，直接从 location.hash 中解析出 path。
+
+比如：
+
+~base=/ui/#/~
+
+~url=https://ip:port/ui/#/base/industry/grouping?limit=10&page=1&tradeId=19&times=1614652347338~
+
+最后解析出来的
+
+~path=/base/industry/grouping?limit=10&page=1&tradeId=19&times=1614652347338~
+
+如果 base 不含 ~#~ 直接取出 path 中去掉 base 部分的 url，如：
+
+~base=/ui/~ -> ~url=http://ip:port/ui/path/to...~ 得到 ~/path/to~
+
+如果 base 在 url pathname 的中间，直接返回 pathname 因为这种情况非 base 情况
+~http://ip:port/path/ui/to~ 直接返回 ~/path/ui/to~
+*** changeLocation(to,state,replace)
+
+#+begin_src typescript
+function changeLocation(
+  to: HistoryLocation,
+  state: StateEntry,
+  replace: boolean
+): void {
+  //
+  const hashIndex = base.indexOf("#");
+  // to:list -> /base/#/ui/ -> /ui/list
+  const url =
+    hashIndex > -1
+      ? (location.host && document.querySelector("base")
+          ? base
+          : base.slice(hashIndex)) + to
+  // http://ip:port + base + to
+      : createBaseLocation() + base + to;
+  try {
+    // BROWSER QUIRK
+    // NOTE: Safari throws a SecurityError when calling this function 100 times in 30 seconds
+    history[replace ? "replaceState" : "pushState"](state, "", url);
+    historyState.value = state;
+  } catch (err) {
+    if (__DEV__) {
+      warn("Error with push/replace State", err);
+    } else {
+      console.error(err);
+    }
+    // Force the navigation, this also resets the call count
+    location[replace ? "replace" : "assign"](url);
+  }
+}
+#+end_src
+
+去掉 base hash 部分将 ~to~ 路由组合成 url 调用 ~history.replace|pushState(state,
+title, url)~ 改变
+url，同时修改 historyState.value 值。
+
+* createWebHashHistory
+* createMemoryHistory
