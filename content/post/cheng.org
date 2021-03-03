@@ -1,5 +1,5 @@
 #+TITLE: 我的私人空间
-#+DATE: <2020-08-28 17:39:28>
+#+DATE: <2021-03-03 19:52:03>
 #+TAGS[]: soft, macos, window
 #+CATEGORIES[]: tools
 #+LANGUAGE: zh-cn
@@ -9,6 +9,9 @@
 杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，:smile::smile:。
 #+end_quote
 
+* 优质博文
+1. [[https://imququ.com/post/series.html][Jerry Qu, HTTP/HTTP2相关内容丰富的博客]]
+2. [[https://segmentfault.com/a/1190000037435824][浏览器是如何工作的：Chrome V8让你更懂JavaScript - SegmentFault 思否]]
 * 数学
 
 ** 数学符号大全
@@ -54,8 +57,6 @@
 - GeeksforGeeks，全英文不止有算法
 
   [[http://qiniu.ii6g.com/img/20200925182624.png]]
-** 优质博客
-1. [[https://imququ.com/post/series.html][Jerry Qu, HTTP/HTTP2相关内容丰富的博客]]
 * 前端开发
 不错的前端学习路线网站：https://objtube.github.io/front-end-roadmap/#/ 脑图方式
 展示。
