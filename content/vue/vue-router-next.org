@@ -1,6 +1,6 @@
-#+TITLE: Vue3 Router 源码分析
-#+DATE: <2021-02-26 14:44:45>
-#+TAGS[]: vue3, vue-router-next
+#+TITLE: Vue Router Next 源码分析(附.脑图)
+#+DATE: <2021-03-05 19:01:36>
+#+TAGS[]: vue, vue3, vue-router-next
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
@@ -18,980 +18,835 @@
 [[/img/bdx/yiyeshu-001.jpg]]
 
 #+begin_quote
-本文会基于 vue3 + vue-router + element-plus 完成测试。
+*慎入😢*
 
-使用内嵌 frame 来完成测试代码。
-
-本文不基本不具备任何参考价值，都是学习过程中的一些代码拷贝记录，阅读前请慎重。
+vue-router-next 源码分析流程图，此文重点在图，附带一些总结性的文字分
+析内容(图一般比较大，只保证自己能看懂系列~~~~)，学习过程中一些零碎的笔记。
 #+end_quote
+
+* vue-router-next
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vue-router
+:END:
+
+脑图：
+[[/img/vue3/vue-router/vue-router-next-start.svg]]
+
+简要分析：
+
+vue-router 实现从使用上来说有三个部分：
+
+1. 路由注册初始化，以 ~VueRouter.createRoute({history, routes})~ 为执行入口
+
+   - 创建匹配器 matcher 路由的一些匹配、添加、查找啊什么的操作都是有这个 matcher 来实现的
+
+      #+begin_src typescript
+      export interface RouterMatcher {
+        addRoute: (record: RouteRecordRaw, parent?: RouteRecordMatcher) => () => void;
+        removeRoute: {
+          (matcher: RouteRecordMatcher): void;
+          (name: RouteRecordName): void;
+        };
+        getRoutes: () => RouteRecordMatcher[];
+        getRecordMatcher: (name: RouteRecordName) => RouteRecordMatcher | undefined;
+
+        resolve;
+      }
+      #+end_src
+
+      而上面的接口操作的无非就是两个路由仓库：
+
+      #+begin_src typescript
+      // 这个无论有没有名字的路由记录都会被存储到这个数组中
+      const matchers: RouteRecordMatcher[] = [];
+      // 这个存储的是带 name 字段的路由 <name, record> 结构
+      // 方便直接可以通过 map.get(name) 就可以去到路由记录，减少数组查找消耗
+      const matcherMap = new Map<RouteRecordName, RouteRecordMatcher>();
+      #+end_src
+
+   - 初始化路由守卫存储器，其实就是个包含 ~{list,add,result}~ 的一个对象
+
+      #+begin_src typescript
+       // 进入之前的的回调列表
+       const beforeGuards = useCallbacks<NavigationGuardWithThis<undefined>>();
+       // 解析路由之前的回调列表
+       const beforeResolveGuards = useCallbacks<NavigationGuardWithThis<undefined>>();
+       // 进入之后的回调列表
+       const afterGuards = useCallbacks<NavigationHookAfter>();
+
+       export function useCallbacks<T>() {
+         let handlers: T[] = [];
+         function add(handler: T): () => void {}
+         function reset() {
+           handlers = [];
+         }
+         return {
+           add,
+           list: () => handlers,
+           reset,
+         };
+       }
+      #+end_src
+
+   - *currentRoute* 重要变量，是个 shallow ref 响应式类型的值，与
+      ~<router-view/>~ 当前显示的路由息息相关，或者说就是它，因为 ~RouterView~
+      组件中有间接的监听这个值。
+
+      #+begin_src typescript
+       // RouterView.ts
+       // 就是这里的 matchedRouteRef
+       watch(
+         () => [viewRef.value, matchedRouteRef.value, props.name] as const,
+         ([instance, to, name], [oldInstance, from, oldName]) => {
+           // ...
+         }
+       );
+
+       // RouterView.ts > 为什么说是间接呢？看下面  matchedRouteRef 的由来
+       const injectedRoute = inject(routerViewLocationKey)!;
+       const routeToDisplay = computed(() => props.route || injectedRoute.value);
+       const depth = inject(viewDepthKey, 0);
+       const matchedRouteRef = computed<RouteLocationMatched | undefined>(
+         () => routeToDisplay.value.matched[depth]
+       );
+
+       // router.ts > routerViewLocationKey ???  不记得了吗? router.install... 啊
+       app.provide(routerKey, router);
+       app.provide(routeLocationKey, reactive(reactiveRoute));
+       app.provide(routerViewLocationKey, currentRoute);
+
+       // 看到没，关联上了吧!!!
+       // app.provide -> currentRoute ->
+       // injectedRoute -> routeToDisplay ->
+       // routeToDisplay.value.matched[depth]
+
+       /*
+        并且注意看 ~RouterView~ 组件中 setup最后返回的值是个函数，这个函数中有对
+        routeToDisplay, matchedRouteRef进行引用也就是在执行的时候会触发 track 操
+        作将它收集到这写值的依赖列表中，只要这些值发生变更就会 trigger这个 setup
+        执行，来更新 ~<router-view/>~
+       ,*/
+      #+end_src
+
+   - 初始化 router 实例
+
+      包含一些 api :
+
+      路由的增删改查主要来源 matcher： ~{addRoute, currentRoute, removeRoute, hasRoute, getRoutes, resolv}~
+
+      路由的跳转行为： ~{push, replace, go, back: () => go(-1), forward: () =>
+      go(1)}~, 这里的 push, replace 函数最终调用的都是 ~finalizeNavigation()~ 而
+      这里面主要有两个关键地方，一是 ~routerHistory.push/replace~, 二是更新了
+      ~currentRoute.value~ 而正是这个更新会触发 ~<router-view/>~ 组件的更新。go 是直接使用了 ~routerHistory.go(delta)~ 接口
+
+      #+begin_quote
+      可以看到，不管是 push/replace 还是 go 最后都是使用了 history 的 api 。
+      #+end_quote
+
+      路由插件的安装函数 ~install(app/* vue app */)~, 这里需要注意它做了几件事情：
+
+      | 注册 ~RouterLink~, ~RouterView~ 两个 vue 组件                                        |
+      | 定义了全局属性 ~$route~ 指向 ~currentRoute~                                          |
+      | provide routerKey -> router 当前 router 实例                                         |
+      | provide routeLocationKey -> reactiveRoute location 相关信息                          |
+      | provide routerViewLocationKey -> currentRoute 当前路由记录                           |
+      | 重写 vue 组件的 unmount 函数，执行路由的清理工作，比如：移除事件监听，重置路由属性等 |
+
+2. ~<router-view/>~ 组件的实现原理，通过 ~<router-link to/>~ 或
+   ~router.push/replace/go~ api 触发路由跳转动作实现
+3. history 的实现原理(结合 Ref + history hash/H5api)，这个对用户是不可见的
+
+
+vue-router 简要图：
 
 [[/img/vue3/vue-router/vue-router-next.svg]]
 
-* createRouter(options)
+* 守卫函数完整执行流程
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flow
+:END:
 
-#+begin_src js
-function createRouter(options) {
-  const router = {
-    // currentRoute
-    //
-    // addRoute
-    // removeRoute
-    // hasRoute
-    // getRoutes
-    // resolve
-    // options
-    //
-    // push
-    // replace
-    // go
-    // back
-    // forward
-    //
-    // beforeEach
-    // beforeResolve
-    // afterEach
-    //
-    // onError
-    // isReady
-    //
-    // install
-  };
-  return router;
+[[/img/vue3/vue-router/vue-router-next-parse-flow.svg]]
+
+* HTML5 history api
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: h5-history
+:END:
+
+| api                               | 描述                                                                                                                                                   |
+|-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~pushState(state, title, url)~    | 向历史记录中增加一条记录                                                                                                                               |
+| ~replaceState(state, title, url)~ | 替换当前记录，不新增记录                                                                                                                               |
+| ~back()~                          | 返回上一条记录，等价于 ~go(-1)~                                                                                                                        |
+| ~go(n)~                           | 跳转到第 n 条记录                                                                                                                                      |
+| ~forward()~                       | 等价于 ~go(1)~                                                                                                                                         |
+| ~onpopstate~                      | 事件，当且执行 ~history.back()~ 或 ~history.forward()~ 或 ~history.go(n)~ 的时候触发                                                                   |
+| ~state~                           | 记录当前页面的状态信息，在执行 pushState 或 replaceState 之前为 null ，之后为第一个传入的参数，可以在 ~onpopstate~ 回调中通过 ~event.state~ 取到该信息 |
+
+#+begin_export html
+<h1> changeLocation() 测试。。。，</h1>
+<b>点击下面的按钮，注意观察 location 变化和 history.length 长度变化！</b>
+<div class="c9OCH7YQX9g">
+<button class="pushq">push ?q=1</button>
+<button class="pushp">push ?p=2</button>
+<button class="replace">replace ?r=3</button>
+<button class="clear">clear</button>
+<button class="forward">forward</button>
+<button class="go">随机跳转</button>
+<button class="back">back</button>
+<div class="debug"></div>
+</div>
+<script src="/js/vue/router/c9OCH7YQX9g.js"></script>
+#+end_export
+
+-----
+#+begin_quote
+针对 ~onpopstate~ 只有在执行实际跳转动作的时候才会触发，什么是实际跳转动作？
+
+比如：浏览器的后台前进按钮，或者直接手动调用 ~history.back()~, ~history.go(n)~,
+~history.forward()~ 方法触发。
+#+end_quote
+
+_然后 vue-router 中是如何使用 history 实现路由功能的？_
+* createWebHistory
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: web-history
+:END:
+
+H5 的 history api 封装，返回的结构： ~RouterHistory~ 包含以下成员
+
+| 成员名                         | 描述                            | -                                                               |
+|--------------------------------+---------------------------------+-----------------------------------------------------------------|
+| ~base~                         | 站基地址，会添加到每个 url 前面 | 如： a.com/sub 那么 base 是 /sub                                |
+| ~loation~                      | 当前 history location           | 非原生的 location, 封装之后的： ~{value: location}~             |
+| ~state~                        | 当前的 history state            | 非原生 history state ，初始值是这个，但后续的值需要函数手动管理 |
+| ~push(to,data?)~               | 对应 pushState 操作             | 不会触发 popstate                                               |
+| ~replace(to,data?)~            | 对应 replaceState 操作          | 不会触发 popstate                                               |
+| ~go(delta, triggerListeners?)~ | 调用 ~history.go(delta)~        | 会触发 popstate 事件                                            |
+| ~listen(callback)~             | 用户调用添加的监听函数          | popstate 触发期间执行                                           |
+| ~createHref(location)~         | 构建 href 地址                  | -                                                               |
+| ~destory()~                    | 注销 listen() 注册的事件        | -                                                               |
+
+
+#+begin_quote
+Router 中的 ~back()~ 和 ~forward()~ 分别是调用这里的 ~go(-1)~ 和 ~go(1)~ 实现。
+#+end_quote
+
+#+begin_src typescript
+export function createWebHistory(base?: string): RouterHistory {
+  base = normalizeBase(base)
+
+  const historyNavigation = useHistoryStateNavigation(base)
+  const historyListeners = useHistoryListeners(
+    base,
+    historyNavigation.state,
+    historyNavigation.location,
+    historyNavigation.replace
+  )
+  function go(delta: number, triggerListeners = true) {
+    if (!triggerListeners) historyListeners.pauseListeners()
+    history.go(delta)
+  }
+
+  const routerHistory: RouterHistory = assign(
+    {
+      // it's overridden right after
+      location: '',
+      base,
+      go,
+      createHref: createHref.bind(null, base),
+    },
+
+    historyNavigation,
+    historyListeners
+  )
+
+  Object.defineProperty(routerHistory, 'location', {
+    get: () => historyNavigation.location.value,
+  })
+
+  Object.defineProperty(routerHistory, 'state', {
+    get: () => historyNavigation.state.value,
+  })
+
+  return routerHistory
 }
 #+end_src
 
-这就是 router。
+1. ~base = normalizeBase(base)~
 
-api 分为几类:
+   解析网站基路径
 
-1. 数据 ~currentRoute~ 当前路由对象
-2. 路由操作 ~addRoute/removeRoute/hasRoute/getRoutes/resolve/options~
-3. 路由跳转 ~push/replace/go/back/forward~
-4. 路由钩子 ~beforeEach/beforeResolve/aferEach~
-5. 异常监听 ~onError/isReady~
-6. vue 安装函数 ~install~
+   ~!base~
+
+   ? 无自定义地址首先取 ~<base href="http://ip:port/path/to" />~ 的 href，
+   取出 ~/path/to~ 部分作为 base
+
+   \: 有自定义的时候，加上开头 ~/~ 和去掉尾部 ~/~ ，如： ~path/to~ 变成
+   ~/path/to~ , 或 ~/path/to/~ 变成 ~/path/to~
+
+2. ~const historyNavigation = useHistoryStateNavigation(base)~
+
+   将 ~window.location~ 和 ~window.history~ 进行封装，返回
+
+   ~{location, state, push, replace}~ 对象，所以这里重点就是这个函数。
+
+3. ~const historyListeners = useHistoryListeners(...)~
+
+   history 变更监听器。
+
+4. ~go(delta, triggerListeners)~ 函数
+
+   在调用 ~history.go(delta)~ 之前检测是否暂停 history listeners
+
+5. 组装 ~routerHistory~
+
+   合并 ~{ location: '', base, go, createHref }~ 和 historyNavigation, historyListeners
+
+6. 在 routerHistory 上定义两个 getter 属性 ~location~ & ~state~
+
+7. 返回 routerHistory 这个将来会被 ~createRouter({ history })~ 用到
 
 
-两个 vue 组件:
 
-1. ~RouterLink~
-2. ~RouterView~
-   
-
-测试：
 #+begin_export html
 <script>
-insertFrame('', '1.js', '/js/vue/router/')
+insertFrame('', '2.js', '/js/vue/router/')
 </script>
 #+end_export
 
-测试代码：
-#+begin_src js
-var app = Vue.createApp({
-  template: `
-<el-button :type="focus === 0 ? 'primary' : undefined" @click="test1">测试一</el-button>
-<el-button :type="focus === 1 ? 'primary' : undefined" @click="test2">测试二</el-button>
-<br>
-<router-view></router-view>
-`,
-  data() {
-    return {
-      focus: 0,
-    };
-  },
-  methods: {
-    test1() {
-      this.focus = 0;
-      this.$router.push({ name: "a" });
-    },
-    test2() {
-      this.focus = 1;
-      this.$router.push({ name: "b" });
-    },
-  },
-});
-app.component("comp-a", {
-  template: "compnent a",
-});
-app.component("comp-b", {
-  template: "component b",
-});
+** useHistoryStateNavigation(base: string)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: use-h5-history
+:END:
 
-var router = VueRouter.createRouter({
-  history: VueRouter.createWebHashHistory(),
-  routes: [
-    {
-      path: "/",
-      redirect: "/a",
-    },
-    {
-      path: "/a",
-      name: "a",
-      component: app.component("comp-a"),
-    },
-    {
-      path: "/b",
-      name: "b",
-      component: app.component("comp-b"),
-    },
-  ],
-});
-
-app.use(ElementPlus).use(router).mount("#app");
-#+end_src
-
-这里用到的知识点：
-
-1. ~app.component~ 注册全局组件
-
-   它会在 ~context.components[]~ 中注入新的组件，同时如果不全第二个参数则会返回
-   对应名称的组件(如： ~app.component('comp-a')~返回组件 ~comp-a~)
-2. VueRouter.createRouter(options)
-
-   即这一节的创建路由实例函数。
-
-   - addRoute(parentOrRoute, route?), 添加路由
-   - removeRoute(name) 删除路由
-   - getRoutes() 获取所有路由
-   - hasRoute(name) 检测路由是否存在
-   - resolve(rawLocation, currentLocation?)，解析当前 url 路由信息
-   - locationAsObject(to)，将 to 解析成对象，它有可能是个 url string
-   - checkCanceledNavigation(to, from), ???
-   - push(to), 路由入栈操作, -> pushWithRedirect(to)
-   - replace(to), 路由替换操作，类似 location.replace
-   - handleRecirectRecord(to) 重定向操作
-   - pushWithRedirect(to, redirectedFrom?), ???
-   - checkCanceledNavigationAndReject(to, from)，拒绝或忽略所有路由守卫
-   - navigate(to,from), 路由守卫处理
-   - finalizeNavigation(toLocation, from, isPush, replace?, data?)，清理工作
-   - setupListeners(), ???
-   - readyHandlers & errorHandlers
-   - triggerError(error: any)
-   - isReady()
-   - markAsReady(err?: any)
-   - handleScroll(to, from, isPUsh, isFirstNavigation)
-   - go(delta)
-   - installedApps
-   - started: boolean
-   - router: Route
-
-3. VueRouter.createWebHashHistory() 使用 url hash 实现路由功能
-   - options.routes 注册的路由列表
-
-
-上面的 api 后续会慢慢去讲解。
-* createRouterMathcer(routes, globalOptions)
-
-路由实例匹配器？
-
-~routes~: 来自 ~createRouter(options)~ 的 ~options.routes~
-
-~globalOptions~: 即 ~createRouter(options) 的 options~
-
-返回对象：
-
-~{ addRoute, resolve, removeRoute, getRoutes, getRecordMatcher }~
-
-源码：
+解构 window.history, window.location 组装 ~{location, state, push, replace}~ 结
+构返回。
 
 #+begin_src typescript
-export function createRouterMathcer(
-  routes: RouteRecordRaw[],
-  globalOptions: PathParserOptions
-): RouterMatcher {
-  // 1. normalized 有序数组
-  const matchers: RouteRecordMatcher[] = [];
-  const matcherMap = new Map<RouteRecordName, RouteRecordMatcher>();
-  // 合并选项
-  globalOptions = mergeOptions(
-    { strict: false, end: true, sensitive: false } as PathParserOptions,
-    globalOptions
+function useHistoryStateNavigation(base: string) {
+  const { history, location } = window;
+
+  // private variables
+  let currentLocation: ValueContainer<HistoryLocation> = {
+    value: createCurrentLocation(base, location),
+  };
+  let historyState: ValueContainer<StateEntry> = { value: history.state };
+  // build current history entry as this is a fresh navigation
+  if (!historyState.value) {
+    changeLocation(
+      currentLocation.value,
+      {
+        back: null,
+        current: currentLocation.value,
+        forward: null,
+        // the length is off by one, we need to decrease it
+        position: history.length - 1,
+        replaced: true,
+        // don't add a scroll as the user may have an anchor and we want
+        // scrollBehavior to be triggered without a saved position
+        scroll: null,
+      },
+      true
+    );
+  }
+
+  function changeLocation(
+    to: HistoryLocation,
+    state: StateEntry,
+    replace: boolean
+  ): void {
+    // ...
+  }
+
+  function replace(to: HistoryLocation, data?: HistoryState) {
+    // ...
+  }
+
+  function push(to: HistoryLocation, data?: HistoryState) {
+    //...
+  }
+
+  return {
+    location: currentLocation,
+    state: historyState,
+
+    push,
+    replace,
+  };
+}
+#+end_src
+
+1. 解析 location { pathname, search, hash } 返回不带域名的的 path
+
+   如：
+
+   ~http://ip:port/ui/#/a/b/?limit=10&page=1~ -> base: ~/ui/#~ -> ~/a/b~
+
+   ~http://ip:port/ui/a/b/?limit=10&page=1~ -> base: ~/ui~ -> ~/a/b~
+
+   ~http://ip:port/a/ui/b/?limit=10&page=1~ -> base: ~/ui~ -> ~/a/ui/b~
+
+   结构： ~{value: url}~
+
+2. ~historyState = { value: history.state }~
+
+   如果 ~historyState.value~ 为空，需要进行初始化 -> ~changeLocation()~
+
+3. ~changeLocation(to, state, replace)~ 函数
+
+4. ~replace(to, data?)~ 函数
+
+5. ~push(to, data?)~ 函数
+
+6. 最后返回结构 ~{location: currentLocation, state: historyState, push, replace}~
+
+*** createCurrentLocation(base: string,location: Location)
+
+对 ~location { pathname, search, hash }~ 加工返回新的 url
+
+#+begin_src typescript
+function createCurrentLocation(
+  base: string,
+  location: Location
+): HistoryLocation {
+  const { pathname, search, hash } = location
+  // allows hash based url
+  const hashPos = base.indexOf('#')
+  if (hashPos > -1) {
+    // prepend the starting slash to hash so the url starts with /#
+    let pathFromHash = hash.slice(1)
+    if (pathFromHash[0] !== '/') pathFromHash = '/' + pathFromHash
+    return stripBase(pathFromHash, '')
+  }
+  const path = stripBase(pathname, base)
+  return path + search + hash
+}
+#+end_src
+
+函数作用： base 中含有 ~#~ 时，直接从 location.hash 中解析出 path。
+
+比如：
+
+~base=/ui/#/~
+
+~url=https://ip:port/ui/#/base/industry/grouping?limit=10&page=1&tradeId=19&times=1614652347338~
+
+最后解析出来的
+
+~path=/base/industry/grouping?limit=10&page=1&tradeId=19&times=1614652347338~
+
+如果 base 不含 ~#~ 直接取出 path 中去掉 base 部分的 url，如：
+
+~base=/ui/~ -> ~url=http://ip:port/ui/path/to...~ 得到 ~/path/to~
+
+如果 base 在 url pathname 的中间，直接返回 pathname 因为这种情况非 base 情况
+~http://ip:port/path/ui/to~ 直接返回 ~/path/ui/to~
+*** changeLocation(to,state,replace)
+
+#+begin_src typescript
+function changeLocation(
+  to: HistoryLocation,
+  state: StateEntry,
+  replace: boolean
+): void {
+  //
+  const hashIndex = base.indexOf("#");
+  // to:list -> /base/#/ui/ -> /ui/list
+  const url =
+    hashIndex > -1
+      ? (location.host && document.querySelector("base")
+          ? base
+          : base.slice(hashIndex)) + to
+  // http://ip:port + base + to
+      : createBaseLocation() + base + to;
+  try {
+    // BROWSER QUIRK
+    // NOTE: Safari throws a SecurityError when calling this function 100 times in 30 seconds
+    history[replace ? "replaceState" : "pushState"](state, "", url);
+    historyState.value = state;
+  } catch (err) {
+    if (__DEV__) {
+      warn("Error with push/replace State", err);
+    } else {
+      console.error(err);
+    }
+    // Force the navigation, this also resets the call count
+    location[replace ? "replace" : "assign"](url);
+  }
+}
+#+end_src
+
+去掉 base hash 部分将 ~to~ 路由组合成 url 调用 ~history.replace|pushState(state,
+title, url)~ 改变
+url，同时修改 historyState.value 值。
+*** replace(to, data?)
+
+#+begin_src typescript
+function replace(to: HistoryLocation, data?: HistoryState) {
+  const state: StateEntry = assign(
+    {},
+    history.state,
+    buildState(
+      historyState.value.back,
+      // keep back and forward entries but override current position
+      to,
+      historyState.value.forward,
+      true
+    ),
+    data,
+    // 替换操作，使用老的 position 替代新的
+    // 这个会在 changeLocation 中用来计算 delta 偏移量
+    { position: historyState.value.position }
   );
 
-  // 1. addRoute
-  // 2. removeRoute
-  // 3. getRoutes
-  // 4. insertMatcher 插入路由
-  // 5. resolve，解析 location 对象返回路由对象
-
-  // add initial routes
-  routes.forEach((route) => addRoute(route));
-
-  return { addRoute, resolve, removeRoute, getRoutes, getRecordMatcher };
+  // 执行 replaceState
+  // 取 old historyState 然后设置 new historyState
+  changeLocation(to, state, true);
+  currentLocation.value = to;
 }
 #+end_src
-
-** addRoute()
-
-添加路由：
-
-1. 处理原始路由
-2. 根据 ~alias~ 新增别名路由
-3. 有别名时，需要更新 ~children~ 子路由
+*** push(to, data?)
 
 #+begin_src typescript
-function addRoute(
-  record: RouteRecordRaw,
-  parent?: RouteRecordMatcher,
-  originalRecord?: RouteRecordMatcher
+function push(to: HistoryLocation, data?: HistoryState) {
+  // Add to current entry the information of where we are going
+  // as well as saving the current position
+  const currentState = assign(
+    {},
+    // use current history state to gracefully handle a wrong call to
+    // history.replaceState
+    // https://github.com/vuejs/vue-router-next/issues/366
+    historyState.value,
+    history.state as Partial<StateEntry> | null,
+    {
+      forward: to,
+      scroll: computeScrollPosition(),
+    }
+  );
+
+  // ...
+
+  // 执行 pushState, 记录 old/new historyState
+  changeLocation(currentState.current, currentState, true);
+
+  const state: StateEntry = assign(
+    {},
+    buildState(currentLocation.value, to, null),
+    { position: currentState.position + 1 },
+    data
+  );
+
+  changeLocation(to, state, false);
+  currentLocation.value = to;
+}
+#+end_src
+** useHistoryListeners()
+
+#+begin_src typescript
+function useHistoryListeners(
+  base: string,
+  historyState: ValueContainer<StateEntry>,
+  currentLocation: ValueContainer<HistoryLocation>,
+  replace: RouterHistory["replace"]
 ) {
-  // used later on to remove by name
-  let isRootAdd = !originalRecord;
-  let mainNormalizedRecord = normalizeRouteRecord(record);
-  // we might be the child of an alias
-  mainNormalizedRecord.aliasOf = originalRecord && originalRecord.record;
-  const options: PathParserOptions = mergeOptions(globalOptions, record);
-  // generate an array of records to correctly handle aliases
-  const normalizedRecords: typeof mainNormalizedRecord[] = [
-    mainNormalizedRecord,
-  ];
+  // 1. popstate 事件处理句柄
+  // 2. pause listeners
+  // 3. listen(callback)
+  // 4. beforeUnloadListener()
+  // 5. destory()
+  // 6. add event listenner: popstate + beforeunload
+  // setup the listeners and prepare teardown callbacks
+  window.addEventListener("popstate", popStateHandler);
+  window.addEventListener("beforeunload", beforeUnloadListener);
 
-  // 别名处理
-  // 如： RouteA: { path: '/users', compnent: xxx, alias: ['/u', '/U'] }
-  // 会根据 alias 会被解析成
-  // { components: ..., path: alias, aliasOf: ... } 对象
-  // 相当于路由表中除了 RouteA 之外新增了两个路由，指向同一个组件 xxx
-  if ("alias" in record) {
-    const aliases =
-      typeof record.alias === "string" ? [record.alias] : record.alias!;
-    for (const alias of aliases) {
-      // ...
-    }
-  }
-
-  for (const normalizedRecord of normalizedRecords) {
-    // 变量处理 alias 后的路由记录
-
-    // 1. 增加尾部 `/`
-    // 2. 告诉 alias 的原记录，我们是 alias 路由，可以被删除的
-    // 3. 如果有 route.children 需要递归向 child route 更新别名路由
-    if ("children" in mainNormalizedRecord) {
-      /*...*/
-    }
-
-    insertMatcher(matcher);
-  }
-
-  return originalMatcher
-    ? () => {
-        // since other matchers are aliases, they should be removed by the original matcher
-        removeRoute(originalMatcher!);
-      }
-    : noop;
+  // 7. return { pauseListeners, listn, destory }
 }
 #+end_src
-** removeRoute(matcherRef)
 
-两个分支处理：
+*** popStateHandler({ state })
 
-1. 如果 ~matcherRef~ 是路由名称，需要从 ~matcherMap~ 中读取匹配的路由
-2. 否则在 ~matchers~ 路由数组中去找
-3. 执行删除有几个地方需要删除
+因为 history.state 保存了执行跳转是 pushState/replaceState 传入的第一个参数值，
+所以可以通过  to/from 上的 state 进行对比得到跳转的方向是 forward 还是 back。
 
-   - ~matcherMap~ 保存了 ~<name, record>~ 映射关系，要删除
-   - ~matchers~ 数组保存了所有路由记录，需要删除
-   - ~matcher.children~ 需要递归处理子路由，因为子路由路径依赖当前路由(如： ~parent/child~)
-   - ~matcher.alias~ 别名路由需要删除，因为别名会被解构成对应的路由对象添加到原
-     始路由所在的列表中
+但是 history.state 是实时的，执行完 push/replace 就会发生改变，这里怎么处理这个
+问题呢，能让 to&from 状态得以保存？
 
-     如： ~{path: '/user', alias: ['/u', '/U']}~
-
-     那么就会有： ~[{/* user route */}, {/* u route */}, { /* U route */ }]~
-
-     所以需要将这些别名生成的路由删除。
+#+begin_quote
+答. 因为使用 historyState = { value: history.state } 做了个中介，
+虽然 history.state 实时变化，但是这个 historyState 是不会的，手动用它来管理 to &
+from 的前后状态。
+#+end_quote
 
 
-源码：
 #+begin_src typescript
-function removeRoute(matcherRef: RouteRecordName | RouteRecordMatcher) {
-    if (isRouteName(matcherRef)) {
-      const matcher = matcherMap.get(matcherRef)
-      if (matcher) {
-        matcherMap.delete(matcherRef)
-        matchers.splice(matchers.indexOf(matcher), 1)
-        matcher.children.forEach(removeRoute)
-        matcher.alias.forEach(removeRoute)
+const popStateHandler: PopStateListener = ({
+    state,
+  }: {
+    state: StateEntry | null
+  }) => {
+    const to = createCurrentLocation(base, location)
+    const from: HistoryLocation = currentLocation.value
+    // 这里拿到的是跳转之前的 state
+    const fromState: StateEntry = historyState.value
+    let delta = 0
+
+    if (state) {
+      currentLocation.value = to
+      // 这里 state 是执行路由跳转之后触发了 popstate 事件
+      // 去得到的最新状态，对应 to 更新老状态值
+      historyState.value = state
+
+      // ignore the popstate and reset the pauseState
+      // 暂停？忽略事件重置 pauseState ?
+      if (pauseState && pauseState === from) {
+        pauseState = null
+        return
       }
+      // 根据 to & from state 计算出要执行跳转的方向或偏移
+      delta = fromState ? state.position - fromState.position : 0
     } else {
-      let index = matchers.indexOf(matcherRef)
-      if (index > -1) {
-        matchers.splice(index, 1)
-        if (matcherRef.record.name) matcherMap.delete(matcherRef.record.name)
-        matcherRef.children.forEach(removeRoute)
-        matcherRef.alias.forEach(removeRoute)
-      }
+      // 没有新状态，直接替换历史记录
+      replace(to)
+    }
+
+    // console.log({ deltaFromCurrent })
+    // Here we could also revert the navigation by calling history.go(-delta)
+    // this listener will have to be adapted to not trigger again and to wait for the url
+    // to be updated before triggering the listeners. Some kind of validation function would also
+    // need to be passed to the listeners so the navigation can be accepted
+    // call all listeners
+    listeners.forEach(listener => {
+      listener(currentLocation.value, from, {
+        delta,
+        type: NavigationType.pop,
+        direction: delta
+          ? delta > 0
+            ? NavigationDirection.forward
+            : NavigationDirection.back
+          : NavigationDirection.unknown,
+      })
+    })
+  }
+#+end_src
+
+*** pauseListeners()
+
+#+begin_src typescript
+function pauseListeners() {
+  pauseState = currentLocation.value;
+}
+#+end_src
+*** listen(callback)
+
+纯粹的 add 操作，更新 ~listeners[]~ 和对应的移除函数列表 ~teardowns[]~
+
+#+begin_src typescript
+// 添加监听函数，返回对应的 teardown 函数
+  function listen(callback: NavigationCallback) {
+    // setup the listener and prepare teardown callbacks
+    listeners.push(callback)
+
+    const teardown = () => {
+      const index = listeners.indexOf(callback)
+      if (index > -1) listeners.splice(index, 1)
+    }
+
+    teardowns.push(teardown)
+    return teardown
+  }
+#+end_src
+*** beforeUnloadListener()
+
+整个页面执行卸载之前的事件，发生在 ~unload~ 之前。
+
+#+begin_src typescript
+function beforeUnloadListener() {
+    const { history } = window
+    if (!history.state) return
+    history.replaceState(
+      assign({}, history.state, { scroll: computeScrollPosition() }),
+      ''
+    )
+  }
+
+#+end_src
+*** destroy() 注销事件
+
+#+begin_src typescript
+function destroy() {
+  for (const teardown of teardowns) teardown();
+  teardowns = [];
+  window.removeEventListener("popstate", popStateHandler);
+  window.removeEventListener("beforeunload", beforeUnloadListener);
+}
+#+end_src
+* createWebHashHistory
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: web-hash
+:END:
+
+_/vue-router-next/src/history/hash.ts_
+
+从源码可以看出，该函数是基于 ~createWebHistory(base)~ 完成的，也就是说这个也是基
+于 history api 完成，只不过在这个基础上对 hash 值进行了情况分析和检测，做了进一
+步优化处理。
+
+#+begin_quote
+参数 base，可以函数调用时提供，如果存在 ~<base href/>~ 标签会优先取这个标签的
+href 值解析出 base 值。
+#+end_quote
+
+如，函数注释，有以下几种可能情况(如： ~base=https://example.com/folder~)
+
+1. ~createWebHashHistory()~ 无参数
+
+   结果： https://example.com/folder#
+
+2. ~createWebHashHistory('/folder/')~
+
+   匹配 ~/folder~ 成功，结果： https://example.com/folder/#
+
+3. ~createWebHashHistory('/folder/#/app')~
+
+   中间有 ~#~ 符号的：
+
+   匹配 ~/folder~ 成功，结果： https://example.com/folder/#/app
+
+4. +createWebHashHistory('/other-folder/')+
+
+   匹配失败，会直接替换，结果： https://example.com/other-folder/#
+
+   不推荐这种，因为它会改变根路径。
+
+5. 无主机的地址，比如本地文件访问： file:///usr/etc/folder/index.html
+
+   ~createWebHashHistory('/iAmIgnored')~
+
+   结果： file:///usr/etc/folder/index.html#
+
+   提供的 base 会被忽略。
+
+
+#+begin_src typescript
+export function createWebHashHistory(base?: string): RouterHistory {
+  // Make sure this implementation is fine in terms of encoding, specially for IE11
+  // for `file://`, directly use the pathname and ignore the base
+  // location.pathname contains an initial `/` even at the root: `https://example.com`
+  base = location.host ? base || location.pathname + location.search : ''
+  // allow the user to provide a `#` in the middle: `/base/#/app`
+  if (base.indexOf('#') < 0) base += '#'
+
+  if (__DEV__ && !base.endsWith('#/') && !base.endsWith('#')) {
+    warn(
+      `A hash base must end with a "#":\n"${base}" should be "${base.replace(
+        /#.*$/,
+        '#'
+      )}".`
+    )
+  }
+  return createWebHistory(base)
+}
+#+end_src
+
+
+更多请查看 [[#web-history][createWebHistory]] 。
+* TODO createMemoryHistory
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: mem-his
+:END:
+
+通过一个队列来管理路由。
+
+#+begin_src typescript
+export function createMemoryHistory(base: string = ''): RouterHistory {
+  let listeners: NavigationCallback[] = []
+  let queue: HistoryLocation[] = [START]
+  let position: number = 0
+
+  function setLocation(location: HistoryLocation) {
+    position++
+    if (position === queue.length) {
+      // we are at the end, we can simply append a new entry
+      queue.push(location)
+    } else {
+      // we are in the middle, we remove everything from here in the queue
+      queue.splice(position)
+      queue.push(location)
     }
   }
-#+end_src
-** getRoutes()
 
-返回所有匹配的路由：
-
-#+begin_src typescript
- function getRoutes() {
-    return matchers
-  }
-
-#+end_src
-** insertMatcher(matcher)
-
-插入路由：
-
-#+begin_src typescript
-function insertMatcher(matcher: RouteRecordMatcher) {
-  let i = 0;
-  // console.log('i is', { i })
-  while (
-    i < matchers.length &&
-    // 找到合适的路径插入
-    comparePathParserScore(matcher, matchers[i]) >= 0
-  )
-    i++;
-  // console.log('END i is', { i })
-  // while (i < matchers.length && matcher.score <= matchers[i].score) i++
-  matchers.splice(i, 0, matcher);
-  // only add the original record to the name map
-  if (matcher.record.name && !isAliasRecord(matcher))
-    matcherMap.set(matcher.record.name, matcher);
-}
-#+end_src
-** resolve(location, currentLocation)
-
-根据 location 解析路由
-
-
-相关类型定义：
-#+begin_src typescript
-export type MatcherLocationRaw =
-  | LocationAsPath
-  | LocationAsName
-  | LocationAsRelative
-
-export interface LocationAsPath {
-  path: string
-}
-
-export interface LocationAsName {
-  name: RouteRecordName
-  params?: RouteParams
-}
-
-export interface LocationAsRelative {
-  params?: RouteParams
-}
-#+end_src
-
-resolve:
-
-#+begin_src typescript
-function resolve(
-  location: Readonly<MatcherLocationRaw>,
-  currentLocation: Readonly<MatcherLocation>
-): MatcherLocation {
-  let matcher: RouteRecordMatcher | undefined;
-  let params: PathParams = {};
-  let path: MatcherLocation["path"];
-  let name: MatcherLocation["name"];
-
-  if ("name" in location && location.name) {
-    // 有名字就从 matcherMap 中去取
-  } else if ("path" in location) {
-    // 无 name  有 path 去找到与之匹配的 path
-    // ...
-    matcher = matchers.find((m) => m.re.test(path));
-    // ... 相对路径
-  } else {
-    // 既没有 name 也没有 path 用 currentLocation 去匹配
-    // match by name or path of current route
-    matcher = currentLocation.name
-      ? matcherMap.get(currentLocation.name)
-      : matchers.find((m) => m.re.test(currentLocation.path));
-
-    // ...
-  }
-
-  const matched: MatcherLocation["matched"] = [];
-  let parentMatcher: RouteRecordMatcher | undefined = matcher;
-  while (parentMatcher) {
-    // reversed order so parents are at the beginning
-
-    matched.unshift(parentMatcher.record);
-    parentMatcher = parentMatcher.parent;
-  }
-
-  return {
-    name,
-    path,
-    params,
-    matched,
-    meta: mergeMetaFields(matched),
-  };
-}
-#+end_src
-* router.install
-
-#+begin_src js
-function install(app) {
-  const router = this;
-  app.component("RouterLink", RouterLink);
-  app.component("RouterView", RouterView);
-
-  // 注册到当前的 vue 实例上，在 .vue 中可通过 `this.$router`
-  // 拿到路由实例
-  app.config.globalProperties.$router = router;
-
-  // 对于路由属性可通过 `this.$route` 获取，且是只读非响应式的(unref)
-  Object.defineProperty(app.config.globalProperties, "$route", {
-    get: () => unref(currentRoute),
-  });
-
-  // 初始化客户端路由
-  if (
-    isBrowser &&
-    // 初始化，避免重复添加
-    !started &&
-    currentRoute.value === START_LOCATION_NORMALIZED
-  ) {
-    push(routerHistory.location).catch((err) => {
-      // ...
-    });
-  }
-
-  // 响应式路由？
-  const reactiveRoute = {};
-
-  for (let key in START_LOCATION_NORMALIZED) {
-    reactiveRoute[key] = computed(() => currentRoute.value[key]);
-  }
-
-  app.provide(routerKey, router);
-  app.provide(routeLocationKey, reactive(reactiveRoute));
-  app.provide(routerViewLocationKey, currentRoute);
-
-  let unmountApp = app.unmount;
-  installedApps.add(app);
-  // 重写 vue 组件的 unmount 函数，在卸载之前将路由重置
-  app.unmount = function () {
-    installedApps.delete(app);
-    if (installedApps.size < 1) {
-      removeHistoryListener();
-      currentRoute.value = START_LOCATION_NORMALIZED;
-      started = false;
-      ready = false;
+  function triggerListeners(
+    to: HistoryLocation,
+    from: HistoryLocation,
+    { direction, delta }: Pick<NavigationInformation, 'direction' | 'delta'>
+  ): void {
+    const info: NavigationInformation = {
+      direction,
+      delta,
+      type: NavigationType.pop,
     }
-    unmountApp.call(this, arguments);
-  };
+    for (let callback of listeners) {
+      callback(to, from, info)
+    }
+  }
 
-  // TODO ... devtools
-}
-#+end_src
+  const routerHistory: RouterHistory = {
+    // rewritten by Object.defineProperty
+    location: START,
+    state: {},
+    base,
+    createHref: createHref.bind(null, base),
 
-router install 的任务：
-
-1. 注册两个路由组件 ~RouterLink~ 和 ~RouterView~
-
-   #+begin_src typescript
-   app.component("RouterLink", RouterLink);
-   app.component("RouterView", RouterView);
-   #+end_src
-2. 添加全局变量 ~$router~ 指向路由实例
-
-   #+begin_src typescript
-   app.config.globalProperties.$router = router
-   #+end_src
-3. 添加全局变量 ~$route~ 指向当前路由对象
-   #+begin_src typescript
-   Object.defineProperty(app.config.globalProperties, "$route", {
-     get: () => unref(currentRoute),
-   });
-   #+end_src
-4. 跟路由初始化 started 标识路由是否已生效，会在 unmount 时候置为 false
-   #+begin_src typescript
-   if (
-     isBrowser &&
-     // used for the initial navigation client side to avoid pushing
-     // multiple times when the router is used in multiple apps
-     !started &&
-     currentRoute.value === START_LOCATION_NORMALIZED
-   ) {
-     // see above
-     started = true;
-     push(routerHistory.location).catch((err) => {
-       if (__DEV__) warn("Unexpected error when starting the router:", err);
-     });
-   }
-   #+end_src
-5. 将根路由属性初始化进路由仓库 ~reactiveRoute~ 且每个值都是个 computed 属性
-
-   这里等于是说 reactiveRoute 和当前的路由相对应，因为它成员的值来源于
-   currentRoute 的成员值，且都是计算属性。
-
-   也就是说只有当你下次手动去 get reactiveRoute 路由信息的时候才会重新去计算
-   (get) currentRoute 中对应的值。
-
-   #+begin_src typescript
-   export const START_LOCATION_NORMALIZED: RouteLocationNormalizedLoaded = {
-     path: "/",
-     name: undefined,
-     params: {},
-     query: {},
-     hash: "",
-     fullPath: "/",
-     matched: [],
-     meta: {},
-     redirectedFrom: undefined,
-   };
-
-   const reactiveRoute = {} as {
-     [k in keyof RouteLocationNormalizedLoaded]: ComputedRef<
-       RouteLocationNormalizedLoaded[k]
-     >;
-   };
-   for (let key in START_LOCATION_NORMALIZED) {
-     // @ts-ignore: the key matches
-     reactiveRoute[key] = computed(() => currentRoute.value[key]);
-   }
-   #+end_src
-6. 向路由实例上的 ins.provides 注入路由实例，让所有孩子组件都能通过 inject 取到
-   路由数据
-
-  #+begin_src typescript
-  // router 实例
-  export const routerKey = /*#__PURE__*/ PolySymbol(
-    __DEV__ ? "router" : "r"
-  ) as InjectionKey<Router>;
-  app.provide(routerKey, router);
-
-  // router-link
-  export const routeLocationKey = /*#__PURE__*/ PolySymbol(
-    __DEV__ ? "route location" : "rl"
-  ) as InjectionKey<RouteLocationNormalizedLoaded>;
-  app.provide(routeLocationKey, reactive(reactiveRoute));
-
-  // router-view
-  export const routerViewLocationKey = /*#__PURE__*/ PolySymbol(
-    __DEV__ ? "router view location" : "rvl"
-  ) as InjectionKey<Ref<RouteLocationNormalizedLoaded>>;
-  app.provide(routerViewLocationKey, currentRoute);
-  #+end_src
-7. 重写 vue app 的 unmount 函数，让组件在卸载的时候能重置路由数据
-
-   #+begin_src typescript
-   let unmountApp = app.unmount;
-   installedApps.add(app);
-   app.unmount = function () {
-     installedApps.delete(app);
-     if (installedApps.size < 1) {
-       removeHistoryListener();
-       currentRoute.value = START_LOCATION_NORMALIZED;
-       started = false;
-       ready = false;
-     }
-     unmountApp.call(this, arguments);
-   };
-   #+end_src
-* RouterView 组件
-
-通过 Vue api defineComponent() 声明一个 ~<router-view>~ 组件。
-
-#+begin_src typescript
-export const RouterViewImpl = defineComponent({
-  name: "RouterView",
-  inheritAttrs: false,
-  props: {
-    name: {
-      // 路由名称
-      type: String as PropType<string>,
-      default: "default", // 默认路由
+    replace(to) {
+      // remove current entry and decrement position
+      queue.splice(position--, 1)
+      setLocation(to)
     },
-    route: Object as PropType<RouteLocationNormalizedLoaded>,
-  },
 
-  setup(props, { attrs, slots }) {
-    // ...
+    push(to, data?: HistoryState) {
+      setLocation(to)
+    },
 
-    // 在 router.install 函数中 provide 的对象，指向 currentRoute
-    // 即得到当前的路由
-    const injectedRoute = inject(routerViewLocationKey)!;
-    // 可以通过 route 指定当前匹配的路径需要显示的 组件？
-    const routeToDisplay = computed(() => props.route || injectedRoute.value);
-    const depth = inject(viewDepthKey, 0);
-    const matchedRouteRef = computed<RouteLocationMatched | undefined>(
-      () => routeToDisplay.value.matched[depth]
-    );
-
-    // 路由深度？
-    provide(viewDepthKey, depth + 1);
-    // 匹配到的路由
-    provide(matchedRouteKey, matchedRouteRef);
-    // 修改 currentRoute.value
-    provide(routerViewLocationKey, routeToDisplay);
-
-    const viewRef = ref<ComponentPublicInstance>();
-
-    // 监听下面三个 Ref 值变化
-    // 1. viewRef.value,
-    // 2. matchedRouteRef.value -> routeToDisplay
-    //    -> props.route || injectedRoute，当前路由对象
-    //       router.currentRoute 或 <router-view route="..."> 的
-    //       route 属性
-    // 3. props.name 监听 ~<router-view name="xxx">~ 的 name 属性
-    watch(
-      () => [viewRef.value, matchedRouteRef.value, props.name] as const,
-      ([instance, to, name], [oldInstance, from, oldName]) => {
-        if (to) {
-          // 更新 to.instances 中 name 的实例
-          // 复用？
-          to.instances[name] = instance;
-          // 意思是 <router-view> 是复用组件，应该更新保存在这个
-          // 组件上的 update 或 leave 守卫？
-          if (from && from !== to && instance && instance === oldInstance) {
-            to.leaveGuards = from.leaveGuards;
-            to.updateGuards = from.updateGuards;
-          }
-
-          // 触发 beforeRouterEnter 回调
-          if (
-            instance &&
-            to &&
-            // 没有实例或者 from 和 to是同一个路由，那么有可能是第一次访问
-            (!from || !isSameRouteRecord(to, from) || !oldInstance)
-          ) {
-            (to.enterCallbacks[name] || []).forEach((callback) =>
-              callback(instance)
-            );
-          }
-        }
-      },
-      // https://www.cheng92.com/vue/vue-mind-map-runtime-core/#headline-77
-      { flush: "post" }
-    );
-
-    return () => {
-      // 当前显示的路由
-      const route = routeToDisplay.value;
-      // 匹配的路由
-      const matchedRoute = matchedRouteRef.value;
-      // 当前路由应该显示的组件
-      const ViewComponent = matchedRoute && matchedRoute.components[props.name];
-      // we need the value at the time we render because when we unmount, we
-      // navigated to a different location so the value is different
-      const currentName = props.name;
-
-      // 可能是插槽
-      if (!ViewComponent) {
-        return normalizeSlot(slots.default, {
-          Component: ViewComponent,
-          route,
-        });
+    listen(callback) {
+      listeners.push(callback)
+      return () => {
+        const index = listeners.indexOf(callback)
+        if (index > -1) listeners.splice(index, 1)
       }
+    },
+    destroy() {
+      listeners = []
+    },
 
-      // props from route configuration
-      const routePropsOption = matchedRoute!.props[props.name];
-      const routeProps = routePropsOption
-        ? routePropsOption === true
-          ? route.params
-          : typeof routePropsOption === "function"
-          ? routePropsOption(route)
-          : routePropsOption
-        : null;
-
-      const onVnodeUnmounted: VNodeProps["onVnodeUnmounted"] = (vnode) => {
-        // remove the instance reference to prevent leak
-        if (vnode.component!.isUnmounted) {
-          matchedRoute!.instances[currentName] = null;
-        }
-      };
-
-      const component = h(
-        ViewComponent,
-        assign({}, routeProps, attrs, {
-          onVnodeUnmounted,
-          ref: viewRef,
+    go(delta, shouldTrigger = true) {
+      const from = this.location
+      const direction: NavigationDirection =
+        // we are considering delta === 0 going forward, but in abstract mode
+        // using 0 for the delta doesn't make sense like it does in html5 where
+        // it reloads the page
+        delta < 0 ? NavigationDirection.back : NavigationDirection.forward
+      position = Math.max(0, Math.min(position + delta, queue.length - 1))
+      if (shouldTrigger) {
+        triggerListeners(this.location, from, {
+          direction,
+          delta,
         })
-      );
-
-      return (
-        // pass the vnode to the slot as a prop.
-        // h and <component :is="..."> both accept vnodes
-        normalizeSlot(slots.default, { Component: component, route }) ||
-        component
-      );
-    };
-  },
-});
-#+end_src
-
-RouterView:
-
-#+begin_src typescript
-// export the public type for h/tsx inference
-// also to avoid inline import() in generated d.ts files
-/**
- * Component to display the current route the user is at.
- */
-export const RouterView = (RouterViewImpl as any) as {
-  new (): {
-    $props: AllowedComponentProps &
-      ComponentCustomProps &
-      VNodeProps &
-      RouterViewProps;
-  };
-};
-#+end_src
-* RouterLink 组件
-
-#+begin_src typescript
-export const RouterLinkImpl = /*#__PURE__*/ defineComponent({
-  name: 'RouterLink',
-  props: {
-    to: {
-      type: [String, Object] as PropType<RouteLocationRaw>,
-      required: true,
+      }
     },
-    replace: Boolean,
-    activeClass: String,
-    // inactiveClass: String,
-    exactActiveClass: String,
-    custom: Boolean,
-    ariaCurrentValue: {
-      type: String as PropType<RouterLinkProps['ariaCurrentValue']>,
-      default: 'page',
-    },
-  },
-
-  setup(props, { slots, attrs }) {
-    const link = reactive(useLink(props))
-    const { options } = inject(routerKey)!
-
-    const elClass = computed(() => ({
-      [getLinkClass(
-        props.activeClass,
-        options.linkActiveClass,
-        'router-link-active'
-      )]: link.isActive,
-      // [getLinkClass(
-      //   props.inactiveClass,
-      //   options.linkInactiveClass,
-      //   'router-link-inactive'
-      // )]: !link.isExactActive,
-      [getLinkClass(
-        props.exactActiveClass,
-        options.linkExactActiveClass,
-        'router-link-exact-active'
-      )]: link.isExactActive,
-    }))
-
-    return () => {
-      const children = slots.default && slots.default(link)
-      return props.custom
-        ? children
-        : h(
-            'a',
-            assign(
-              {
-                'aria-current': link.isExactActive
-                  ? props.ariaCurrentValue
-                  : null,
-                onClick: link.navigate,
-                href: link.href,
-              },
-              attrs,
-              {
-                class: elClass.value,
-              }
-            ),
-            children
-          )
-    }
-  },
-})
-#+end_src
-
-RouterLink:
-
-#+begin_src typescript
-// export the public type for h/tsx inference
-// also to avoid inline import() in generated d.ts files
-/**
- * Component to render a link that triggers a navigation on click.
- */
-export const RouterLink = (RouterLinkImpl as any) as {
-  new (): {
-    $props: AllowedComponentProps &
-      ComponentCustomProps &
-      VNodeProps &
-      RouterLinkProps
   }
-}
-#+end_src
 
-路由按键事件处理：
-
-1. 屏蔽控制键(Alt/Ctrol/Shift/Meta)
-2. 调用了 preventDefault ，如 Vue 的 ~prevent~ 修饰符
-3. 屏蔽鼠标右键
-4. 屏蔽 ~target="_blank"~ 的 link
-#+begin_src typescript
-function guardEvent(e: MouseEvent) {
-  // don't redirect with control keys
-  if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
-  // don't redirect when preventDefault called
-  if (e.defaultPrevented) return;
-  // don't redirect on right click
-  if (e.button !== undefined && e.button !== 0) return;
-  // don't redirect if `target="_blank"`
-  // @ts-ignore getAttribute does exist
-  if (e.currentTarget && e.currentTarget.getAttribute) {
-    // @ts-ignore getAttribute exists
-    const target = e.currentTarget.getAttribute("target");
-    if (/\b_blank\b/i.test(target)) return;
-  }
-  // this may be a Weex event which doesn't have this method
-  if (e.preventDefault) e.preventDefault();
-
-  return true;
-}
-#+end_src
-
-RouterLink 组件上应用的样式(优先级： prop > global > default)：
-#+begin_src typescript
-/**
- * Utility class to get the active class based on defaults.
- * @param propClass
- * @param globalClass
- * @param defaultClass
- */
-const getLinkClass = (
-  propClass: string | undefined,
-  globalClass: string | undefined,
-  defaultClass: string
-): string =>
-  propClass != null
-    ? propClass
-    : globalClass != null
-    ? globalClass
-    : defaultClass
-#+end_src
-
-~useLink(props)~:
-#+begin_src typescript
-export function useLink(props: UseLinkOptions) {
-  const router = inject(routerKey)!
-  const currentRoute = inject(routeLocationKey)!
-
-  const route = computed(() => router.resolve(unref(props.to)))
-
-  const activeRecordIndex = computed<number>(() => {
-    let { matched } = route.value
-    let { length } = matched
-    const routeMatched: RouteRecord | undefined = matched[length - 1]
-    let currentMatched = currentRoute.matched
-    if (!routeMatched || !currentMatched.length) return -1
-    let index = currentMatched.findIndex(
-      isSameRouteRecord.bind(null, routeMatched)
-    )
-    if (index > -1) return index
-    // possible parent record
-    let parentRecordPath = getOriginalPath(
-      matched[length - 2] as RouteRecord | undefined
-    )
-    return (
-      // we are dealing with nested routes
-      length > 1 &&
-        // if the parent and matched route have the same path, this link is
-        // referring to the empty child. Or we currently are on a different
-        // child of the same parent
-        getOriginalPath(routeMatched) === parentRecordPath &&
-        // avoid comparing the child with its parent
-        currentMatched[currentMatched.length - 1].path !== parentRecordPath
-        ? currentMatched.findIndex(
-            isSameRouteRecord.bind(null, matched[length - 2])
-          )
-        : index
-    )
+  Object.defineProperty(routerHistory, 'location', {
+    get: () => queue[position],
   })
 
-  const isActive = computed<boolean>(
-    () =>
-      activeRecordIndex.value > -1 &&
-      includesParams(currentRoute.params, route.value.params)
-  )
-  const isExactActive = computed<boolean>(
-    () =>
-      activeRecordIndex.value > -1 &&
-      activeRecordIndex.value === currentRoute.matched.length - 1 &&
-      isSameRouteLocationParams(currentRoute.params, route.value.params)
-  )
-
-  function navigate(
-    e: MouseEvent = {} as MouseEvent
-  ): Promise<void | NavigationFailure> {
-    if (guardEvent(e))
-      return router[unref(props.replace) ? 'replace' : 'push'](unref(props.to))
-    return Promise.resolve()
-  }
-
-  return {
-    route,
-    href: computed(() => route.value.href),
-    isActive,
-    isExactActive,
-    navigate,
-  }
+  return routerHistory
 }
-#+end_src
-暴露出的属性：
-
-1. ~route~ 依赖 props.to 的路由对象
-
-   ~const route = computed(() => router.resolve(unref(props.to)))~
-
-2. ~href~ 当前路由的 url
-
-3. ~isActive~ 检测当前路由路径上是否出现过
-
-4. ~isExactActive~ 精准激活的？其实就是当前路由路径中最末尾的那个
-
-   如： ~/user/name/get~
-
-   那么该 url 可能有三个路径：
-
-   路由一： ~/user~
-
-   路由二： ~/user/name~
-
-   路由三： ~/user/name/get~
-
-   那么这里 extract active 就是路由三。
-
-5. ~navigate(e: MouseEvent)~ 执行路由跳转
-* addRoute()
-
-向一个已经存在的路由中添加路由，如果已经存在了会先将原来的删除：
-
-#+begin_src typescript
-function addRoute(
-    parentOrRoute: RouteRecordName | RouteRecordRaw,
-    route?: RouteRecordRaw
-  ) {
-    let parent: Parameters<typeof matcher['addRoute']>[1] | undefined
-    let record: RouteRecordRaw
-    if (isRouteName(parentOrRoute)) {
-      parent = matcher.getRecordMatcher(parentOrRoute)
-      record = route!
-    } else {
-      record = parentOrRoute
-    }
-
-
-
-    return matcher.addRoute(record, parent)
-  }
-
-
-export function isRouteName(name: any): name is RouteRecordName {
-  return typeof name === 'string' || typeof name === 'symbol'
-}
-
 #+end_src

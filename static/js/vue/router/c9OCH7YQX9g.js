@@ -4,11 +4,13 @@ runAsync(function () {
 
   window.addEventListener("popstate", (event) => {
     log("trigger popstate -> " + JSON.stringify(event.state));
+    log("history.state: " + JSON.stringify(history.state));
   });
 
   const push = (url, n, r = false) => {
     history[r ? "replaceState" : "pushState"]({ page: n }, "", url);
     log("location: " + location.href + ", len: " + history.length);
+    log("history.state: " + JSON.stringify(history.state));
   };
 
   var state = {};
