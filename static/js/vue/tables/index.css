@@ -22,3 +22,7 @@
 .post .post-content .table-wrapper > table {
   margin: 0;
 }
+
+.post .post-content a > .el-link--inner {
+  color: black;
+}

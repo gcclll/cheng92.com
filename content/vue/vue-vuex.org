@@ -1,0 +1,444 @@
+#+TITLE: vuex for vue3 源码分析(附.脑图)
+#+DATE: <2021-03-10 16:13:48>
+#+TAGS[]: vue, vue3, vuex
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="https://unpkg.com/vue@next"></script>
+<script src="https://unpkg.com/vuex@next"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+// insertCssLink("/js/vue/tables/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+
+[[/img/vue3/vue-vuex4.svg]]
+
+#+begin_export html
+<div id="tHrYBeArBS"></div>
+<script type="module">
+var store = Vuex.createStore({
+  state() { return { count: 0 }},
+  mutations: {
+    increment(state) {
+      state.count++
+    },
+    decrement(state) {
+      state.count--
+    }
+  },
+  actions: {
+    increment: ({ commit }) => commit('increment'),
+    decrement: ({ commit }) => commit('decrement')
+  },
+  modules: {
+    m1: {
+      state() { return { num: 0 } },
+      mutations: {
+        incre(state) {
+          state.num++
+        },
+        decre(state) {
+          state.num--
+        }
+      },
+      actions: {
+        increment: ({ commit }) => commit('incre'),
+        decrement: ({ commit }) => commit('decre'),
+      }
+    }
+  }
+})
+var Counter = {
+  template: `
+    <el-button type="primary" @click="increment">+</el-button>
+    <el-button @click="decrement">-</el-button>
+    count: {{$store.state.count}}, num: {{$store.state.m1.num}}
+    <br><el-button @click="registerHooks">注册before&after</el-button>
+  `,
+  data() {
+  return { registered: false }
+  },
+  methods: {
+    ...Vuex.mapActions(['increment', 'decrement']),
+    registerHooks() {
+      if (this.registered) {
+        console.log('registered, do not repeat.')
+        return
+      }
+      this.registered = true
+
+      store.subscribeAction({
+        before: (...args) => console.log(args,'before'),
+        after: (...args) => console.log(args,'after'),
+      })
+    },
+   }
+}
+var app = Vue.createApp(Counter)
+app.use(store).use(ElementPlus).mount('#tHrYBeArBS')
+console.log(app.config.globalProperties.$store, 'app.config.globalProperties.$store')
+</script>
+#+end_export
+
+1. state, 所有子模块的 state 会以模块名嫁接到 rootState 上
+
+   如：
+   #+begin_src js
+   var root = {
+     state: {count: 0},
+     actions: {},
+     mutations: {},
+     // ...
+     modules: {
+       m1: {
+         state: { num: 0 }
+       },
+       m2: {
+         state: { n: 0 }
+       }
+     }
+   }
+
+   // 经过 constructor -> installModule 处理之后
+   root.state = { count: 0, m1: { num: 0 }, m2: { n: 0 } }
+   #+end_src
+
+   实现部分：
+
+   #+begin_src typescript
+    function installModule(store, rootState, path, module, hot) {
+      const isRoot = !path.length;
+      const namespace = store._modules.getNamespace(path);
+
+      // ...
+
+      // set state 就这一部分针对 state 的处理
+      // getNestedState 是个 recude -> state 取出当前 module 的 state 对象
+      if (!isRoot && !hot) {
+        const parentState = getNestedState(rootState, path.slice(0, -1));
+        const moduleName = path[path.length - 1];
+        store._withCommit(() => {
+          if (__DEV__) {
+            if (moduleName in parentState) {
+              console.warn(
+                `[vuex] state field "${moduleName}" was overridden by a module with the same name at "${path.join(
+                  "."
+                )}"`
+              );
+            }
+          }
+          parentState[moduleName] = module.state;
+        });
+      }
+      // ...
+    }
+   #+end_src
+
+2. actions, 所有子模块的 actions 都会被击中到 ~this.actions~ 中
+
+   如：
+   #+begin_src js
+   var root = {
+     actions: {
+       decre: ({ commit }) => commit("decre"),
+     },
+     modules: {
+       m1: {
+         actions: {
+           decre: ({ commit }) => commit("decrement"),
+           incre: ({ commit }) => commit("increment"),
+         },
+       },
+     },
+   };
+
+   // 经过 constructor -> installModule -> forEachActions 之后
+   this.actions = {
+     // 0 -> commit decre, 1 -> commit decrement
+     decre: [decre1, decre2],
+     incre: [incre1], // 0 - commit increment
+   };
+
+   #+end_src
+
+   所以当调用 dispatch decre 的时候 root 和 module m1 的 decre action都会被调用，
+   且所有的 action 会被封装成一个函数，该函数无论如何都会返回一个 Promise 实例而
+   在这些 actions 被调用的时候是通过 Promise.all 来调用的，因此无论是async
+   action 还是 sync action 都会当做是 async 来执行。
+
+   #+begin_src typescript
+   function installModule(store, rootState, path, module, hot) {
+     // ...
+     // ... actions 收集部分
+     module.forEachAction((action, key) => {
+       const type = action.root ? key : namespace + key;
+       const handler = action.handler || action;
+       registerAction(store, type, handler, local);
+     });
+     // ...
+   }
+
+   // registerAction
+   function registerAction(store, type, handler, local) {
+     const entry = store._actions[type] || (store._actions[type] = []);
+     entry.push(function wrappedActionHandler(payload) {
+       let res = handler.call(
+         store,
+         {
+           dispatch: local.dispatch,
+           commit: local.commit,
+           getters: local.getters,
+           state: local.state,
+           rootGetters: store.getters,
+           rootState: store.state,
+         },
+         payload
+       );
+       if (!isPromise(res)) {
+         // 这里确保了返回值一定是个 promise
+         res = Promise.resolve(res);
+       }
+       if (store._devtoolHook) {
+         return res.catch((err) => {
+           store._devtoolHook.emit("vuex:error", err);
+           throw err;
+         });
+       } else {
+         return res;
+       }
+     });
+   }
+
+   // module.js -> forEachAction
+   function forEachAction(fn) {
+     if (this._rawModule.actions) {
+       forEachValue(this._rawModule.actions, fn);
+     }
+   }
+   #+end_src
+
+3. dispatch action
+
+   #+begin_src typescript
+    function dispatch(_type, _payload) {
+      // check object-style dispatch
+      const { type, payload } = unifyObjectStyle(_type, _payload);
+
+      const action = { type, payload };
+      // 取出所有模块的 type 类型 actions
+      const entry = this._actions[type];
+      if (!entry) {
+        if (__DEV__) {
+          console.error(`[vuex] unknown action type: ${type}`);
+        }
+        return;
+      }
+
+      // 这里执行 before 钩子函数，在执行 actions 之前做的事情
+      try {
+        this._actionSubscribers
+          .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
+          .filter((sub) => sub.before)
+          .forEach((sub) => sub.before(action, this.state));
+      } catch (e) {
+        if (__DEV__) {
+          console.warn(`[vuex] error in before action subscribers: `);
+          console.error(e);
+        }
+      }
+
+      // 这里将所有的 actions[type] 放到 Promise.all 中执行，意味着所有的
+      // action 无论同步异步的都执行完成了之后才会 settled
+      const result =
+        entry.length > 1
+          ? Promise.all(entry.map((handler) => handler(payload)))
+          : entry[0](payload);
+
+      // 最后返回 promise 完成 promise combo 链，注意这里面
+      // 包含了 after 和 error 两个钩子函数的触发动作
+      return new Promise((resolve, reject) => {
+        result.then(
+          (res) => {
+            try {
+              this._actionSubscribers
+                .filter((sub) => sub.after)
+                .forEach((sub) => sub.after(action, this.state));
+            } catch (e) {
+              if (__DEV__) {
+                console.warn(`[vuex] error in after action subscribers: `);
+                console.error(e);
+              }
+            }
+            resolve(res);
+          },
+          (error) => {
+            try {
+              this._actionSubscribers
+                .filter((sub) => sub.error)
+                .forEach((sub) => sub.error(action, this.state, error));
+            } catch (e) {
+              if (__DEV__) {
+                console.warn(`[vuex] error in error action subscribers: `);
+                console.error(e);
+              }
+            }
+            reject(error);
+          }
+        );
+      });
+    }
+   #+end_src
+
+4. plugins 的用法
+
+   plugins 的注册发生在 installModule 之后，因此在此时可以拿到所有模块的 state
+   数据，根据用例 ~modules.spec.js~ 的使用范例，在插件中可以进行 actions 的
+   before 和 after 钩子注册。
+
+   #+begin_src typescript
+   // store.js -> constructor -> installModule 之后 ->
+
+   // 执行插件
+   plugins.forEach((plugin) => plugin(this));
+
+   // 使用示例， modules.spec.js
+   const store = new Vuex.Store({
+     actions: {
+       [TEST]: () => Promise.resolve(),
+     },
+     plugins: [
+       (store) => {
+         store.subscribeAction({
+           before: beforeSpy,
+           after: afterSpy,
+         });
+       },
+     ],
+   });
+   #+end_src
+
+5. before & after & error hooks
+
+   注册： ~store.subscribeAction({ before: fn, after: fn, error: fn })~
+
+   执行：
+
+   ~dispatch(type, payload)~
+
+   -> ~sub.before(action, this.state)~
+
+   -> Promise.all action
+
+   -> ~sub.after(action, this.state)/sub.error(action, this.state, error)~
+
+   #+begin_example
+   (2) [{…}, Proxy]
+     0: {type: "increment", payload: PointerEvent}
+     1: Proxy {count: 1, m1: {…}}
+     "before"
+   (2) [{…}, Proxy]
+     0: {type: "increment", payload: PointerEvent}
+     1: Proxy {count: 1, m1: {…}}
+     "after"
+   #+end_example
+
+   源码调用时机：
+
+   #+begin_src typescript
+   function dispatch(_type, _payload) {
+     // check object-style dispatch
+     // ...
+
+     try {
+       // 1. 执行 before
+       this._actionSubscribers
+         .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
+         .filter((sub) => sub.before)
+         .forEach((sub) => sub.before(action, this.state));
+     } catch (e) {
+       // ...
+     }
+
+     // 2. 执行 actions
+     const result =
+       entry.length > 1
+         ? Promise.all(entry.map((handler) => handler(payload)))
+         : entry[0](payload);
+
+     return new Promise((resolve, reject) => {
+       result.then(
+         (res) => {
+           try {
+             // 3. after, 所有 action 执行完成且无异常情况
+             this._actionSubscribers
+               .filter((sub) => sub.after)
+               .forEach((sub) => sub.after(action, this.state));
+           } catch (e) {
+             /*...*/
+           }
+           resolve(res);
+         },
+         (error) => {
+           try {
+             // 4. error, 如果有 action rejected 会触发 error
+             this._actionSubscribers
+               .filter((sub) => sub.error)
+               .forEach((sub) => sub.error(action, this.state, error));
+           } catch (e) {
+             /*...*/
+           }
+           reject(error);
+         }
+       );
+     });
+   }
+   #+end_src
+
+
+从注册和使用两点进行简要分析：
+
+*注册阶段:*
+
+注册时会将 store 对象用 ModuleCollection 类进行封装，这个类完成与 Module 相关的
+注册、注销、和更新操作，而 Module 类完成具体的 children 相关的增删改查操作，而
+Store 类是重点部分，里面包含状态相关的操作比如 ~mutations/actions/getters~ 等操
+作的封装，以及提供 ~dispatch,commit~ 等修改状态的函数。
+
+注册时，先注册根模块，然后递归检测 modules 对子模块进行注册，在模块注册过程中主
+要有几个步骤： 更新 root state, 收集 actions、mutations、getters ，这里收集的原
+则拿 actions 为例，不管是根模块还是子模块也无论模块层级嵌套多深，最后所有的
+actions 都可以在实例的 ~this.actions~ 中找到。
+
+*使用阶段：*
+
+使用时的原则是只能通过 ~dispatch(type, payload)~ 来派发 ACTION ，内部实现找到对
+应 actions 触发执行，而 action 的执行也是通过 commit mutation 来完成，因此使用原
+则严格遵守： /dispatch/ -> /action/ -> /commit/ -> /mutation/ -> /state/ ，而不能直接使用
+commit 或 mutation 。
+
+在使用是，执行阶段会依次触发 before -> action -> after/error 。
+
+可通过 ~store.subscribeAction(fn)/* 等于 { before: fn }*/~ 或
+
+~store.subscribeAction({before:fn, after:fn1, error: fn2})~
+
+取注册钩子函数，这个动作可以在 ~createStore()~ 之后得到时候直接调用，也可以使用
+插件的形式 ~plugins: [store => store.subscribeAction(fn)]~ 去完成，因为插件会在
+~new Store()~ 构造函数中在 ~installModule()~ 安装模块之后得到执行，所以目的和结
+果是一
+样的。

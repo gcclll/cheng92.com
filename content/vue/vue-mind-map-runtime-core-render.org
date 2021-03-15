@@ -21,7 +21,15 @@
 @@html:</kbd>@@
 
 #+begin_quote
-*声明* ：vue-next runtime-core 中的 render 函数部分。
+*声明* ：vue-next runtime-core 中的 render 函数部分，
+#+begin_export html
+<font color='red'
+size='2'>本篇所使用的的测试例子是普
+通的数字数组，实际中每个节点都是 VNode 结构，也就是说是唯一的，所以不存在不同节
+点共享同一个内存空间问题，这也就是为何用例中没有重复数字的原因。(_就算是静态的可
+复用节点也会执行 cloneVNode 克隆出一个全新的对象_)
+</font>
+#+end_export
 
 *更新日志&Todos* ：
 1. [2021-01-26 14:15:15] 创建
@@ -32,15 +40,11 @@
 #+begin_quote
 2229 - 423 = 1806 🤦‍♀️ 一个函数就将近两千行，😲！！
 
-诶！！!
-
-路漫漫系其修远兮，吾将上下而求索！!!
-
-加油吧，大叔，坚持下去！！！
-
-开始之前给自己打打气，还有诸多的疑惑等着去解密呢🔥🔥
+捷径👣：
+1. [[#keyed-children][如果只想了解如何 diff ？ 更新？]]
 #+end_quote
 
+* 脑图
 _runtime-core/src/render.ts_ 脑图：
 
 [[/img/vue3/runtime-core/vue-runtime-core-render-ts.svg]]
@@ -1648,6 +1652,10 @@ mountElment else...
 #+end_example
 ** new array + old array
 * patchKeyedChildren
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keyed-children
+:END:
 
 [[https://github.com/gcclll/stb-vue-next/commit/4a6a1f2b59e938346f097ead660d68b3b2837323][feat(add): patchKeyedChildren · gcclll/stb-vue-next@4a6a1f2]]
 
@@ -1761,6 +1769,11 @@ export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
 #+end_quote
 
 [[https://github.com/gcclll/stb-vue-next/commit/b7edc1b0939f2faf88d1e939a749f31fabab99f2][fix: patchKeydChildren if · gcclll/stb-vue-next@b7edc1b]]
+
+
+大致移动规则流程图：
+
+[[/img/vue3/vue-router/vue-runtime-core-diff-move-rules.svg]]
 
 ** append([1] -> [1,2,3])
 
@@ -1876,3 +1889,510 @@ old: ~[1]~, new: ~[1,2,3]~
 
 这种情况还是比较简单的，直接 append 2,3 就行了。
 #+end_quote
+** prepend([4,5]->[1,2,3,4,5])
+
+实例分析： ~n1=[4,5], n2=[1,2,3,4,5]~ 经过 while1 什么都没做，经过 while2 同化掉
+尾部 ~[4,5],i=0,e1=-1,e2=2=~ 满足 ~if(i>e1)&&if(i<e2)~ 属于新增节点操作，插入时
+的参考节点为 ~c2[e2+1]~ ，之前分析过如果需要经过前两个 while 处理的节点都会在
+patch 的过程中直接替换掉，比如这里的 ~[4,5]~ 会在 while2 中被替换掉(体现在
+~container.children~ 中)，新的 ~[4,5]~ 替换掉老的 ~[4,5]~ ，所以这里发生插入时的
+anchor 实际是对应 ~container.children~ 中的 ~[4]~ 位置。
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm;
+    let root = nodeOps.createElement("div");
+    // <div>hello</div>
+    render(h("div", { id: 1 }, "hello"), root);
+    const rc = (arr) => renderChildren(render, root, h, arr);
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    elm = rc([4, 5]);
+    log(">>> render [4,5] DONE.");
+    logRoot();
+
+    elm = rc([1, 2, 3, 4, 5]);
+    log(">>> render [1,2,3,4,5] DONE.");
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+root: <div id=1>hello</div>
+>>> render [4,5] DONE.
+root: <div id=1><span>4</span><span>5</span></div>
+patchKeyedChildren...
+while 1, sync from start...
+while 2, sync from end...
+while 2, sync from end...
+patch keyed 新增 ...
+>>> render [1,2,3,4,5] DONE.
+root: <div id=1><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+#+end_example
+
+上面两次 while 2 分别对应的是 /5->4/ 同化过程。
+
+
+#+begin_quote
+同类用例，不做多余分析了，直接看结果吧！
+
+1. ~[1,2,4,5]~ 和 ~[1,2,3,4,5]~ 经过 while1(替换12) 和 while2(替换45) 之后
+   ~i=2,e1=1,e2=2~ 满足~if(i>e1)&&if(i<=e2)~ 插入操作，参考节点:
+   ~anchor=c2[e2+1]=4~ 所以执行 patch时候会在 4(因为 anchor 有值) 之前插入 3 。
+#+end_quote
+** insert begin&end([2,3,4]->[1,2,3,4,5])
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm;
+    let root = nodeOps.createElement("div");
+    // <div>hello</div>
+    render(h("div", { id: 1 }, "hello"), root);
+    const rc = (arr) => renderChildren(render, root, h, arr);
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    elm = rc([2,3,4]);
+    log(">>> render [2,3,4] DONE.");
+    logRoot();
+
+    elm = rc([1, 2, 3, 4, 5]);
+    log(">>> render [1,2,3,4,5] DONE.");
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+: undefinedfalse
+: root: <div id=1>hello</div>
+: >>> render [4,5] DONE.
+: root: <div id=1><span>2</span><span>3</span><span>4</span></div>
+: patchKeyedChildren...
+: while 1, sync from start...
+: while 2, sync from end...
+: >>> render [1,2,3,4,5] DONE.
+: root: <div id=1><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+
+~[2,3,4]~ 和 ~[1,2,3,4,5]~ 经过 while1 和 while2 什么都没做， ~i=0,e1=2,e2=4~ 既
+不满足 ~if(i>e1)~ 也不满足 ~elseif(i>e2)~ 所以会进入 ~else~ 的无规则比较阶段。根
+据之前脑图分析结果可知， ~else~ 执行的步骤大致是：
+
+1. 遍历 old children 替换 ~[2,3,4]~
+
+   用 old ~[2,3,4]~ 的每个元素的 key 去 new ~[1,2,3,4,5]~ 里面去找对应的
+   key(type,key相等的节点)去替换老的，那么这里将会找到 ~[2,3,4]~ ，此时经过一个
+   for old children 循环执行替换，这里重点在于 ~newIndexToOldIndexMap~ 结果会更
+   新为 ~[0,1,2,3,0]~ 这里的 123 分别对应 ~[2,3,4]~ 在 old children 中的索引 + 1
+   的结果。
+
+2. 遍历 new children 检测 ~newIndexToOldIndexMap~
+
+   这一步的循环是针对 new children 而言，作用是找出 ~newIndexToOldIndexMap~ 中不
+   为 ~0~ 的元素(也就是还未被使用的元素)，来执行插入操作。循环顺序从右到左执行，
+   则有(i-递减索引，index-newchild 的索引值,el-newchild,val-使用状态)：
+
+   ~i=4,index=4,el=c2[index],val=0,anchor=null~:
+
+   未使用，没有参考节点，属于纯 append 操作。
+
+   ~i=3,2,1,val!==0~ 已经被使用了，跳过
+
+   ~i=0,index=0,el=c2[index],val=0,anchor=c2[index+1]=1~:
+
+   未使用，插入节点为 ~[1]~ 参考节点为 ~[2]~ 属于插入操作，在 ~[1]~ 之前插入。
+
+   最后得到结果： ~children=[1,2,3,4,5]~ 完成。
+
+
+#+begin_quote
+其实这里还是比较容易理解的，因为还没用到“有序递增序列”算法，因为 for old
+children 中的 key 是有序的且是 new children 的子集，所以遍历过程中 newIndex 为
+0,1,2 后面的总是比前面的大，因此 ~maxNewIndexSoFar=2~ 直到结束🔚。
+
+类似用例：
+
+1. ~[]~ 和 ~[1,2,3,4,5]~ 这种情况等于是 ~newIndexToOldIndexMap=[0,0,0,0,0]~ 所有
+   new child 元素执行的都是尾部 append 操作。
+2. ~[1,2,3,4,5]~ 和 ~render(h('div'), root)~ 等于是 ~children=[]~ 直接删除 old
+   children 操作
+3. ~[1,2,3,4,5]~ 和 ~[3,4,5]~ 经过 while2 替换掉 ~[3,4,5]~ 剩下 old ~[1,2]~ 因在
+   new children 中找不到对应的元素，则会被删除。
+4. ~[1,2,3,4,5]~ 和 ~[1,2,3]~ 经过 while1 替换掉 ~[1,2,3]~ 剩下的 old ~[4,5]~ 因
+   找不到对应的 new child 被删除。
+5. ~[1,2,3,4,5]~ 和 ~[1,2,4,5]~ 经过 while1 替换掉 ~[1,2]~ 经过 while2 替换掉
+   ~[4,5]~ 剩下 ~[3]~ 因找不到 new child 而被删除。
+#+end_quote
+** move([1,2,3,4]->[2,3,1,4])
+
+这种情况会触发“最长递增序列”规则，进行替换，因为发生 diff-update 的原则是：更新
+之后的顺序要和 new children 顺序一致，即原来是 1234 更新之后要保持 2314 顺序。
+
+更新过程：
+
+1. 经过 while1 什么都不发生，因为 ~[1]->[2]~ 非同类节点
+2. 经过 while2 替换掉 ~[4],i=0,e1=2,e2=2~
+3. ~if(i>e1)~ 不满足新增条件
+4. ~elif(i>e2)~ 不满足删除条件
+5. 进入 else 无规则比较更新
+
+
+测试：
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm;
+    let root = nodeOps.createElement("div");
+    // <div>hello</div>
+    render(h("div", { id: 1 }, "hello"), root);
+    const rc = (arr) => renderChildren(render, root, h, arr);
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    elm = rc([1,2,3,4]);
+    log(">>> render [1,2,3,4] DONE.");
+    logRoot();
+
+    elm = rc([2,3,1,4]);
+    log(">>> render [2,3,1,4] DONE.");
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+root: <div id=1>hello</div>
+>>> render [1,2,3,4] DONE.
+root: <div id=1><span>1</span><span>2</span><span>3</span><span>4</span></div>
+patchKeyedChildren...
+while 1, sync from start...
+while 2, sync from end...
+while 2, sync from end...
+{ arr: [ 2, 3, 1 ] }
+{ result: [ 2, 1 ] }
+最长增长序列: 0,1
+move 交换...
+>>> render [2,3,1,4] DONE.
+root: <div id=1><span>2</span><span>3</span><span>1</span><span>4</span></div>
+#+end_example
+
+在上面执行过程中，进入 else 分支，执行：
+
+1. for old children
+
+   执行完之后(~i=0,e1=2,e2=2~)， ~newIndexToOldIndexMap=[2,3,1]~ 分别对应 ~[1,2,3]~ 在
+   ~[2,3,1]~ 中的索引值 + 1，因为存在 ~newIndex < maxNewIndexSoFar~ 所以
+   ~moved=true~ 在随后的流程中用来触发“最长增长序列”操作。
+
+2. for new children
+
+   在执行这个循环之前，我们需要用到 ~newIndexToOldIndexMap=[2,3,1]~ 并且从中找
+   到最长增长序列(~[2,3]~)，然而 ~getSequence(arr)~ 返回的是它们的索引值，所以是
+   ~[0,1]~ 所以最后 ~increasingNewIndexSequence=[0,1]~ 。
+
+   然后在 for toBePatched new children 里面，因为检测到 ~moved=true~ 则会进入到
+   移动交换操作，这里执行 ~move()~ 也有个条件： ~j<0 || i !== increasingNewIndexSequence[j]~ 这两个条件
+   有分别代表两种情况(假设： ~val=increasingNewIndexSequence[j]~)：
+
+   - ~j<0~ 代表 increasingNewIndexSequence 增长序列没有内容，这说明什么？说明
+     ~newIndexToOldIndexMap~ 是个完全递减数组，如： ~[3,2,1]~ 这种情况每个元素都
+     需要进行移动，最后变成 ~[1,2,3]~ ， 1移到3位置，2不变，3移动1的位置。
+
+   - ~i!==val~
+
+     比如这里(~newIndexToOldIndexMap=[2,3,1],old=[1,2,3,4],new=[2,3,1,4]~)
+
+     ~i=2,val=1,nextchild=[1],anchor=[4]~ 意味着要在 ~[4]~ 前面插入 ~[1]~ 记住这
+     里执行的依旧是插入操作，只是在插入之前会将原来的 ~[1]~ 从 container.children
+     中删除，所以看似是交换实际只是变相插入而已。
+
+     ~i=1,val=1,nextchild=[3],anchor=[1]~ 这里 ~i===val~ 所以执行 ~j--~
+
+     ~i=0,val=0,nextchild=[2],anchor=[3]~ 这里 ~i===val~ 所以执行 ~j--~
+
+     到此 for 循环已经退出了，上面两个 ~j--~ 说明触及的是增长序列里面的元素即不
+     需要移动的元素，所以最后 children 由 ~[1,2,3,4]~ 变成 ~[2,3,1,4]~, 只是 1 进
+     行了移动。
+
+
+#+begin_quote
+只需要移动一次就可完成。。。。。。。我是分界点~~~~~~~~~
+#+end_quote
+
+
+同案例分析：
+
+1. ~[1, 2, 3, 4]~ 和 ~[1, 4, 2, 3]~
+
+   在经过 while1 之后开始进入 else 分支， ~newIndexToOldIndexMap=[4,2,3]~ 最后得
+   到增长序列： ~[2,3]~对应的索引 ~[1,2]~ 即需要执行插入的逻辑是：
+
+   ~i=2,j=1,val=2,next=[3],anchor=null~ ： i===val, j--
+
+   ~i=1,j=0,val=1,next=[2],anchor=[3]~ : i===val, j--
+
+   ~i=0,j=-1,val=undefined,next=[4],anchor=[2]~ : 4 要插入到 2 前面，
+   ~children=[1,4,2,3]~
+
+   ~i=-1~ 结束。
+
+   所以只需要执行一次移动就可以了，在递增序列内的元素是不需要动的。
+
+2. ~[1,2,3]~ 和 ~[2,3,1]~
+
+   由于前后都不一样，所以 while1,while2 都没处理，并且进入 else 乱序情况处理。
+
+   ~newIndexToOldIndexMap=[2,4,1]~ 增长序列= ~[2,4]~ ，索引： ~[0,1]~
+
+   ~i=2,j=1,val=1,next=[1],anchor=null~ ： ~1~ append 到最后，变成 ~children=[2,3,1]~
+
+   ~i=1,j=1,val=1,next=[3],anchor=[1]~ : i===val, j--
+
+   ~i=0,j=0,val=0,next=[2],anchor=[3]~ : i ===val, j--
+
+   ~i=-1~ 结束.
+
+   只需要将 ~[1]~ 移到最后就完成了交换。
+
+3. ~[1,2,3,4]~ 和 ~[4,2,3,1]~
+
+   ~newIndexToOldIndexMap=[4,2,3,1]~ 增长序列： ~[2,3]~ ，索引： ~[1,2]~
+
+   ~i=3,j=1,val=2,next=[1],anchor=null~ : ~[1]~ append 到最后， ~children=[2,3,4,1]~
+
+   ~i=2,j=1,val=2,next=[3],anchor=[1]~ : i===val, j--
+
+   ~i=1,j=0,val=1,next=[2],anchor=[3]~ : i===val, j--
+
+   ~i=0,j=-1,val=undefined,next=[4],anchor=[2]~: j<0, 执行移动，
+   ~children=[4,2,3,1]~, 将 4 移动到 2 前面。
+
+   ~i=-1~ 结束。
+
+   这里只需要执行两次移动操作， 1<->4 交换。
+** move&replace([1,2,3,4,5]->[4,1,2,3,6])
+
+这里需要完成的动作有： /用 6 替换 5，将 4移到 1 前面/ 。
+
+测试：
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm;
+    let root = nodeOps.createElement("div");
+    // <div>hello</div>
+    render(h("div", { id: 1 }, "hello"), root);
+    const rc = (arr) => renderChildren(render, root, h, arr);
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    elm = rc([1,2,3,4,5]);
+    log(">>> render [1,2,3,4,5] DONE.");
+    logRoot();
+
+    elm = rc([4,1,2,3,6]);
+    log(">>> render [4,1,2,3,6] DONE.");
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedfalse
+root: <div id=1>hello</div>
+>>> render [1,2,3,4,5] DONE.
+root: <div id=1><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+patchKeyedChildren...
+while 1, sync from start...
+while 2, sync from end...
+{ arr: [ 4, 1, 2, 3, 0 ] }
+{ result: [ 1, 2, 3 ] }
+{ toBePatched: 5 }
+最长增长序列: 1,2,3
+{ val: 3, i: 3, j: 2, toBePatched: 5 }
+{ val: 2, i: 2, j: 1, toBePatched: 5 }
+{ val: 1, i: 1, j: 0, toBePatched: 5 }
+{ val: undefined, i: 0, j: -1, toBePatched: 5 }
+moving...
+move 交换...
+>>> render [4,1,2,3,6] DONE.
+root: <div id=1><span>4</span><span>1</span><span>2</span><span>3</span><span>6</span></div>
+#+end_example
+
+*分析* ：
+
+经过 while1, while2 实际什么都没做，因为前后并没有共通节点，也因此会进入 else 进
+行无序序列处理。
+
+~old=[1,2,3,4,5]~
+
+~new=[4,1,2,3,6]~
+
+~newIndexToOldIndexMap=[0,0,0,0,0]~ 经过 for old 之后
+
+~newIndexToOldIndexMap=[4,1,2,3,0]~ 最后 5 由于没找到对应 key 的 new node或者无
+key 的 new node而 被执行删除(~unmount()~)操作。
+
+找最长增长序列： ~[1,2,3]~ 得到 ~newIndexToOldIndexMap~ 中对应的索引 ~increasingNewIndexSequence=[1,2,3],j=2~
+
+开始从右到左遍历 new children(~val=increasingNewIndexSequence[j]~)：
+
+~i=4,map=0,newchild=6~: 由于 index map 中的值为 0，说明并没有对应的 old child 属
+于需要新增的节点，执行 mount new 节点操作 ~children=[1,2,3,4,6]~ (*注意* ： 5 在
+上面已经被 unmount 掉了)
+
+~i=3,j=2,val=3,next=3,anchor=6~ : i===val, j--
+
+~i=2,j=1,val=2,next=2,anchor=3~ : i===val, j--
+
+~i=1,j=0,val=1,next=1,anchor=2~ : i===val, j--
+
+~i=0,j=-1,val=undefined,next=4,anchor=1~ : j<0, 执行 ~move()~ ，将 *4* 移动到
+*1* 前面，变成： ~children=[4,1,2,3,6]~
+
+~i=-1~ 结束。
+
+#+begin_quote
+这里实际上有三个动作：
+
+1. *5* 在 new children 中没找到 keyed child，也没有 non-keyed child 所以被
+   unmount 删除了;
+2. *6* 在 ~newIndexToOldIndexMap~ 中对应的值为 0，说明并没有 old child 与之对应，
+   属于新节点，执行 mount new 操作;
+3. *4* 节点满足 move 条件，将其移动到 *1* 前面。
+#+end_quote
+
+*同案例分析* ：
+
+1. ~[1,4,5]~ 和 ~[4,6]~
+
+   for old 时 1 和 5 被 unmount 掉
+
+   ~newIndexToOldIndexMap=[2,0]~ 因为不存在 ~newIndex > maxNewIndexSoFar~ 导致
+   ~moved=false~ 随之 ~increasingNewIndexSequence=[]~
+
+   for new 时，由于增长序列为空，所以只会进入 ~newIndexToOldIndexMap~ 检测是否为
+   0 的 if 分支执行 mount new 操作，即新增 6 这个节点：
+
+   ~i=1,newIndexToOldIndexMap[i]===0~ 进入 if mount new 6 node.
+
+2. ~[2,4,5]~ 和 ~[4,5,3]~ 删除 2，新增 3
+
+3. ~[1,2,3,4,5,6,7,8]~ 和 ~[8,7,6,5,4,3,2,1]~
+
+   这应该是最糟糕的情况了
+
+   ~newIndexToOldIndexMap=[8,7,6,5,4,3,2,1],moved=true~
+
+   增长序列为 ~[7]~ ，所以 ~increasingNewIndexSequence=[1],j=0~
+
+   ~i=7,j=0,val=7,next=1,anchor=undefined~, i===val, j--, 即节点 ~[1]~ 不需要动
+
+   ~i=6,j=-1,next=2,anchor=1~ ->2移到1前面-> ~children=[3,4,5,6,7,8,2,1]~
+
+   ~i=5,j=-1,next=3,anchor=2~ ->3移到2前面-> ~children=[4,5,6,7,8,3,2,1]~
+
+   ~i=4,j=-1,next=4,anchor=3~ ->4移到3前面-> ~children=[5,6,7,8,4,3,2,1]~
+
+   ~i=3,j=-1,next=5,anchor=4~ ->5移到4前面-> ~children=[6,7,8,5,4,3,2,1]~
+
+   ~i=2,j=-1,next=6,anchor=5~ ->6移到5前面-> ~children=[7,8,6,5,4,3,2,1]~
+
+   ~i=1,j=-1,next=7,anchor=6~ ->7移到6前面-> ~children=[8,7,6,5,4,3,2,1]~
+
+   ~i=0,j=-1,next=8,anchor=7~ 这里也会执行一次插入吗(如下面测试结果)？
+
+   ~i=-1~ 结束，共执行了七次移动。
+
+    #+begin_src js
+    const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+    .BLOG_DIR_VUE + "/lib.js");
+    import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+    ({ h, render, nodeOps, serializeInner: inner }) => {
+    let elm;
+    let root = nodeOps.createElement("div");
+    // <div>hello</div>
+    render(h("div", { id: 1 }, "hello"), root);
+    const rc = (arr) => renderChildren(render, root, h, arr);
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    elm = rc([1,2,3,4,5,6,7,8]);
+    log(">>> render [1,2,3,4,5,6,7,8] DONE.");
+    logRoot();
+
+    elm = rc([1,2,3,4,5,6,7,8].reverse());
+    log(">>> render [8,7,6,5,4,3,2,1] DONE.");
+    logRoot();
+    },
+    (err) => {
+    console.log(err.message);
+    }
+    );
+    #+end_src
+
+    #+RESULTS:
+    #+begin_example
+    undefinedfalse
+    root: <div id=1>hello</div>
+    >>> render [1,2,3,4,5,6,7,8] DONE.
+    root: <div id=1><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+    patchKeyedChildren...
+    while 1, sync from start...
+    while 2, sync from end...
+    { arr: [
+        8, 7, 6, 5,
+        4, 3, 2, 1
+    ] }
+    { result: [ 7 ] }
+    { toBePatched: 8 }
+    最长增长序列: 7
+    { val: 7, i: 7, j: 0, next: '1', anchor: null, toBePatched: 8 }
+    { val: undefined, i: 6, j: -1, next: '2', anchor: '1', toBePatched: 8 }
+    move 交换...
+    { val: undefined, i: 5, j: -1, next: '3', anchor: '2', toBePatched: 8 }
+    move 交换...
+    { val: undefined, i: 4, j: -1, next: '4', anchor: '3', toBePatched: 8 }
+    move 交换...
+    { val: undefined, i: 3, j: -1, next: '5', anchor: '4', toBePatched: 8 }
+    move 交换...
+    { val: undefined, i: 2, j: -1, next: '6', anchor: '5', toBePatched: 8 }
+    move 交换...
+    { val: undefined, i: 1, j: -1, next: '7', anchor: '6', toBePatched: 8 }
+    move 交换...
+    { val: undefined, i: 0, j: -1, next: '8', anchor: '7', toBePatched: 8 }
+    move 交换...
+    >>> render [8,7,6,5,4,3,2,1] DONE.
+    root: <div id=1><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
+    #+end_example

@@ -1,4 +1,4 @@
-#+TITLE: Vue Router Next 源码分析(附.脑图)
+#+TITLE: vue-router-next for vue3 源码分析(附.脑图)
 #+DATE: <2021-03-05 19:01:36>
 #+TAGS[]: vue, vue3, vue-router-next
 #+CATEGORIES[]: vue
@@ -162,7 +162,7 @@ vue-router 简要图：
 
 [[/img/vue3/vue-router/vue-router-next.svg]]
 
-* 守卫函数完整执行流程
+* TODO 守卫函数完整执行流程
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: flow

@@ -67,9 +67,8 @@ log.async = async (...args) => {
 };
 
 log.br = log.newline = (...args) => {
-  log(["\n", ...args]);
+  log(["\n", ...args].filter(Boolean));
 };
-
 log.catch = (fn) => {
   try {
     fn();
