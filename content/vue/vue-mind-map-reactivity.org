@@ -465,6 +465,10 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 #+end_src
 
 ** effect(fn, options)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fn-effect
+:END:
 
 [[/img/vue3/reactivity/reactivity-effect.svg]]
 

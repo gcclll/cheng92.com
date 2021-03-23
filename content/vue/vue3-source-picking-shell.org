@@ -1,142 +1,36 @@
-#+TITLE: Vue3.0源码系列 -- 重要知识点捡漏
+#+TITLE: Vue3.0源码系列 -- 知识点及问题汇总
 #+DATE: <2020-09-01 21:40:31>
 #+TAGS[]: vue, vue3, vuenext
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+* setup 函数如何解析？又是如何执行？
+
+执行流程：
+
+render ->
+
+patch ->
+
+processComponent ->
+
+mountComponent ->
+
+createComponentInstance -> 创建组件实例，初始化组件结构
+
+setupComponent -> 初始化 props 和 slots，有状态组件处理
+
+setupStatefulComponent -> 给 instance.ctx 增加代理，执行 setup() 函数
+
+也就是说在 setup 执行之前 props, emits, slots 都已经可以访问了，并且这个函数在组
+件整个生命周期中只会调用一次，因为后面组件的更新时直接调用 ~instance.update~ 来
+完成，不会进入 mountComponent 。
+
+[[/vue/vue-mind-map-runtime-core-3-component/#setup][更多分析链接...]]
+* component render 函数在哪里执行？
 * TODO ShapeFlags 的溯源和用途？
-
 涉及模块： ~runtime-core~
-* 一个较完整的 AST 结构：
-
-  #+begin_src js
-    {
-      "type":0, // root 节点
-      "children":[ // 节点的子组件列表
-        {
-          "type":1, // 标签 div
-          "ns":0, // html
-          "tag":"div", // 标签名
-          "tagType":0, // 标签类型：start-0, end-1
-          "props":[ // 标签的属性列表，如： v-bind:keyup.prevent.enter
-            { // 属性有几个重要的属性：
-              // 1. name, 指令名称，v- 及缩写(#, @, :) 会转换成属性名称，如：bind
-              // 2. exp 表达式即=号后边的值，
-              // 3. arg 参数名，绑定的变量名，可能是动态的
-              // 4. 修饰符，modifiers
-
-              "type":7,
-              "name":"bind",
-              "exp":{
-                "type":4,
-                "content":"ok", // 表达式内容，
-                "isStatic":false,
-                "isConstant":false,
-                "loc":{
-                  "start":{
-                    "column":34,
-                    "line":1,
-                    "offset":33
-                  },
-                  "end":{
-                    "column":36,
-                    "line":1,
-                    "offset":35
-                  },
-                  "source":"ok"
-                }
-              },
-              "arg":{ // 参数，绑定的事件或变量
-                "type":4,
-                "content":"keyup",
-                "isStatic":true, // 支持 v-bind:[varname] 动态属性
-                "isConstant":true,
-                "loc":{
-                  "start":{
-                    "column":13,
-                    "line":1,
-                    "offset":12
-                  },
-                  "end":{
-                    "column":18,
-                    "line":1,
-                    "offset":17
-                  },
-                  "source":"keyup"
-                }
-              },
-              "modifiers":[
-                "prevent",
-                "enter"
-              ],
-              "loc":{
-                "start":{
-                  "column":6,
-                  "line":1,
-                  "offset":5
-                },
-                "end":{
-                  "column":37,
-                  "line":1,
-                  "offset":36
-                },
-                "source":"v-bind:keyup.prevent.enter="ok""
-              }
-            }
-          ],
-          "isSelfClosing":false,
-          "children":[
-            // 如果 <div>...</div> 还有内容这里会递归解析出子节点 ast
-          ],
-          "loc":{
-            "start":{
-              "column":1,
-              "line":1,
-              "offset":0
-            },
-            "end":{
-              "column":44,
-              "line":1,
-              "offset":43
-            },
-            "source":"<div v-bind:keyup.prevent.enter="ok"></div>"
-          }
-        }
-      ],
-      "loc":{
-        "start":{
-          "column":1,
-          "line":1,
-          "offset":0
-        },
-        "end":{
-          "column":44,
-          "line":1,
-          "offset":43
-        },
-        "source":"<div v-bind:keyup.prevent.enter="ok"></div>"
-      },
-      "helpers":[
-
-      ],
-      "components":[
-
-      ],
-      "directives":[
-
-      ],
-      "hoists":[
-
-      ],
-      "imports":[
-
-      ],
-      "cached":0,
-      "temps":0
-    }
-  #+end_src
-
 * 标签(组件)种类(element, component, slot, template)
   :PROPERTIES:
   :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -390,3 +284,132 @@
          }
        }
      #+end_src
+
+* 一个较完整的 AST 结构：
+
+  #+begin_src js
+    {
+      "type":0, // root 节点
+      "children":[ // 节点的子组件列表
+        {
+          "type":1, // 标签 div
+          "ns":0, // html
+          "tag":"div", // 标签名
+          "tagType":0, // 标签类型：start-0, end-1
+          "props":[ // 标签的属性列表，如： v-bind:keyup.prevent.enter
+            { // 属性有几个重要的属性：
+              // 1. name, 指令名称，v- 及缩写(#, @, :) 会转换成属性名称，如：bind
+              // 2. exp 表达式即=号后边的值，
+              // 3. arg 参数名，绑定的变量名，可能是动态的
+              // 4. 修饰符，modifiers
+
+              "type":7,
+              "name":"bind",
+              "exp":{
+                "type":4,
+                "content":"ok", // 表达式内容，
+                "isStatic":false,
+                "isConstant":false,
+                "loc":{
+                  "start":{
+                    "column":34,
+                    "line":1,
+                    "offset":33
+                  },
+                  "end":{
+                    "column":36,
+                    "line":1,
+                    "offset":35
+                  },
+                  "source":"ok"
+                }
+              },
+              "arg":{ // 参数，绑定的事件或变量
+                "type":4,
+                "content":"keyup",
+                "isStatic":true, // 支持 v-bind:[varname] 动态属性
+                "isConstant":true,
+                "loc":{
+                  "start":{
+                    "column":13,
+                    "line":1,
+                    "offset":12
+                  },
+                  "end":{
+                    "column":18,
+                    "line":1,
+                    "offset":17
+                  },
+                  "source":"keyup"
+                }
+              },
+              "modifiers":[
+                "prevent",
+                "enter"
+              ],
+              "loc":{
+                "start":{
+                  "column":6,
+                  "line":1,
+                  "offset":5
+                },
+                "end":{
+                  "column":37,
+                  "line":1,
+                  "offset":36
+                },
+                "source":"v-bind:keyup.prevent.enter="ok""
+              }
+            }
+          ],
+          "isSelfClosing":false,
+          "children":[
+            // 如果 <div>...</div> 还有内容这里会递归解析出子节点 ast
+          ],
+          "loc":{
+            "start":{
+              "column":1,
+              "line":1,
+              "offset":0
+            },
+            "end":{
+              "column":44,
+              "line":1,
+              "offset":43
+            },
+            "source":"<div v-bind:keyup.prevent.enter="ok"></div>"
+          }
+        }
+      ],
+      "loc":{
+        "start":{
+          "column":1,
+          "line":1,
+          "offset":0
+        },
+        "end":{
+          "column":44,
+          "line":1,
+          "offset":43
+        },
+        "source":"<div v-bind:keyup.prevent.enter="ok"></div>"
+      },
+      "helpers":[
+
+      ],
+      "components":[
+
+      ],
+      "directives":[
+
+      ],
+      "hoists":[
+
+      ],
+      "imports":[
+
+      ],
+      "cached":0,
+      "temps":0
+    }
+  #+end_src

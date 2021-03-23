@@ -60,7 +60,7 @@ var plans = [
   {
     link: "/vue/vue-vuex",
     name: "vuex 4.0",
-    status: "DOING",
+    status: "DONE",
     startTime: "2021-03-10",
     desc: "vue3 数据管理",
   },

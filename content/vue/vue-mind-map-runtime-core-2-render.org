@@ -12,6 +12,9 @@
   诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
+<script src="https://unpkg.com/vue@next"></script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/utils.js"></script>
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]
@@ -208,7 +211,7 @@ const render: RootRenderFunction = (vnode, container) => {
    只支持的类型： ~Text|Comment|Static~ 节点类型
 
    组件类型(default 分支): ~ELEMENT/TELEPORT/COMPONENT/SUSPENSE~
-* processElement(...args)
+* patch->processElement(...args)
 
 [[https://github.com/gcclll/stb-vue-next/commit/761db2b532ceaaf9554b7df07e2fffe686cd98f0][feat(init): baseCreateRender-> patch -> processElement imp ·
 gcclll/stb-vue-next@761db2b · GitHub]]
@@ -1657,6 +1660,8 @@ mountElment else...
 :CUSTOM_ID: keyed-children
 :END:
 
+[[/img/vue3/runtime-core/vue-runtime-core-patch-keyed-children.jpg]]
+
 [[https://github.com/gcclll/stb-vue-next/commit/4a6a1f2b59e938346f097ead660d68b3b2837323][feat(add): patchKeyedChildren · gcclll/stb-vue-next@4a6a1f2]]
 
 代码中列出了几种可能的情况：
@@ -2396,3 +2401,95 @@ key 的 new node而 被执行删除(~unmount()~)操作。
     >>> render [8,7,6,5,4,3,2,1] DONE.
     root: <div id=1><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
     #+end_example
+* patchUnkeyedChildren
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: patch-unkeyed-children
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/2d067109dc386b27fa4a6ef9c783262caf6d0f7a][feat(add): unkeyd children patch · gcclll/stb-vue-next@2d06710]]
+
+对于明确 unkeyed 的 children 处理和 keyed 处理区别在于，会将前面的 children 先进
+行 patch, 因为在 [[#keyed-children][patchKeyedChildren]] 一节已经详细分析过，如果没有 old child 是
+unkeyed 会从 new children 中依序找到第一个符合条件的 unkeyed child 去替换。
+
+所以这里分三步走：
+
+1. 找到最小长度，针对此长度内的 child 进行 patch，因为对于 unkeyed old child 只
+   需要找到对应的 unkeyed new child 替换就行
+2. 新增的情况 new child len > old child len
+3. 减少的情况 new child len < old child len
+
+#+begin_src typescript
+const patchUnkeyedChildren = (
+  c1: VNode[],
+  c2: VNodeArrayChildren,
+  container: RendererElement,
+  anchor: RendererNode | null,
+  parentComponent: ComponentInternalInstance | null,
+  parentSuspense: SuspenseBoundary | null,
+  isSVG: boolean,
+  optimized: boolean
+) => {
+  c1 = c1 || EMPTY_ARR;
+  c2 = c2 || EMPTY_ARR;
+  const oldLength = c1.length;
+  const newLength = c2.length;
+  const commonLength = Math.min(oldLength, newLength);
+  let i;
+  for (i = 0; i < commonLength; i++) {
+    const nextChild = (c2[i] = optimized
+      ? cloneIfMounted(c2[i] as VNode)
+      : normalizeVNode(c2[i]));
+    patch(
+      c1[i],
+      nextChild,
+      container,
+      null,
+      parentComponent,
+      parentSuspense,
+      isSVG,
+      optimized
+    );
+  }
+
+  if (oldLength > newLength) {
+    // remove old
+    unmountChildren(
+      c1,
+      parentComponent,
+      parentSuspense,
+      true,
+      false,
+      commonLength
+    );
+  } else {
+    // mount new
+    mountChildren(
+      c2,
+      container,
+      anchor,
+      parentComponent,
+      parentSuspense,
+      isSVG,
+      optimized,
+      commonLength
+    );
+  }
+};
+#+end_src
+* patch->processComponent(如何patch组件的？)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render-component
+:END:
+
+
+
+
+* 测试
+
+#+begin_export html
+<div id="tShhLU1P6z"></div>
+<script src="/js/vue/tests/tShhLU1P6z.js"></script>
+#+end_export

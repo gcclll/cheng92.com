@@ -68,7 +68,8 @@ var Counter = {
     <el-button type="primary" @click="increment">+</el-button>
     <el-button @click="decrement">-</el-button>
     count: {{$store.state.count}}, num: {{$store.state.m1.num}}
-    <br><el-button @click="registerHooks">注册before&after</el-button>
+    <br><br><el-button @click="registerHooks">注册before&after</el-button>
+    {{this.registered ? "已注册" : ""}}
   `,
   data() {
   return { registered: false }

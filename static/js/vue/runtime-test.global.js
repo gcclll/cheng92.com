@@ -17,6 +17,11 @@ var VueRuntimeTest = (function (exports) {
       return expectsLowerCase ? val => !!map[val.toLowerCase()] : val => !!map[val];
   }
 
+  const GLOBALS_WHITE_LISTED = 'Infinity,undefined,NaN,isFinite,isNaN,parseFloat,parseInt,decodeURI,' +
+      'decodeURIComponent,encodeURI,encodeURIComponent,Math,Number,Date,Array,' +
+      'Object,Boolean,String,RegExp,Map,Set,JSON,Intl';
+  const isGloballyWhitelisted = /*#__PURE__*/ makeMap(GLOBALS_WHITE_LISTED);
+
   function normalizeStyle(value) {
       if (isArray(value)) {
           const res = {};
@@ -158,6 +163,11 @@ var VueRuntimeTest = (function (exports) {
   const camelize = cacheStringFunction((str) => {
       return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''));
   });
+  const hyphenateRE = /\B([A-Z])/g;
+  /**
+   * @private
+   */
+  const hyphenate = cacheStringFunction((str) => str.replace(hyphenateRE, '-$1').toLowerCase());
   /**
    * @private
    */
@@ -168,6 +178,11 @@ var VueRuntimeTest = (function (exports) {
   const toHandlerKey = cacheStringFunction((str) => (str ? `on${capitalize(str)}` : ``));
   // compare whether a value has changed, accounting for NaN.
   const hasChanged = (value, oldValue) => value !== oldValue && (value === value || oldValue === oldValue);
+  const invokeArrayFns = (fns, arg) => {
+      for (let i = 0; i < fns.length; i++) {
+          fns[i](arg);
+      }
+  };
   const def = (obj, key, value) => {
       Object.defineProperty(obj, key, {
           configurable: true,
@@ -1045,6 +1060,13 @@ var VueRuntimeTest = (function (exports) {
           : new ObjectRefImpl(object, key);
   }
 
+  const isBuiltInDirective = /*#__PURE__*/ makeMap('bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text');
+  function validateDirectiveName(name) {
+      if (isBuiltInDirective(name)) {
+          warn('Do not use built-in directive ids as custom directive id: ' + name);
+      }
+  }
+
   const isTeleport = (type) => type.__isTeleport;
   const TeleportImpl = {
   // TODO
@@ -1158,6 +1180,109 @@ var VueRuntimeTest = (function (exports) {
               console.error(err);
           }
       }
+  }
+
+  /**
+   * mark the current rendering instance for asset resolution (e.g.
+   * resolveComponent, resolveDirective) during render
+   */
+  let currentRenderingInstance = null;
+  function renderComponentRoot(instance) {
+      const { 
+      // type: Component,
+      vnode, proxy, withProxy, props, 
+      // propsOptions: [propsOptions],
+      // slots,
+      attrs, 
+      // emit,
+      render, renderCache, data, setupState, ctx } = instance;
+      let result;
+      currentRenderingInstance = instance;
+      try {
+          let fallthroughAttrs;
+          if (vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */) {
+              // withProxy is a proxy with a different `has` trap only for
+              // runtime-compiled render functions using `with` block.
+              const proxyToUse = withProxy || proxy;
+              console.log('normalize vnode');
+              result = normalizeVNode(render.call(proxyToUse, proxyToUse, renderCache, props, setupState, data, ctx));
+              fallthroughAttrs = attrs;
+          }
+          else {
+              // TODO 无状态组件？
+              result = {};
+          }
+          // TODO attr merging
+          let root = result;
+          let setRoot = undefined;
+          if (true && result.patchFlag & 2048 /* DEV_ROOT_FRAGMENT */) {
+              ;
+              [root, setRoot] = getChildRoot(result);
+          }
+          // TODO dirs, transition
+          if (true && setRoot) {
+              setRoot(root);
+          }
+          else {
+              result = root;
+          }
+      }
+      catch (err) {
+          handleError(err, instance, 1 /* RENDER_FUNCTION */);
+          result = createVNode(Comment);
+      }
+      currentRenderingInstance = null;
+      return result;
+  }
+  /**
+   * dev only
+   * In dev mode, template root level comments are rendered, which turns the
+   * template into a fragment root, but we need to locate the single element
+   * root for attrs and scope id processing.
+   */
+  const getChildRoot = (vnode) => {
+      const rawChildren = vnode.children;
+      const dynamicChildren = vnode.dynamicChildren;
+      const childRoot = filterSingleRoot(rawChildren);
+      if (!childRoot) {
+          return [vnode, undefined];
+      }
+      const index = rawChildren.indexOf(childRoot);
+      const dynamicIndex = dynamicChildren ? dynamicChildren.indexOf(childRoot) : -1;
+      const setRoot = (updatedRoot) => {
+          rawChildren[index] = updatedRoot;
+          if (dynamicChildren) {
+              if (dynamicIndex > -1) {
+                  dynamicChildren[dynamicIndex] = updatedRoot;
+              }
+              else if (updatedRoot.patchFlag > 0) {
+                  vnode.dynamicChildren = [...dynamicChildren, updatedRoot];
+              }
+          }
+      };
+      return [normalizeVNode(childRoot), setRoot];
+  };
+  function filterSingleRoot(children) {
+      let singleRoot;
+      for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          if (isVNode(child)) {
+              // ignore user comment
+              if (child.type !== Comment || child.children === 'v-if') {
+                  if (singleRoot) {
+                      // has more than 1 non-comment child, return now
+                      return;
+                  }
+                  else {
+                      singleRoot = child;
+                  }
+              }
+          }
+          else {
+              return;
+          }
+      }
+      return singleRoot;
   }
 
   let isFlushing = false; // 开始 flush pre/job/post
@@ -1792,254 +1917,6 @@ var VueRuntimeTest = (function (exports) {
       return ret;
   }
 
-  /**
-   * mark the current rendering instance for asset resolution (e.g.
-   * resolveComponent, resolveDirective) during render
-   */
-  let currentRenderingInstance = null;
-  /**
-   * dev only flag to track whether $attrs was used during render.
-   * If $attrs was used during render then the warning for failed attrs
-   * fallthrough can be suppressed.
-   * 开发是用的标识，用来跟踪 $attrs 静态属性在 render 期间是否被使用
-   * 如果被使用了，或许就不需要给出警告？啥意思???
-   */
-  let accessedAttrs = false;
-  console.log(accessedAttrs);
-  function markAttrsAccessed() {
-      accessedAttrs = true;
-  }
-  function filterSingleRoot(children) {
-      let singleRoot;
-      for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          if (isVNode(child)) {
-              // ignore user comment
-              if (child.type !== Comment || child.children === 'v-if') {
-                  if (singleRoot) {
-                      // has more than 1 non-comment child, return now
-                      return;
-                  }
-                  else {
-                      singleRoot = child;
-                  }
-              }
-          }
-          else {
-              return;
-          }
-      }
-      return singleRoot;
-  }
-
-  // import { CompilerOptions } from '@vue/compiler-dom'
-  let currentInstance = null;
-  const getCurrentInstance = () => currentInstance || currentRenderingInstance;
-  const setCurrentInstance = (instance) => {
-      currentInstance = instance;
-  };
-  const isBuiltInTag = /*#__PURE__*/ makeMap('slot,component');
-  function validateComponentName(name, config) {
-      const appIsNativeTag = config.isNativeTag || NO;
-      if (isBuiltInTag(name) || appIsNativeTag(name)) {
-          warn('Do not use built-in or reserved HTML elements as component id: ' + name);
-      }
-  }
-  // type CompileFunction = (
-  //   template: string | object,
-  //   options?: CompilerOptions
-  // ) => InternalRenderFunction
-  const classifyRE = /(?:^|[-_])(\w)/g;
-  const classify = (str) => str.replace(classifyRE, c => c.toUpperCase()).replace(/[-_]/g, '');
-  const attrHandlers = {
-      get: (target, key) => {
-          {
-              markAttrsAccessed();
-          }
-          return target[key];
-      },
-      set: () => {
-          warn(`setupContext.attrs is readonly.`);
-          return false;
-      },
-      deleteProperty: () => {
-          warn(`setupContext.attrs is readonly.`);
-          return false;
-      }
-  };
-  function createSetupContext(instance) {
-      const expose = exposed => {
-          if ( instance.exposed) {
-              warn(`expose() should be called only once per setup().`);
-          }
-          // ref 类型值，通过代理实现对 value 的 get/set
-          instance.exposed = proxyRefs(exposed);
-      };
-      {
-          // We use getters in dev in case libs like test-utils overwrite instance
-          // properties (overwrites should not be done in prod)
-          // 防止覆盖属性
-          return Object.freeze({
-              get props() {
-                  return instance.props;
-              },
-              get attrs() {
-                  return new Proxy(instance.attrs, attrHandlers);
-              },
-              get slots() {
-                  return shallowReadonly(instance.slots);
-              },
-              get emit() {
-                  return (event, ...args) => instance.emit(event, ...args);
-              },
-              expose
-          });
-      }
-  }
-  // record effects created during a component's setup() so that they can be
-  // stopped when the component unmounts
-  // 记录在组件 setup() 期间绑定了哪些 effects，方便当组件卸载的时候去停掉他们
-  function recordInstanceBoundEffect(effect, instance = currentInstance) {
-      if (instance) {
-          (instance.effects || (instance.effects = [])).push(effect);
-      }
-  }
-  function getComponentName(Component) {
-      return isFunction(Component)
-          ? Component.displayName || Component.name
-          : Component.name;
-  }
-  /* istanbul ignore next */
-  function formatComponentName(instance, Component, isRoot = false) {
-      let name = getComponentName(Component);
-      // TODO
-      return name ? classify(name) : isRoot ? `App` : `Anonymous`;
-  }
-  function isClassComponent(value) {
-      return isFunction(value) && '__vccOpts' in value;
-  }
-
-  const stack = [];
-  function pushWarningContext(vnode) {
-      stack.push(vnode);
-  }
-  function popWarningContext() {
-      stack.pop();
-  }
-  function warn(msg, ...args) {
-      // avoid props formatting or warn handler tracking deps that might be mutated
-      // during patch, leading to infinite recursion.
-      pauseTracking();
-      const instance = stack.length ? stack[stack.length - 1].component : null;
-      const appWarnHandler = instance && instance.appContext.config.warnHandler;
-      const trace = getComponentTrace();
-      if (appWarnHandler) {
-          callWithErrorHandling(appWarnHandler, instance, 11 /* APP_WARN_HANDLER */, [
-              msg + args.join(''),
-              instance && instance.proxy,
-              trace
-                  .map(({ vnode }) => `at <${formatComponentName(instance, vnode.type)}>`)
-                  .join('\n'),
-              trace
-          ]);
-      }
-      else {
-          const warnArgs = [`[Vue warn]: ${msg}`, ...args];
-          /* istanbul ignore if */
-          if (trace.length &&
-              // avoid spamming console during tests
-              !false) {
-              warnArgs.push(`\n`, ...formatTrace(trace));
-          }
-          console.warn(...warnArgs);
-      }
-      resetTracking();
-  }
-  function getComponentTrace() {
-      let currentVNode = stack[stack.length - 1];
-      if (!currentVNode) {
-          return [];
-      }
-      // we can't just use the stack because it will be incomplete during updates
-      // that did not start from the root. Re-construct the parent chain using
-      // instance parent pointers.
-      const normalizedStack = [];
-      while (currentVNode) {
-          const last = normalizedStack[0];
-          if (last && last.vnode === currentVNode) {
-              last.recurseCount++;
-          }
-          else {
-              normalizedStack.push({
-                  vnode: currentVNode,
-                  recurseCount: 0
-              });
-          }
-          const parentInstance = currentVNode.component && currentVNode.component.parent;
-          currentVNode = parentInstance && parentInstance.vnode;
-      }
-      return normalizedStack;
-  }
-  /* istanbul ignore next */
-  function formatTrace(trace) {
-      const logs = [];
-      trace.forEach((entry, i) => {
-          logs.push(...(i === 0 ? [] : [`\n`]), ...formatTraceEntry(entry));
-      });
-      return logs;
-  }
-  function formatTraceEntry({ vnode, recurseCount }) {
-      const postfix = recurseCount > 0 ? `... (${recurseCount} recursive calls)` : ``;
-      const isRoot = vnode.component ? vnode.component.parent == null : false;
-      const open = ` at <${formatComponentName(vnode.component, vnode.type, isRoot)}`;
-      const close = `>` + postfix;
-      return vnode.props
-          ? [open, ...formatProps(vnode.props), close]
-          : [open + close];
-  }
-  /* istanbul ignore next */
-  function formatProps(props) {
-      const res = [];
-      const keys = Object.keys(props);
-      keys.slice(0, 3).forEach(key => {
-          res.push(...formatProp(key, props[key]));
-      });
-      if (keys.length > 3) {
-          res.push(` ...`);
-      }
-      return res;
-  }
-  /* istanbul ignore next */
-  function formatProp(key, value, raw) {
-      if (isString(value)) {
-          value = JSON.stringify(value);
-          return raw ? value : [`${key}=${value}`];
-      }
-      else if (typeof value === 'number' ||
-          typeof value === 'boolean' ||
-          value == null) {
-          return raw ? value : [`${key}=${value}`];
-      }
-      else if (isRef(value)) {
-          value = formatProp(key, toRaw(value.value), true);
-          return raw ? value : [`${key}=Ref<`, value, `>`];
-      }
-      else if (isFunction(value)) {
-          return [`${key}=fn${value.name ? `<${value.name}>` : ``}`];
-      }
-      else {
-          value = toRaw(value);
-          return raw ? value : [`${key}=`, value];
-      }
-  }
-
-  const isBuiltInDirective = /*#__PURE__*/ makeMap('bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text');
-  function validateDirectiveName(name) {
-      if (isBuiltInDirective(name)) {
-          warn('Do not use built-in directive ids as custom directive id: ' + name);
-      }
-  }
-
   function createAppContext() {
       return {
           app: null,
@@ -2202,6 +2079,837 @@ var VueRuntimeTest = (function (exports) {
       };
   }
 
+  function emit(instance, event, ...rawArgs) { }
+  function isEmitListener(options, key) {
+      if (!options || !isOn(key)) {
+          return false;
+      }
+      //onXxxx or onXxxOnce, 因为 @click.once 会解析成 onClickOnce
+      key = key.slice(2).replace(/Once$/, '');
+      // 检测条件：
+      // 1. slice(1) 应该是去掉 @click 中的 `@` ?
+      // 2. clickEvent -> click-event
+      // 3. click
+      // 支持三种形式的事件名
+      return (hasOwn(options, key[0].toLowerCase() + key.slice(1)) ||
+          // onClick -> on-click
+          hasOwn(options, hyphenate(key)) ||
+          hasOwn(options, key));
+  }
+
+  function initProps(instance, rawProps, isStateful, isSSR = false) {
+      const props = {};
+      const attrs = {};
+      def(attrs, InternalObjectKey, 1);
+      setFullProps(instance, rawProps, props, attrs);
+      // TODO validation
+      if (isStateful) {
+          instance.props = isSSR ? props : shallowReactive(props);
+      }
+      else {
+          if (!instance.type.props) {
+              // functional optional props, props === attrs
+              instance.props = attrs;
+          }
+          else {
+              // functional declared props
+              instance.props = props;
+          }
+      }
+      instance.attrs = attrs;
+  }
+  function setFullProps(instance, rawProps, props, attrs) {
+      const [options, needCastKeys] = instance.propsOptions;
+      if (rawProps) {
+          for (const key in rawProps) {
+              const value = rawProps[key];
+              // key, ref 保留，不往下传
+              // 即这两个属性不会继承给 child
+              if (isReservedProp(key)) {
+                  continue;
+              }
+              let camelKey;
+              if (options && hasOwn(options, (camelKey = camelize(key)))) {
+                  props[camelKey] = value;
+              }
+              else if (!isEmitListener(instance.emitsOptions, key)) {
+                  attrs[key] = value;
+              }
+          }
+      }
+      if (needCastKeys) {
+          const rawCurrentProps = toRaw(props);
+          for (let i = 0; i < needCastKeys.length; i++) {
+              const key = needCastKeys[i];
+              props[key] = resolvePropValue(options, rawCurrentProps, key, rawCurrentProps[key], instance);
+          }
+      }
+  }
+  function resolvePropValue(options, props, key, value, instance) {
+      /*
+       * 这里面的处理是针对 props: { name: { ... } } 类型而言
+       * 1. 默认值的处理， default 可能是函数或普通类型值，如果是函数应该得到
+       * 函数执行的结果作为它的值，注意下面的检测函数时前置条件是该类型不是函数，
+       * 如果类型也是函数，默认值就是该函数本身，而非执行后的结果值
+       * 2. 布尔值的处理，值转成 true or false
+       */
+      const opt = options[key];
+      if (opt != null) {
+          const hasDefault = hasOwn(opt, 'default');
+          // 默认值
+          if (hasDefault && value === undefined) {
+              const defaultValue = opt.default;
+              // props: { name: { default: (props) => 'xxx' } }
+              // 类型不是函数？但是默认值是函数，执行得到结果
+              if (opt.type !== Function && isFunction(defaultValue)) {
+                  setCurrentInstance(instance);
+                  value = defaultValue(props);
+                  setCurrentInstance(null);
+              }
+              else {
+                  // props: { name: { default: 'xxx' } }
+                  value = defaultValue;
+              }
+          }
+          // boolean casting
+          if (opt[0 /* shouldCast */]) {
+              if (!hasOwn(props, key) && !hasDefault) {
+                  value = false;
+              }
+              else if (opt[1 /* shouldCastTrue */] &&
+                  (value === '' || value === hyphenate(key))) {
+                  value = true;
+              }
+          }
+      }
+      return value;
+  }
+  function normalizePropsOptions(comp, appContext, asMixin) {
+      if (!appContext.deopt && comp.__props) {
+          return comp.__props;
+      }
+      const raw = comp.props;
+      const normalized = {};
+      const needCastKeys = [];
+      // mixin/extends props 应用
+      let hasExtends = false;
+      // 必须开支 2.x options api 支持，且不是函数式组件
+      // 继承来的属性，用法： ~CompA = { extends: CompB, ... }~
+      // CompA 会继承 CompB 的 props
+      if ( !isFunction(comp)) {
+          const extendProps = (raw) => {
+              hasExtends = true;
+              const [props, keys] = normalizePropsOptions(raw, appContext, true);
+              extend(normalized, props);
+              if (keys) {
+                  needCastKeys.push(...keys);
+              }
+          };
+          // Comp: { extends: CompA } 处理
+          if (comp.extends) {
+              extendProps(comp.extends);
+          }
+          // Comp: { mixins: [mixin] } 处理
+          if (!asMixin && appContext.mixins.length) {
+              appContext.mixins.forEach(extendProps);
+          }
+      }
+      // 既没有自身的 props 也没有 extends 继承来的 props 初始化为 []
+      if (!raw && !hasExtends) {
+          return (comp.__props = EMPTY_ARR);
+      }
+      if (isArray(raw)) {
+          // 当 props 是数组的时候，必须是字符类型，如: props: ['foo', 'bar', 'foo-bar']
+          // 'foo-bar' 会转成 'fooBar'，不允许 '$xxx' 形式的变量名
+          for (let i = 0; i < raw.length; i++) {
+              const normalizedKey = camelize(raw[i]);
+              // 组件的属性名不能是以 $xx 开头的名称，这个是作为内部属性的
+              if (validatePropName(normalizedKey)) {
+                  normalized[normalizedKey] = EMPTY_OBJ;
+              }
+          }
+      }
+      else if (raw) {
+          // 对象类型 props: { foo: 1, bar: 2, ... }
+          for (const key in raw) {
+              // 'foo-bar' -> 'fooBar'
+              const normalizedKey = camelize(key);
+              // 检查 $xxx 非法属性
+              if (validatePropName(normalizedKey)) {
+                  const opt = raw[key];
+                  // ? 值为数组或函数变成： { type: opt } ?
+                  // 这里含义其实是： ~props: { foo: [Boolean, Function] }~
+                  // 可以用数组定义该属性可以是多种类型的其中一种
+                  const prop = (normalized[normalizedKey] =
+                      isArray(opt) || isFunction(opt) ? { type: opt } : opt);
+                  if (prop) {
+                      // 找到 Boolean 在 foo: [Boolean, Function] 中的索引
+                      const booleanIndex = getTypeIndex(Boolean, prop.type);
+                      const stringIndex = getTypeIndex(String, prop.type);
+                      prop[0 /* shouldCast */] = booleanIndex > -1;
+                      // [String, Boolean] 类型，String 在 Boolean 前面
+                      prop[1 /* shouldCastTrue */] =
+                          stringIndex < 0 || booleanIndex < stringIndex;
+                      // 如果是布尔类型的值或者有默认值的属性需要转换
+                      // 转换是根据 type 和 default 值处理
+                      // type非函数，default是函数，执行 default() 得到默认值
+                      if (booleanIndex > -1 || hasOwn(prop, 'default')) {
+                          needCastKeys.push(normalizedKey);
+                      }
+                  }
+              }
+          }
+      }
+      return (comp.__props = [normalized, needCastKeys]);
+  }
+  function validatePropName(key) {
+      // 非内部属性？
+      if (key[0] !== '$') {
+          return true;
+      }
+      else {
+          // $xxx 为保留属性
+          warn(`Invalid prop name: "${key}" is a reserved property.`);
+      }
+      return false;
+  }
+  // use function string name to check type constructors
+  // so that it works across vms / iframes.
+  function getType(ctor) {
+      const match = ctor && ctor.toString().match(/^\s*function (\w+)/);
+      return match ? match[1] : '';
+  }
+  function isSameType(a, b) {
+      return getType(a) === getType(b);
+  }
+  function getTypeIndex(type, expectedTypes) {
+      if (isArray(expectedTypes)) {
+          for (let i = 0, len = expectedTypes.length; i < len; i++) {
+              if (isSameType(expectedTypes[i], type)) {
+                  return i;
+              }
+          }
+      }
+      else if (isFunction(expectedTypes)) {
+          return isSameType(expectedTypes, type) ? 0 : -1;
+      }
+      return -1;
+  }
+
+  function resolveMergedOptions(instance) {
+      const raw = instance.type;
+      const { __merged, mixins, extends: extendsOptions } = raw;
+      if (__merged)
+          return __merged;
+      const globalMixins = instance.appContext.mixins;
+      if (!globalMixins.length && !mixins && !extendsOptions)
+          return raw;
+      const options = {};
+      globalMixins.forEach(m => mergeOptions(options, m, instance));
+      mergeOptions(options, raw, instance);
+      return (raw.__merged = options);
+  }
+  function mergeOptions(to, from, instance) {
+      const strats = instance.appContext.config.optionMergeStrategies;
+      const { mixins, extends: extendsOptions } = from;
+      extendsOptions && mergeOptions(to, extendsOptions, instance);
+      mixins &&
+          mixins.forEach((m) => mergeOptions(to, m, instance));
+      for (const key in from) {
+          if (strats && hasOwn(strats, key)) {
+              to[key] = strats[key](to[key], from[key], instance.proxy, key);
+          }
+          else {
+              to[key] = from[key];
+          }
+      }
+  }
+
+  /**
+   * #2437 In Vue 3, functional components do not have a public instance proxy but
+   * they exist in the internal parent chain. For code that relies on traversing
+   * public $parent chains, skip functional ones and go to the parent instead.
+   */
+  const getPublicInstance = (i) => i && (i.proxy ? i.proxy : getPublicInstance(i.parent));
+  const publicPropertiesMap = extend(Object.create(null), {
+      $: i => i,
+      $el: i => i.vnode.el,
+      $data: i => i.data,
+      $props: i => ( shallowReadonly(i.props) ),
+      $attrs: i => ( shallowReadonly(i.attrs) ),
+      $slots: i => ( shallowReadonly(i.slots) ),
+      $refs: i => ( shallowReadonly(i.refs) ),
+      $parent: i => getPublicInstance(i.parent),
+      $root: i => i.root && i.root.proxy,
+      $emit: i => i.emit,
+      $options: i => ( resolveMergedOptions(i) ),
+      $forceUpdate: i => () => queueJob(i.update),
+      $nextTick: i => nextTick.bind(i.proxy),
+      $watch: i => ( instanceWatch.bind(i) )
+  });
+  const PublicInstanceProxyHandlers = {
+      get({ _: instance }, key) {
+          const { ctx, setupState, data, props, accessCache, type, appContext } = instance;
+          // let @vue/reactivity know it should never observe Vue public instances.
+          if (key === "__v_skip" /* SKIP */) {
+              return true;
+          }
+          // for internal formatters to know that this is a Vue instance
+          if ( key === '__isVue') {
+              return true;
+          }
+          // data / props / ctx
+          // This getter gets called for every property access on the render context
+          // during render and is a major hotspot. The most expensive part of this
+          // is the multiple hasOwn() calls. It's much faster to do a simple property
+          // access on a plain object, so we use an accessCache object (with null
+          // prototype) to memoize what access type a key corresponds to.
+          let normalizedProps;
+          if (key[0] !== '$') {
+              const n = accessCache[key];
+              if (n !== undefined) {
+                  switch (n) {
+                      case 0 /* SETUP */:
+                          return setupState[key];
+                      case 1 /* DATA */:
+                          return data[key];
+                      case 3 /* CONTEXT */:
+                          return ctx[key];
+                      case 2 /* PROPS */:
+                          return props[key];
+                      // default: just fallthrough
+                  }
+              }
+              else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+                  accessCache[key] = 0 /* SETUP */;
+                  return setupState[key];
+              }
+              else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+                  accessCache[key] = 1 /* DATA */;
+                  return data[key];
+              }
+              else if (
+              // only cache other properties when instance has declared (thus stable)
+              // props
+              (normalizedProps = instance.propsOptions[0]) &&
+                  hasOwn(normalizedProps, key)) {
+                  accessCache[key] = 2 /* PROPS */;
+                  return props[key];
+              }
+              else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
+                  accessCache[key] = 3 /* CONTEXT */;
+                  return ctx[key];
+              }
+              else {
+                  accessCache[key] = 4 /* OTHER */;
+              }
+          }
+          const publicGetter = publicPropertiesMap[key];
+          let cssModule, globalProperties;
+          // public $xxx properties
+          if (publicGetter) {
+              if (key === '$attrs') {
+                  track(instance, "get" /* GET */, key);
+              }
+              return publicGetter(instance);
+          }
+          else if (
+          // css module (injected by vue-loader)
+          (cssModule = type.__cssModules) &&
+              (cssModule = cssModule[key])) {
+              return cssModule;
+          }
+          else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
+              // user may set custom properties to `this` that start with `$`
+              accessCache[key] = 3 /* CONTEXT */;
+              return ctx[key];
+          }
+          else if (
+          // global properties
+          ((globalProperties = appContext.config.globalProperties),
+              hasOwn(globalProperties, key))) {
+              return globalProperties[key];
+          }
+          else if (
+              currentRenderingInstance &&
+              (!isString(key) ||
+                  // #1091 avoid internal isRef/isVNode checks on component instance leading
+                  // to infinite warning loop
+                  key.indexOf('__v') !== 0)) {
+              if (data !== EMPTY_OBJ &&
+                  (key[0] === '$' || key[0] === '_') &&
+                  hasOwn(data, key)) {
+                  warn(`Property ${JSON.stringify(key)} must be accessed via $data because it starts with a reserved ` +
+                      `character ("$" or "_") and is not proxied on the render context.`);
+              }
+              else {
+                  warn(`Property ${JSON.stringify(key)} was accessed during render ` +
+                      `but is not defined on instance.`);
+              }
+          }
+      },
+      set({ _: instance }, key, value) {
+          const { data, setupState, ctx } = instance;
+          if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+              setupState[key] = value;
+          }
+          else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+              data[key] = value;
+          }
+          else if (key in instance.props) {
+              
+                  warn(`Attempting to mutate prop "${key}". Props are readonly.`, instance);
+              return false;
+          }
+          if (key[0] === '$' && key.slice(1) in instance) {
+              
+                  warn(`Attempting to mutate public property "${key}". ` +
+                      `Properties starting with $ are reserved and readonly.`, instance);
+              return false;
+          }
+          else {
+              if ( key in instance.appContext.config.globalProperties) {
+                  Object.defineProperty(ctx, key, {
+                      enumerable: true,
+                      configurable: true,
+                      value
+                  });
+              }
+              else {
+                  ctx[key] = value;
+              }
+          }
+          return true;
+      },
+      has({ _: { data, setupState, accessCache, ctx, appContext, propsOptions } }, key) {
+          let normalizedProps;
+          return (accessCache[key] !== undefined ||
+              (data !== EMPTY_OBJ && hasOwn(data, key)) ||
+              (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) ||
+              ((normalizedProps = propsOptions[0]) && hasOwn(normalizedProps, key)) ||
+              hasOwn(ctx, key) ||
+              hasOwn(publicPropertiesMap, key) ||
+              hasOwn(appContext.config.globalProperties, key));
+      }
+  };
+  {
+      PublicInstanceProxyHandlers.ownKeys = (target) => {
+          warn(`Avoid app logic that relies on enumerating keys on a component instance. ` +
+              `The keys will be empty in production mode to avoid performance overhead.`);
+          return Reflect.ownKeys(target);
+      };
+  }
+  const RuntimeCompiledPublicInstanceProxyHandlers = extend({}, PublicInstanceProxyHandlers, {
+      get(target, key) {
+          // fast path for unscopables when using `with` block
+          if (key === Symbol.unscopables) {
+              return;
+          }
+          return PublicInstanceProxyHandlers.get(target, key, target);
+      },
+      has(_, key) {
+          const has = key[0] !== '_' && !isGloballyWhitelisted(key);
+          if ( !has && PublicInstanceProxyHandlers.has(_, key)) {
+              warn(`Property ${JSON.stringify(key)} should not start with _ which is a reserved prefix for Vue internals.`);
+          }
+          return has;
+      }
+  });
+  // In dev mode, the proxy target exposes the same properties as seen on `this`
+  // for easier console inspection. In prod mode it will be an empty object so
+  // these properties definitions can be skipped.
+  function createRenderContext(instance) {
+      const target = {};
+      // expose internal instance for proxy handlers
+      Object.defineProperty(target, `_`, {
+          configurable: true,
+          enumerable: false,
+          get: () => instance
+      });
+      // expose public properties
+      Object.keys(publicPropertiesMap).forEach(key => {
+          Object.defineProperty(target, key, {
+              configurable: true,
+              enumerable: false,
+              get: () => publicPropertiesMap[key](instance),
+              // intercepted by the proxy so no need for implementation,
+              // but needed to prevent set errors
+              set: NOOP
+          });
+      });
+      // expose global properties
+      const { globalProperties } = instance.appContext.config;
+      Object.keys(globalProperties).forEach(key => {
+          Object.defineProperty(target, key, {
+              configurable: true,
+              enumerable: false,
+              get: () => globalProperties[key],
+              set: NOOP
+          });
+      });
+      return target;
+  }
+
+  // import { CompilerOptions } from '@vue/compiler-dom'
+  const emptyAppContext = createAppContext();
+  let uid$2 = 0;
+  function createComponentInstance(vnode, parent, suspense) {
+      const type = vnode.type;
+      // inherit parent app context - or - if root, adopt from root vnode
+      const appContext = (parent ? parent.appContext : vnode.appContext) || emptyAppContext;
+      const instance = {
+          uid: uid$2++,
+          vnode,
+          type,
+          parent,
+          appContext,
+          root: null,
+          next: null,
+          subTree: null,
+          update: null,
+          render: null,
+          proxy: null,
+          exposed: null,
+          withProxy: null,
+          effects: null,
+          provides: parent ? parent.provides : Object.create(appContext.provides),
+          accessCache: null,
+          renderCache: [],
+          // local resovled assets
+          components: null,
+          directives: null,
+          // TODO resolved props and emits options
+          propsOptions: normalizePropsOptions(type, appContext, false),
+          emitsOptions: {},
+          // emit
+          emit: null,
+          emitted: null,
+          // state
+          ctx: EMPTY_OBJ,
+          data: EMPTY_OBJ,
+          props: EMPTY_OBJ,
+          attrs: EMPTY_OBJ,
+          slots: EMPTY_OBJ,
+          refs: EMPTY_OBJ,
+          setupState: EMPTY_OBJ,
+          setupContext: null,
+          // suspense related
+          suspense,
+          suspenseId: suspense ? suspense.pendingId : 0,
+          asyncDep: null,
+          asyncResolved: false,
+          // lifecycle hooks
+          // not using enums here because it results in computed properties
+          isMounted: false,
+          isUnmounted: false,
+          isDeactivated: false,
+          bc: null,
+          c: null,
+          bm: null,
+          m: null,
+          bu: null,
+          u: null,
+          um: null,
+          bum: null,
+          da: null,
+          a: null,
+          rtg: null,
+          rtc: null,
+          ec: null
+      };
+      {
+          instance.ctx = createRenderContext(instance);
+      }
+      instance.root = parent ? parent.root : instance;
+      instance.emit = emit.bind(null, instance);
+      return instance;
+  }
+  let currentInstance = null;
+  const getCurrentInstance = () => currentInstance || currentRenderingInstance;
+  const setCurrentInstance = (instance) => {
+      currentInstance = instance;
+  };
+  const isBuiltInTag = /*#__PURE__*/ makeMap('slot,component');
+  function validateComponentName(name, config) {
+      const appIsNativeTag = config.isNativeTag || NO;
+      if (isBuiltInTag(name) || appIsNativeTag(name)) {
+          warn('Do not use built-in or reserved HTML elements as component id: ' + name);
+      }
+  }
+  let isInSSRComponentSetup = false;
+  function setupComponent(instance, isSSR = false) {
+      isInSSRComponentSetup = isSSR;
+      const { shapeFlag, props } = instance.vnode;
+      const isStateful = shapeFlag & 4 /* STATEFUL_COMPONENT */;
+      // init props & slots
+      initProps(instance, props, isStateful, isSSR);
+      console.log('component stateful ? ' + isStateful);
+      const setupResult = isStateful
+          ? setupStatefulComponent(instance, isSSR)
+          : undefined;
+      isInSSRComponentSetup = false;
+      return setupResult;
+  }
+  function setupStatefulComponent(instance, isSSR) {
+      const Component = instance.type;
+      // 0. create render proxy property access cache
+      instance.accessCache = Object.create(null);
+      // 1. create public instance / render proxy
+      // also mark it raw so it's never observed
+      instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
+      console.log('call setup');
+      // 2. call setup()
+      const { setup } = Component;
+      if (setup) {
+          const setupContext = (instance.setupContext =
+              setup.length > 1 ? createSetupContext(instance) : null);
+          currentInstance = instance;
+          pauseTracking();
+          const setupResult = callWithErrorHandling(setup, instance, 0 /* SETUP_FUNCTION */, [ shallowReadonly(instance.props) , setupContext]);
+          resetTracking();
+          currentInstance = null;
+          if (isPromise(setupResult)) {
+              if (isSSR) {
+                  // return the promise so server-renderer can wait on it
+                  return setupResult.then((resolvedResult) => {
+                      handleSetupResult(instance, resolvedResult);
+                  });
+              }
+              else {
+                  // async setup returned Promise.
+                  // bail here and wait for re-entry.
+                  instance.asyncDep = setupResult;
+              }
+          }
+          else {
+              handleSetupResult(instance, setupResult);
+          }
+      }
+      else {
+          console.log('no setup');
+          finishComponentSetup(instance);
+      }
+  }
+  function handleSetupResult(instance, setupResult, isSSR) {
+      // 1. 如果是函数当做render函数处理
+      // 2. 如果是对象
+      if (isFunction(setupResult)) {
+          // 返回内联 render 函数
+          {
+              instance.render = setupResult;
+          }
+      }
+      else if (isObject(setupResult)) {
+          // 返回 bindings，这些变量可以直接在模板中使用
+          instance.setupState = proxyRefs(setupResult);
+      }
+      else ;
+      finishComponentSetup(instance);
+  }
+  function finishComponentSetup(instance, isSSR) {
+      const Component = instance.type;
+      // template / render function normalization
+      if (!instance.render) {
+          instance.render = (Component.render || NOOP);
+          if (instance.render._rc) {
+              instance.withProxy = new Proxy(instance.ctx, RuntimeCompiledPublicInstanceProxyHandlers);
+          }
+      }
+      console.log(instance.render, 'render');
+      // TODO 兼容 2.x options api
+      if ( !Component.render && instance.render === NOOP) {
+          if ( Component.template) ;
+      }
+  }
+  const attrHandlers = {
+      get: (target, key) => {
+          return target[key];
+      },
+      set: () => {
+          warn(`setupContext.attrs is readonly.`);
+          return false;
+      },
+      deleteProperty: () => {
+          warn(`setupContext.attrs is readonly.`);
+          return false;
+      }
+  };
+  function createSetupContext(instance) {
+      const expose = exposed => {
+          if ( instance.exposed) {
+              warn(`expose() should be called only once per setup().`);
+          }
+          // ref 类型值，通过代理实现对 value 的 get/set
+          instance.exposed = proxyRefs(exposed);
+      };
+      {
+          // We use getters in dev in case libs like test-utils overwrite instance
+          // properties (overwrites should not be done in prod)
+          // 防止覆盖属性
+          return Object.freeze({
+              get props() {
+                  return instance.props;
+              },
+              get attrs() {
+                  return new Proxy(instance.attrs, attrHandlers);
+              },
+              get slots() {
+                  return shallowReadonly(instance.slots);
+              },
+              get emit() {
+                  return (event, ...args) => instance.emit(event, ...args);
+              },
+              expose
+          });
+      }
+  }
+  // record effects created during a component's setup() so that they can be
+  // stopped when the component unmounts
+  // 记录在组件 setup() 期间绑定了哪些 effects，方便当组件卸载的时候去停掉他们
+  function recordInstanceBoundEffect(effect, instance = currentInstance) {
+      if (instance) {
+          (instance.effects || (instance.effects = [])).push(effect);
+      }
+  }
+  const classifyRE = /(?:^|[-_])(\w)/g;
+  const classify = (str) => str.replace(classifyRE, c => c.toUpperCase()).replace(/[-_]/g, '');
+  function getComponentName(Component) {
+      return isFunction(Component)
+          ? Component.displayName || Component.name
+          : Component.name;
+  }
+  /* istanbul ignore next */
+  function formatComponentName(instance, Component, isRoot = false) {
+      let name = getComponentName(Component);
+      // TODO
+      return name ? classify(name) : isRoot ? `App` : `Anonymous`;
+  }
+  function isClassComponent(value) {
+      return isFunction(value) && '__vccOpts' in value;
+  }
+
+  const stack = [];
+  function pushWarningContext(vnode) {
+      stack.push(vnode);
+  }
+  function popWarningContext() {
+      stack.pop();
+  }
+  function warn(msg, ...args) {
+      // avoid props formatting or warn handler tracking deps that might be mutated
+      // during patch, leading to infinite recursion.
+      pauseTracking();
+      const instance = stack.length ? stack[stack.length - 1].component : null;
+      const appWarnHandler = instance && instance.appContext.config.warnHandler;
+      const trace = getComponentTrace();
+      if (appWarnHandler) {
+          callWithErrorHandling(appWarnHandler, instance, 11 /* APP_WARN_HANDLER */, [
+              msg + args.join(''),
+              instance && instance.proxy,
+              trace
+                  .map(({ vnode }) => `at <${formatComponentName(instance, vnode.type)}>`)
+                  .join('\n'),
+              trace
+          ]);
+      }
+      else {
+          const warnArgs = [`[Vue warn]: ${msg}`, ...args];
+          /* istanbul ignore if */
+          if (trace.length &&
+              // avoid spamming console during tests
+              !false) {
+              warnArgs.push(`\n`, ...formatTrace(trace));
+          }
+          console.warn(...warnArgs);
+      }
+      resetTracking();
+  }
+  function getComponentTrace() {
+      let currentVNode = stack[stack.length - 1];
+      if (!currentVNode) {
+          return [];
+      }
+      // we can't just use the stack because it will be incomplete during updates
+      // that did not start from the root. Re-construct the parent chain using
+      // instance parent pointers.
+      const normalizedStack = [];
+      while (currentVNode) {
+          const last = normalizedStack[0];
+          if (last && last.vnode === currentVNode) {
+              last.recurseCount++;
+          }
+          else {
+              normalizedStack.push({
+                  vnode: currentVNode,
+                  recurseCount: 0
+              });
+          }
+          const parentInstance = currentVNode.component && currentVNode.component.parent;
+          currentVNode = parentInstance && parentInstance.vnode;
+      }
+      return normalizedStack;
+  }
+  /* istanbul ignore next */
+  function formatTrace(trace) {
+      const logs = [];
+      trace.forEach((entry, i) => {
+          logs.push(...(i === 0 ? [] : [`\n`]), ...formatTraceEntry(entry));
+      });
+      return logs;
+  }
+  function formatTraceEntry({ vnode, recurseCount }) {
+      const postfix = recurseCount > 0 ? `... (${recurseCount} recursive calls)` : ``;
+      const isRoot = vnode.component ? vnode.component.parent == null : false;
+      const open = ` at <${formatComponentName(vnode.component, vnode.type, isRoot)}`;
+      const close = `>` + postfix;
+      return vnode.props
+          ? [open, ...formatProps(vnode.props), close]
+          : [open + close];
+  }
+  /* istanbul ignore next */
+  function formatProps(props) {
+      const res = [];
+      const keys = Object.keys(props);
+      keys.slice(0, 3).forEach(key => {
+          res.push(...formatProp(key, props[key]));
+      });
+      if (keys.length > 3) {
+          res.push(` ...`);
+      }
+      return res;
+  }
+  /* istanbul ignore next */
+  function formatProp(key, value, raw) {
+      if (isString(value)) {
+          value = JSON.stringify(value);
+          return raw ? value : [`${key}=${value}`];
+      }
+      else if (typeof value === 'number' ||
+          typeof value === 'boolean' ||
+          value == null) {
+          return raw ? value : [`${key}=${value}`];
+      }
+      else if (isRef(value)) {
+          value = formatProp(key, toRaw(value.value), true);
+          return raw ? value : [`${key}=Ref<`, value, `>`];
+      }
+      else if (isFunction(value)) {
+          return [`${key}=fn${value.name ? `<${value.name}>` : ``}`];
+      }
+      else {
+          value = toRaw(value);
+          return raw ? value : [`${key}=`, value];
+      }
+  }
+
+  function createDevEffectOptions(instance) {
+      return {
+          scheduler: queueJob,
+          allowRecurse: true,
+          onTrack: instance.rtc ? e => invokeArrayFns(instance.rtc, e) : void 0,
+          onTrigger: instance.rtg ? e => invokeArrayFns(instance.rtg, e) : void 0
+      };
+  }
   const queuePostRenderEffect =  queueEffectWithSuspense
       ;
   /**
@@ -2230,7 +2938,7 @@ var VueRuntimeTest = (function (exports) {
   // implementation
   function baseCreateRenderer(options, createHydrationFns) {
       // 1. 解构 options
-      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText, nextSibling: hostNextSibling } = options;
+      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText, nextSibling: hostNextSibling, parentNode: hostParentNode } = options;
       // 2. patch 函数
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, optimized = false) => {
           // 不同类型节点，直接卸载老的🌲
@@ -2252,6 +2960,9 @@ var VueRuntimeTest = (function (exports) {
                   // 默认只支持这四种组件
                   if (shapeFlag & 1 /* ELEMENT */) {
                       processElement(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  }
+                  else if (shapeFlag & 6 /* COMPONENT */) {
+                      processComponent(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG);
                   }
                   break;
           }
@@ -2354,17 +3065,151 @@ var VueRuntimeTest = (function (exports) {
       // 14. TODO patchBlockChildren
       // 15. TODO patchProps
       // 16. TODO processFragment
-      // 17. TODO processComponent
-      // 18. TODO mountComponent
+      // 17. processComponent
+      const processComponent = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
+          if (n1 == null) {
+              // mount
+              {
+                  mountComponent(n2, container, anchor, parentComponent, parentSuspense, isSVG);
+              }
+          }
+      };
+      // 18. mountComponent
+      const mountComponent = (initialVNode, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
+          const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent, parentSuspense));
+          setupComponent(instance);
+          console.log('mount component');
+          setupRenderEffect(instance, initialVNode, container, anchor, parentSuspense, isSVG);
+      };
       // 19. TODO updateComponent
-      // 20. TODO setupRenderEffect
-      // 21. TODO updateComponentPreRender
+      // 20. setupRenderEffect
+      const setupRenderEffect = (instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized) => {
+          instance.update = effect(function componentEffect() {
+              // 监听更新
+              if (!instance.isMounted) {
+                  // 还没加载完成，可能是第一次 mount 操作
+                  let vnodeHook;
+                  const { el, props } = initialVNode;
+                  const { bm, m, parent } = instance;
+                  // 1. beforeMount hook
+                  if (bm) {
+                      invokeArrayFns(bm);
+                  }
+                  // 2. onVnodeBeforeMount
+                  if ((vnodeHook = props && props.onVnodeBeforeMount)) {
+                      invokeVNodeHook(vnodeHook, parent, initialVNode);
+                  }
+                  // 3. render
+                  // TODO start, end measure
+                  const subTree = (instance.subTree = renderComponentRoot(instance));
+                  if (el && hydrateNode) ;
+                  else {
+                      console.log('patch component');
+                      patch(null, subTree, container, anchor, instance, parentSuspense, isSVG);
+                      initialVNode.el = subTree.el;
+                  }
+                  // mounted hook
+                  if (m) {
+                      queuePostRenderEffect(m, parentSuspense);
+                  }
+                  // onVnodemounted
+                  if ((vnodeHook = props && props.onVnodeMounted)) {
+                      const scopedInitialVNode = initialVNode;
+                      queuePostRenderEffect(() => {
+                          invokeVNodeHook(vnodeHook, parent, scopedInitialVNode);
+                      }, parentSuspense);
+                  }
+                  // activated hook for keep-alive roots.
+                  // #1742 activated hook must be accessed after first render
+                  // since the hook may be injected by a child keep-alive
+                  const { a } = instance;
+                  if (a &&
+                      initialVNode.shapeFlag & 256 /* COMPONENT_SHOULD_KEEP_ALIVE */) {
+                      queuePostRenderEffect(a, parentSuspense);
+                  }
+                  instance.isMounted = true;
+                  // #2458: deference mount-only object parameters to prevent memleaks
+                  // 释放资源
+                  initialVNode = container = anchor = null;
+              }
+              else {
+                  // updateComponent
+                  // 当组件自身的状态或父组件调用 processComponent 时触发
+                  console.log('component update');
+                  let { next, bu, u, parent, vnode } = instance;
+                  let vnodeHook;
+                  if (next) {
+                      next.el = vnode.el;
+                      updateComponentPreRender(instance, next);
+                  }
+                  else {
+                      next = vnode;
+                  }
+                  // beforeUpdate hook
+                  if (bu) {
+                      invokeArrayFns(bu);
+                  }
+                  // onVnodeBeforeUpdate
+                  if ((vnodeHook = next.props && next.props.onVnodeBeforeUpdate)) {
+                      invokeVNodeHook(vnodeHook, parent, next, vnode);
+                  }
+                  //render
+                  const nextTree = renderComponentRoot(instance);
+                  const prevTree = instance.subTree;
+                  instance.subTree = nextTree;
+                  patch(prevTree, nextTree, 
+                  // 如果在 teleport 中，parent 可能会发生改变
+                  hostParentNode(prevTree.el), 
+                  // anchor may have changed if it's in a fragment
+                  getNextHostNode(prevTree), instance, parentSuspense, isSVG);
+                  next.el = nextTree.el;
+                  // updated hook
+                  if (u) {
+                      queuePostRenderEffect(u, parentSuspense);
+                  }
+                  // onVnodeUpdated
+                  if ((vnodeHook = next.props && next.props.onVnodeUpdated)) {
+                      queuePostRenderEffect(() => {
+                          invokeVNodeHook(vnodeHook, parent, next, vnode);
+                      });
+                  }
+              }
+          },  // 提供 onTrack/onTrigger 选项执行 rtc&rtg 两个周期函数
+                  createDevEffectOptions(instance)
+              );
+      };
+      // 21. updateComponentPreRender
+      const updateComponentPreRender = (instance, nextVNode, optimized) => {
+          console.log('update comp pre render');
+          nextVNode.component = instance;
+          // const prevProps = instance.vnode.props
+          instance.vnode = nextVNode;
+          instance.next = null;
+          // TODO update props
+          // TODO update slots
+          // props update may have triggered pre-flush watchers.
+          // flush them before the render update.
+          flushPreFlushCbs(undefined, instance.update);
+      };
       // 22. patchChildren
       const patchChildren = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized = false) => {
           const c1 = n1 && n1.children;
           const prevShapeFlag = n1 ? n1.shapeFlag : 0;
           const c2 = n2.children;
           const { patchFlag, shapeFlag } = n2;
+          // fast path
+          if (patchFlag > 0) {
+              if (patchFlag & 128 /* KEYED_FRAGMENT */) {
+                  // this could be either fully-keyed or mixed (some keyed some not)
+                  // presence of patchFlag means children are guaranteed to be arrays
+                  patchKeyedChildren(c1, c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  return;
+              }
+              else if (patchFlag & 256 /* UNKEYED_FRAGMENT */) {
+                  patchUnkeyedChildren(c1, c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  return;
+              }
+          }
           // children 有三种可能： text, array, 或没有 children
           if (shapeFlag & 8 /* TEXT_CHILDREN */) {
               // text children fast path
@@ -2401,10 +3246,31 @@ var VueRuntimeTest = (function (exports) {
               }
           }
       };
-      // 23. TODO patchUnkeyedChildren
+      // 23. patchUnkeyedChildren
+      const patchUnkeyedChildren = (c1, c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
+          c1 = c1 || EMPTY_ARR;
+          c2 = c2 || EMPTY_ARR;
+          const oldLength = c1.length;
+          const newLength = c2.length;
+          const commonLength = Math.min(oldLength, newLength);
+          let i;
+          for (i = 0; i < commonLength; i++) {
+              const nextChild = (c2[i] = optimized
+                  ? cloneIfMounted(c2[i])
+                  : normalizeVNode(c2[i]));
+              patch(c1[i], nextChild, container, null, parentComponent, parentSuspense, isSVG, optimized);
+          }
+          if (oldLength > newLength) {
+              // remove old
+              unmountChildren(c1, parentComponent, parentSuspense, true, false, commonLength);
+          }
+          else {
+              // mount new
+              mountChildren(c2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, commonLength);
+          }
+      };
       // 24. 可能所有都是 keyed 也可能部分
       const patchKeyedChildren = (c1, c2, container, parentAnchor, parentComponent, parentSuspense, isSVG, optimized) => {
-          console.log('patchKeyedChildren...');
           let i = 0;
           const l2 = c2.length;
           let e1 = c1.length - 1; // 上一个结束索引
@@ -2414,7 +3280,6 @@ var VueRuntimeTest = (function (exports) {
           // (a b) d e
           // 这里结束之后 i 就会定位到第一个不同类型的位置，即 2
           while (i <= e1 && i <= e2) {
-              console.log('while 1, sync from start...');
               const n1 = c1[i];
               const n2 = (c2[i] = optimized // 静态节点
                   ? cloneIfMounted(c2[i])
@@ -2433,7 +3298,6 @@ var VueRuntimeTest = (function (exports) {
           // d e (b c)
           // 这里结束之后，后面相同的节点就被处理掉了，此时 e1 = 0, e2 = 1
           while (i <= e1 && i <= e2) {
-              console.log('while 2, sync from end...');
               const n1 = c1[e1];
               const n2 = (c2[e2] = optimized
                   ? cloneIfMounted(c2[e2])
@@ -2455,7 +3319,6 @@ var VueRuntimeTest = (function (exports) {
           // c (a b)
           // i = 0, e1 = -1, e2 = 0
           if (i > e1) {
-              console.log('patch keyed 新增 ...');
               if (i <= e2) {
                   const nextPos = e2 + 1;
                   const anchor = nextPos < l2 ? c2[nextPos].el : parentAnchor;
@@ -2585,8 +3448,6 @@ var VueRuntimeTest = (function (exports) {
                   ? getSequence(newIndexToOldIndexMap)
                   : EMPTY_ARR;
               j = increasingNewIndexSequence.length - 1;
-              console.log({ toBePatched });
-              moved && console.log('最长增长序列: ' + increasingNewIndexSequence);
               for (i = toBePatched - 1; i >= 0; i--) {
                   const nextIndex = s2 + i;
                   const nextChild = c2[nextIndex];
@@ -2597,14 +3458,6 @@ var VueRuntimeTest = (function (exports) {
                       patch(null, nextChild, container, anchor, parentComponent, parentSuspense, isSVG);
                   }
                   else if (moved) {
-                      console.log({
-                          val: increasingNewIndexSequence[j],
-                          i,
-                          j,
-                          next: nextChild.children,
-                          anchor: anchor ? anchor.children[0].text : null,
-                          toBePatched
-                      });
                       // move if:
                       // There is no stable subsequence (e.g. a reverse)
                       // OR current node is not among the stable sequence
@@ -2628,7 +3481,6 @@ var VueRuntimeTest = (function (exports) {
           // TODO Static
           {
               // 目前只实现普通元素的逻辑
-              console.log('move 交换...');
               hostInsert(el, container, anchor);
           }
       };
@@ -2700,9 +3552,25 @@ var VueRuntimeTest = (function (exports) {
           flushPostFlushCbs();
           container._vnode = vnode;
       };
-      // 33. TODO internals object, 函数别名
-      // 34. TODO createHydrationFns
+      // 33. internals object, 函数别名
+      const internals = {
+          p: patch,
+          um: unmount,
+          m: move,
+          r: remove,
+          mt: mountComponent,
+          mc: mountChildren,
+          pc: patchChildren,
+          pbc: [] /*patchBlockChildren*/,
+          n: getNextHostNode,
+          o: options
+      };
+      // 34. createHydrationFns
       let hydrate;
+      let hydrateNode;
+      if (createHydrationFns) {
+          [hydrate, hydrateNode] = createHydrationFns(internals);
+      }
       // 35. return { render, hydrate, createApp }
       return {
           render,
@@ -2721,7 +3589,6 @@ var VueRuntimeTest = (function (exports) {
       const p = arr.slice();
       const result = [0];
       let i, j, u, v, c;
-      console.log({ arr });
       const len = arr.length;
       for (i = 0; i < len; i++) {
           const arrI = arr[i];
@@ -2751,7 +3618,6 @@ var VueRuntimeTest = (function (exports) {
               }
           }
       }
-      console.log({ result });
       u = result.length;
       v = result[u - 1];
       while (u-- > 0) {
@@ -2952,6 +3818,14 @@ var VueRuntimeTest = (function (exports) {
           }
       };
   }
+  // this.$watch
+  function instanceWatch(source, cb, options) {
+      const publicThis = this.proxy;
+      const getter = isString(source)
+          ? () => publicThis[source]
+          : source.bind(publicThis);
+      return doWatch(getter, cb.bind(publicThis), options, this);
+  }
   function traverse(value, seen = new Set()) {
       if (!isObject(value) || seen.has(value)) {
           return value;
@@ -3016,7 +3890,7 @@ var VueRuntimeTest = (function (exports) {
       }
       return;
   }
-  const createHook = (lifecycle) => (hook, target = currentInstance) =>  injectHook(lifecycle, hook, target);
+  const createHook = (lifecycle) => (hook, target = currentInstance) => !isInSSRComponentSetup && injectHook(lifecycle, hook, target);
   const onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
   const onMounted = createHook("m" /* MOUNTED */);
   const onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);

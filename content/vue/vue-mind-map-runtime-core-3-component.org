@@ -1,0 +1,1057 @@
+#+TITLE: Vue3 源码头脑风暴之 7 ☞ runtime-core(3) - render component
+#+DATE: <2021-03-16 15:31:46>
+#+TAGS[]: vue, vue3, runtime-core, render, component
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink inlineimages
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="https://unpkg.com/vue@next"></script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/utils.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+本文为 runtime-core(2) 续集，上篇： [[/vue/vue-mind-map-runtime-core-2-render/][Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render]]
+#+end_quote
+
+
+* 流程图(脑图)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: mindmap
+:END:
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-component.svg]]
+
+这一节新增内容较多，主要新增以下几个函数
+
+1. ~processComponent()~ 在 patch() 中执行 switch default 分支，满足
+   ~ShapeFlags.COMPONENT~ 条件
+2. ~mountComponent(n2,...)~ 首次加载组件时调用的函数
+3. ~setupComponent(instance)~ 建立组件实例，做一些结构初始化操作(如：props和
+   slots)等
+4. ~setupStatefulComponent(instance,isSSR)~ 创建有状态组件，执行 ~setup()~ 函数
+5. ~setupRenderEffect()~ 通过 [[/vue/vue-mind-map-reactivity/#fn-effect][effect()]] 函数返回 ~instance.update~ 创建一个监听-
+   更新函数。
+6. ~finishComponentSetup(instance,isSSR)~ 这个函数在 ~setupStatefulComponent()~
+   中调用，主要做的事情是处理 SSR，没有 render 函数有 template 时调用 compile 编
+   译出 render 函数，兼容 2.x 的 options api
+
+* patch->processComponent(如何patch组件的？)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render-component
+:END:
+
+问题修复： [[#q-allow-recurse][TypeError: Cannot read property 'allowRecurse' of null]]
+
+~processComponent(n1,n2,...)~ 函数主要分三种情况
+
+1. mount, 没有 n1 old 时候，属于纯 mount 操作
+   a. keep-alive 类型，只需要重新激活 activate
+   b. 否则执行 mountComponent(n2, ....) 首次加载组件
+2. update, 非首次加载执行更新操作
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, nodeOps, serializeInner: inner, ref }) => {
+    const root = nodeOps.createElement("div");
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    const value = ref(true);
+    let parentVnode, childVnode1, childVnode2;
+
+    const Parent = {
+      render: () => {
+        // return h("div", "测试...");
+        return (parentVnode = h(Child));
+      },
+    };
+
+    const Child = {
+      render: () => {
+        return value.value
+          ? (childVnode1 = h("div", "child 1"))
+          : (childVnode2 = h("span", "child 2"));
+      },
+    };
+
+    const p = h(Parent);
+    render(p, root);
+    logRoot();
+    value.value = false;
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedroot:
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+normalize vnode
+patch component
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+normalize vnode
+patch component
+root: <div>child 1</div>
+root: <div>child 1</div>
+component update
+#+end_example
+
+流程简图：
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-component-brief.svg]]
+
+这里执行就是 ~mountComponent(n2,...)~ 行为，首次加载组件，完成：
+
+1. ~setupComponent(instance)~ 执行 setup 函数，初始化 props&slots 等
+2. ~setupRenderEffect(instance,...)~ 注册 instance.update effect
+
+   当实例状态发生改变时执行这个 effect fn，如果是首次(父级调用 processComponent)
+   执行!isMounted 分支进行组件首次加载，否则当组件自身状态改变是触发的 update 操
+   作
+
+
+在 ~setupComponent~ 中，主要完成
+
+1. initProps
+2. initSlots
+3. setupStatefulComponent(instance,isSSR) 有状态组件(非函数组件)
+
+
+紧接着 ~setupStatefulComponent(instance,isSSR)~ 中检测 setup 函数，并执行它，如
+果没有 setup 函数就进入 finishComponentSetup(instance) 检测 render 或 template
+最终目的是获得 render 函数，如果没有 render 会通过 compile(template) 编译出
+render 函数，最后在 instance.update 中执行 render 函数(在这前后会触发
+beforeMount 和 mounted 周期函数)。
+
+
+#+begin_quote
+所以，一套流程下来可以简单描述为
+
+mount -> props&slots 初始化 -> setup() -> 有状态组件处理得到 render 函数 -> 最后
+通过 instance.update effect 来监听实例状态变化，触发 mount 或者 update。
+
+在 effect mount 阶段会触发生命周期函数：
+
+1. beforeMount + mounted
+2. onVnodeBeforeMount + onVnodeMounted(针对 vnode 结构变化而言)
+3. activated(如果是 keep-alive 的话)
+
+组件的渲染就发生在 beforeMount 之后 mounted 之前的 renderComponentRoot() 得到
+vnode 交给 patch 去进行渲染。
+#+end_quote
+
+示例代码中，后面修改了 ~value.value=false~ 后面 dom 并没改变，但是输出了
+/component update/ 说明进入了 ~instance.update effect~ 的 else 分支，因为不是第
+一次，所以这里需要实现更新组件部分。
+
+** effect update component
+
+因为 instance.update 是通过 ~effect()~ 封装的函数，且这个函数中使用到了 instance
+实例而这个实例又在 setupComponent 中有做过代理，因此对它的访问会触发 effect
+track，状态更新会触发 effect trigger(响应式原理)。
+
+[[https://github.com/gcclll/stb-vue-next/commit/12544657c05c740c09a3632e0e2cf9ec9e29ca67][feat(add): component update · gcclll/stb-vue-next@1254465]]
+
+涉及的修改：
+#+begin_src typescript
+instance.update = effect(
+  function componentEffect() {
+    // 监听更新
+    if (!instance.isMounted) {
+      // ...
+    } else {
+      // updateComponent
+      // 当组件自身的状态或父组件调用 processComponent 时触发
+      console.log("component update");
+      let { next, bu, u, parent, vnode } = instance;
+      let originNext = next;
+      let vnodeHook: VNodeHook | null | undefined;
+
+      if (next) {
+        next.el = vnode.el;
+        updateComponentPreRender(instance, next, optimized);
+      } else {
+        next = vnode;
+      }
+
+      // beforeUpdate hook
+      if (bu) {
+        invokeArrayFns(bu);
+      }
+      // onVnodeBeforeUpdate
+      if ((vnodeHook = next.props && next.props.onVnodeBeforeUpdate)) {
+        invokeVNodeHook(vnodeHook, parent, next, vnode);
+      }
+
+      //render
+      const nextTree = renderComponentRoot(instance);
+      const prevTree = instance.subTree;
+      instance.subTree = nextTree;
+
+      patch(
+        prevTree,
+        nextTree,
+        // 如果在 teleport 中，parent 可能会发生改变
+        hostParentNode(prevTree.el!)!,
+        // anchor may have changed if it's in a fragment
+        getNextHostNode(prevTree),
+        instance,
+        parentSuspense,
+        isSVG
+      );
+
+      next.el = nextTree.el;
+      if (originNext === null) {
+        // self-triggered update. In case of HOC, update parent component
+        // vnode el. HOC is indicated by parent instance's subTree pointing
+        // to child component's vnode
+        // TODO
+      }
+
+      // updated hook
+      if (u) {
+        queuePostRenderEffect(u, parentSuspense);
+      }
+      // onVnodeUpdated
+      if ((vnodeHook = next.props && next.props.onVnodeUpdated)) {
+        queuePostRenderEffect(() => {
+          invokeVNodeHook(vnodeHook!, parent, next!, vnode);
+        });
+      }
+    }
+  },
+  __DEV__
+    ? // 提供 onTrack/onTrigger 选项执行 rtc&rtg 两个周期函数
+      createDevEffectOptions(instance)
+    : prodEffectOptions
+);
+#+end_src
+
+和 updateComponentPreRender 实现这个函数让 instance.update 在 nextTick() 之后执
+行 pre 优先于 post 和 job 任务([[/vue/vue-mind-map-runtime-core/#scheduler][详情查看任务调度->]])：
+#+begin_src typescript
+const updateComponentPreRender = (
+    instance: ComponentInternalInstance,
+    nextVNode: VNode,
+    optimized: boolean
+  ) => {
+    nextVNode.component = instance
+    // const prevProps = instance.vnode.props
+    instance.vnode = nextVNode
+    instance.next = null
+    // TODO update props
+    // TODO update slots
+
+    // props update may have triggered pre-flush watchers.
+    // flush them before the render update.
+    flushPreFlushCbs(undefined, instance.update)
+  }
+#+end_src
+
+之前的用例再测试一遍：
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  async ({ h, render, nodeOps, serializeInner: inner, ref, nextTick }) => {
+    const root = nodeOps.createElement("div");
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    const value = ref(true);
+    let parentVnode, childVnode1, childVnode2;
+    const idValue = ref("parent");
+
+    const Parent = {
+      render: () => {
+        console.log("parent render");
+        return (parentVnode = h("div", { id: idValue.value }, h(Child)));
+      },
+    };
+
+    const Child = {
+      render: () => {
+        console.log("child render");
+        return value.value
+          ? (childVnode1 = h("div", "child 1"))
+          : (childVnode2 = h("span", "child 2"));
+      },
+    };
+
+    const p = h(Parent);
+    render(p, root);
+    logRoot();
+    console.log("before change value");
+    value.value = false;
+    await nextTick();
+    console.log("after change value");
+    logRoot();
+
+    console.log('before id change');
+    idValue.value = 'parent-id'
+    await nextTick()
+    console.log('after id change');
+    logRoot()
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedroot:
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+normalize vnode
+parent render
+patch component
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+normalize vnode
+child render
+patch component
+root: <div id="parent"><div>child 1</div></div>
+before change value
+component update
+normalize vnode
+child render
+after change value
+root: <div id="parent"><span>child 2</span></div>
+before id change
+component update
+normalize vnode
+parent render
+after id change
+root: <div id="parent"><span>child 2</span></div>
+#+end_example
+
+这里要让输出达到效果，需要将 resolve 改成 async function 并且要在 nextTick() 后
+输出更新后的结果，因为 instance.update 调用了 ~flushPreFlushCbs(null,
+instane.update)~ 也就是说这个函数是个异步更新，且会在 ~nextTick()~ 后触发，详情
+分析查看“[[/vue/vue-mind-map-runtime-core/#scheduler][任务调度机制分析]]”
+
+#+begin_quote
+问题： 如上面的结果，当我们改变 ~idValue.value="parent-id"~ 的时候，实际结果并没
+有改变？
+
+答： 因为在 ~setupComponent()~ 中的 ~initProps()~ 以及 ~updateComponentPreRender()~
+中的 ~updateProps()~ 还没实现，下一节揭晓。
+#+end_quote
+** normalize props options
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: norm-props-opt
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/7d6ac555be06253f6dab5af8d6a0c2df8b46b656][feat(add): normalize props options · gcclll/stb-vue-next@7d6ac55]]
+
+对应官方文档内容： [[https://v3.vuejs.org/guide/component-props.html#prop-types][Props | Vue.js]]
+
+#+begin_quote
+这里作用简单描述就是，将 props 的定义在组件加载初始化时解析成具体的值，如：
+~props: ['foo']~ 解析成 ~foo={}~ 因为字符串数组的 props 会给每个属性初始化一个空
+对象。
+#+end_quote
+
+比如：
+
+1. 数组： ~props: ['foo', 'bar', 'foo-bar']~
+
+    转成 ~{foo: {}, bar: {}, fooBar: {}}~
+
+2. 对象: ~props: { foo: [Boolean, String], bar: Function }~
+
+   表示 foo 可以是布尔值或字符串，bar 是个函数
+
+   转换过程(0: ~BooleanFlags.shouldCast~, 1: ~BooleanFlags.shouldCastTrue~)
+
+   ~foo = { type: [Boolean, String] }~ -> 找 Boolean
+
+   ~foo = { type: [Boolean, String], 0: true }~ ->
+
+   找 String 需满足 ~stringIndex < 0 || booleanIndex < stringIndex~
+
+   ~foo = { type: [Boolean, String], 0: true, 1: true }~
+
+   最后决定 ~foo~ 是不是应该进行 cast ? 条件是布尔类型或者有 default 默认值。
+
+
+源码：
+#+begin_src typescript
+export function normalizePropsOptions(
+  comp: ConcreteComponent,
+  appContext: AppContext,
+  asMixin: false
+): NormalizedPropsOptions {
+  if (!appContext.deopt && comp.__props) {
+    return comp.__props
+  }
+
+  const raw = comp.props
+  const normalized: NormalizedPropsOptions[0] = {}
+  const needCastKeys: NormalizedPropsOptions[1] = []
+
+  // mixin/extends props 应用
+  let hasExtends = false
+  // 必须开支 2.x options api 支持，且不是函数式组件
+  // 继承来的属性，用法： ~CompA = { extends: CompB, ... }~
+  // CompA 会继承 CompB 的 props
+  if (__FEATURE_OPTIONS_API__ && !isFunction(comp)) {
+    const extendProps = (raw: ComponentOptions) => {
+      hasExtends = true
+      const [props, keys] = normalizePropsOptions(raw, appContext, true)
+      extend(normalized, props)
+      if (keys) {
+        needCastKeys.push(...keys)
+      }
+    }
+
+    // Comp: { extends: CompA } 处理
+    if (comp.extends) {
+      extendProps(comp.extends)
+    }
+
+    // Comp: { mixins: [mixin] } 处理
+    if (!asMixin && appContext.mixins.length) {
+      appContext.mixins.forEach(extendProps)
+    }
+  }
+
+  // 既没有自身的 props 也没有 extends 继承来的 props 初始化为 []
+  if (!raw && !hasExtends) {
+    return (comp.__props = EMPTY_ARR as any)
+  }
+
+  if (isArray(raw)) {
+    // 当 props 是数组的时候，必须是字符类型，如: props: ['foo', 'bar', 'foo-bar']
+    // 'foo-bar' 会转成 'fooBar'，不允许 '$xxx' 形式的变量名
+    for (let i = 0; i < raw.length; i++) {
+      const normalizedKey = camelize(raw[i])
+      // 组件的属性名不能是以 $xx 开头的名称，这个是作为内部属性的
+      if (validatePropName(normalizedKey)) {
+        normalized[normalizedKey] = EMPTY_OBJ
+      }
+    }
+  } else if (raw) {
+    // 对象类型 props: { foo: 1, bar: 2, ... }
+    for (const key in raw) {
+      // 'foo-bar' -> 'fooBar'
+      const normalizedKey = camelize(key)
+      // 检查 $xxx 非法属性
+      if (validatePropName(normalizedKey)) {
+        const opt = raw[key]
+        // ? 值为数组或函数变成： { type: opt } ?
+        // 这里含义其实是： ~props: { foo: [Boolean, Function] }~
+        // 可以用数组定义该属性可以是多种类型的其中一种
+        const prop: NormalizedProp = (normalized[normalizedKey] =
+          isArray(opt) || isFunction(opt) ? { type: opt } : opt)
+        if (prop) {
+          // 找到 Boolean 在 foo: [Boolean, Function] 中的索引
+          const booleanIndex = getTypeIndex(Boolean, prop.type)
+          const stringIndex = getTypeIndex(String, prop.type)
+          prop[BooleanFlags.shouldCast] = booleanIndex > -1
+          // [String, Boolean] 类型，String 在 Boolean 前面
+          prop[BooleanFlags.shouldCastTrue] =
+            stringIndex < 0 || booleanIndex < stringIndex
+          // 如果是布尔类型的值或者有默认值的属性需要转换
+          // 转换是根据 type 和 default 值处理
+          // type非函数，default是函数，执行 default() 得到默认值
+          if (booleanIndex > -1 || hasOwn(prop, 'default')) {
+            needCastKeys.push(normalizedKey)
+          }
+        }
+      }
+    }
+  }
+
+  return (comp.__props = [normalized, needCastKeys])
+}
+
+#+end_src
+
+然后这个处理之后的 props，会被保存到组件的 ~comp.__props=[normalied,
+needCastKeys]~ 上，而这个会在 ~resolvePropValue()~ 中进一步处理，这里的
+~needCastKeys~ 非常重要，它会决定最后的值应该如何被处理(~resolvePropValue~ 中处
+理)。
+
+比如： ~{ type: String, default: () => 'xxx' }~ 那么满足 ~type!==Function &&
+isFunction(dfault)~ 则会直接执行 default() 得到属性默认值。
+
+如果属性的 ~opt[BooleanFlags.shouldCast]~ 为 ~true~ 如[[#norm-props-opt][最开始的说明]]，其实就是
+~prop["0"]~ 的值，只要 prop 的类型中有 ~Boolean~ 这个值就是 ~true~ 。
+
+此时需要将属性的值转成
+
+1. *true* : 类型声明中有 ~Boolean~ 且有 ~String~ 的时候，它的值如果是 ~''~ 或者
+   ~key === value~ 情况下转成 ~true~, 因为指定了可以是 ~String~ 类型，所以空字符
+   串是允许的。
+
+2. *false* : ~(!hasOwn(props, key) && !hasDefault)~, raw props 中没有这个属性且
+   没有 ~default~ 默认值的时候转成 ~false~, 等于是假值类型。
+
+** component props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: component-props
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/9a6aa70c2109179a884b1496eea09af50a6efdb5][feat(add): init component props · gcclll/stb-vue-next@9a6aa70]]
+
+新增代码：
+#+begin_src typescript
+// component.ts > setupComponent()
+export function setupComponent(
+  instance: ComponentInternalInstance,
+  isSSR = false
+) {
+  // ...
+  // init props & slots
+  initProps(instance, props, isStateful, isSSR);
+  // ...
+  return setupResult;
+}
+#+end_src
+
+*componentProps.ts > initProps()*
+1. def -> attrs.__vInterval = 1
+2. setFullProps 处理 rawProps 将结果反馈到 props 和 attrs
+3. 有状态组件？将 props reactive 化，SSR下不支持属性响应式其实就是服务器返回的属
+   性都是带有最终值的而不是在客户端动态能改变的
+4. 函数组件的 props 可选属性和必须属性？可选用  attrs 否则用 props
+#+begin_src typescript
+export function initProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null,
+  isStateful: number,
+  isSSR = false
+) {
+  const props: Data = {};
+  const attrs: Data = {};
+  def(attrs, InternalObjectKey, 1);
+  setFullProps(instance, rawProps, props, attrs);
+  // TODO validation
+
+  if (isStateful) {
+    instance.props = isSSR ? props : shallowReactive(props);
+  } else {
+    if (!instance.type.props) {
+      // functional optional props, props === attrs
+      instance.props = attrs;
+    } else {
+      // functional declared props
+      instance.props = props;
+    }
+  }
+  instance.attrs = attrs;
+}
+
+#+end_src
+
+*componentProps.ts > setFullProps()*
+这个函数目的是将 rawProps 组件的 props 解析出来根据各自特性
+分派到 props 或 attrs
+1. key, ref 属性不保留，因为组件更新时 key 可能发生改变，ref引用也会变好指向更新后的 DOM 元素
+2. options 啥意思？
+3. 事件属性(~onClick~)会存放到 attrs !
+4. needCastKeys ? 这是做啥呢 resolvePropValue？
+
+#+begin_src typescript
+function setFullProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null,
+  props: Data,
+  attrs: Data
+) {
+  const [options, needCastKeys] = instance.propsOptions;
+  if (rawProps) {
+    for (const key in rawProps) {
+      const value = rawProps[key];
+      // key, ref 保留，不往下传
+      // 即这两个属性不会继承给 child
+      if (isReservedProp(key)) {
+        continue;
+      }
+
+      let camelKey;
+      if (options && hasOwn(options, (camelKey = camelize(key)))) {
+        props[camelKey] = value;
+      } else if (!isEmitListener(instance.emitsOptions, key)) {
+        attrs[key] = value;
+      }
+    }
+  }
+
+  if (needCastKeys) {
+    const rawCurrentProps = toRaw(props);
+    for (let i = 0; i < needCastKeys.length; i++) {
+      const key = needCastKeys[i];
+      props[key] = resolvePropValue(
+        options!,
+        rawCurrentProps,
+        key,
+        rawCurrentProps[key],
+        instance
+      );
+    }
+  }
+}
+#+end_src
+
+*componentProps.ts -> resolvePropValue()*
+1. ~props:{name: {default: v=> myname }, type: String}~
+
+   当 type 非函数时，说明 ~name~ 是个字符串类型，但是它的 ~default~ 又是个函数？
+   那么这种情况会在这里被处理，最后将 name 的值赋值为 ~default(props)~ 执行之后的结果
+2. ~props:{name: {default: v=> myname }, type: Function}~
+
+   这种情况，说明 ~name~ 本身就是函数，不需要执行 default。
+3. ~props:{name: value, type: String|Number}~ 普通类型情况
+4. boolean 类型的值处理，最后都会转成 ~true~ 或 ~false~
+
+#+begin_src typescript
+function resolvePropValue(
+  options: NormalizedProps,
+  props: Data,
+  key: string,
+  value: unknown,
+  instance: ComponentInternalInstance
+) {
+  /*
+   * 这里面的处理是针对 props: { name: { ... } } 类型而言
+   * 1. 默认值的处理， default 可能是函数或普通类型值，如果是函数应该得到
+   * 函数执行的结果作为它的值，注意下面的检测函数时前置条件是该类型不是函数，
+   * 如果类型也是函数，默认值就是该函数本身，而非执行后的结果值
+   * 2. 布尔值的处理，值转成 true or false
+   */
+  const opt = options[key]
+  if (opt != null) {
+    const hasDefault = hasOwn(opt, 'default')
+    // 默认值
+    if (hasDefault && value === undefined) {
+      const defaultValue = opt.default
+      // props: { name: { default: (props) => 'xxx' } }
+      // 类型不是函数？但是默认值是函数，执行得到结果
+      if (opt.type !== Function && isFunction(defaultValue)) {
+        setCurrentInstance(instance)
+        value = defaultValue(props)
+        setCurrentInstance(null)
+      } else {
+        // props: { name: { default: 'xxx' } }
+        value = defaultValue
+      }
+    }
+    // boolean casting
+    if (opt[BooleanFlags.shouldCast]) {
+      if (!hasOwn(props, key) && !hasDefault) {
+        value = false
+      } else if (
+        opt[BooleanFlags.shouldCastTrue] &&
+        (value === '' || value === hyphenate(key))
+      ) {
+        value = true
+      }
+    }
+  }
+  return value
+}
+#+end_src
+
+#+begin_quote
+❓ 然后与 props 有关的 propsOptions 是来自哪里？
+#+end_quote
+
+回顾下 component render 过程：
+
+patch -> switch default -> PatchFlags.COMPONENT ->
+
+processComponent -> mountComponent ->
+
+createComponentInstance -> setupComponent -> setupRenderEffect
+
+有了？
+
+是的，就是它 -> ~createComponentInstance~ 创建组件实例中，进行了初始化，其中组织
+的结构里面就有一个
+
+~propsOptions: normalizePropsOptions(type, appContext)~
+
+和
+
+~emitsOptions: normalizeEmitsOptions(type, appContext)~
+
+** component setup
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: setup
+:END:
+
+1. setup 如果返回值是函数直接是 render 函数
+2. setup 返回值是对象，则当做和 data 一样的组件状态处理
+
+
+[[/img/vue3/runtime-core/vue-runtime-core-setup-result.jpg]]
+
+更多分析见注释，相关代码:
+#+begin_src typescript
+// 如果组件是个对象，而非函数是组件是会经过这个函数
+function setupStatefulComponent(
+  instance: ComponentInternalInstance,
+  isSSR: boolean
+) {
+  const Component = instance.type as ComponentOptions;
+
+  // 0. create render proxy property access cache
+  // 这个是针对 instance 上属性的 get 操作类型进行了 key 值缓存
+  // 比如：当你对 setupState 或 data的属性 进行了 get 访问，
+  // 那么该属性的key值会记录为该类型(accessCache[key]=AccessTypes.SETUP)
+  // 当你下次再在 instance 上访问这个key 的时候，那么这个时候就会知道这个 key
+  // 是在 setupState 上，那么就直接返回 setupState[key] 就行了
+  // 而不用去重复进行 if...elseif...else 去 setupData, data, context
+  // 或 props 判断然后决定去哪个上面取值，加快求值速度。
+  // 如： setupState={foo:1}, data={bar:2}
+  // 取值： this.foo 触发 get 操作，这个时候第一次取值的时候会进行
+  // if setupState else if data 检测'foo'在哪个对象上，发现在
+  // setupState 上，然后将 'foo' 缓存到 accessCache['foo'] ='setup'
+  // 下次再次取值this.foo，那么本次就会直接返回 setupState['foo']
+  instance.accessCache = Object.create(null);
+
+  // 1. create public instance / render proxy
+  // also mark it raw so it's never observed
+  // 代理目的：让取值操作能在 setupState, data, ctx, props 及
+  // appContext.config.globalProperties 上依次查找对应的属性值
+  // 优先级：
+  // 1. 非 $xxx 属性， setupState > data > ctx > props
+  // 2. this.$xxx 取值， public 属性: $,$el,$data,$props,$attrs
+  //  ,$slots,$refs,$parent,$root,$emit,$options,$forceUpdate,
+  //  ,$nextTick,$watch
+  // > cssModule 属性 vue-loader 注入的css 变量
+  // > instance.ctx
+  // > appContext.config.globalProperties, 如： this.$router
+  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
+
+  console.log("call setup");
+  // 2. call setup()
+  const { setup } = Component;
+  if (setup) {
+    // 传递给 setup(props, setupContext) 的第二个参数
+    // setupContext: { attrs, slots, emit, expose }
+    const setupContext = (instance.setupContext =
+      setup.length > 1 ? createSetupContext(instance) : null);
+
+    currentInstance = instance;
+    // 实例初始化期间，禁止 track 操作，get 收集依赖
+    pauseTracking();
+    // 执行 setup 函数
+    const setupResult = callWithErrorHandling(
+      setup,
+      instance,
+      ErrorCodes.SETUP_FUNCTION,
+      [__DEV__ ? shallowReadonly(instance.props) : instance.props, setupContext]
+    );
+    resetTracking();
+    currentInstance = null;
+
+    // 对setup 结果处理，返回值只能是对象或函数
+    if (isPromise(setupResult)) {
+      if (isSSR) {
+        // return the promise so server-renderer can wait on it
+        return setupResult.then((resolvedResult: unknown) => {
+          handleSetupResult(instance, resolvedResult, isSSR);
+        });
+      } else if (__FEATURE_SUSPENSE__) {
+        // async setup returned Promise.
+        // bail here and wait for re-entry.
+
+        instance.asyncDep = setupResult;
+      } else if (__DEV__) {
+        // TODO warn
+      }
+    } else {
+      // setup() 执行结果只能是函数或对象
+      // 1. 如果是对象，返回对象的所有属性当做状态处理，和 data 性质相同
+      // 2. 如果是函数，视为组件的 render 函数
+      // 即，支持在 setup 中直接手写 render 函数
+      handleSetupResult(instance, setupResult, isSSR);
+    }
+  } else {
+    // ...
+  }
+}
+
+// handleSetupResult
+export function handleSetupResult(
+  instance: ComponentInternalInstance,
+  setupResult: unknown,
+  isSSR: boolean
+) {
+  // 1. 如果是函数当做render函数处理
+  // 2. 如果是对象
+  if (isFunction(setupResult)) {
+    // 返回内联 render 函数
+    if (__NODE_JS__ && (instance.type as ComponentOptions).__ssrInlineRender) {
+      // SSR 服务端渲染，替换 ssrRender 函数
+      // when the function's name is `ssrRender` (compiled by SFC inline mode),
+      // set it as ssrRender instead.
+      instance.ssrRender = setupResult;
+    } else {
+      instance.render = setupResult as InternalRenderFunction;
+    }
+  } else if (isObject(setupResult)) {
+    // 返回 bindings，这些变量可以直接在模板中使用
+    // 注意这里的 state 是 shallow ref，即非递归 reactive 的
+    instance.setupState = proxyRefs(setupResult);
+  } else {
+    // warn 必须返回对象
+  }
+  // 最后完成render函数检查
+  // 可能是 SFC情况的 模板语法，没有直接的render函数，需要进行
+  // compile 操作生成 instance.rendder = Component.render函数
+  // render 执行不是这里，而是在 instance.update 的 effect 函数中的
+  // renderComponentRoot 中
+  finishComponentSetup(instance, isSSR);
+}
+#+end_src
+
+测试：
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  async ({
+    h,
+    render,
+    nodeOps,
+    serializeInner: inner,
+    ref,
+    nextTick,
+    defineComponent,
+  }) => {
+    const root = nodeOps.createElement("div");
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    log(">>>component setup return object");
+    let props, attrs;
+    try {
+      const Comp = defineComponent({
+        props: ["bar"],
+        setup(_props, { attrs: _attrs }) {
+          console.log("setup...");
+          return () => {
+            props = _props;
+            attrs = _attrs;
+          };
+        },
+      });
+      render(h(Comp, { foo: 1, bar: 2 }), root);
+      log([props, attrs]);
+      render(h(Comp, { fooBar: 2, bar: 3, fooBaz: 4 }), root);
+      log([props, attrs]);
+      render(h(Comp, { qux: 5 }), root);
+      log([props, attrs]);
+    } catch (e) {
+      log(e);
+    }
+
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedroot:
+>>>component setup return object
+component stateful ? 4
+call setup
+setup...
+[Function (anonymous)] render
+mount component
+normalize vnode
+patch component
+{ bar: 2 } { foo: 1 }
+{ bar: 2 } { foo: 1 }
+{ bar: 2 } { foo: 1 }
+root:
+#+end_example
+** component update
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: comp-update
+:END:
+
+需要修改点：
+
+1. 在 ~processComponent~ 中增加 ~updateComponent~ 更新组件
+2. 在 instance.update effect 函数中增加 ~updateProps()~ diff->update props
+
+
+这里主要包含了 props 的更新规则，对于 children 的 diff 和 update 规则分析可以查
+看 [[/vue/vue-mind-map-runtime-core-2-render/#keyed-children][patchKeyedChildren diff 和 更新原理分析！]]
+** props tests
+
+传入的 rawProps 和组件自身的 props 经过处理之后(setFullProps()) 会将 rawProps 根
+据一定规则分派到组件 props 或 attrs 中去。
+
+这里的 rawProps 代表是 parent 在渲染子组件的时候传递给它的 props ，如：
+
+~render(h(Child, { foo:1, bar:2}),root)~
+
+中的 ~{foo:1,bar:2}~ 即 parent props，然后组件可以定义自身的 props 属性：
+
+~defineComponent({ props: ['foo'] })~ 意味着，该子组件只接受 ~'foo'~ 作为 props
+而其他的会被解析成 attrs 。
+
+component props 测试：
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  async ({
+    h,
+    render,
+    nodeOps,
+    serializeInner: inner,
+    ref,
+    nextTick,
+    defineComponent,
+  }) => {
+    const root = nodeOps.createElement("div");
+    const logRoot = () => log("root: " + inner(root));
+
+    logRoot();
+    log(">>>stateful");
+    let props, attrs, proxy;
+    try {
+      const Comp = defineComponent({
+        props: ["fooBar", "barBaz", 'foo-baz'],
+        render() {
+          console.log("comp render");
+          props = this.$props;
+          attrs = this.$attrs;
+          proxy = this;
+        },
+      });
+
+      render(h(Comp, { fooBar: 1, bar: 2, fooBaz: 3 }), root);
+    } catch (e) {
+      log(e);
+    }
+
+    console.log("proxy.fooBar=" + proxy.fooBar);
+    log([props, attrs]);
+    logRoot();
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedroot:
+>>>stateful
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+normalize vnode
+comp render
+patch component
+proxy.fooBar=1
+{ fooBar: 1, fooBaz: 3 } { bar: 2 }
+root:
+#+end_example
+** normalize emits options
+
+[[https://github.com/gcclll/stb-vue-next/commit/b918dde38055d7e6faf6e2371647f805c10f2721][feat(add): props event init · gcclll/stb-vue-next@b918dde]]
+
+** 问题
+
+*** TypeError: Cannot read property 'allowRecurse' of null
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: q-allow-recurse
+:END:
+
+#+begin_example
+TypeError: Cannot read property 'allowRecurse' of null
+    at createReactiveEffect (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:251:39)
+    at effect (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:199:22)
+    at setupRenderEffect (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:2738:29)
+    at mountComponent (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:2733:11)
+    at processComponent (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:2724:19)
+    at patch (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:2616:23)
+    at render (/Users/simon/blog/cheng92.com/static/js/vue/runtime-test.global.js:3099:15)
+    at /private/var/folders/1n/xw58p9v90tn42m87q527fvgr0000gn/T/babel-orafVD/js-script-Vmw0ga:29:5
+#+end_example
+
+因为实现问题：
+
+#+begin_src typescript
+instance.update = effect(function componentEffect() {
+      // 监听更新
+      if (!instance.isMounted) {
+        // 还没加载完成，可能是第一次 mount 操作
+        // TODO
+      } else {
+        // TODO
+      }
+    }, __DEV__ ? /* TODO */ (null as any) : prodEffectOptions)
+#+end_src
+
+文字内的测试是基于 node development 环境测试的，这里 effect options 是 null 所以
+报错。
+
+[[https://github.com/gcclll/stb-vue-next/commit/63675a485bf8223b3be8d76fa3ce28d397d8e726][fix: effect null options · gcclll/stb-vue-next@63675a4]]
+* 测试
+
+#+begin_export html
+<div id="dzwrLeuq5V"></div>
+<script src="/js/vue/tests/dzwrLeuq5V.js"></script>
+#+end_export
+
