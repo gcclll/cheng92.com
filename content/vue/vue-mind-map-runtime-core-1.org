@@ -1147,6 +1147,10 @@ export function createBlock(
 [[/img/vue3/runtime-core/vue-runtime-core-block-shouldtrack.svg]]
 
 ** normalizeChildren function
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: normalize-children
+:END:
 
 shapeFlag 初始值检测：
 #+begin_src typescript

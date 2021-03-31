@@ -1060,449 +1060,447 @@ var VueRuntimeTest = (function (exports) {
           : new ObjectRefImpl(object, key);
   }
 
-  const isBuiltInDirective = /*#__PURE__*/ makeMap('bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text');
-  function validateDirectiveName(name) {
-      if (isBuiltInDirective(name)) {
-          warn('Do not use built-in directive ids as custom directive id: ' + name);
-      }
+  function resolveMergedOptions(instance) {
+      const raw = instance.type;
+      const { __merged, mixins, extends: extendsOptions } = raw;
+      if (__merged)
+          return __merged;
+      const globalMixins = instance.appContext.mixins;
+      if (!globalMixins.length && !mixins && !extendsOptions)
+          return raw;
+      const options = {};
+      globalMixins.forEach(m => mergeOptions(options, m, instance));
+      mergeOptions(options, raw, instance);
+      return (raw.__merged = options);
   }
-
-  const isTeleport = (type) => type.__isTeleport;
-  const TeleportImpl = {
-  // TODO
-  };
-  // interface TeleportTargetElement extends Element {
-  //   // last teleport target
-  //   _lpa?: Node | null
-  // }
-  const Teleport = TeleportImpl;
-
-  const ErrorTypeStrings = {
-      ["bc" /* BEFORE_CREATE */]: 'beforeCreate hook',
-      ["c" /* CREATED */]: 'created hook',
-      ["bm" /* BEFORE_MOUNT */]: 'beforeMount hook',
-      ["m" /* MOUNTED */]: 'mounted hook',
-      ["bu" /* BEFORE_UPDATE */]: 'beforeUpdate hook',
-      ["u" /* UPDATED */]: 'updated',
-      ["bum" /* BEFORE_UNMOUNT */]: 'beforeUnmount hook',
-      ["um" /* UNMOUNTED */]: 'unmounted hook',
-      ["a" /* ACTIVATED */]: 'activated hook',
-      ["da" /* DEACTIVATED */]: 'deactivated hook',
-      ["ec" /* ERROR_CAPTURED */]: 'errorCaptured hook',
-      ["rtc" /* RENDER_TRACKED */]: 'renderTracked hook',
-      ["rtg" /* RENDER_TRIGGERED */]: 'renderTriggered hook',
-      [0 /* SETUP_FUNCTION */]: 'setup function',
-      [1 /* RENDER_FUNCTION */]: 'render function',
-      [2 /* WATCH_GETTER */]: 'watcher getter',
-      [3 /* WATCH_CALLBACK */]: 'watcher callback',
-      [4 /* WATCH_CLEANUP */]: 'watcher cleanup function',
-      [5 /* NATIVE_EVENT_HANDLER */]: 'native event handler',
-      [6 /* COMPONENT_EVENT_HANDLER */]: 'component event handler',
-      [7 /* VNODE_HOOK */]: 'vnode hook',
-      [8 /* DIRECTIVE_HOOK */]: 'directive hook',
-      [9 /* TRANSITION_HOOK */]: 'transition hook',
-      [10 /* APP_ERROR_HANDLER */]: 'app errorHandler',
-      [11 /* APP_WARN_HANDLER */]: 'app warnHandler',
-      [12 /* FUNCTION_REF */]: 'ref function',
-      [13 /* ASYNC_COMPONENT_LOADER */]: 'async component loader',
-      [14 /* SCHEDULER */]: 'scheduler flush. This is likely a Vue internals bug. ' +
-          'Please open an issue at https://new-issue.vuejs.org/?repo=vuejs/vue-next'
-  };
-  function callWithErrorHandling(fn, instance, type, args) {
-      let res;
-      try {
-          res = args ? fn(...args) : fn();
-      }
-      catch (err) {
-          handleError(err, instance, type);
-      }
-      return res;
-  }
-  function callWithAsyncErrorHandling(fn, instance, type, args) {
-      if (isFunction(fn)) {
-          const res = callWithErrorHandling(fn, instance, type, args);
-          if (res && isPromise(res)) {
-              res.catch(err => {
-                  handleError(err, instance, type);
-              });
+  function mergeOptions(to, from, instance) {
+      const strats = instance.appContext.config.optionMergeStrategies;
+      const { mixins, extends: extendsOptions } = from;
+      extendsOptions && mergeOptions(to, extendsOptions, instance);
+      mixins &&
+          mixins.forEach((m) => mergeOptions(to, m, instance));
+      for (const key in from) {
+          if (strats && hasOwn(strats, key)) {
+              to[key] = strats[key](to[key], from[key], instance.proxy, key);
           }
-          return res;
+          else {
+              to[key] = from[key];
+          }
       }
-      const values = [];
-      for (let i = 0; i < fn.length; i++) {
-          values.push(callWithAsyncErrorHandling(fn[i], instance, type, args));
-      }
-      return values;
   }
-  function handleError(err, instance, type, throwInDev = true) {
-      const contextVNode = instance ? instance.vnode : null;
-      if (instance) {
-          let cur = instance.parent;
-          // the exposed instance is the render proxy to keep it consistent with 2.x
-          const exposedInstance = instance.proxy;
-          // in production the hook receives only the error code
-          const errorInfo =  ErrorTypeStrings[type] ;
-          while (cur) {
-              const errorCapturedHooks = cur.ec;
-              if (errorCapturedHooks) {
-                  for (let i = 0; i < errorCapturedHooks.length; i++) {
-                      if (errorCapturedHooks[i](err, exposedInstance, errorInfo) === false) {
-                          return;
+
+  function emit(instance, event, ...rawArgs) { }
+  function isEmitListener(options, key) {
+      if (!options || !isOn(key)) {
+          return false;
+      }
+      //onXxxx or onXxxOnce, 因为 @click.once 会解析成 onClickOnce
+      key = key.slice(2).replace(/Once$/, '');
+      // 检测条件：
+      // 1. slice(1) 应该是去掉 @click 中的 `@` ?
+      // 2. clickEvent -> click-event
+      // 3. click
+      // 支持三种形式的事件名
+      return (hasOwn(options, key[0].toLowerCase() + key.slice(1)) ||
+          // onClick -> on-click
+          hasOwn(options, hyphenate(key)) ||
+          hasOwn(options, key));
+  }
+
+  function initProps(instance, rawProps, isStateful, isSSR = false) {
+      const props = {};
+      const attrs = {};
+      def(attrs, InternalObjectKey, 1);
+      setFullProps(instance, rawProps, props, attrs);
+      // TODO validation
+      if (isStateful) {
+          instance.props = isSSR ? props : shallowReactive(props);
+      }
+      else {
+          if (!instance.type.props) {
+              // functional optional props, props === attrs
+              instance.props = attrs;
+          }
+          else {
+              // functional declared props
+              instance.props = props;
+          }
+      }
+      instance.attrs = attrs;
+  }
+  function updateProps(instance, rawProps, rawPrevProps, optimized) {
+      const { props, attrs, vnode: { patchFlag } } = instance;
+      const rawCurrentProps = toRaw(props);
+      const [options] = instance.propsOptions;
+      if (
+      // 开发模式下，总是强制进行 full diff
+      !(
+          (instance.type.__hmrId ||
+              (instance.parent && instance.parent.type.__hmrId))) &&
+          (optimized || patchFlag > 0) &&
+          !(patchFlag & 16 /* FULL_PROPS */)) {
+          if (patchFlag & 8 /* PROPS */) {
+              const propsToUpdate = instance.vnode.dynamicProps;
+              for (let i = 0; i < propsToUpdate.length; i++) {
+                  const key = propsToUpdate[i];
+                  const value = rawProps[key];
+                  if (options) {
+                      // attr / props 在初始化阶段会被分离开，在这里只需要检测
+                      // attrs 有没有该属性
+                      if (hasOwn(attrs, key)) {
+                          attrs[key] = value;
+                      }
+                      else {
+                          const camelizedKey = camelize(key);
+                          props[camelizedKey] = resolvePropValue(options, rawCurrentProps, camelizedKey, value, instance);
+                      }
+                  }
+                  else {
+                      attrs[key] = value;
+                  }
+              }
+          }
+      }
+      else {
+          // full props update
+          setFullProps(instance, rawProps, props, attrs);
+          // in case of dynamic props, check if we need to delete keys from
+          // the props object
+          let kebabKey;
+          for (const key in rawCurrentProps) {
+              if (!rawProps ||
+                  // for camelcase
+                  (!hasOwn(rawProps, key) &&
+                      ((kebabKey = hyphenate(key)) === key || !hasOwn(rawProps, kebabKey)))) {
+                  if (options) {
+                      if (rawPrevProps &&
+                          // for camelCase
+                          (rawPrevProps[key] !== undefined ||
+                              // for kebad-case
+                              rawPrevProps[kebabKey] !== undefined)) {
+                          props[key] = resolvePropValue(options, rawProps || EMPTY_OBJ, key, undefined, instance);
+                      }
+                  }
+                  else {
+                      delete props[key];
+                  }
+              }
+          }
+          if (attrs !== rawCurrentProps) {
+              for (const key in attrs) {
+                  if (!rawProps || !hasOwn(rawProps, key)) {
+                      delete attrs[key];
+                  }
+              }
+          }
+      }
+      // trigger updates for $attrs in case it's used in component slots
+      trigger(instance, "set" /* SET */, '$attrs');
+  }
+  function setFullProps(instance, rawProps, props, attrs) {
+      const [options, needCastKeys] = instance.propsOptions;
+      if (rawProps) {
+          for (const key in rawProps) {
+              const value = rawProps[key];
+              // key, ref 保留，不往下传
+              // 即这两个属性不会继承给 child
+              if (isReservedProp(key)) {
+                  continue;
+              }
+              let camelKey;
+              if (options && hasOwn(options, (camelKey = camelize(key)))) {
+                  props[camelKey] = value;
+              }
+              else if (!isEmitListener(instance.emitsOptions, key)) {
+                  attrs[key] = value;
+              }
+          }
+      }
+      if (needCastKeys) {
+          const rawCurrentProps = toRaw(props);
+          for (let i = 0; i < needCastKeys.length; i++) {
+              const key = needCastKeys[i];
+              props[key] = resolvePropValue(options, rawCurrentProps, key, rawCurrentProps[key], instance);
+          }
+      }
+  }
+  function resolvePropValue(options, props, key, value, instance) {
+      /*
+       * 这里面的处理是针对 props: { name: { ... } } 类型而言
+       * 1. 默认值的处理， default 可能是函数或普通类型值，如果是函数应该得到
+       * 函数执行的结果作为它的值，注意下面的检测函数时前置条件是该类型不是函数，
+       * 如果类型也是函数，默认值就是该函数本身，而非执行后的结果值
+       * 2. 布尔值的处理，值转成 true or false
+       */
+      const opt = options[key];
+      if (opt != null) {
+          const hasDefault = hasOwn(opt, 'default');
+          // 默认值
+          if (hasDefault && value === undefined) {
+              const defaultValue = opt.default;
+              // props: { name: { default: (props) => 'xxx' } }
+              // 类型不是函数？但是默认值是函数，执行得到结果
+              if (opt.type !== Function && isFunction(defaultValue)) {
+                  setCurrentInstance(instance);
+                  value = defaultValue(props);
+                  setCurrentInstance(null);
+              }
+              else {
+                  // props: { name: { default: 'xxx' } }
+                  value = defaultValue;
+              }
+          }
+          // boolean casting
+          if (opt[0 /* shouldCast */]) {
+              if (!hasOwn(props, key) && !hasDefault) {
+                  value = false;
+              }
+              else if (opt[1 /* shouldCastTrue */] &&
+                  (value === '' || value === hyphenate(key))) {
+                  value = true;
+              }
+          }
+      }
+      return value;
+  }
+  function normalizePropsOptions(comp, appContext, asMixin = false) {
+      if (!appContext.deopt && comp.__props) {
+          return comp.__props;
+      }
+      const raw = comp.props;
+      const normalized = {};
+      const needCastKeys = [];
+      // mixin/extends props 应用
+      let hasExtends = false;
+      // 必须开支 2.x options api 支持，且不是函数式组件
+      // 继承来的属性，用法： ~CompA = { extends: CompB, ... }~
+      // CompA 会继承 CompB 的 props
+      if ( !isFunction(comp)) {
+          const extendProps = (raw) => {
+              hasExtends = true;
+              const [props, keys] = normalizePropsOptions(raw, appContext, true);
+              extend(normalized, props);
+              if (keys) {
+                  needCastKeys.push(...keys);
+              }
+          };
+          // Comp: { mixins: [mixin] } 处理
+          if (!asMixin && appContext.mixins.length) {
+              appContext.mixins.forEach(extendProps);
+          }
+          // Comp: { extends: CompA } 处理
+          if (comp.extends) {
+              extendProps(comp.extends);
+          }
+          if (comp.mixins) {
+              comp.mixins.forEach(extendProps);
+          }
+      }
+      // 既没有自身的 props 也没有 extends 继承来的 props 初始化为 []
+      if (!raw && !hasExtends) {
+          return (comp.__props = EMPTY_ARR);
+      }
+      if (isArray(raw)) {
+          // 当 props 是数组的时候，必须是字符类型，如: props: ['foo', 'bar', 'foo-bar']
+          // 'foo-bar' 会转成 'fooBar'，不允许 '$xxx' 形式的变量名
+          for (let i = 0; i < raw.length; i++) {
+              const normalizedKey = camelize(raw[i]);
+              // 组件的属性名不能是以 $xx 开头的名称，这个是作为内部属性的
+              if (validatePropName(normalizedKey)) {
+                  normalized[normalizedKey] = EMPTY_OBJ;
+              }
+          }
+      }
+      else if (raw) {
+          // 对象类型 props: { foo: 1, bar: 2, ... }
+          for (const key in raw) {
+              // 'foo-bar' -> 'fooBar'
+              const normalizedKey = camelize(key);
+              // 检查 $xxx 非法属性
+              if (validatePropName(normalizedKey)) {
+                  const opt = raw[key];
+                  // ? 值为数组或函数变成： { type: opt } ?
+                  // 这里含义其实是： ~props: { foo: [Boolean, Function] }~
+                  // 可以用数组定义该属性可以是多种类型的其中一种
+                  const prop = (normalized[normalizedKey] =
+                      isArray(opt) || isFunction(opt) ? { type: opt } : opt);
+                  if (prop) {
+                      // 找到 Boolean 在 foo: [Boolean, Function] 中的索引
+                      const booleanIndex = getTypeIndex(Boolean, prop.type);
+                      const stringIndex = getTypeIndex(String, prop.type);
+                      prop[0 /* shouldCast */] = booleanIndex > -1;
+                      // [String, Boolean] 类型，String 在 Boolean 前面
+                      prop[1 /* shouldCastTrue */] =
+                          stringIndex < 0 || booleanIndex < stringIndex;
+                      // 如果是布尔类型的值或者有默认值的属性需要转换
+                      // 转换是根据 type 和 default 值处理
+                      // type非函数，default是函数，执行 default() 得到默认值
+                      if (booleanIndex > -1 || hasOwn(prop, 'default')) {
+                          needCastKeys.push(normalizedKey);
                       }
                   }
               }
-              cur = cur.parent;
-          }
-          // app-level handling
-          const appErrorHandler = instance.appContext.config.errorHandler;
-          if (appErrorHandler) {
-              callWithErrorHandling(appErrorHandler, null, 10 /* APP_ERROR_HANDLER */, [err, exposedInstance, errorInfo]);
-              return;
           }
       }
-      logError(err, type, contextVNode, throwInDev);
+      return (comp.__props = [normalized, needCastKeys]);
   }
-  function logError(err, type, contextVNode, throwInDev = true) {
-      {
-          const info = ErrorTypeStrings[type];
-          if (contextVNode) {
-              pushWarningContext(contextVNode);
-          }
-          warn(`Unhandled error${info ? ` during execution of ${info}` : ``}`);
-          if (contextVNode) {
-              popWarningContext();
-          }
-          // crash in dev by default so it's more noticeable
-          if (throwInDev) {
-              throw err;
-          }
-          else {
-              console.error(err);
+  function validatePropName(key) {
+      // 非内部属性？
+      if (key[0] !== '$') {
+          return true;
+      }
+      else {
+          // $xxx 为保留属性
+          warn(`Invalid prop name: "${key}" is a reserved property.`);
+      }
+      return false;
+  }
+  // use function string name to check type constructors
+  // so that it works across vms / iframes.
+  function getType(ctor) {
+      const match = ctor && ctor.toString().match(/^\s*function (\w+)/);
+      return match ? match[1] : '';
+  }
+  function isSameType(a, b) {
+      return getType(a) === getType(b);
+  }
+  function getTypeIndex(type, expectedTypes) {
+      if (isArray(expectedTypes)) {
+          for (let i = 0, len = expectedTypes.length; i < len; i++) {
+              if (isSameType(expectedTypes[i], type)) {
+                  return i;
+              }
           }
       }
+      else if (isFunction(expectedTypes)) {
+          return isSameType(expectedTypes, type) ? 0 : -1;
+      }
+      return -1;
   }
 
+  let isRenderingCompiledSlot = 0;
+  const setCompiledSlotRendering = (n) => (isRenderingCompiledSlot += n);
+
   /**
-   * mark the current rendering instance for asset resolution (e.g.
-   * resolveComponent, resolveDirective) during render
+   * Wrap a slot function to memoize current rendering instance
+   * @private
    */
-  let currentRenderingInstance = null;
-  function renderComponentRoot(instance) {
-      const { 
-      // type: Component,
-      vnode, proxy, withProxy, props, 
-      // propsOptions: [propsOptions],
-      // slots,
-      attrs, 
-      // emit,
-      render, renderCache, data, setupState, ctx } = instance;
-      let result;
-      currentRenderingInstance = instance;
-      try {
-          let fallthroughAttrs;
-          if (vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */) {
-              // withProxy is a proxy with a different `has` trap only for
-              // runtime-compiled render functions using `with` block.
-              const proxyToUse = withProxy || proxy;
-              console.log('normalize vnode');
-              result = normalizeVNode(render.call(proxyToUse, proxyToUse, renderCache, props, setupState, data, ctx));
-              fallthroughAttrs = attrs;
+  function withCtx(fn, ctx = currentRenderingInstance) {
+      if (!ctx)
+          return fn;
+      const renderFnWithContext = (...args) => {
+          // If a user calls a compiled slot inside a template expression (#1745), it
+          // can mess up block tracking, so by default we need to push a null block to
+          // avoid that. This isn't necessary if rendering a compiled `<slot>`.
+          if (!isRenderingCompiledSlot) {
+              openBlock(true /* null block that disables tracking */);
           }
-          else {
-              // TODO 无状态组件？
-              result = {};
+          const owner = currentRenderingInstance;
+          setCurrentRenderingInstance(ctx);
+          const res = fn(...args);
+          setCurrentRenderingInstance(owner);
+          if (!isRenderingCompiledSlot) {
+              closeBlock();
           }
-          // TODO attr merging
-          let root = result;
-          let setRoot = undefined;
-          if (true && result.patchFlag & 2048 /* DEV_ROOT_FRAGMENT */) {
-              ;
-              [root, setRoot] = getChildRoot(result);
-          }
-          // TODO dirs, transition
-          if (true && setRoot) {
-              setRoot(root);
-          }
-          else {
-              result = root;
-          }
-      }
-      catch (err) {
-          handleError(err, instance, 1 /* RENDER_FUNCTION */);
-          result = createVNode(Comment);
-      }
-      currentRenderingInstance = null;
-      return result;
-  }
-  /**
-   * dev only
-   * In dev mode, template root level comments are rendered, which turns the
-   * template into a fragment root, but we need to locate the single element
-   * root for attrs and scope id processing.
-   */
-  const getChildRoot = (vnode) => {
-      const rawChildren = vnode.children;
-      const dynamicChildren = vnode.dynamicChildren;
-      const childRoot = filterSingleRoot(rawChildren);
-      if (!childRoot) {
-          return [vnode, undefined];
-      }
-      const index = rawChildren.indexOf(childRoot);
-      const dynamicIndex = dynamicChildren ? dynamicChildren.indexOf(childRoot) : -1;
-      const setRoot = (updatedRoot) => {
-          rawChildren[index] = updatedRoot;
-          if (dynamicChildren) {
-              if (dynamicIndex > -1) {
-                  dynamicChildren[dynamicIndex] = updatedRoot;
-              }
-              else if (updatedRoot.patchFlag > 0) {
-                  vnode.dynamicChildren = [...dynamicChildren, updatedRoot];
-              }
-          }
+          return res;
       };
-      return [normalizeVNode(childRoot), setRoot];
-  };
-  function filterSingleRoot(children) {
-      let singleRoot;
-      for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          if (isVNode(child)) {
-              // ignore user comment
-              if (child.type !== Comment || child.children === 'v-if') {
-                  if (singleRoot) {
-                      // has more than 1 non-comment child, return now
-                      return;
-                  }
-                  else {
-                      singleRoot = child;
-                  }
-              }
-          }
-          else {
-              return;
-          }
-      }
-      return singleRoot;
+      renderFnWithContext._c = true;
+      return renderFnWithContext;
   }
 
-  let isFlushing = false; // 开始 flush pre/job/post
-  let isFlushPending = false; // 正在 flush pre cbs
-  // job
-  const queue = []; // job 队列
-  let flushIndex = 0; // for -> job 时候的索引
-  // 默认 pre cb 队列
-  const pendingPreFlushCbs = [];
-  // 正在执行的 pre cbs，由 pendingPreFlushCbs 去重而来的任务队列
-  let activePreFlushCbs = null;
-  let preFlushIndex = 0;
-  // post 类型的 cb 队列
-  const pendingPostFlushCbs = [];
-  // 当前正在执行的 post cbs 队列，由 pendingPostFlushCbs 去重而来
-  // 且它不会执行期间进行扩充，而是在 flushJobs 中 queue jobs 执行完成之后
-  // 的 finally 里面检测 post 队列重新调用 flushJobs 来清空
-  let activePostFlushCbs = null;
-  let postFlushIndex = 0;
-  // 空的 Promise 用来进行异步化，实现 nextTick
-  const resolvedPromise = Promise.resolve();
-  // 当 flushJobs 执行完毕，即当 pre/job/post 队列中所有
-  // 任务都完成之后返回的一个 promise ，所以当使用 nextTick()
-  // 的时候，对应的代码都是在这个基础完成之后调用
-  // 所以 nextTick() 顾名思义就是在当前的 tick 下所有任务(pre/job/post)都
-  // 执行完毕之后才执行的代码
-  let currentFlushPromise = null;
-  // queue job 可以作为 pre cbs 的父级任务
-  // 比如：在手动调用 flushPreFlushCbs(seen, parentJob) 就可以
-  // 传一个 queue job 当做当前 cbs 的父级任务。
-  // 这个用途是为了避免该 job 的上一次入列任务(包括 job 及其子 pre cbs)
-  // 还没完成就再次调用 queueJob 重复入列, 说白了就是为了同一个 job 不能在
-  // parentJob 完成之前调用 queueJob，就算调了也没用
-  let currentPreFlushParentJob = null;
-  // pre/job/post 三种任务在同一个 tick 下，一次执行上限是100个
-  // 超出视为死循环
-  const RECURSION_LIMIT = 100;
-  // 这个函数将使得 fn 或使用了 await 时候后面的代码总是在
-  // 当前 tick 下的 pre/job/post 队列都 flush 空了之后执行
-  function nextTick(fn) {
-      const p = currentFlushPromise || resolvedPromise;
-      return fn ? p.then(this ? fn.bind(this) : fn) : p;
-  }
-  function queueJob(job) {
-      // the dedupe search uses the startIndex argument of Array.includes()
-      // by default the search index includes the current job that is being run
-      // so it cannot recursively trigger itself again.
-      // if the job is a watch() callback, the search will start with a +1 index to
-      // allow it recursively trigger itself - it is the user's responsibility to
-      // ensure it doesn't end up in an infinite loop.
-      // 1. 队列为空或不包含当前正入列的 job
-      // 2. job 非当前 parent job
-      if ((!queue.length ||
-          !queue.includes(job, isFlushing && job.allowRecurse ? flushIndex + 1 : flushIndex)) &&
-          job !== currentPreFlushParentJob) {
-          queue.push(job);
-          queueFlush();
-      }
-  }
-  // 立即启动异步 flush 操作
-  function queueFlush() {
-      if (!isFlushing && !isFlushPending) {
-          isFlushPending = true;
-          currentFlushPromise = resolvedPromise.then(flushJobs);
-      }
-  }
-  // 失效一个任务就是将其删除
-  function invalidateJob(job) {
-      const i = queue.indexOf(job);
-      if (i > -1) {
-          queue.splice(i, 1);
-      }
-  }
-  // pre/post 任务入列函数，注意点
-  // 1. 不能重复添加同一个 cb
-  // 2. 如果指定了 allowRecurse: true 是可以重复添加的
-  // 如下面的实现，查找从 index+1 开始肯定是找不到的
-  function queueCb(cb, activeQueue, pendingQueue, index) {
-      if (!isArray(cb)) {
-          if (!activeQueue ||
-              !activeQueue.includes(cb, cb.allowRecurse ? index + 1 : index)) {
-              pendingQueue.push(cb);
+  const hmrDirtyComponents = new Set();
+
+  const isInternalKey = (key) => key[0] === '_' || key === '$stable';
+  const normalizeSlotValue = (value) => isArray(value)
+      ? value.map(normalizeVNode)
+      : [normalizeVNode(value)];
+  const normalizeSlot = (key, rawSlot, ctx) => withCtx((props) => {
+      // warn: 在 Render 函数外执行了 slot function
+      return normalizeSlotValue(rawSlot(props));
+  }, ctx);
+  const normalizeObjectSlots = (rawSlots, slots) => {
+      const ctx = rawSlots._ctx;
+      for (const key in rawSlots) {
+          if (isInternalKey(key)) {
+              continue;
+          }
+          const value = rawSlots[key];
+          if (isFunction(value)) {
+              slots[key] = normalizeSlot(key, value, ctx);
+          }
+          else if (value != null) {
+              // warn: 使用 function slots 性能更好
+              const normalized = normalizeSlotValue(value);
+              slots[key] = () => normalized;
           }
       }
-      else {
-          // 如果 cb 是个数组，那么它是个组件生命周期的 Hook 函数，这些函数只能被
-          // 一个 job 触发，且在对应的 queue flush 函数中进过了去重操作
-          // 因为这里直接跳过去重检测提高性能
-          // 意思就是，在 flush[Pre|Post]FlushCbs 函数执行期间会进行去重操作，
-          // 因此这里不需要重复做(如： activePostFlushCbs, activePreFlushCbs 都是
-          // 去重之后待执行的 cbs)
-          pendingQueue.push(...cb);
-      }
-      queueFlush();
-  }
-  function queuePreFlushCb(cb) {
-      queueCb(cb, activePreFlushCbs, pendingPreFlushCbs, preFlushIndex);
-  }
-  function queuePostFlushCb(cb) {
-      queueCb(cb, activePostFlushCbs, pendingPostFlushCbs, postFlushIndex);
-  }
-  // flush pre cbs，在 flushJobs 中优先调用，也就是说 pre cbs
-  // 在同一 tick 内执行优先级最高，即最先执行(pre cbs > job > post cbs)
-  // 并且它会一直递归到没有新的 pre cbs 为止
-  // 比如： 有10个任务，执行到第5个的时候来了个新的任务(queuePreFlushCb(cb))
-  // 那么这个任务会在前面10个执行完成之后作为第 11 个去执行，但记住是下次递归时完成
-  function flushPreFlushCbs(seen, parentJob = null) {
-      if (pendingPreFlushCbs.length) {
-          currentPreFlushParentJob = parentJob;
-          activePreFlushCbs = [...new Set(pendingPreFlushCbs)];
-          pendingPreFlushCbs.length = 0;
-          {
-              seen = seen || new Map();
-          }
-          for (preFlushIndex = 0; preFlushIndex < activePreFlushCbs.length; preFlushIndex++) {
-              // 检查递归更新问题
-              {
-                  checkRecursiveUpdates(seen, activePreFlushCbs[preFlushIndex]);
-              }
-              activePreFlushCbs[preFlushIndex]();
-          }
-          activePreFlushCbs = null;
-          preFlushIndex = 0;
-          currentPreFlushParentJob = null;
-          // 递归 flush 直到所有 pre jobs 被执行完成
-          flushPreFlushCbs(seen, parentJob);
-      }
-  }
-  // flush post cbs 和 pre cbs 差不多，唯一不同的点在于：
-  // 如果执行期间有新的任务进来 (queuePostFlushCb(cb)) 的时候
-  // 它不是在当前 post cbs 后面立即执行，而是当 pre cbs -> jobs -> post -cbs
-  // 执行完一轮之后在 flushJobs 的 finally 中重启新一轮的 flushJobs
-  // 所以，这期间如果有新的 pre cbs 或 Jobs 那么这两个都会在新的 post cbs
-  // 之前得到执行
-  function flushPostFlushCbs(seen) {
-      if (pendingPostFlushCbs.length) {
-          const deduped = [...new Set(pendingPostFlushCbs)];
-          pendingPostFlushCbs.length = 0;
-          // #1947 already has active queue, nested flushPostFlushCbs call
-          if (activePostFlushCbs) {
-              activePostFlushCbs.push(...deduped);
-              return;
-          }
-          activePostFlushCbs = deduped;
-          {
-              seen = seen || new Map();
-          }
-          activePostFlushCbs.sort((a, b) => getId(a) - getId(b));
-          for (postFlushIndex = 0; postFlushIndex < activePostFlushCbs.length; postFlushIndex++) {
-              // 递归 update 检查
-              {
-                  checkRecursiveUpdates(seen, activePostFlushCbs[postFlushIndex]);
-              }
-              activePostFlushCbs[postFlushIndex]();
-          }
-          activePostFlushCbs = null;
-          postFlushIndex = 0;
-      }
-  }
-  const getId = (job) => job.id == null ? Infinity : job.id;
-  // 开启三种任务 flush 操作，优先级 pre cbs > jobs > post cbs
-  function flushJobs(seen) {
-      isFlushPending = false;
-      isFlushing = true;
-      {
-          seen = seen || new Map();
-      }
-      flushPreFlushCbs(seen); // 默认的 job 类型
-      // flush 之前对 queue 排序
-      // 1. 组件更新顺序：parent -> child，因为 parent 总是在 child 之前
-      //    被创建，因此 parent render effect 有更低的优先级数字(数字越小越先创建？)
-      // 2. 如果组件在 parent 更新期间被卸载了，那么它的更新都会被忽略掉
-      queue.sort((a, b) => getId(a) - getId(b));
-      // 开始 flush
-      try {
-          for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
-              const job = queue[flushIndex];
-              if (job) {
-                  // 检查递归更新问题
-                  if (true) {
-                      checkRecursiveUpdates(seen, job);
-                  }
-                  callWithErrorHandling(job, null, 14 /* SCHEDULER */);
-              }
-          }
-      }
-      finally {
-          // 情况队列
-          flushIndex = 0;
-          queue.length = 0;
-          // flush `post` 类型的 flush cbs
-          flushPostFlushCbs(seen);
-          isFlushing = false;
-          currentFlushPromise = null;
-          // 代码执行到当前 tick 的时候，有可能有新的 job 加入
-          // some postFlushCb queued jobs!
-          // keep flushing until it drains.
-          if (queue.length || pendingPostFlushCbs.length) {
-              flushJobs(seen);
-          }
-      }
-  }
-  function checkRecursiveUpdates(seen, fn) {
-      if (!seen.has(fn)) {
-          seen.set(fn, 1);
-      }
-      else {
-          const count = seen.get(fn);
-          if (count > RECURSION_LIMIT) {
-              throw new Error(`Maximum recursive updates exceeded. ` +
-                  `This means you have a reactive effect that is mutating its own ` +
-                  `dependencies and thus recursively triggering itself. Possible sources ` +
-                  `include component template, render function, updated hook or ` +
-                  `watcher source function.`);
+  };
+  const normalizeVNodeSlots = (instance, children) => {
+      const normalized = normalizeSlotValue(children);
+      instance.slots.default = () => normalized;
+  };
+  const initSlots = (instance, children) => {
+      if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+          const type = children._;
+          if (type) {
+              instance.slots = children;
+              // make compiler marker non-enumerable
+              def(children, '_', type);
           }
           else {
-              seen.set(fn, count + 1);
+              normalizeObjectSlots(children, (instance.slots = {}));
           }
       }
-  }
+      else {
+          instance.slots = {};
+          if (children) {
+              normalizeVNodeSlots(instance, children);
+          }
+      }
+      def(instance.slots, InternalObjectKey, 1);
+  };
+  const updateSlots = (instance, children) => {
+      const { vnode, slots } = instance;
+      let needDeletionCheck = true;
+      let deletionComparisonTarget = EMPTY_OBJ;
+      if (vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+          const type = children._;
+          if (type) {
+              // compiled slots.
+              if (type === 1 /* STABLE */) {
+                  // compiled AND stable
+                  // 不需要更新，跳过 slots 删除操作
+                  needDeletionCheck = false;
+              }
+              else {
+                  // compiled but dynamic (v-if/v-for on slots)
+                  // update slots, but skip normalization
+                  extend(slots, children);
+              }
+          }
+          else {
+              needDeletionCheck = !children.$stable;
+              normalizeObjectSlots(children, slots);
+          }
+          deletionComparisonTarget = children;
+      }
+      else if (children) {
+          // non slot object children (direct value)
+          // passed to a component
+          normalizeVNodeSlots(instance, children);
+          deletionComparisonTarget = { default: 1 };
+      }
+      // delete stale slots
+      // 删除旧的 slots
+      if (needDeletionCheck) {
+          for (const key in slots) {
+              // 非 `_` 内部插槽，且不再新的 children 中的
+              if (!isInternalKey(key) && !(key in deletionComparisonTarget)) {
+                  delete slots[key];
+              }
+          }
+      }
+  };
 
   const isSuspense = (type) => type.__isSuspense;
   // Suspense exposes a component-like API, and is treated like a component
@@ -1558,363 +1556,11 @@ var VueRuntimeTest = (function (exports) {
       }
   }
 
-  // SFC scoped style ID management.
-  let currentScopeId = null;
-
-  const NULL_DYNAMIC_COMPONENT = Symbol();
-
-  let isRenderingCompiledSlot = 0;
-  const setCompiledSlotRendering = (n) => (isRenderingCompiledSlot += n);
-
-  const hmrDirtyComponents = new Set();
-
-  const Fragment = Symbol( 'Fragment' );
-  const Text = Symbol( 'Text' );
-  const Comment = Symbol( 'Comment' );
-  const Static = Symbol( 'Static' );
-  let currentBlock = null;
-  function isVNode(value) {
-      return value ? value.__v_isVNode === true : false;
-  }
-  function isSameVNodeType(n1, n2) {
-      if (
-          n2.shapeFlag & 6 /* COMPONENT */ &&
-          hmrDirtyComponents.has(n2.type)) {
-          // HMR only: if the component has been hot-updated, force a reload.
-          // 组件被热更新，强制重新加载
-          return false;
+  const isBuiltInDirective = /*#__PURE__*/ makeMap('bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text');
+  function validateDirectiveName(name) {
+      if (isBuiltInDirective(name)) {
+          warn('Do not use built-in directive ids as custom directive id: ' + name);
       }
-      return n1.type === n2.type && n1.key === n2.key;
-  }
-  let vnodeArgsTransformer;
-  /**
-   * Internal API for registering an arguments transform for createVNode
-   * used for creating stubs in the test-utils
-   * It is *internal* but needs to be exposed for test-utils to pick up proper
-   * typings
-   */
-  function transformVNodeArgs(transformer) {
-      vnodeArgsTransformer = transformer;
-  }
-  const createVNodeWithArgsTransform = (...args) => {
-      return _createVNode(...(vnodeArgsTransformer
-          ? vnodeArgsTransformer(args, currentRenderingInstance)
-          : args));
-  };
-  const InternalObjectKey = `__vInternal`;
-  const normalizeKey = ({ key }) => key != null ? key : null;
-  const normalizeRef = ({ ref }) => {
-      return (ref != null
-          ? isString(ref) || isRef(ref) || isFunction(ref)
-              ? { i: currentRenderingInstance, r: ref }
-              : ref
-          : null);
-  };
-  const createVNode = ( createVNodeWithArgsTransform
-      );
-  function _createVNode(type, props = null, children = null, patchFlag = 0, dynamicProps = null, isBlockNode = false) {
-      // 无效的 tag 类型
-      if (!type || type === NULL_DYNAMIC_COMPONENT) {
-          if ( !type) {
-              warn(`Invalid vnode type when creating vnode: ${type}.`);
-          }
-          type = Comment;
-      }
-      // 1. type is vnode
-      if (isVNode(type)) {
-          // createVNode receiving an existing vnode. This happens in cases like
-          // <component :is="vnode"/>
-          // #2078 make sure to merge refs during the clone instead of overwriting it
-          const cloned = cloneVNode(type, props, true /* mergeRef: true */);
-          if (children) {
-              normalizeChildren(cloned, children);
-          }
-          return cloned;
-      }
-      // 2. class component
-      if (isClassComponent(type)) {
-          type = type.__vccOpts;
-      }
-      // 3. props 处理, class & style normalization
-      if (props) {
-          // for reactive or proxy objects, we need to clone it to enable mutation.
-          if (isProxy(props) || InternalObjectKey in props) {
-              props = extend({}, props);
-          }
-          let { class: klass, style } = props;
-          if (klass && !isString(klass)) {
-              // 1. string -> klass
-              // 'foo' -> 'foo'
-              // 2. array -> '' + arr.join(' ')
-              // ['foo', 'bar'] -> 'foo bar'
-              // 3. object -> '' + value ? ' value' : ''
-              // { foo: true, bar: false, baz: true } -> 'foo baz'
-              props.class = normalizeClass(klass);
-          }
-          if (isObject(style)) {
-              // reactive state objects need to be cloned since they are likely to be
-              // mutated
-              if (isProxy(style) && !isArray(style)) {
-                  style = extend({}, style);
-              }
-              // 1. array -> object
-              // [{ color: 'red' }, 'font-size:10px;height:100px;'] ->
-              // { color: 'red', 'font-size': '10px', height: '100px' }
-              // 2. object -> object 原样返回
-              props.style = normalizeStyle(style);
-          }
-      }
-      // encode the vnode type information into a bitmap
-      const shapeFlag = isString(type)
-          ? 1 /* ELEMENT */
-          :  isSuspense(type)
-              ? 128 /* SUSPENSE */
-              : isTeleport(type)
-                  ? 64 /* TELEPORT */
-                  : isObject(type)
-                      ? 4 /* STATEFUL_COMPONENT */
-                      : isFunction(type)
-                          ? 2 /* FUNCTIONAL_COMPONENT */
-                          : 0;
-      // 4. warn STATEFUL_COMPONENT
-      if ( shapeFlag & 4 /* STATEFUL_COMPONENT */ && isProxy(type)) {
-          type = toRaw(type);
-          warn(`Vue received a Component which was made a reactive object. This can ` +
-              `lead to unnecessary performance overhead, and should be avoided by ` +
-              `marking the component with \`markRaw\` or using \`shallowRef\` ` +
-              `instead of \`ref\`.`, `\nComponent that was made reactive: `, type);
-      }
-      // 构建 vnode 对象
-      const vnode = {
-          __v_isVNode: true,
-          ["__v_skip" /* SKIP */]: true /*不用做响应式处理*/,
-          type,
-          props,
-          key: props && normalizeKey(props),
-          ref: props && normalizeRef(props),
-          scopeId: currentScopeId,
-          children: null,
-          component: null,
-          suspense: null,
-          ssContent: null,
-          ssFallback: null,
-          dirs: null,
-          transition: null,
-          el: null,
-          anchor: null,
-          target: null,
-          targetAnchor: null,
-          staticCount: 0,
-          shapeFlag,
-          patchFlag,
-          dynamicProps,
-          dynamicChildren: null,
-          appContext: null
-      };
-      // 5. 检查 key, 不能是 NaN
-      if ( vnode.key !== vnode.key) {
-          warn(`VNode created with invalid key (NaN). VNode type:`, vnode.type);
-      }
-      // 6. normalize children
-      normalizeChildren(vnode, children);
-      // 7. normalize suspense children
-      if ( shapeFlag & 128 /* SUSPENSE */) {
-          const { content, fallback } = normalizeSuspenseChildren(vnode);
-          vnode.ssContent = content;
-          vnode.ssFallback = fallback;
-      }
-      // 8. currentBlock
-      if (
-          // 避免 block 节点 tracking 自己
-          !isBlockNode &&
-          // has current parent block
-          currentBlock &&
-          // presence of a patch flag indicates this node needs patching on updates.
-          // component nodes also should always be patched, because even if the
-          // component doesn't need to update, it needs to persist the instance on to
-          // the next vnode so that it can be properly unmounted later.
-          (patchFlag > 0 || shapeFlag & 6 /* COMPONENT */) &&
-          // the EVENTS flag is only for hydration and if it is the only flag, the
-          // vnode should not be considered dynamic due to handler caching.
-          patchFlag !== 32 /* HYDRATE_EVENTS */) {
-          currentBlock.push(vnode);
-      }
-      return vnode;
-  }
-  function cloneVNode(vnode, extraProps, mergeRef = false) {
-      // This is intentionally NOT using spread or extend to avoid the runtime
-      // key enumeration cost.
-      const { props, ref, patchFlag } = vnode;
-      const mergedProps = extraProps ? mergeProps(props || {}, extraProps) : props;
-      return {
-          __v_isVNode: true,
-          ["__v_skip" /* SKIP */]: true,
-          type: vnode.type,
-          props: mergedProps,
-          key: mergedProps && normalizeKey(mergedProps),
-          ref: extraProps && extraProps.ref
-              ? // #2078 in the case of <component :is="vnode" ref="extra"/>
-                  // if the vnode itself already has a ref, cloneVNode will need to merge
-                  // the refs so the single vnode can be set on multiple refs
-                  mergeRef && ref
-                      ? isArray(ref)
-                          ? ref.concat(normalizeRef(extraProps))
-                          : [ref, normalizeRef(extraProps)]
-                      : normalizeRef(extraProps)
-              : ref,
-          scopeId: vnode.scopeId,
-          children: vnode.children,
-          target: vnode.target,
-          targetAnchor: vnode.targetAnchor,
-          staticCount: vnode.staticCount,
-          shapeFlag: vnode.shapeFlag,
-          // if the vnode is cloned with extra props, we can no longer assume its
-          // existing patch flag to be reliable and need to add the FULL_PROPS flag.
-          // note: perserve flag for fragments since they use the flag for children
-          // fast paths only.
-          patchFlag: extraProps && vnode.type !== Fragment
-              ? patchFlag === -1 // hoisted node
-                  ? 16 /* FULL_PROPS */
-                  : patchFlag | 16 /* FULL_PROPS */
-              : patchFlag,
-          dynamicProps: vnode.dynamicProps,
-          dynamicChildren: vnode.dynamicChildren,
-          appContext: vnode.appContext,
-          dirs: vnode.dirs,
-          transition: vnode.transition,
-          // These should technically only be non-null on mounted VNodes. However,
-          // they *should* be copied for kept-alive vnodes. So we just always copy
-          // them since them being non-null during a mount doesn't affect the logic as
-          // they will simply be overwritten.
-          component: vnode.component,
-          suspense: vnode.suspense,
-          ssContent: vnode.ssContent && cloneVNode(vnode.ssContent),
-          ssFallback: vnode.ssFallback && cloneVNode(vnode.ssFallback),
-          el: vnode.el,
-          anchor: vnode.anchor
-      };
-  }
-  /**
-   * @private
-   */
-  function createTextVNode(text = ' ', flag = 0) {
-      return createVNode(Text, null, text, flag);
-  }
-  function normalizeVNode(child) {
-      if (child == null || typeof child === 'boolean') {
-          // empty placeholder
-          return createVNode(Comment);
-      }
-      else if (isArray(child)) {
-          // fragment
-          return createVNode(Fragment, null, child);
-      }
-      else if (typeof child === 'object') {
-          // already vnode, this should be the most common since compiled templates
-          // always produce all-vnode children arrays
-          // 这是最常用的情况，因为使用模板的时候最后生成的 children 是数组
-          return child.el === null ? child : cloneVNode(child);
-      }
-      else {
-          // strings and numbers
-          return createVNode(Text, null, String(child));
-      }
-  }
-  // 针对 template-compiled render fns 做的优化
-  function cloneIfMounted(child) {
-      // child.el 如果存在的话，child 属于静态节点会被静态提升
-      // 所以需要 clone 一份出来，否则直接返回 child
-      return child.el === null ? child : cloneVNode(child);
-  }
-  function normalizeChildren(vnode, children) {
-      let type = 0;
-      const { shapeFlag } = vnode;
-      if (children == null) {
-          children = null;
-      }
-      else if (isArray(children)) {
-          type = 16 /* ARRAY_CHILDREN */;
-      }
-      else if (isObject(children)) {
-          // & 操作，这里等于是检测是 ELEMENT 还是 TELEPORT
-          // 因为 ShapeFlags 内的值是通过左移位得到的
-          if (shapeFlag & 1 /* ELEMENT */ || shapeFlag & 64 /* TELEPORT */) {
-              // Normalize slot to plain children for plain element and Teleport
-              const slot = children.default;
-              if (slot) {
-                  // _c marker is added by withCtx() indicating this is a compiled slot
-                  slot._c && setCompiledSlotRendering(1);
-                  normalizeChildren(vnode, slot());
-                  slot._c && setCompiledSlotRendering(-1);
-              }
-              return;
-          }
-          else {
-              type = 32 /* SLOTS_CHILDREN */;
-              const slotFlag = children._;
-              if (!slotFlag && !(InternalObjectKey in children)) {
-                  children._ctx = currentRenderingInstance;
-              }
-              else if (slotFlag === 3 /* FORWARDED */ && currentRenderingInstance) {
-                  // a child component receives forwarded slots from the parent.
-                  // its slot type is determined by its parent's slot type.
-                  if (currentRenderingInstance.vnode.patchFlag & 1024 /* DYNAMIC_SLOTS */) {
-                      children._ = 2 /* DYNAMIC */;
-                      vnode.patchFlag |= 1024 /* DYNAMIC_SLOTS */;
-                  }
-                  else {
-                      children._ = 1 /* STABLE */;
-                  }
-              }
-          }
-      }
-      else if (isFunction(children)) {
-          // 如果是函数当做 slot children ?
-          children = { default: children, _ctx: currentRenderingInstance };
-          type = 32 /* SLOTS_CHILDREN */;
-      }
-      else {
-          children = String(children);
-          // force teleport children to array so it can be moved around
-          if (shapeFlag & 64 /* TELEPORT */) {
-              type = 16 /* ARRAY_CHILDREN */;
-              children = [createTextVNode(children)];
-          }
-          else {
-              type = 8 /* TEXT_CHILDREN */;
-          }
-      }
-      vnode.children = children;
-      vnode.shapeFlag |= type;
-  }
-  function mergeProps(...args) {
-      const ret = extend({}, args[0]);
-      for (let i = 1; i < args.length; i++) {
-          const toMerge = args[i];
-          for (const key in toMerge) {
-              if (key === 'class') {
-                  if (ret.class !== toMerge.class) {
-                      ret.class = normalizeClass([ret.class, toMerge.class]);
-                  }
-              }
-              else if (key === 'style') {
-                  ret.style = normalizeStyle([ret.style, toMerge.style]);
-              }
-              else if (isOn(key)) {
-                  const existing = ret[key];
-                  const incoming = toMerge[key];
-                  if (existing !== incoming) {
-                      ret[key] = existing
-                          ? [].concat(existing, toMerge[key])
-                          : incoming;
-                  }
-              }
-              else if (key !== '') {
-                  ret[key] = toMerge[key];
-              }
-          }
-      }
-      return ret;
   }
 
   function createAppContext() {
@@ -2079,829 +1725,6 @@ var VueRuntimeTest = (function (exports) {
       };
   }
 
-  function emit(instance, event, ...rawArgs) { }
-  function isEmitListener(options, key) {
-      if (!options || !isOn(key)) {
-          return false;
-      }
-      //onXxxx or onXxxOnce, 因为 @click.once 会解析成 onClickOnce
-      key = key.slice(2).replace(/Once$/, '');
-      // 检测条件：
-      // 1. slice(1) 应该是去掉 @click 中的 `@` ?
-      // 2. clickEvent -> click-event
-      // 3. click
-      // 支持三种形式的事件名
-      return (hasOwn(options, key[0].toLowerCase() + key.slice(1)) ||
-          // onClick -> on-click
-          hasOwn(options, hyphenate(key)) ||
-          hasOwn(options, key));
-  }
-
-  function initProps(instance, rawProps, isStateful, isSSR = false) {
-      const props = {};
-      const attrs = {};
-      def(attrs, InternalObjectKey, 1);
-      setFullProps(instance, rawProps, props, attrs);
-      // TODO validation
-      if (isStateful) {
-          instance.props = isSSR ? props : shallowReactive(props);
-      }
-      else {
-          if (!instance.type.props) {
-              // functional optional props, props === attrs
-              instance.props = attrs;
-          }
-          else {
-              // functional declared props
-              instance.props = props;
-          }
-      }
-      instance.attrs = attrs;
-  }
-  function setFullProps(instance, rawProps, props, attrs) {
-      const [options, needCastKeys] = instance.propsOptions;
-      if (rawProps) {
-          for (const key in rawProps) {
-              const value = rawProps[key];
-              // key, ref 保留，不往下传
-              // 即这两个属性不会继承给 child
-              if (isReservedProp(key)) {
-                  continue;
-              }
-              let camelKey;
-              if (options && hasOwn(options, (camelKey = camelize(key)))) {
-                  props[camelKey] = value;
-              }
-              else if (!isEmitListener(instance.emitsOptions, key)) {
-                  attrs[key] = value;
-              }
-          }
-      }
-      if (needCastKeys) {
-          const rawCurrentProps = toRaw(props);
-          for (let i = 0; i < needCastKeys.length; i++) {
-              const key = needCastKeys[i];
-              props[key] = resolvePropValue(options, rawCurrentProps, key, rawCurrentProps[key], instance);
-          }
-      }
-  }
-  function resolvePropValue(options, props, key, value, instance) {
-      /*
-       * 这里面的处理是针对 props: { name: { ... } } 类型而言
-       * 1. 默认值的处理， default 可能是函数或普通类型值，如果是函数应该得到
-       * 函数执行的结果作为它的值，注意下面的检测函数时前置条件是该类型不是函数，
-       * 如果类型也是函数，默认值就是该函数本身，而非执行后的结果值
-       * 2. 布尔值的处理，值转成 true or false
-       */
-      const opt = options[key];
-      if (opt != null) {
-          const hasDefault = hasOwn(opt, 'default');
-          // 默认值
-          if (hasDefault && value === undefined) {
-              const defaultValue = opt.default;
-              // props: { name: { default: (props) => 'xxx' } }
-              // 类型不是函数？但是默认值是函数，执行得到结果
-              if (opt.type !== Function && isFunction(defaultValue)) {
-                  setCurrentInstance(instance);
-                  value = defaultValue(props);
-                  setCurrentInstance(null);
-              }
-              else {
-                  // props: { name: { default: 'xxx' } }
-                  value = defaultValue;
-              }
-          }
-          // boolean casting
-          if (opt[0 /* shouldCast */]) {
-              if (!hasOwn(props, key) && !hasDefault) {
-                  value = false;
-              }
-              else if (opt[1 /* shouldCastTrue */] &&
-                  (value === '' || value === hyphenate(key))) {
-                  value = true;
-              }
-          }
-      }
-      return value;
-  }
-  function normalizePropsOptions(comp, appContext, asMixin) {
-      if (!appContext.deopt && comp.__props) {
-          return comp.__props;
-      }
-      const raw = comp.props;
-      const normalized = {};
-      const needCastKeys = [];
-      // mixin/extends props 应用
-      let hasExtends = false;
-      // 必须开支 2.x options api 支持，且不是函数式组件
-      // 继承来的属性，用法： ~CompA = { extends: CompB, ... }~
-      // CompA 会继承 CompB 的 props
-      if ( !isFunction(comp)) {
-          const extendProps = (raw) => {
-              hasExtends = true;
-              const [props, keys] = normalizePropsOptions(raw, appContext, true);
-              extend(normalized, props);
-              if (keys) {
-                  needCastKeys.push(...keys);
-              }
-          };
-          // Comp: { extends: CompA } 处理
-          if (comp.extends) {
-              extendProps(comp.extends);
-          }
-          // Comp: { mixins: [mixin] } 处理
-          if (!asMixin && appContext.mixins.length) {
-              appContext.mixins.forEach(extendProps);
-          }
-      }
-      // 既没有自身的 props 也没有 extends 继承来的 props 初始化为 []
-      if (!raw && !hasExtends) {
-          return (comp.__props = EMPTY_ARR);
-      }
-      if (isArray(raw)) {
-          // 当 props 是数组的时候，必须是字符类型，如: props: ['foo', 'bar', 'foo-bar']
-          // 'foo-bar' 会转成 'fooBar'，不允许 '$xxx' 形式的变量名
-          for (let i = 0; i < raw.length; i++) {
-              const normalizedKey = camelize(raw[i]);
-              // 组件的属性名不能是以 $xx 开头的名称，这个是作为内部属性的
-              if (validatePropName(normalizedKey)) {
-                  normalized[normalizedKey] = EMPTY_OBJ;
-              }
-          }
-      }
-      else if (raw) {
-          // 对象类型 props: { foo: 1, bar: 2, ... }
-          for (const key in raw) {
-              // 'foo-bar' -> 'fooBar'
-              const normalizedKey = camelize(key);
-              // 检查 $xxx 非法属性
-              if (validatePropName(normalizedKey)) {
-                  const opt = raw[key];
-                  // ? 值为数组或函数变成： { type: opt } ?
-                  // 这里含义其实是： ~props: { foo: [Boolean, Function] }~
-                  // 可以用数组定义该属性可以是多种类型的其中一种
-                  const prop = (normalized[normalizedKey] =
-                      isArray(opt) || isFunction(opt) ? { type: opt } : opt);
-                  if (prop) {
-                      // 找到 Boolean 在 foo: [Boolean, Function] 中的索引
-                      const booleanIndex = getTypeIndex(Boolean, prop.type);
-                      const stringIndex = getTypeIndex(String, prop.type);
-                      prop[0 /* shouldCast */] = booleanIndex > -1;
-                      // [String, Boolean] 类型，String 在 Boolean 前面
-                      prop[1 /* shouldCastTrue */] =
-                          stringIndex < 0 || booleanIndex < stringIndex;
-                      // 如果是布尔类型的值或者有默认值的属性需要转换
-                      // 转换是根据 type 和 default 值处理
-                      // type非函数，default是函数，执行 default() 得到默认值
-                      if (booleanIndex > -1 || hasOwn(prop, 'default')) {
-                          needCastKeys.push(normalizedKey);
-                      }
-                  }
-              }
-          }
-      }
-      return (comp.__props = [normalized, needCastKeys]);
-  }
-  function validatePropName(key) {
-      // 非内部属性？
-      if (key[0] !== '$') {
-          return true;
-      }
-      else {
-          // $xxx 为保留属性
-          warn(`Invalid prop name: "${key}" is a reserved property.`);
-      }
-      return false;
-  }
-  // use function string name to check type constructors
-  // so that it works across vms / iframes.
-  function getType(ctor) {
-      const match = ctor && ctor.toString().match(/^\s*function (\w+)/);
-      return match ? match[1] : '';
-  }
-  function isSameType(a, b) {
-      return getType(a) === getType(b);
-  }
-  function getTypeIndex(type, expectedTypes) {
-      if (isArray(expectedTypes)) {
-          for (let i = 0, len = expectedTypes.length; i < len; i++) {
-              if (isSameType(expectedTypes[i], type)) {
-                  return i;
-              }
-          }
-      }
-      else if (isFunction(expectedTypes)) {
-          return isSameType(expectedTypes, type) ? 0 : -1;
-      }
-      return -1;
-  }
-
-  function resolveMergedOptions(instance) {
-      const raw = instance.type;
-      const { __merged, mixins, extends: extendsOptions } = raw;
-      if (__merged)
-          return __merged;
-      const globalMixins = instance.appContext.mixins;
-      if (!globalMixins.length && !mixins && !extendsOptions)
-          return raw;
-      const options = {};
-      globalMixins.forEach(m => mergeOptions(options, m, instance));
-      mergeOptions(options, raw, instance);
-      return (raw.__merged = options);
-  }
-  function mergeOptions(to, from, instance) {
-      const strats = instance.appContext.config.optionMergeStrategies;
-      const { mixins, extends: extendsOptions } = from;
-      extendsOptions && mergeOptions(to, extendsOptions, instance);
-      mixins &&
-          mixins.forEach((m) => mergeOptions(to, m, instance));
-      for (const key in from) {
-          if (strats && hasOwn(strats, key)) {
-              to[key] = strats[key](to[key], from[key], instance.proxy, key);
-          }
-          else {
-              to[key] = from[key];
-          }
-      }
-  }
-
-  /**
-   * #2437 In Vue 3, functional components do not have a public instance proxy but
-   * they exist in the internal parent chain. For code that relies on traversing
-   * public $parent chains, skip functional ones and go to the parent instead.
-   */
-  const getPublicInstance = (i) => i && (i.proxy ? i.proxy : getPublicInstance(i.parent));
-  const publicPropertiesMap = extend(Object.create(null), {
-      $: i => i,
-      $el: i => i.vnode.el,
-      $data: i => i.data,
-      $props: i => ( shallowReadonly(i.props) ),
-      $attrs: i => ( shallowReadonly(i.attrs) ),
-      $slots: i => ( shallowReadonly(i.slots) ),
-      $refs: i => ( shallowReadonly(i.refs) ),
-      $parent: i => getPublicInstance(i.parent),
-      $root: i => i.root && i.root.proxy,
-      $emit: i => i.emit,
-      $options: i => ( resolveMergedOptions(i) ),
-      $forceUpdate: i => () => queueJob(i.update),
-      $nextTick: i => nextTick.bind(i.proxy),
-      $watch: i => ( instanceWatch.bind(i) )
-  });
-  const PublicInstanceProxyHandlers = {
-      get({ _: instance }, key) {
-          const { ctx, setupState, data, props, accessCache, type, appContext } = instance;
-          // let @vue/reactivity know it should never observe Vue public instances.
-          if (key === "__v_skip" /* SKIP */) {
-              return true;
-          }
-          // for internal formatters to know that this is a Vue instance
-          if ( key === '__isVue') {
-              return true;
-          }
-          // data / props / ctx
-          // This getter gets called for every property access on the render context
-          // during render and is a major hotspot. The most expensive part of this
-          // is the multiple hasOwn() calls. It's much faster to do a simple property
-          // access on a plain object, so we use an accessCache object (with null
-          // prototype) to memoize what access type a key corresponds to.
-          let normalizedProps;
-          if (key[0] !== '$') {
-              const n = accessCache[key];
-              if (n !== undefined) {
-                  switch (n) {
-                      case 0 /* SETUP */:
-                          return setupState[key];
-                      case 1 /* DATA */:
-                          return data[key];
-                      case 3 /* CONTEXT */:
-                          return ctx[key];
-                      case 2 /* PROPS */:
-                          return props[key];
-                      // default: just fallthrough
-                  }
-              }
-              else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
-                  accessCache[key] = 0 /* SETUP */;
-                  return setupState[key];
-              }
-              else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-                  accessCache[key] = 1 /* DATA */;
-                  return data[key];
-              }
-              else if (
-              // only cache other properties when instance has declared (thus stable)
-              // props
-              (normalizedProps = instance.propsOptions[0]) &&
-                  hasOwn(normalizedProps, key)) {
-                  accessCache[key] = 2 /* PROPS */;
-                  return props[key];
-              }
-              else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
-                  accessCache[key] = 3 /* CONTEXT */;
-                  return ctx[key];
-              }
-              else {
-                  accessCache[key] = 4 /* OTHER */;
-              }
-          }
-          const publicGetter = publicPropertiesMap[key];
-          let cssModule, globalProperties;
-          // public $xxx properties
-          if (publicGetter) {
-              if (key === '$attrs') {
-                  track(instance, "get" /* GET */, key);
-              }
-              return publicGetter(instance);
-          }
-          else if (
-          // css module (injected by vue-loader)
-          (cssModule = type.__cssModules) &&
-              (cssModule = cssModule[key])) {
-              return cssModule;
-          }
-          else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
-              // user may set custom properties to `this` that start with `$`
-              accessCache[key] = 3 /* CONTEXT */;
-              return ctx[key];
-          }
-          else if (
-          // global properties
-          ((globalProperties = appContext.config.globalProperties),
-              hasOwn(globalProperties, key))) {
-              return globalProperties[key];
-          }
-          else if (
-              currentRenderingInstance &&
-              (!isString(key) ||
-                  // #1091 avoid internal isRef/isVNode checks on component instance leading
-                  // to infinite warning loop
-                  key.indexOf('__v') !== 0)) {
-              if (data !== EMPTY_OBJ &&
-                  (key[0] === '$' || key[0] === '_') &&
-                  hasOwn(data, key)) {
-                  warn(`Property ${JSON.stringify(key)} must be accessed via $data because it starts with a reserved ` +
-                      `character ("$" or "_") and is not proxied on the render context.`);
-              }
-              else {
-                  warn(`Property ${JSON.stringify(key)} was accessed during render ` +
-                      `but is not defined on instance.`);
-              }
-          }
-      },
-      set({ _: instance }, key, value) {
-          const { data, setupState, ctx } = instance;
-          if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
-              setupState[key] = value;
-          }
-          else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-              data[key] = value;
-          }
-          else if (key in instance.props) {
-              
-                  warn(`Attempting to mutate prop "${key}". Props are readonly.`, instance);
-              return false;
-          }
-          if (key[0] === '$' && key.slice(1) in instance) {
-              
-                  warn(`Attempting to mutate public property "${key}". ` +
-                      `Properties starting with $ are reserved and readonly.`, instance);
-              return false;
-          }
-          else {
-              if ( key in instance.appContext.config.globalProperties) {
-                  Object.defineProperty(ctx, key, {
-                      enumerable: true,
-                      configurable: true,
-                      value
-                  });
-              }
-              else {
-                  ctx[key] = value;
-              }
-          }
-          return true;
-      },
-      has({ _: { data, setupState, accessCache, ctx, appContext, propsOptions } }, key) {
-          let normalizedProps;
-          return (accessCache[key] !== undefined ||
-              (data !== EMPTY_OBJ && hasOwn(data, key)) ||
-              (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) ||
-              ((normalizedProps = propsOptions[0]) && hasOwn(normalizedProps, key)) ||
-              hasOwn(ctx, key) ||
-              hasOwn(publicPropertiesMap, key) ||
-              hasOwn(appContext.config.globalProperties, key));
-      }
-  };
-  {
-      PublicInstanceProxyHandlers.ownKeys = (target) => {
-          warn(`Avoid app logic that relies on enumerating keys on a component instance. ` +
-              `The keys will be empty in production mode to avoid performance overhead.`);
-          return Reflect.ownKeys(target);
-      };
-  }
-  const RuntimeCompiledPublicInstanceProxyHandlers = extend({}, PublicInstanceProxyHandlers, {
-      get(target, key) {
-          // fast path for unscopables when using `with` block
-          if (key === Symbol.unscopables) {
-              return;
-          }
-          return PublicInstanceProxyHandlers.get(target, key, target);
-      },
-      has(_, key) {
-          const has = key[0] !== '_' && !isGloballyWhitelisted(key);
-          if ( !has && PublicInstanceProxyHandlers.has(_, key)) {
-              warn(`Property ${JSON.stringify(key)} should not start with _ which is a reserved prefix for Vue internals.`);
-          }
-          return has;
-      }
-  });
-  // In dev mode, the proxy target exposes the same properties as seen on `this`
-  // for easier console inspection. In prod mode it will be an empty object so
-  // these properties definitions can be skipped.
-  function createRenderContext(instance) {
-      const target = {};
-      // expose internal instance for proxy handlers
-      Object.defineProperty(target, `_`, {
-          configurable: true,
-          enumerable: false,
-          get: () => instance
-      });
-      // expose public properties
-      Object.keys(publicPropertiesMap).forEach(key => {
-          Object.defineProperty(target, key, {
-              configurable: true,
-              enumerable: false,
-              get: () => publicPropertiesMap[key](instance),
-              // intercepted by the proxy so no need for implementation,
-              // but needed to prevent set errors
-              set: NOOP
-          });
-      });
-      // expose global properties
-      const { globalProperties } = instance.appContext.config;
-      Object.keys(globalProperties).forEach(key => {
-          Object.defineProperty(target, key, {
-              configurable: true,
-              enumerable: false,
-              get: () => globalProperties[key],
-              set: NOOP
-          });
-      });
-      return target;
-  }
-
-  // import { CompilerOptions } from '@vue/compiler-dom'
-  const emptyAppContext = createAppContext();
-  let uid$2 = 0;
-  function createComponentInstance(vnode, parent, suspense) {
-      const type = vnode.type;
-      // inherit parent app context - or - if root, adopt from root vnode
-      const appContext = (parent ? parent.appContext : vnode.appContext) || emptyAppContext;
-      const instance = {
-          uid: uid$2++,
-          vnode,
-          type,
-          parent,
-          appContext,
-          root: null,
-          next: null,
-          subTree: null,
-          update: null,
-          render: null,
-          proxy: null,
-          exposed: null,
-          withProxy: null,
-          effects: null,
-          provides: parent ? parent.provides : Object.create(appContext.provides),
-          accessCache: null,
-          renderCache: [],
-          // local resovled assets
-          components: null,
-          directives: null,
-          // TODO resolved props and emits options
-          propsOptions: normalizePropsOptions(type, appContext, false),
-          emitsOptions: {},
-          // emit
-          emit: null,
-          emitted: null,
-          // state
-          ctx: EMPTY_OBJ,
-          data: EMPTY_OBJ,
-          props: EMPTY_OBJ,
-          attrs: EMPTY_OBJ,
-          slots: EMPTY_OBJ,
-          refs: EMPTY_OBJ,
-          setupState: EMPTY_OBJ,
-          setupContext: null,
-          // suspense related
-          suspense,
-          suspenseId: suspense ? suspense.pendingId : 0,
-          asyncDep: null,
-          asyncResolved: false,
-          // lifecycle hooks
-          // not using enums here because it results in computed properties
-          isMounted: false,
-          isUnmounted: false,
-          isDeactivated: false,
-          bc: null,
-          c: null,
-          bm: null,
-          m: null,
-          bu: null,
-          u: null,
-          um: null,
-          bum: null,
-          da: null,
-          a: null,
-          rtg: null,
-          rtc: null,
-          ec: null
-      };
-      {
-          instance.ctx = createRenderContext(instance);
-      }
-      instance.root = parent ? parent.root : instance;
-      instance.emit = emit.bind(null, instance);
-      return instance;
-  }
-  let currentInstance = null;
-  const getCurrentInstance = () => currentInstance || currentRenderingInstance;
-  const setCurrentInstance = (instance) => {
-      currentInstance = instance;
-  };
-  const isBuiltInTag = /*#__PURE__*/ makeMap('slot,component');
-  function validateComponentName(name, config) {
-      const appIsNativeTag = config.isNativeTag || NO;
-      if (isBuiltInTag(name) || appIsNativeTag(name)) {
-          warn('Do not use built-in or reserved HTML elements as component id: ' + name);
-      }
-  }
-  let isInSSRComponentSetup = false;
-  function setupComponent(instance, isSSR = false) {
-      isInSSRComponentSetup = isSSR;
-      const { shapeFlag, props } = instance.vnode;
-      const isStateful = shapeFlag & 4 /* STATEFUL_COMPONENT */;
-      // init props & slots
-      initProps(instance, props, isStateful, isSSR);
-      console.log('component stateful ? ' + isStateful);
-      const setupResult = isStateful
-          ? setupStatefulComponent(instance, isSSR)
-          : undefined;
-      isInSSRComponentSetup = false;
-      return setupResult;
-  }
-  function setupStatefulComponent(instance, isSSR) {
-      const Component = instance.type;
-      // 0. create render proxy property access cache
-      instance.accessCache = Object.create(null);
-      // 1. create public instance / render proxy
-      // also mark it raw so it's never observed
-      instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
-      console.log('call setup');
-      // 2. call setup()
-      const { setup } = Component;
-      if (setup) {
-          const setupContext = (instance.setupContext =
-              setup.length > 1 ? createSetupContext(instance) : null);
-          currentInstance = instance;
-          pauseTracking();
-          const setupResult = callWithErrorHandling(setup, instance, 0 /* SETUP_FUNCTION */, [ shallowReadonly(instance.props) , setupContext]);
-          resetTracking();
-          currentInstance = null;
-          if (isPromise(setupResult)) {
-              if (isSSR) {
-                  // return the promise so server-renderer can wait on it
-                  return setupResult.then((resolvedResult) => {
-                      handleSetupResult(instance, resolvedResult);
-                  });
-              }
-              else {
-                  // async setup returned Promise.
-                  // bail here and wait for re-entry.
-                  instance.asyncDep = setupResult;
-              }
-          }
-          else {
-              handleSetupResult(instance, setupResult);
-          }
-      }
-      else {
-          console.log('no setup');
-          finishComponentSetup(instance);
-      }
-  }
-  function handleSetupResult(instance, setupResult, isSSR) {
-      // 1. 如果是函数当做render函数处理
-      // 2. 如果是对象
-      if (isFunction(setupResult)) {
-          // 返回内联 render 函数
-          {
-              instance.render = setupResult;
-          }
-      }
-      else if (isObject(setupResult)) {
-          // 返回 bindings，这些变量可以直接在模板中使用
-          instance.setupState = proxyRefs(setupResult);
-      }
-      else ;
-      finishComponentSetup(instance);
-  }
-  function finishComponentSetup(instance, isSSR) {
-      const Component = instance.type;
-      // template / render function normalization
-      if (!instance.render) {
-          instance.render = (Component.render || NOOP);
-          if (instance.render._rc) {
-              instance.withProxy = new Proxy(instance.ctx, RuntimeCompiledPublicInstanceProxyHandlers);
-          }
-      }
-      console.log(instance.render, 'render');
-      // TODO 兼容 2.x options api
-      if ( !Component.render && instance.render === NOOP) {
-          if ( Component.template) ;
-      }
-  }
-  const attrHandlers = {
-      get: (target, key) => {
-          return target[key];
-      },
-      set: () => {
-          warn(`setupContext.attrs is readonly.`);
-          return false;
-      },
-      deleteProperty: () => {
-          warn(`setupContext.attrs is readonly.`);
-          return false;
-      }
-  };
-  function createSetupContext(instance) {
-      const expose = exposed => {
-          if ( instance.exposed) {
-              warn(`expose() should be called only once per setup().`);
-          }
-          // ref 类型值，通过代理实现对 value 的 get/set
-          instance.exposed = proxyRefs(exposed);
-      };
-      {
-          // We use getters in dev in case libs like test-utils overwrite instance
-          // properties (overwrites should not be done in prod)
-          // 防止覆盖属性
-          return Object.freeze({
-              get props() {
-                  return instance.props;
-              },
-              get attrs() {
-                  return new Proxy(instance.attrs, attrHandlers);
-              },
-              get slots() {
-                  return shallowReadonly(instance.slots);
-              },
-              get emit() {
-                  return (event, ...args) => instance.emit(event, ...args);
-              },
-              expose
-          });
-      }
-  }
-  // record effects created during a component's setup() so that they can be
-  // stopped when the component unmounts
-  // 记录在组件 setup() 期间绑定了哪些 effects，方便当组件卸载的时候去停掉他们
-  function recordInstanceBoundEffect(effect, instance = currentInstance) {
-      if (instance) {
-          (instance.effects || (instance.effects = [])).push(effect);
-      }
-  }
-  const classifyRE = /(?:^|[-_])(\w)/g;
-  const classify = (str) => str.replace(classifyRE, c => c.toUpperCase()).replace(/[-_]/g, '');
-  function getComponentName(Component) {
-      return isFunction(Component)
-          ? Component.displayName || Component.name
-          : Component.name;
-  }
-  /* istanbul ignore next */
-  function formatComponentName(instance, Component, isRoot = false) {
-      let name = getComponentName(Component);
-      // TODO
-      return name ? classify(name) : isRoot ? `App` : `Anonymous`;
-  }
-  function isClassComponent(value) {
-      return isFunction(value) && '__vccOpts' in value;
-  }
-
-  const stack = [];
-  function pushWarningContext(vnode) {
-      stack.push(vnode);
-  }
-  function popWarningContext() {
-      stack.pop();
-  }
-  function warn(msg, ...args) {
-      // avoid props formatting or warn handler tracking deps that might be mutated
-      // during patch, leading to infinite recursion.
-      pauseTracking();
-      const instance = stack.length ? stack[stack.length - 1].component : null;
-      const appWarnHandler = instance && instance.appContext.config.warnHandler;
-      const trace = getComponentTrace();
-      if (appWarnHandler) {
-          callWithErrorHandling(appWarnHandler, instance, 11 /* APP_WARN_HANDLER */, [
-              msg + args.join(''),
-              instance && instance.proxy,
-              trace
-                  .map(({ vnode }) => `at <${formatComponentName(instance, vnode.type)}>`)
-                  .join('\n'),
-              trace
-          ]);
-      }
-      else {
-          const warnArgs = [`[Vue warn]: ${msg}`, ...args];
-          /* istanbul ignore if */
-          if (trace.length &&
-              // avoid spamming console during tests
-              !false) {
-              warnArgs.push(`\n`, ...formatTrace(trace));
-          }
-          console.warn(...warnArgs);
-      }
-      resetTracking();
-  }
-  function getComponentTrace() {
-      let currentVNode = stack[stack.length - 1];
-      if (!currentVNode) {
-          return [];
-      }
-      // we can't just use the stack because it will be incomplete during updates
-      // that did not start from the root. Re-construct the parent chain using
-      // instance parent pointers.
-      const normalizedStack = [];
-      while (currentVNode) {
-          const last = normalizedStack[0];
-          if (last && last.vnode === currentVNode) {
-              last.recurseCount++;
-          }
-          else {
-              normalizedStack.push({
-                  vnode: currentVNode,
-                  recurseCount: 0
-              });
-          }
-          const parentInstance = currentVNode.component && currentVNode.component.parent;
-          currentVNode = parentInstance && parentInstance.vnode;
-      }
-      return normalizedStack;
-  }
-  /* istanbul ignore next */
-  function formatTrace(trace) {
-      const logs = [];
-      trace.forEach((entry, i) => {
-          logs.push(...(i === 0 ? [] : [`\n`]), ...formatTraceEntry(entry));
-      });
-      return logs;
-  }
-  function formatTraceEntry({ vnode, recurseCount }) {
-      const postfix = recurseCount > 0 ? `... (${recurseCount} recursive calls)` : ``;
-      const isRoot = vnode.component ? vnode.component.parent == null : false;
-      const open = ` at <${formatComponentName(vnode.component, vnode.type, isRoot)}`;
-      const close = `>` + postfix;
-      return vnode.props
-          ? [open, ...formatProps(vnode.props), close]
-          : [open + close];
-  }
-  /* istanbul ignore next */
-  function formatProps(props) {
-      const res = [];
-      const keys = Object.keys(props);
-      keys.slice(0, 3).forEach(key => {
-          res.push(...formatProp(key, props[key]));
-      });
-      if (keys.length > 3) {
-          res.push(` ...`);
-      }
-      return res;
-  }
-  /* istanbul ignore next */
-  function formatProp(key, value, raw) {
-      if (isString(value)) {
-          value = JSON.stringify(value);
-          return raw ? value : [`${key}=${value}`];
-      }
-      else if (typeof value === 'number' ||
-          typeof value === 'boolean' ||
-          value == null) {
-          return raw ? value : [`${key}=${value}`];
-      }
-      else if (isRef(value)) {
-          value = formatProp(key, toRaw(value.value), true);
-          return raw ? value : [`${key}=Ref<`, value, `>`];
-      }
-      else if (isFunction(value)) {
-          return [`${key}=fn${value.name ? `<${value.name}>` : ``}`];
-      }
-      else {
-          value = toRaw(value);
-          return raw ? value : [`${key}=`, value];
-      }
-  }
-
   function createDevEffectOptions(instance) {
       return {
           scheduler: queueJob,
@@ -2938,7 +1761,7 @@ var VueRuntimeTest = (function (exports) {
   // implementation
   function baseCreateRenderer(options, createHydrationFns) {
       // 1. 解构 options
-      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, cloneNode: hostCloneNode, createElement: hostCreateElement, createText: hostCreateText, setElementText: hostSetElementText, nextSibling: hostNextSibling, parentNode: hostParentNode } = options;
+      const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, forcePatchProp: hostForcePatchProp, createElement: hostCreateElement, createText: hostCreateText, createComment: hostCreateComment, setText: hostSetText, setElementText: hostSetElementText, parentNode: hostParentNode, nextSibling: hostNextSibling, setScopeId: hostSetScopeId = NOOP, cloneNode: hostCloneNode, insertStaticContent: hostInsertStaticContent } = options;
       // 2. patch 函数
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, optimized = false) => {
           // 不同类型节点，直接卸载老的🌲
@@ -2955,6 +1778,20 @@ var VueRuntimeTest = (function (exports) {
               case Text:
                   processText(n1, n2, container, anchor);
                   break;
+              case Comment:
+                  processCommentNode(n1, n2, container, anchor);
+                  break;
+              case Static:
+                  if (n1 == null) {
+                      mountStaticNode(n2, container, anchor, isSVG);
+                  }
+                  else {
+                      patchStaticNode(n1, n2, container, isSVG);
+                  }
+                  break;
+              case Fragment:
+                  processFragment(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  break;
               default:
                   // ELEMENT/COMPONENT/TELEPORT/SUSPENSE
                   // 默认只支持这四种组件
@@ -2962,7 +1799,10 @@ var VueRuntimeTest = (function (exports) {
                       processElement(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
                   }
                   else if (shapeFlag & 6 /* COMPONENT */) {
-                      processComponent(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG);
+                      processComponent(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  }
+                  else if (shapeFlag & 64 /* TELEPORT */) {
+                      type.process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, internals);
                   }
                   break;
           }
@@ -2973,15 +1813,66 @@ var VueRuntimeTest = (function (exports) {
               // 新节点，插入处理
               hostInsert((n2.el = hostCreateText(n2.children)), container, anchor);
           }
+          else {
+              // has old vnode, need to diff
+              const el = (n2.el = n1.el);
+              if (n2.children !== n1.children) {
+                  hostSetText(el, n2.children);
+              }
+          }
       };
-      // 4. TODO processCommentNode 处理注释节点
-      // 5. TODO mountStaticNode 加载静态节点
-      // 6. TODO patchStaticNode, Dev/HMR only
-      // 7. TODO moveStaticNode，移动静态节点
-      // 8. TODO removeStaticNode, 删除静态节点
+      // 4. processCommentNode 处理注释节点
+      const processCommentNode = (n1, n2, container, anchor) => {
+          if (n1 == null) {
+              hostInsert((n2.el = hostCreateComment(n2.children || '')), container, anchor);
+          }
+          else {
+              // there's no support for dynamic comments
+              n2.el = n1.el;
+          }
+      };
+      // 5. mountStaticNode 加载静态节点
+      const mountStaticNode = (n2, container, anchor, isSVG) => {
+          [n2.el, n2.anchor] = hostInsertStaticContent(n2.children, container, anchor, isSVG);
+      };
+      // 6. patchStaticNode, Dev/HMR only
+      const patchStaticNode = (n1, n2, container, isSVG) => {
+          // static nodes are only patched during dev for HMR
+          if (n2.children !== n1.children) {
+              const anchor = hostNextSibling(n1.anchor);
+              // remove existing
+              removeStaticNode(n1);
+              [n2.el, n2.anchor] = hostInsertStaticContent(n2.children, container, anchor, isSVG);
+          }
+          else {
+              n2.el = n1.el;
+              n2.anchor = n1.anchor;
+          }
+      };
+      // 7. moveStaticNode，移动静态节点
+      const moveStaticNode = ({ el, anchor }, container, nextSibling) => {
+          let next;
+          while (el && el !== anchor) {
+              next = hostNextSibling(el);
+              hostInsert(el, container, nextSibling);
+              el = next;
+          }
+          hostInsert(anchor, container, nextSibling);
+      };
+      // 8. removeStaticNode, 删除静态节点
+      const removeStaticNode = ({ el, anchor }) => {
+          let next;
+          while (el && el !== anchor) {
+              next = hostNextSibling(el);
+              hostRemove(el);
+              el = next;
+          }
+          hostRemove(anchor);
+      };
       // 9. processElement, 处理元素
       const processElement = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
           isSVG = isSVG || n2.type === 'svg';
+          console.log('process element');
           if (n1 == null) {
               // no old
               mountElement(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
@@ -2996,8 +1887,10 @@ var VueRuntimeTest = (function (exports) {
           let el;
           let vnodeHook;
           const { type, shapeFlag, patchFlag, props } = vnode;
+          console.log('mount elment');
           {
               el = vnode.el = hostCreateElement(vnode.type, isSVG, props && props.is);
+              console.log({ shapeFlag });
               // 在处理 props 之前先 mount children ，因为
               // 有些 props 可能会依赖于 child 是否已经渲染出来
               // 比如： `<select value>`
@@ -3053,6 +1946,15 @@ var VueRuntimeTest = (function (exports) {
           // #1426 take the old vnode's patch flag into account since user may clone a
           // compiler-generated vnode, which de-opts to FULL_PROPS
           patchFlag |= n1.patchFlag & 16 /* FULL_PROPS */;
+          // const oldProps = n1.props || EMPTY_OBJ
+          // const newProps = n2.props || EMPTY_OBJ
+          // TODO before update hooks
+          // TODO dirs, 指令处理
+          // TODO HRM updating
+          // patch props 处理
+          if (patchFlag > 0) {
+              console.log('patch element props');
+          }
           const areChildrenSVG = isSVG && n2.type !== 'foreignObject';
           // patch children
           if (dynamicChildren) ;
@@ -3062,16 +1964,94 @@ var VueRuntimeTest = (function (exports) {
           }
           // TODO vnode hook or dirs 处理
       };
-      // 14. TODO patchBlockChildren
+      // 14. patchBlockChildren
+      // The fast path for blocks.
+      const patchBlockChildren = (oldChildren, newChildren, fallbackContainer, parentComponent, parentSuspense, isSVG) => {
+          for (let i = 0; i < newChildren.length; i++) {
+              const oldVNode = oldChildren[i];
+              const newVNode = newChildren[i];
+              // Determine the container (parent element) for the patch.
+              const container = 
+              // - In the case of a Fragment, we need to provide the actual parent
+              // of the Fragment itself so it can move its children.
+              oldVNode.type === Fragment ||
+                  // - In the case of different nodes, there is going to be a replacement
+                  // which also requires the correct parent container
+                  !isSameVNodeType(oldVNode, newVNode) ||
+                  // - In the case of a component, it could contain anything.
+                  oldVNode.shapeFlag & 6 /* COMPONENT */ ||
+                  oldVNode.shapeFlag & 64 /* TELEPORT */
+                  ? hostParentNode(oldVNode.el)
+                  : // In other cases, the parent container is not actually used so we
+                      // just pass the block element here to avoid a DOM parentNode call.
+                      fallbackContainer;
+              patch(oldVNode, newVNode, container, null, parentComponent, parentSuspense, isSVG, true);
+          }
+      };
       // 15. TODO patchProps
-      // 16. TODO processFragment
+      // 16. processFragment
+      const processFragment = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
+          const fragmentStartAnchor = (n2.el = n1 ? n1.el : hostCreateText(''));
+          const fragmentEndAnchor = (n2.anchor = n1 ? n1.anchor : hostCreateText(''));
+          let { patchFlag, dynamicChildren } = n2;
+          if (patchFlag > 0) {
+              optimized = true;
+          }
+          if ( isHmrUpdating) {
+              // HMR updated, force full diff
+              patchFlag = 0;
+              optimized = false;
+              dynamicChildren = null;
+          }
+          if (n1 == null) {
+              hostInsert(fragmentStartAnchor, container, anchor);
+              hostInsert(fragmentEndAnchor, container, anchor);
+              // fragment 的 children 只会是 array children
+              // 因为他们要么是通过 compiler 生成的，要么是由数组创建的
+              mountChildren(n2.children, container, fragmentEndAnchor, parentComponent, parentSuspense, isSVG, optimized);
+          }
+          else {
+              if (patchFlag > 0 &&
+                  patchFlag & 64 /* STABLE_FRAGMENT */ &&
+                  dynamicChildren &&
+                  // #2715 the previous fragment could've been a BAILed one as a result
+                  // of renderSlot() with no valid children
+                  n1.dynamicChildren) {
+                  // a stable fragment (template root or <template v-for>) doesn't need to
+                  // patch children order, but it may contain dynamicChildren.
+                  patchBlockChildren(n1.dynamicChildren, dynamicChildren, container, parentComponent, parentSuspense, isSVG);
+                  if ( parentComponent && parentComponent.type.__hmrId) {
+                      traverseStaticChildren(n1, n2);
+                  }
+                  else if (
+                  // #2080 if the stable fragment has a key, it's a <template v-for> that may
+                  //  get moved around. Make sure all root level vnodes inherit el.
+                  // #2134 or if it's a component root, it may also get moved around
+                  // as the component is being moved.
+                  n2.key != null ||
+                      (parentComponent && n2 === parentComponent.subTree)) {
+                      traverseStaticChildren(n1, n2, true /* shallow */);
+                  }
+              }
+              else {
+                  // keyed / unkeyed, or manual fragments.
+                  // for keyed & unkeyed, since they are compiler generated from v-for,
+                  // each child is guaranteed to be a block so the fragment will never
+                  // have dynamicChildren.
+                  patchChildren(n1, n2, container, fragmentEndAnchor, parentComponent, parentSuspense, isSVG, optimized);
+              }
+          }
+      };
       // 17. processComponent
       const processComponent = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
           if (n1 == null) {
               // mount
               {
-                  mountComponent(n2, container, anchor, parentComponent, parentSuspense, isSVG);
+                  mountComponent(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
               }
+          }
+          else {
+              updateComponent(n1, n2, optimized);
           }
       };
       // 18. mountComponent
@@ -3079,12 +2059,49 @@ var VueRuntimeTest = (function (exports) {
           const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent, parentSuspense));
           setupComponent(instance);
           console.log('mount component');
-          setupRenderEffect(instance, initialVNode, container, anchor, parentSuspense, isSVG);
+          setupRenderEffect(instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized);
       };
-      // 19. TODO updateComponent
+      // 19. updateComponent
+      const updateComponent = (n1, n2, optimized) => {
+          console.log('update component');
+          const instance = (n2.component = n1.component);
+          if (shouldUpdateComponent(n1, n2, optimized)) {
+              console.log('should update component....');
+              if (
+                  instance.asyncDep && // async setup
+                  instance.asyncResolved) {
+                  // async & still pending - just update props and slots
+                  // since the component's reactive effect for render isn't set-up yet
+                  updateComponentPreRender(instance, n2, optimized);
+                  return;
+              }
+              else {
+                  console.log('normal update');
+                  // 正常更新
+                  instance.next = n2;
+                  // 考虑到 child 组件可能正在队列中排队，移除它避免
+                  // 在同一个 flush tick 重复更新同一个子组件
+                  // 当下一次更新来到时，之前的一次更新取消？
+                  invalidateJob(instance.update);
+                  // instance.update 是在 setupRenderEffect 中
+                  // 定义的一个 reactive effect runner
+                  // 主动触发更新
+                  instance.update();
+              }
+              return;
+          }
+          else {
+              console.log('should not update component....');
+              // 没有更新，仅用 old child 的属性覆盖 new child
+              n2.component = n1.component;
+              n2.el = n1.el;
+              instance.vnode = n2;
+          }
+      };
       // 20. setupRenderEffect
       const setupRenderEffect = (instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized) => {
           instance.update = effect(function componentEffect() {
+              console.log('update effect');
               // 监听更新
               if (!instance.isMounted) {
                   // 还没加载完成，可能是第一次 mount 操作
@@ -3137,10 +2154,11 @@ var VueRuntimeTest = (function (exports) {
                   // 当组件自身的状态或父组件调用 processComponent 时触发
                   console.log('component update');
                   let { next, bu, u, parent, vnode } = instance;
+                  let originNext = next;
                   let vnodeHook;
                   if (next) {
                       next.el = vnode.el;
-                      updateComponentPreRender(instance, next);
+                      updateComponentPreRender(instance, next, optimized);
                   }
                   else {
                       next = vnode;
@@ -3163,6 +2181,12 @@ var VueRuntimeTest = (function (exports) {
                   // anchor may have changed if it's in a fragment
                   getNextHostNode(prevTree), instance, parentSuspense, isSVG);
                   next.el = nextTree.el;
+                  if (originNext === null) {
+                      // self-triggered update. In case of HOC, update parent component
+                      // vnode el. HOC is indicated by parent instance's subTree pointing
+                      // to child component's vnode
+                      updateHOCHostEl(instance, nextTree.el);
+                  }
                   // updated hook
                   if (u) {
                       queuePostRenderEffect(u, parentSuspense);
@@ -3171,7 +2195,7 @@ var VueRuntimeTest = (function (exports) {
                   if ((vnodeHook = next.props && next.props.onVnodeUpdated)) {
                       queuePostRenderEffect(() => {
                           invokeVNodeHook(vnodeHook, parent, next, vnode);
-                      });
+                      }, parentSuspense);
                   }
               }
           },  // 提供 onTrack/onTrigger 选项执行 rtc&rtg 两个周期函数
@@ -3182,11 +2206,12 @@ var VueRuntimeTest = (function (exports) {
       const updateComponentPreRender = (instance, nextVNode, optimized) => {
           console.log('update comp pre render');
           nextVNode.component = instance;
-          // const prevProps = instance.vnode.props
+          const prevProps = instance.vnode.props;
           instance.vnode = nextVNode;
           instance.next = null;
-          // TODO update props
-          // TODO update slots
+          // update props
+          updateProps(instance, nextVNode.props, prevProps, optimized);
+          updateSlots(instance, nextVNode.children);
           // props update may have triggered pre-flush watchers.
           // flush them before the render update.
           flushPreFlushCbs(undefined, instance.update);
@@ -3473,12 +2498,19 @@ var VueRuntimeTest = (function (exports) {
       };
       // 25. move， 交换操作
       const move = (vnode, container, anchor, moveType, parentSuspense = null) => {
-          const { el } = vnode;
-          // TODO COMPONENT
+          const { el, shapeFlag } = vnode;
+          // COMPONENT
+          if (shapeFlag & 6 /* COMPONENT */) {
+              move(vnode.component.subTree, container, anchor);
+              return;
+          }
           // TODO SUSPENSE
           // TODO TELEPORT
           // TODO Fragment
-          // TODO Static
+          // Static
+          if (type === Static) {
+              moveStaticNode(vnode, container, anchor);
+          }
           {
               // 目前只实现普通元素的逻辑
               hostInsert(el, container, anchor);
@@ -3490,7 +2522,10 @@ var VueRuntimeTest = (function (exports) {
           // TODO unset ref
           // TODO keep-alive
           // TODO 执行 onVnodeBeforeUnmount hook
-          if (shapeFlag & 6 /* COMPONENT */) ;
+          if (shapeFlag & 6 /* COMPONENT */) {
+              // unmount component
+              unmountComponent(vnode.component, parentSuspense, doRemove);
+          }
           else {
               // TODO SUSPENSE
               // TODO should invoke dirs
@@ -3524,8 +2559,34 @@ var VueRuntimeTest = (function (exports) {
           }
       };
       // 28. TODO removeFragment
-      // 29. TODO unmountComponent
-      // 30. TODO unmountChildren
+      // 29. unmountComponent
+      const unmountComponent = (instance, parentSuspense, doRemove) => {
+          const { bum, effects, update, subTree, um } = instance;
+          // beforeUnmount hook
+          if (bum) {
+              invokeArrayFns(bum);
+          }
+          if (effects) {
+              for (let i = 0; i < effects.length; i++) {
+                  stop(effects[i]);
+              }
+          }
+          // update may be null if a component is unmounted before its async
+          // setup has resolved.
+          if (update) {
+              stop(update);
+              unmount(subTree, instance, parentSuspense, doRemove);
+          }
+          // unmounted hook
+          if (um) {
+              queuePostRenderEffect(um, parentSuspense);
+          }
+          queuePostRenderEffect(() => {
+              instance.isUnmounted = true;
+          }, parentSuspense);
+          // TODO suspense
+      };
+      // 30. unmountChildren
       const unmountChildren = (children, parentComponent, parentSuspense, doRemove = false, optimized = false, start = 0) => {
           for (let i = start; i < children.length; i++) {
               unmount(children[i], parentComponent, parentSuspense, doRemove, optimized);
@@ -3533,7 +2594,10 @@ var VueRuntimeTest = (function (exports) {
       };
       // 31. getNextHostNode
       const getNextHostNode = vnode => {
-          // TODO COMPONENT
+          // COMPONENT
+          if (vnode.shapeFlag & 6 /* COMPONENT */) {
+              return getNextHostNode(vnode.component.subTree);
+          }
           // TODO SUSPENSE
           return hostNextSibling((vnode.anchor || vnode.el));
       };
@@ -3584,6 +2648,42 @@ var VueRuntimeTest = (function (exports) {
           prevVNode
       ]);
   }
+  /**
+   * #1156
+   * When a component is HMR-enabled, we need to make sure that all static nodes
+   * inside a block also inherit the DOM element from the previous tree so that
+   * HMR updates (which are full updates) can retrieve the element for patching.
+   *
+   * #2080
+   * Inside keyed `template` fragment static children, if a fragment is moved,
+   * the children will always moved so that need inherit el form previous nodes
+   * to ensure correct moved position.
+   */
+  function traverseStaticChildren(n1, n2, shallow = false) {
+      const ch1 = n1.children;
+      const ch2 = n2.children;
+      if (isArray(ch1) && isArray(ch2)) {
+          for (let i = 0; i < ch1.length; i++) {
+              // this is only called in the optimized path so array children are
+              // guaranteed to be vnodes
+              const c1 = ch1[i];
+              let c2 = ch2[i];
+              if (c2.shapeFlag & 1 /* ELEMENT */ && !c2.dynamicChildren) {
+                  if (c2.patchFlag <= 0 || c2.patchFlag === 32 /* HYDRATE_EVENTS */) {
+                      c2 = ch2[i] = cloneIfMounted(ch2[i]);
+                      c2.el = c1.el;
+                  }
+                  if (!shallow)
+                      traverseStaticChildren(c1, c2);
+              }
+              // also inherit for comment nodes, but not placeholders (e.g. v-if which
+              // would have received .el during block patch)
+              if ( c2.type === Comment && !c2.el) {
+                  c2.el = c1.el;
+              }
+          }
+      }
+  }
   // https://en.wikipedia.org/wiki/Longest_increasing_subsequence
   function getSequence(arr) {
       const p = arr.slice();
@@ -3625,6 +2725,1652 @@ var VueRuntimeTest = (function (exports) {
           v = p[v];
       }
       return result;
+  }
+
+  const isTeleport = (type) => type.__isTeleport;
+  const isTeleportDisabled = (props) => props && (props.disabled || props.disabled === '');
+  const isTargetSVG = (target) => typeof SVGElement !== 'undefined' && target instanceof SVGElement;
+  const resolveTarget = (props, select) => {
+      const targetSelector = props && props.to;
+      if (isString(targetSelector)) {
+          if (!select) {
+              
+                  warn(`Current renderer does not support string target for Teleports. ` +
+                      `(missing querySelector renderer option)`);
+              return null;
+          }
+          else {
+              const target = select(targetSelector);
+              if (!target) {
+                  
+                      warn(`Failed to locate Teleport target with selector "${targetSelector}". ` +
+                          `Note the target element must exist before the component is mounted - ` +
+                          `i.e. the target cannot be rendered by the component itself, and ` +
+                          `ideally should be outside of the entire Vue component tree.`);
+              }
+              return target;
+          }
+      }
+      else {
+          if ( !targetSelector && !isTeleportDisabled(props)) {
+              warn(`Invalid Teleport target: ${targetSelector}`);
+          }
+          return targetSelector;
+      }
+  };
+  const TeleportImpl = {
+      __isTeleport: true,
+      process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, internals) {
+          const { mc: mountChildren, pc: patchChildren, pbc: patchBlockChildren, o: { insert, querySelector, createText, createComment } } = internals;
+          const disabled = isTeleportDisabled(n2.props);
+          const { shapeFlag, children } = n2;
+          if (n1 == null) {
+              // insert anchors in the main view
+              const placeholder = (n2.el =  createComment('teleport start')
+                  );
+              const mainAnchor = (n2.anchor =  createComment('teleport end')
+                  );
+              insert(placeholder, container, anchor);
+              insert(mainAnchor, container, anchor);
+              const target = (n2.target = resolveTarget(n2.props, querySelector));
+              const targetAnchor = (n2.targetAnchor = createText(''));
+              if (target) {
+                  insert(targetAnchor, target);
+                  // #2652 we could be teleporting from a non-SVG tree into an SVG tree
+                  isSVG = isSVG || isTargetSVG(target);
+              }
+              else if ( !disabled) {
+                  warn('Invalid Teleport target on mount:', target, `(${typeof target})`);
+              }
+              const mount = (container, anchor) => {
+                  // Teleport *always* has Array children. This is enforced in both the
+                  // compiler and vnode children normalization.
+                  if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+                      mountChildren(children, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+                  }
+              };
+              if (disabled) {
+                  mount(container, mainAnchor);
+              }
+              else if (target) {
+                  mount(target, targetAnchor);
+              }
+          }
+          else {
+              // update content
+              n2.el = n1.el;
+              const mainAnchor = (n2.anchor = n1.anchor);
+              const target = (n2.target = n1.target);
+              const targetAnchor = (n2.targetAnchor = n1.targetAnchor);
+              const wasDisabled = isTeleportDisabled(n1.props);
+              const currentContainer = wasDisabled ? container : target;
+              const currentAnchor = wasDisabled ? mainAnchor : targetAnchor;
+              isSVG = isSVG || isTargetSVG(target);
+              if (n2.dynamicChildren) {
+                  // fast path when the teleport happens to be a block root
+                  patchBlockChildren(n1.dynamicChildren, n2.dynamicChildren, currentContainer, parentComponent, parentSuspense, isSVG);
+                  // even in block tree mode we need to make sure all root-level nodes
+                  // in the teleport inherit previous DOM references so that they can
+                  // be moved in future patches.
+                  traverseStaticChildren(n1, n2, true);
+              }
+              else if (!optimized) {
+                  patchChildren(n1, n2, currentContainer, currentAnchor, parentComponent, parentSuspense, isSVG);
+              }
+              if (disabled) {
+                  if (!wasDisabled) {
+                      // enabled -> disabled
+                      // move into main container
+                      moveTeleport(n2, container, mainAnchor, internals, 1 /* TOGGLE */);
+                  }
+              }
+              else {
+                  // target changed
+                  if ((n2.props && n2.props.to) !== (n1.props && n1.props.to)) {
+                      const nextTarget = (n2.target = resolveTarget(n2.props, querySelector));
+                      if (nextTarget) {
+                          moveTeleport(n2, nextTarget, null, internals, 0 /* TARGET_CHANGE */);
+                      }
+                      else {
+                          warn('Invalid Teleport target on update:', target, `(${typeof target})`);
+                      }
+                  }
+                  else if (wasDisabled) {
+                      // disabled -> enabled
+                      // move into teleport target
+                      moveTeleport(n2, target, targetAnchor, internals, 1 /* TOGGLE */);
+                  }
+              }
+          }
+      },
+      remove(vnode, { r: remove, o: { remove: hostRemove } }) {
+          const { shapeFlag, children, anchor } = vnode;
+          hostRemove(anchor);
+          if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+              for (let i = 0; i < children.length; i++) {
+                  remove(children[i]);
+              }
+          }
+      },
+      move: moveTeleport,
+      hydrate: hydrateTeleport
+  };
+  function moveTeleport(vnode, container, parentAnchor, { o: { insert }, m: move }, moveType = 2 /* REORDER */) {
+      // move target anchor if this is a target change.
+      if (moveType === 0 /* TARGET_CHANGE */) {
+          insert(vnode.targetAnchor, container, parentAnchor);
+      }
+      const { el, anchor, shapeFlag, children, props } = vnode;
+      const isReorder = moveType === 2 /* REORDER */;
+      // move main view anchor if this is a re-order.
+      if (isReorder) {
+          insert(el, container, parentAnchor);
+      }
+      // if this is a re-order and teleport is enabled (content is in target)
+      // do not move children. So the opposite is: only move children if this
+      // is not a reorder, or the teleport is disabled
+      if (!isReorder || isTeleportDisabled(props)) {
+          // Teleport has either Array children or no children.
+          if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+              for (let i = 0; i < children.length; i++) {
+                  move(children[i], container, parentAnchor, 2 /* REORDER */);
+              }
+          }
+      }
+      // move main view anchor if this is a re-order.
+      if (isReorder) {
+          insert(anchor, container, parentAnchor);
+      }
+  }
+  function hydrateTeleport(node, vnode, parentComponent, parentSuspense, optimized, { o: { nextSibling, parentNode, querySelector } }, hydrateChildren) {
+      const target = (vnode.target = resolveTarget(vnode.props, querySelector));
+      if (target) {
+          // if multiple teleports rendered to the same target element, we need to
+          // pick up from where the last teleport finished instead of the first node
+          const targetNode = target._lpa || target.firstChild;
+          if (vnode.shapeFlag & 16 /* ARRAY_CHILDREN */) {
+              if (isTeleportDisabled(vnode.props)) {
+                  vnode.anchor = hydrateChildren(nextSibling(node), vnode, parentNode(node), parentComponent, parentSuspense, optimized);
+                  vnode.targetAnchor = targetNode;
+              }
+              else {
+                  vnode.anchor = nextSibling(node);
+                  vnode.targetAnchor = hydrateChildren(targetNode, vnode, target, parentComponent, parentSuspense, optimized);
+              }
+              target._lpa =
+                  vnode.targetAnchor && nextSibling(vnode.targetAnchor);
+          }
+      }
+      return vnode.anchor && nextSibling(vnode.anchor);
+  }
+  // Force-casted public typing for h and TSX props inference
+  const Teleport = TeleportImpl;
+
+  // SFC scoped style ID management.
+  let currentScopeId = null;
+
+  const NULL_DYNAMIC_COMPONENT = Symbol();
+
+  const Fragment = Symbol( 'Fragment' );
+  const Text = Symbol( 'Text' );
+  const Comment = Symbol( 'Comment' );
+  const Static = Symbol( 'Static' );
+  // Since v-if and v-for are the two possible ways node structure can dynamically
+  // change, once we consider v-if branches and each v-for fragment a block, we
+  // can divide a template into nested blocks, and within each block the node
+  // structure would be stable. This allows us to skip most children diffing
+  // and only worry about the dynamic nodes (indicated by patch flags).
+  // 针对 v-if, v-for 动态性做的由于，减少对静态节点的 diff ，只需要关心动态节点即可
+  const blockStack = [];
+  let currentBlock = null;
+  /**
+   * Open a block.
+   * This must be called before `createBlock`. It cannot be part of `createBlock`
+   * because the children of the block are evaluated before `createBlock` itself
+   * is called. The generated code typically looks like this:
+   *
+   * ```js
+   * function render() {
+   *   return (openBlock(),createBlock('div', null, [...]))
+   * }
+   * ```
+   * disableTracking is true when creating a v-for fragment block, since a v-for
+   * fragment always diffs its children.
+   *
+   * @private
+   */
+  function openBlock(disableTracking = false) {
+      blockStack.push((currentBlock = disableTracking ? null : []));
+  }
+  function closeBlock() {
+      blockStack.pop();
+      currentBlock = blockStack[blockStack.length - 1] || null;
+  }
+  function isVNode(value) {
+      return value ? value.__v_isVNode === true : false;
+  }
+  function isSameVNodeType(n1, n2) {
+      if (
+          n2.shapeFlag & 6 /* COMPONENT */ &&
+          hmrDirtyComponents.has(n2.type)) {
+          // HMR only: if the component has been hot-updated, force a reload.
+          // 组件被热更新，强制重新加载
+          return false;
+      }
+      return n1.type === n2.type && n1.key === n2.key;
+  }
+  let vnodeArgsTransformer;
+  /**
+   * Internal API for registering an arguments transform for createVNode
+   * used for creating stubs in the test-utils
+   * It is *internal* but needs to be exposed for test-utils to pick up proper
+   * typings
+   */
+  function transformVNodeArgs(transformer) {
+      vnodeArgsTransformer = transformer;
+  }
+  const createVNodeWithArgsTransform = (...args) => {
+      return _createVNode(...(vnodeArgsTransformer
+          ? vnodeArgsTransformer(args, currentRenderingInstance)
+          : args));
+  };
+  const InternalObjectKey = `__vInternal`;
+  const normalizeKey = ({ key }) => key != null ? key : null;
+  const normalizeRef = ({ ref }) => {
+      return (ref != null
+          ? isString(ref) || isRef(ref) || isFunction(ref)
+              ? { i: currentRenderingInstance, r: ref }
+              : ref
+          : null);
+  };
+  const createVNode = ( createVNodeWithArgsTransform
+      );
+  function _createVNode(type, props = null, children = null, patchFlag = 0, dynamicProps = null, isBlockNode = false) {
+      // 无效的 tag 类型
+      if (!type || type === NULL_DYNAMIC_COMPONENT) {
+          if ( !type) {
+              warn(`Invalid vnode type when creating vnode: ${type}.`);
+          }
+          type = Comment;
+      }
+      // 1. type is vnode
+      if (isVNode(type)) {
+          // createVNode receiving an existing vnode. This happens in cases like
+          // <component :is="vnode"/>
+          // #2078 make sure to merge refs during the clone instead of overwriting it
+          const cloned = cloneVNode(type, props, true /* mergeRef: true */);
+          if (children) {
+              normalizeChildren(cloned, children);
+          }
+          return cloned;
+      }
+      // 2. class component
+      if (isClassComponent(type)) {
+          type = type.__vccOpts;
+      }
+      // 3. props 处理, class & style normalization
+      if (props) {
+          // for reactive or proxy objects, we need to clone it to enable mutation.
+          if (isProxy(props) || InternalObjectKey in props) {
+              props = extend({}, props);
+          }
+          let { class: klass, style } = props;
+          if (klass && !isString(klass)) {
+              // 1. string -> klass
+              // 'foo' -> 'foo'
+              // 2. array -> '' + arr.join(' ')
+              // ['foo', 'bar'] -> 'foo bar'
+              // 3. object -> '' + value ? ' value' : ''
+              // { foo: true, bar: false, baz: true } -> 'foo baz'
+              props.class = normalizeClass(klass);
+          }
+          if (isObject(style)) {
+              // reactive state objects need to be cloned since they are likely to be
+              // mutated
+              if (isProxy(style) && !isArray(style)) {
+                  style = extend({}, style);
+              }
+              // 1. array -> object
+              // [{ color: 'red' }, 'font-size:10px;height:100px;'] ->
+              // { color: 'red', 'font-size': '10px', height: '100px' }
+              // 2. object -> object 原样返回
+              props.style = normalizeStyle(style);
+          }
+      }
+      // encode the vnode type information into a bitmap
+      const shapeFlag = isString(type)
+          ? 1 /* ELEMENT */
+          :  isSuspense(type)
+              ? 128 /* SUSPENSE */
+              : isTeleport(type)
+                  ? 64 /* TELEPORT */
+                  : isObject(type)
+                      ? 4 /* STATEFUL_COMPONENT */
+                      : isFunction(type)
+                          ? 2 /* FUNCTIONAL_COMPONENT */
+                          : 0;
+      // 4. warn STATEFUL_COMPONENT
+      if ( shapeFlag & 4 /* STATEFUL_COMPONENT */ && isProxy(type)) {
+          type = toRaw(type);
+          warn(`Vue received a Component which was made a reactive object. This can ` +
+              `lead to unnecessary performance overhead, and should be avoided by ` +
+              `marking the component with \`markRaw\` or using \`shallowRef\` ` +
+              `instead of \`ref\`.`, `\nComponent that was made reactive: `, type);
+      }
+      // 构建 vnode 对象
+      const vnode = {
+          __v_isVNode: true,
+          ["__v_skip" /* SKIP */]: true /*不用做响应式处理*/,
+          type,
+          props,
+          key: props && normalizeKey(props),
+          ref: props && normalizeRef(props),
+          scopeId: currentScopeId,
+          children: null,
+          component: null,
+          suspense: null,
+          ssContent: null,
+          ssFallback: null,
+          dirs: null,
+          transition: null,
+          el: null,
+          anchor: null,
+          target: null,
+          targetAnchor: null,
+          staticCount: 0,
+          shapeFlag,
+          patchFlag,
+          dynamicProps,
+          dynamicChildren: null,
+          appContext: null
+      };
+      // 5. 检查 key, 不能是 NaN
+      if ( vnode.key !== vnode.key) {
+          warn(`VNode created with invalid key (NaN). VNode type:`, vnode.type);
+      }
+      // 6. normalize children
+      normalizeChildren(vnode, children);
+      // 7. normalize suspense children
+      if ( shapeFlag & 128 /* SUSPENSE */) {
+          const { content, fallback } = normalizeSuspenseChildren(vnode);
+          vnode.ssContent = content;
+          vnode.ssFallback = fallback;
+      }
+      // 8. currentBlock
+      if (
+          // 避免 block 节点 tracking 自己
+          !isBlockNode &&
+          // has current parent block
+          currentBlock &&
+          // presence of a patch flag indicates this node needs patching on updates.
+          // component nodes also should always be patched, because even if the
+          // component doesn't need to update, it needs to persist the instance on to
+          // the next vnode so that it can be properly unmounted later.
+          (patchFlag > 0 || shapeFlag & 6 /* COMPONENT */) &&
+          // the EVENTS flag is only for hydration and if it is the only flag, the
+          // vnode should not be considered dynamic due to handler caching.
+          patchFlag !== 32 /* HYDRATE_EVENTS */) {
+          currentBlock.push(vnode);
+      }
+      return vnode;
+  }
+  function cloneVNode(vnode, extraProps, mergeRef = false) {
+      // This is intentionally NOT using spread or extend to avoid the runtime
+      // key enumeration cost.
+      const { props, ref, patchFlag } = vnode;
+      const mergedProps = extraProps ? mergeProps(props || {}, extraProps) : props;
+      return {
+          __v_isVNode: true,
+          ["__v_skip" /* SKIP */]: true,
+          type: vnode.type,
+          props: mergedProps,
+          key: mergedProps && normalizeKey(mergedProps),
+          ref: extraProps && extraProps.ref
+              ? // #2078 in the case of <component :is="vnode" ref="extra"/>
+                  // if the vnode itself already has a ref, cloneVNode will need to merge
+                  // the refs so the single vnode can be set on multiple refs
+                  mergeRef && ref
+                      ? isArray(ref)
+                          ? ref.concat(normalizeRef(extraProps))
+                          : [ref, normalizeRef(extraProps)]
+                      : normalizeRef(extraProps)
+              : ref,
+          scopeId: vnode.scopeId,
+          children: vnode.children,
+          target: vnode.target,
+          targetAnchor: vnode.targetAnchor,
+          staticCount: vnode.staticCount,
+          shapeFlag: vnode.shapeFlag,
+          // if the vnode is cloned with extra props, we can no longer assume its
+          // existing patch flag to be reliable and need to add the FULL_PROPS flag.
+          // note: perserve flag for fragments since they use the flag for children
+          // fast paths only.
+          patchFlag: extraProps && vnode.type !== Fragment
+              ? patchFlag === -1 // hoisted node
+                  ? 16 /* FULL_PROPS */
+                  : patchFlag | 16 /* FULL_PROPS */
+              : patchFlag,
+          dynamicProps: vnode.dynamicProps,
+          dynamicChildren: vnode.dynamicChildren,
+          appContext: vnode.appContext,
+          dirs: vnode.dirs,
+          transition: vnode.transition,
+          // These should technically only be non-null on mounted VNodes. However,
+          // they *should* be copied for kept-alive vnodes. So we just always copy
+          // them since them being non-null during a mount doesn't affect the logic as
+          // they will simply be overwritten.
+          component: vnode.component,
+          suspense: vnode.suspense,
+          ssContent: vnode.ssContent && cloneVNode(vnode.ssContent),
+          ssFallback: vnode.ssFallback && cloneVNode(vnode.ssFallback),
+          el: vnode.el,
+          anchor: vnode.anchor
+      };
+  }
+  /**
+   * @private
+   */
+  function createTextVNode(text = ' ', flag = 0) {
+      return createVNode(Text, null, text, flag);
+  }
+  function normalizeVNode(child) {
+      if (child == null || typeof child === 'boolean') {
+          // empty placeholder
+          return createVNode(Comment);
+      }
+      else if (isArray(child)) {
+          // fragment
+          return createVNode(Fragment, null, child);
+      }
+      else if (typeof child === 'object') {
+          // already vnode, this should be the most common since compiled templates
+          // always produce all-vnode children arrays
+          // 这是最常用的情况，因为使用模板的时候最后生成的 children 是数组
+          return child.el === null ? child : cloneVNode(child);
+      }
+      else {
+          // strings and numbers
+          return createVNode(Text, null, String(child));
+      }
+  }
+  // 针对 template-compiled render fns 做的优化
+  function cloneIfMounted(child) {
+      // child.el 如果存在的话，child 属于静态节点会被静态提升
+      // 所以需要 clone 一份出来，否则直接返回 child
+      return child.el === null ? child : cloneVNode(child);
+  }
+  function normalizeChildren(vnode, children) {
+      let type = 0;
+      const { shapeFlag } = vnode;
+      if (children == null) {
+          children = null;
+      }
+      else if (isArray(children)) {
+          type = 16 /* ARRAY_CHILDREN */;
+      }
+      else if (typeof children === 'object') {
+          // & 操作，这里等于是检测是 ELEMENT 还是 TELEPORT
+          // 因为 ShapeFlags 内的值是通过左移位得到的
+          if (shapeFlag & 1 /* ELEMENT */ || shapeFlag & 64 /* TELEPORT */) {
+              // Normalize slot to plain children for plain element and Teleport
+              const slot = children.default;
+              if (slot) {
+                  // _c marker is added by withCtx() indicating this is a compiled slot
+                  slot._c && setCompiledSlotRendering(1);
+                  normalizeChildren(vnode, slot());
+                  slot._c && setCompiledSlotRendering(-1);
+              }
+              return;
+          }
+          else {
+              type = 32 /* SLOTS_CHILDREN */;
+              const slotFlag = children._;
+              if (!slotFlag && !(InternalObjectKey in children)) {
+                  children._ctx = currentRenderingInstance;
+              }
+              else if (slotFlag === 3 /* FORWARDED */ && currentRenderingInstance) {
+                  // a child component receives forwarded slots from the parent.
+                  // its slot type is determined by its parent's slot type.
+                  if (currentRenderingInstance.vnode.patchFlag & 1024 /* DYNAMIC_SLOTS */) {
+                      children._ = 2 /* DYNAMIC */;
+                      vnode.patchFlag |= 1024 /* DYNAMIC_SLOTS */;
+                  }
+                  else {
+                      children._ = 1 /* STABLE */;
+                  }
+              }
+          }
+      }
+      else if (isFunction(children)) {
+          // 如果是函数当做 slot children ?
+          children = { default: children, _ctx: currentRenderingInstance };
+          type = 32 /* SLOTS_CHILDREN */;
+      }
+      else {
+          children = String(children);
+          // force teleport children to array so it can be moved around
+          if (shapeFlag & 64 /* TELEPORT */) {
+              type = 16 /* ARRAY_CHILDREN */;
+              children = [createTextVNode(children)];
+          }
+          else {
+              type = 8 /* TEXT_CHILDREN */;
+          }
+      }
+      vnode.children = children;
+      vnode.shapeFlag |= type;
+  }
+  function mergeProps(...args) {
+      const ret = extend({}, args[0]);
+      for (let i = 1; i < args.length; i++) {
+          const toMerge = args[i];
+          for (const key in toMerge) {
+              if (key === 'class') {
+                  if (ret.class !== toMerge.class) {
+                      ret.class = normalizeClass([ret.class, toMerge.class]);
+                  }
+              }
+              else if (key === 'style') {
+                  ret.style = normalizeStyle([ret.style, toMerge.style]);
+              }
+              else if (isOn(key)) {
+                  const existing = ret[key];
+                  const incoming = toMerge[key];
+                  if (existing !== incoming) {
+                      ret[key] = existing
+                          ? [].concat(existing, toMerge[key])
+                          : incoming;
+                  }
+              }
+              else if (key !== '') {
+                  ret[key] = toMerge[key];
+              }
+          }
+      }
+      return ret;
+  }
+
+  /**
+   * mark the current rendering instance for asset resolution (e.g.
+   * resolveComponent, resolveDirective) during render
+   */
+  let currentRenderingInstance = null;
+  function setCurrentRenderingInstance(instance) {
+      currentRenderingInstance = instance;
+  }
+  function renderComponentRoot(instance) {
+      const { 
+      // type: Component,
+      vnode, proxy, withProxy, props, 
+      // propsOptions: [propsOptions],
+      // slots,
+      attrs, 
+      // emit,
+      render, renderCache, data, setupState, ctx } = instance;
+      let result;
+      currentRenderingInstance = instance;
+      try {
+          let fallthroughAttrs;
+          if (vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */) {
+              // withProxy is a proxy with a different `has` trap only for
+              // runtime-compiled render functions using `with` block.
+              const proxyToUse = withProxy || proxy;
+              console.log('normalize vnode');
+              result = normalizeVNode(render.call(proxyToUse, proxyToUse, renderCache, props, setupState, data, ctx));
+              fallthroughAttrs = attrs;
+          }
+          else {
+              // TODO 无状态组件？
+              result = {};
+          }
+          // TODO attr merging
+          let root = result;
+          let setRoot = undefined;
+          if (true && result.patchFlag & 2048 /* DEV_ROOT_FRAGMENT */) {
+              ;
+              [root, setRoot] = getChildRoot(result);
+          }
+          // TODO dirs, transition
+          if (true && setRoot) {
+              setRoot(root);
+          }
+          else {
+              result = root;
+          }
+      }
+      catch (err) {
+          handleError(err, instance, 1 /* RENDER_FUNCTION */);
+          result = createVNode(Comment);
+      }
+      currentRenderingInstance = null;
+      return result;
+  }
+  /**
+   * dev only
+   * In dev mode, template root level comments are rendered, which turns the
+   * template into a fragment root, but we need to locate the single element
+   * root for attrs and scope id processing.
+   */
+  const getChildRoot = (vnode) => {
+      const rawChildren = vnode.children;
+      const dynamicChildren = vnode.dynamicChildren;
+      const childRoot = filterSingleRoot(rawChildren);
+      if (!childRoot) {
+          return [vnode, undefined];
+      }
+      const index = rawChildren.indexOf(childRoot);
+      const dynamicIndex = dynamicChildren ? dynamicChildren.indexOf(childRoot) : -1;
+      const setRoot = (updatedRoot) => {
+          rawChildren[index] = updatedRoot;
+          if (dynamicChildren) {
+              if (dynamicIndex > -1) {
+                  dynamicChildren[dynamicIndex] = updatedRoot;
+              }
+              else if (updatedRoot.patchFlag > 0) {
+                  vnode.dynamicChildren = [...dynamicChildren, updatedRoot];
+              }
+          }
+      };
+      return [normalizeVNode(childRoot), setRoot];
+  };
+  function filterSingleRoot(children) {
+      let singleRoot;
+      for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          if (isVNode(child)) {
+              // ignore user comment
+              if (child.type !== Comment || child.children === 'v-if') {
+                  if (singleRoot) {
+                      // has more than 1 non-comment child, return now
+                      return;
+                  }
+                  else {
+                      singleRoot = child;
+                  }
+              }
+          }
+          else {
+              return;
+          }
+      }
+      return singleRoot;
+  }
+  // 检查组件是否应该更新
+  function shouldUpdateComponent(prevVNode, nextVNode, optimized) {
+      console.log('should update component');
+      const { props: prevProps, children: prevChildren, component } = prevVNode;
+      const { props: nextProps, children: nextChildren, patchFlag } = nextVNode;
+      const emits = component.emitsOptions;
+      // 运行时 vnode 上的指令或者 transition 动画，强制 child 更新
+      if (nextVNode.dirs || nextVNode.transition) {
+          return true;
+      }
+      if (optimized && patchFlag >= 0) {
+          if (patchFlag & 1024 /* DYNAMIC_SLOTS */) {
+              // 插槽内容引用的值可能发生了改变，比如： v-for 中
+              return true;
+          }
+          if (patchFlag & 16 /* FULL_PROPS */) {
+              if (!prevProps) {
+                  return !!nextProps;
+              }
+              return hasPropsChanged(prevProps, nextProps, emits);
+          }
+          else if (patchFlag & 8 /* PROPS */) {
+              const dynamicProps = nextVNode.dynamicProps;
+              for (let i = 0; i < dynamicProps.length; i++) {
+                  const key = dynamicProps[i];
+                  // 只要有一个属性名不一样，就需要更新
+                  if (nextProps[key] !== prevProps[key] &&
+                      !isEmitListener(emits, key)) {
+                      return true;
+                  }
+              }
+          }
+      }
+      else {
+          if (prevChildren || nextChildren) {
+              if (!nextChildren || !nextChildren.$stable) {
+                  return true;
+              }
+          }
+          if (prevProps === nextProps) {
+              return false;
+          }
+          if (!prevProps) {
+              return !!nextProps;
+          }
+          if (!nextProps) {
+              return true;
+          }
+          return hasPropsChanged(prevProps, nextProps, emits);
+      }
+      return false;
+  }
+  function hasPropsChanged(prevProps, nextProps, emitsOptions) {
+      console.log('has changed props');
+      const nextKeys = Object.keys(nextProps);
+      // 包含属性数不一样，可能删除、添加了
+      if (nextKeys.length !== Object.keys(prevProps).length) {
+          return true;
+      }
+      for (let i = 0; i < nextKeys.length; i++) {
+          const key = nextKeys[i];
+          // 值不同，且不是事件属性
+          if (nextProps[key] !== prevProps[key] &&
+              !isEmitListener(emitsOptions, key)) {
+              return true;
+          }
+      }
+      return false;
+  }
+  function updateHOCHostEl({ vnode, parent }, el // HostNode
+  ) {
+      while (parent && parent.subTree === vnode) {
+          (vnode = parent.vnode).el = el;
+          parent = parent.parent;
+      }
+  }
+
+  /**
+   * #2437 In Vue 3, functional components do not have a public instance proxy but
+   * they exist in the internal parent chain. For code that relies on traversing
+   * public $parent chains, skip functional ones and go to the parent instead.
+   */
+  const getPublicInstance = (i) => i && (i.proxy ? i.proxy : getPublicInstance(i.parent));
+  const publicPropertiesMap = extend(Object.create(null), {
+      $: i => i,
+      $el: i => i.vnode.el,
+      $data: i => i.data,
+      $props: i => ( shallowReadonly(i.props) ),
+      $attrs: i => ( shallowReadonly(i.attrs) ),
+      $slots: i => ( shallowReadonly(i.slots) ),
+      $refs: i => ( shallowReadonly(i.refs) ),
+      $parent: i => getPublicInstance(i.parent),
+      $root: i => i.root && i.root.proxy,
+      $emit: i => i.emit,
+      $options: i => ( resolveMergedOptions(i) ),
+      $forceUpdate: i => () => queueJob(i.update),
+      $nextTick: i => nextTick.bind(i.proxy),
+      $watch: i => ( instanceWatch.bind(i) )
+  });
+  const PublicInstanceProxyHandlers = {
+      get({ _: instance }, key) {
+          const { ctx, setupState, data, props, accessCache, type, appContext } = instance;
+          // let @vue/reactivity know it should never observe Vue public instances.
+          if (key === "__v_skip" /* SKIP */) {
+              return true;
+          }
+          // for internal formatters to know that this is a Vue instance
+          if ( key === '__isVue') {
+              return true;
+          }
+          // data / props / ctx
+          // This getter gets called for every property access on the render context
+          // during render and is a major hotspot. The most expensive part of this
+          // is the multiple hasOwn() calls. It's much faster to do a simple property
+          // access on a plain object, so we use an accessCache object (with null
+          // prototype) to memoize what access type a key corresponds to.
+          let normalizedProps;
+          if (key[0] !== '$') {
+              const n = accessCache[key];
+              if (n !== undefined) {
+                  switch (n) {
+                      case 0 /* SETUP */:
+                          return setupState[key];
+                      case 1 /* DATA */:
+                          return data[key];
+                      case 3 /* CONTEXT */:
+                          return ctx[key];
+                      case 2 /* PROPS */:
+                          return props[key];
+                      // default: just fallthrough
+                  }
+              }
+              else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+                  accessCache[key] = 0 /* SETUP */;
+                  return setupState[key];
+              }
+              else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+                  accessCache[key] = 1 /* DATA */;
+                  return data[key];
+              }
+              else if (
+              // only cache other properties when instance has declared (thus stable)
+              // props
+              (normalizedProps = instance.propsOptions[0]) &&
+                  hasOwn(normalizedProps, key)) {
+                  accessCache[key] = 2 /* PROPS */;
+                  return props[key];
+              }
+              else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
+                  accessCache[key] = 3 /* CONTEXT */;
+                  return ctx[key];
+              }
+              else {
+                  accessCache[key] = 4 /* OTHER */;
+              }
+          }
+          const publicGetter = publicPropertiesMap[key];
+          let cssModule, globalProperties;
+          // public $xxx properties
+          if (publicGetter) {
+              if (key === '$attrs') {
+                  track(instance, "get" /* GET */, key);
+              }
+              return publicGetter(instance);
+          }
+          else if (
+          // css module (injected by vue-loader)
+          (cssModule = type.__cssModules) &&
+              (cssModule = cssModule[key])) {
+              return cssModule;
+          }
+          else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
+              // user may set custom properties to `this` that start with `$`
+              accessCache[key] = 3 /* CONTEXT */;
+              return ctx[key];
+          }
+          else if (
+          // global properties
+          ((globalProperties = appContext.config.globalProperties),
+              hasOwn(globalProperties, key))) {
+              return globalProperties[key];
+          }
+          else if (
+              currentRenderingInstance &&
+              (!isString(key) ||
+                  // #1091 avoid internal isRef/isVNode checks on component instance leading
+                  // to infinite warning loop
+                  key.indexOf('__v') !== 0)) {
+              if (data !== EMPTY_OBJ &&
+                  (key[0] === '$' || key[0] === '_') &&
+                  hasOwn(data, key)) {
+                  warn(`Property ${JSON.stringify(key)} must be accessed via $data because it starts with a reserved ` +
+                      `character ("$" or "_") and is not proxied on the render context.`);
+              }
+              else {
+                  warn(`Property ${JSON.stringify(key)} was accessed during render ` +
+                      `but is not defined on instance.`);
+              }
+          }
+      },
+      set({ _: instance }, key, value) {
+          const { data, setupState, ctx } = instance;
+          if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+              setupState[key] = value;
+          }
+          else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+              data[key] = value;
+          }
+          else if (key in instance.props) {
+              
+                  warn(`Attempting to mutate prop "${key}". Props are readonly.`, instance);
+              return false;
+          }
+          if (key[0] === '$' && key.slice(1) in instance) {
+              
+                  warn(`Attempting to mutate public property "${key}". ` +
+                      `Properties starting with $ are reserved and readonly.`, instance);
+              return false;
+          }
+          else {
+              if ( key in instance.appContext.config.globalProperties) {
+                  Object.defineProperty(ctx, key, {
+                      enumerable: true,
+                      configurable: true,
+                      value
+                  });
+              }
+              else {
+                  ctx[key] = value;
+              }
+          }
+          return true;
+      },
+      has({ _: { data, setupState, accessCache, ctx, appContext, propsOptions } }, key) {
+          let normalizedProps;
+          return (accessCache[key] !== undefined ||
+              (data !== EMPTY_OBJ && hasOwn(data, key)) ||
+              (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) ||
+              ((normalizedProps = propsOptions[0]) && hasOwn(normalizedProps, key)) ||
+              hasOwn(ctx, key) ||
+              hasOwn(publicPropertiesMap, key) ||
+              hasOwn(appContext.config.globalProperties, key));
+      }
+  };
+  {
+      PublicInstanceProxyHandlers.ownKeys = (target) => {
+          warn(`Avoid app logic that relies on enumerating keys on a component instance. ` +
+              `The keys will be empty in production mode to avoid performance overhead.`);
+          return Reflect.ownKeys(target);
+      };
+  }
+  const RuntimeCompiledPublicInstanceProxyHandlers = extend({}, PublicInstanceProxyHandlers, {
+      get(target, key) {
+          // fast path for unscopables when using `with` block
+          if (key === Symbol.unscopables) {
+              return;
+          }
+          return PublicInstanceProxyHandlers.get(target, key, target);
+      },
+      has(_, key) {
+          const has = key[0] !== '_' && !isGloballyWhitelisted(key);
+          if ( !has && PublicInstanceProxyHandlers.has(_, key)) {
+              warn(`Property ${JSON.stringify(key)} should not start with _ which is a reserved prefix for Vue internals.`);
+          }
+          return has;
+      }
+  });
+  // In dev mode, the proxy target exposes the same properties as seen on `this`
+  // for easier console inspection. In prod mode it will be an empty object so
+  // these properties definitions can be skipped.
+  function createRenderContext(instance) {
+      const target = {};
+      // expose internal instance for proxy handlers
+      Object.defineProperty(target, `_`, {
+          configurable: true,
+          enumerable: false,
+          get: () => instance
+      });
+      // expose public properties
+      Object.keys(publicPropertiesMap).forEach(key => {
+          Object.defineProperty(target, key, {
+              configurable: true,
+              enumerable: false,
+              get: () => publicPropertiesMap[key](instance),
+              // intercepted by the proxy so no need for implementation,
+              // but needed to prevent set errors
+              set: NOOP
+          });
+      });
+      // expose global properties
+      const { globalProperties } = instance.appContext.config;
+      Object.keys(globalProperties).forEach(key => {
+          Object.defineProperty(target, key, {
+              configurable: true,
+              enumerable: false,
+              get: () => globalProperties[key],
+              set: NOOP
+          });
+      });
+      return target;
+  }
+
+  const emptyAppContext = createAppContext();
+  let uid$2 = 0;
+  function createComponentInstance(vnode, parent, suspense) {
+      const type = vnode.type;
+      // inherit parent app context - or - if root, adopt from root vnode
+      const appContext = (parent ? parent.appContext : vnode.appContext) || emptyAppContext;
+      const instance = {
+          uid: uid$2++,
+          vnode,
+          type,
+          parent,
+          appContext,
+          root: null,
+          next: null,
+          subTree: null,
+          update: null,
+          render: null,
+          proxy: null,
+          exposed: null,
+          withProxy: null,
+          effects: null,
+          provides: parent ? parent.provides : Object.create(appContext.provides),
+          accessCache: null,
+          renderCache: [],
+          // local resovled assets
+          components: null,
+          directives: null,
+          // TODO resolved props and emits options
+          propsOptions: normalizePropsOptions(type, appContext, false),
+          emitsOptions: {},
+          // emit
+          emit: null,
+          emitted: null,
+          // state
+          ctx: EMPTY_OBJ,
+          data: EMPTY_OBJ,
+          props: EMPTY_OBJ,
+          attrs: EMPTY_OBJ,
+          slots: EMPTY_OBJ,
+          refs: EMPTY_OBJ,
+          setupState: EMPTY_OBJ,
+          setupContext: null,
+          // suspense related
+          suspense,
+          suspenseId: suspense ? suspense.pendingId : 0,
+          asyncDep: null,
+          asyncResolved: false,
+          // lifecycle hooks
+          // not using enums here because it results in computed properties
+          isMounted: false,
+          isUnmounted: false,
+          isDeactivated: false,
+          bc: null,
+          c: null,
+          bm: null,
+          m: null,
+          bu: null,
+          u: null,
+          um: null,
+          bum: null,
+          da: null,
+          a: null,
+          rtg: null,
+          rtc: null,
+          ec: null
+      };
+      {
+          instance.ctx = createRenderContext(instance);
+      }
+      instance.root = parent ? parent.root : instance;
+      instance.emit = emit.bind(null, instance);
+      return instance;
+  }
+  let currentInstance = null;
+  const getCurrentInstance = () => currentInstance || currentRenderingInstance;
+  const setCurrentInstance = (instance) => {
+      currentInstance = instance;
+  };
+  const isBuiltInTag = /*#__PURE__*/ makeMap('slot,component');
+  function validateComponentName(name, config) {
+      const appIsNativeTag = config.isNativeTag || NO;
+      if (isBuiltInTag(name) || appIsNativeTag(name)) {
+          warn('Do not use built-in or reserved HTML elements as component id: ' + name);
+      }
+  }
+  let isInSSRComponentSetup = false;
+  function setupComponent(instance, isSSR = false) {
+      isInSSRComponentSetup = isSSR;
+      const { shapeFlag, props, children } = instance.vnode;
+      const isStateful = shapeFlag & 4 /* STATEFUL_COMPONENT */;
+      // init props & slots
+      initProps(instance, props, isStateful, isSSR);
+      initSlots(instance, children);
+      console.log('component stateful ? ' + isStateful);
+      const setupResult = isStateful
+          ? setupStatefulComponent(instance, isSSR)
+          : undefined;
+      isInSSRComponentSetup = false;
+      return setupResult;
+  }
+  function setupStatefulComponent(instance, isSSR) {
+      const Component = instance.type;
+      // 0. create render proxy property access cache
+      instance.accessCache = Object.create(null);
+      // 1. create public instance / render proxy
+      // also mark it raw so it's never observed
+      instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
+      console.log('call setup');
+      // 2. call setup()
+      const { setup } = Component;
+      if (setup) {
+          const setupContext = (instance.setupContext =
+              setup.length > 1 ? createSetupContext(instance) : null);
+          currentInstance = instance;
+          pauseTracking();
+          const setupResult = callWithErrorHandling(setup, instance, 0 /* SETUP_FUNCTION */, [ shallowReadonly(instance.props) , setupContext]);
+          resetTracking();
+          currentInstance = null;
+          if (isPromise(setupResult)) {
+              if (isSSR) {
+                  // return the promise so server-renderer can wait on it
+                  return setupResult.then((resolvedResult) => {
+                      handleSetupResult(instance, resolvedResult);
+                  });
+              }
+              else {
+                  // async setup returned Promise.
+                  // bail here and wait for re-entry.
+                  instance.asyncDep = setupResult;
+              }
+          }
+          else {
+              handleSetupResult(instance, setupResult);
+          }
+      }
+      else {
+          console.log('no setup');
+          finishComponentSetup(instance);
+      }
+  }
+  function handleSetupResult(instance, setupResult, isSSR) {
+      // 1. 如果是函数当做render函数处理
+      // 2. 如果是对象
+      if (isFunction(setupResult)) {
+          // 返回内联 render 函数
+          {
+              instance.render = setupResult;
+          }
+      }
+      else if (isObject(setupResult)) {
+          // 返回 bindings，这些变量可以直接在模板中使用
+          instance.setupState = proxyRefs(setupResult);
+      }
+      else ;
+      finishComponentSetup(instance);
+  }
+  function finishComponentSetup(instance, isSSR) {
+      const Component = instance.type;
+      // template / render function normalization
+      if (!instance.render) {
+          instance.render = (Component.render || NOOP);
+          if (instance.render._rc) {
+              instance.withProxy = new Proxy(instance.ctx, RuntimeCompiledPublicInstanceProxyHandlers);
+          }
+      }
+      console.log(instance.render, 'render');
+      // TODO 兼容 2.x options api
+      if ( !Component.render && instance.render === NOOP) {
+          if ( Component.template) ;
+      }
+  }
+  const attrHandlers = {
+      get: (target, key) => {
+          return target[key];
+      },
+      set: () => {
+          warn(`setupContext.attrs is readonly.`);
+          return false;
+      },
+      deleteProperty: () => {
+          warn(`setupContext.attrs is readonly.`);
+          return false;
+      }
+  };
+  function createSetupContext(instance) {
+      const expose = exposed => {
+          if ( instance.exposed) {
+              warn(`expose() should be called only once per setup().`);
+          }
+          // ref 类型值，通过代理实现对 value 的 get/set
+          instance.exposed = proxyRefs(exposed);
+      };
+      {
+          // We use getters in dev in case libs like test-utils overwrite instance
+          // properties (overwrites should not be done in prod)
+          // 防止覆盖属性
+          return Object.freeze({
+              get props() {
+                  return instance.props;
+              },
+              get attrs() {
+                  return new Proxy(instance.attrs, attrHandlers);
+              },
+              get slots() {
+                  return shallowReadonly(instance.slots);
+              },
+              get emit() {
+                  return (event, ...args) => instance.emit(event, ...args);
+              },
+              expose
+          });
+      }
+  }
+  // record effects created during a component's setup() so that they can be
+  // stopped when the component unmounts
+  // 记录在组件 setup() 期间绑定了哪些 effects，方便当组件卸载的时候去停掉他们
+  function recordInstanceBoundEffect(effect, instance = currentInstance) {
+      if (instance) {
+          (instance.effects || (instance.effects = [])).push(effect);
+      }
+  }
+  const classifyRE = /(?:^|[-_])(\w)/g;
+  const classify = (str) => str.replace(classifyRE, c => c.toUpperCase()).replace(/[-_]/g, '');
+  function getComponentName(Component) {
+      return isFunction(Component)
+          ? Component.displayName || Component.name
+          : Component.name;
+  }
+  /* istanbul ignore next */
+  function formatComponentName(instance, Component, isRoot = false) {
+      let name = getComponentName(Component);
+      // TODO
+      return name ? classify(name) : isRoot ? `App` : `Anonymous`;
+  }
+  function isClassComponent(value) {
+      return isFunction(value) && '__vccOpts' in value;
+  }
+
+  const stack = [];
+  function pushWarningContext(vnode) {
+      stack.push(vnode);
+  }
+  function popWarningContext() {
+      stack.pop();
+  }
+  function warn(msg, ...args) {
+      // avoid props formatting or warn handler tracking deps that might be mutated
+      // during patch, leading to infinite recursion.
+      pauseTracking();
+      const instance = stack.length ? stack[stack.length - 1].component : null;
+      const appWarnHandler = instance && instance.appContext.config.warnHandler;
+      const trace = getComponentTrace();
+      if (appWarnHandler) {
+          callWithErrorHandling(appWarnHandler, instance, 11 /* APP_WARN_HANDLER */, [
+              msg + args.join(''),
+              instance && instance.proxy,
+              trace
+                  .map(({ vnode }) => `at <${formatComponentName(instance, vnode.type)}>`)
+                  .join('\n'),
+              trace
+          ]);
+      }
+      else {
+          const warnArgs = [`[Vue warn]: ${msg}`, ...args];
+          /* istanbul ignore if */
+          if (trace.length &&
+              // avoid spamming console during tests
+              !false) {
+              warnArgs.push(`\n`, ...formatTrace(trace));
+          }
+          console.warn(...warnArgs);
+      }
+      resetTracking();
+  }
+  function getComponentTrace() {
+      let currentVNode = stack[stack.length - 1];
+      if (!currentVNode) {
+          return [];
+      }
+      // we can't just use the stack because it will be incomplete during updates
+      // that did not start from the root. Re-construct the parent chain using
+      // instance parent pointers.
+      const normalizedStack = [];
+      while (currentVNode) {
+          const last = normalizedStack[0];
+          if (last && last.vnode === currentVNode) {
+              last.recurseCount++;
+          }
+          else {
+              normalizedStack.push({
+                  vnode: currentVNode,
+                  recurseCount: 0
+              });
+          }
+          const parentInstance = currentVNode.component && currentVNode.component.parent;
+          currentVNode = parentInstance && parentInstance.vnode;
+      }
+      return normalizedStack;
+  }
+  /* istanbul ignore next */
+  function formatTrace(trace) {
+      const logs = [];
+      trace.forEach((entry, i) => {
+          logs.push(...(i === 0 ? [] : [`\n`]), ...formatTraceEntry(entry));
+      });
+      return logs;
+  }
+  function formatTraceEntry({ vnode, recurseCount }) {
+      const postfix = recurseCount > 0 ? `... (${recurseCount} recursive calls)` : ``;
+      const isRoot = vnode.component ? vnode.component.parent == null : false;
+      const open = ` at <${formatComponentName(vnode.component, vnode.type, isRoot)}`;
+      const close = `>` + postfix;
+      return vnode.props
+          ? [open, ...formatProps(vnode.props), close]
+          : [open + close];
+  }
+  /* istanbul ignore next */
+  function formatProps(props) {
+      const res = [];
+      const keys = Object.keys(props);
+      keys.slice(0, 3).forEach(key => {
+          res.push(...formatProp(key, props[key]));
+      });
+      if (keys.length > 3) {
+          res.push(` ...`);
+      }
+      return res;
+  }
+  /* istanbul ignore next */
+  function formatProp(key, value, raw) {
+      if (isString(value)) {
+          value = JSON.stringify(value);
+          return raw ? value : [`${key}=${value}`];
+      }
+      else if (typeof value === 'number' ||
+          typeof value === 'boolean' ||
+          value == null) {
+          return raw ? value : [`${key}=${value}`];
+      }
+      else if (isRef(value)) {
+          value = formatProp(key, toRaw(value.value), true);
+          return raw ? value : [`${key}=Ref<`, value, `>`];
+      }
+      else if (isFunction(value)) {
+          return [`${key}=fn${value.name ? `<${value.name}>` : ``}`];
+      }
+      else {
+          value = toRaw(value);
+          return raw ? value : [`${key}=`, value];
+      }
+  }
+
+  const ErrorTypeStrings = {
+      ["bc" /* BEFORE_CREATE */]: 'beforeCreate hook',
+      ["c" /* CREATED */]: 'created hook',
+      ["bm" /* BEFORE_MOUNT */]: 'beforeMount hook',
+      ["m" /* MOUNTED */]: 'mounted hook',
+      ["bu" /* BEFORE_UPDATE */]: 'beforeUpdate hook',
+      ["u" /* UPDATED */]: 'updated',
+      ["bum" /* BEFORE_UNMOUNT */]: 'beforeUnmount hook',
+      ["um" /* UNMOUNTED */]: 'unmounted hook',
+      ["a" /* ACTIVATED */]: 'activated hook',
+      ["da" /* DEACTIVATED */]: 'deactivated hook',
+      ["ec" /* ERROR_CAPTURED */]: 'errorCaptured hook',
+      ["rtc" /* RENDER_TRACKED */]: 'renderTracked hook',
+      ["rtg" /* RENDER_TRIGGERED */]: 'renderTriggered hook',
+      [0 /* SETUP_FUNCTION */]: 'setup function',
+      [1 /* RENDER_FUNCTION */]: 'render function',
+      [2 /* WATCH_GETTER */]: 'watcher getter',
+      [3 /* WATCH_CALLBACK */]: 'watcher callback',
+      [4 /* WATCH_CLEANUP */]: 'watcher cleanup function',
+      [5 /* NATIVE_EVENT_HANDLER */]: 'native event handler',
+      [6 /* COMPONENT_EVENT_HANDLER */]: 'component event handler',
+      [7 /* VNODE_HOOK */]: 'vnode hook',
+      [8 /* DIRECTIVE_HOOK */]: 'directive hook',
+      [9 /* TRANSITION_HOOK */]: 'transition hook',
+      [10 /* APP_ERROR_HANDLER */]: 'app errorHandler',
+      [11 /* APP_WARN_HANDLER */]: 'app warnHandler',
+      [12 /* FUNCTION_REF */]: 'ref function',
+      [13 /* ASYNC_COMPONENT_LOADER */]: 'async component loader',
+      [14 /* SCHEDULER */]: 'scheduler flush. This is likely a Vue internals bug. ' +
+          'Please open an issue at https://new-issue.vuejs.org/?repo=vuejs/vue-next'
+  };
+  function callWithErrorHandling(fn, instance, type, args) {
+      let res;
+      try {
+          res = args ? fn(...args) : fn();
+      }
+      catch (err) {
+          handleError(err, instance, type);
+      }
+      return res;
+  }
+  function callWithAsyncErrorHandling(fn, instance, type, args) {
+      if (isFunction(fn)) {
+          const res = callWithErrorHandling(fn, instance, type, args);
+          if (res && isPromise(res)) {
+              res.catch(err => {
+                  handleError(err, instance, type);
+              });
+          }
+          return res;
+      }
+      const values = [];
+      for (let i = 0; i < fn.length; i++) {
+          values.push(callWithAsyncErrorHandling(fn[i], instance, type, args));
+      }
+      return values;
+  }
+  function handleError(err, instance, type, throwInDev = true) {
+      const contextVNode = instance ? instance.vnode : null;
+      if (instance) {
+          let cur = instance.parent;
+          // the exposed instance is the render proxy to keep it consistent with 2.x
+          const exposedInstance = instance.proxy;
+          // in production the hook receives only the error code
+          const errorInfo =  ErrorTypeStrings[type] ;
+          while (cur) {
+              const errorCapturedHooks = cur.ec;
+              if (errorCapturedHooks) {
+                  for (let i = 0; i < errorCapturedHooks.length; i++) {
+                      if (errorCapturedHooks[i](err, exposedInstance, errorInfo) === false) {
+                          return;
+                      }
+                  }
+              }
+              cur = cur.parent;
+          }
+          // app-level handling
+          const appErrorHandler = instance.appContext.config.errorHandler;
+          if (appErrorHandler) {
+              callWithErrorHandling(appErrorHandler, null, 10 /* APP_ERROR_HANDLER */, [err, exposedInstance, errorInfo]);
+              return;
+          }
+      }
+      logError(err, type, contextVNode, throwInDev);
+  }
+  function logError(err, type, contextVNode, throwInDev = true) {
+      {
+          const info = ErrorTypeStrings[type];
+          if (contextVNode) {
+              pushWarningContext(contextVNode);
+          }
+          warn(`Unhandled error${info ? ` during execution of ${info}` : ``}`);
+          if (contextVNode) {
+              popWarningContext();
+          }
+          // crash in dev by default so it's more noticeable
+          if (throwInDev) {
+              throw err;
+          }
+          else {
+              console.error(err);
+          }
+      }
+  }
+
+  let isFlushing = false; // 开始 flush pre/job/post
+  let isFlushPending = false; // 正在 flush pre cbs
+  // job
+  const queue = []; // job 队列
+  let flushIndex = 0; // for -> job 时候的索引
+  // 默认 pre cb 队列
+  const pendingPreFlushCbs = [];
+  // 正在执行的 pre cbs，由 pendingPreFlushCbs 去重而来的任务队列
+  let activePreFlushCbs = null;
+  let preFlushIndex = 0;
+  // post 类型的 cb 队列
+  const pendingPostFlushCbs = [];
+  // 当前正在执行的 post cbs 队列，由 pendingPostFlushCbs 去重而来
+  // 且它不会执行期间进行扩充，而是在 flushJobs 中 queue jobs 执行完成之后
+  // 的 finally 里面检测 post 队列重新调用 flushJobs 来清空
+  let activePostFlushCbs = null;
+  let postFlushIndex = 0;
+  // 空的 Promise 用来进行异步化，实现 nextTick
+  const resolvedPromise = Promise.resolve();
+  // 当 flushJobs 执行完毕，即当 pre/job/post 队列中所有
+  // 任务都完成之后返回的一个 promise ，所以当使用 nextTick()
+  // 的时候，对应的代码都是在这个基础完成之后调用
+  // 所以 nextTick() 顾名思义就是在当前的 tick 下所有任务(pre/job/post)都
+  // 执行完毕之后才执行的代码
+  let currentFlushPromise = null;
+  // queue job 可以作为 pre cbs 的父级任务
+  // 比如：在手动调用 flushPreFlushCbs(seen, parentJob) 就可以
+  // 传一个 queue job 当做当前 cbs 的父级任务。
+  // 这个用途是为了避免该 job 的上一次入列任务(包括 job 及其子 pre cbs)
+  // 还没完成就再次调用 queueJob 重复入列, 说白了就是为了同一个 job 不能在
+  // parentJob 完成之前调用 queueJob，就算调了也没用
+  let currentPreFlushParentJob = null;
+  // pre/job/post 三种任务在同一个 tick 下，一次执行上限是100个
+  // 超出视为死循环
+  const RECURSION_LIMIT = 100;
+  // 这个函数将使得 fn 或使用了 await 时候后面的代码总是在
+  // 当前 tick 下的 pre/job/post 队列都 flush 空了之后执行
+  function nextTick(fn) {
+      const p = currentFlushPromise || resolvedPromise;
+      return fn ? p.then(this ? fn.bind(this) : fn) : p;
+  }
+  function queueJob(job) {
+      // the dedupe search uses the startIndex argument of Array.includes()
+      // by default the search index includes the current job that is being run
+      // so it cannot recursively trigger itself again.
+      // if the job is a watch() callback, the search will start with a +1 index to
+      // allow it recursively trigger itself - it is the user's responsibility to
+      // ensure it doesn't end up in an infinite loop.
+      // 1. 队列为空或不包含当前正入列的 job
+      // 2. job 非当前 parent job
+      if ((!queue.length ||
+          !queue.includes(job, isFlushing && job.allowRecurse ? flushIndex + 1 : flushIndex)) &&
+          job !== currentPreFlushParentJob) {
+          queue.push(job);
+          queueFlush();
+      }
+  }
+  // 立即启动异步 flush 操作
+  function queueFlush() {
+      if (!isFlushing && !isFlushPending) {
+          isFlushPending = true;
+          currentFlushPromise = resolvedPromise.then(flushJobs);
+      }
+  }
+  // 失效一个任务就是将其删除
+  function invalidateJob(job) {
+      const i = queue.indexOf(job);
+      if (i > -1) {
+          queue.splice(i, 1);
+      }
+  }
+  // pre/post 任务入列函数，注意点
+  // 1. 不能重复添加同一个 cb
+  // 2. 如果指定了 allowRecurse: true 是可以重复添加的
+  // 如下面的实现，查找从 index+1 开始肯定是找不到的
+  function queueCb(cb, activeQueue, pendingQueue, index) {
+      if (!isArray(cb)) {
+          if (!activeQueue ||
+              !activeQueue.includes(cb, cb.allowRecurse ? index + 1 : index)) {
+              pendingQueue.push(cb);
+          }
+      }
+      else {
+          // 如果 cb 是个数组，那么它是个组件生命周期的 Hook 函数，这些函数只能被
+          // 一个 job 触发，且在对应的 queue flush 函数中进过了去重操作
+          // 因为这里直接跳过去重检测提高性能
+          // 意思就是，在 flush[Pre|Post]FlushCbs 函数执行期间会进行去重操作，
+          // 因此这里不需要重复做(如： activePostFlushCbs, activePreFlushCbs 都是
+          // 去重之后待执行的 cbs)
+          pendingQueue.push(...cb);
+      }
+      queueFlush();
+  }
+  function queuePreFlushCb(cb) {
+      queueCb(cb, activePreFlushCbs, pendingPreFlushCbs, preFlushIndex);
+  }
+  function queuePostFlushCb(cb) {
+      queueCb(cb, activePostFlushCbs, pendingPostFlushCbs, postFlushIndex);
+  }
+  // flush pre cbs，在 flushJobs 中优先调用，也就是说 pre cbs
+  // 在同一 tick 内执行优先级最高，即最先执行(pre cbs > job > post cbs)
+  // 并且它会一直递归到没有新的 pre cbs 为止
+  // 比如： 有10个任务，执行到第5个的时候来了个新的任务(queuePreFlushCb(cb))
+  // 那么这个任务会在前面10个执行完成之后作为第 11 个去执行，但记住是下次递归时完成
+  function flushPreFlushCbs(seen, parentJob = null) {
+      if (pendingPreFlushCbs.length) {
+          currentPreFlushParentJob = parentJob;
+          activePreFlushCbs = [...new Set(pendingPreFlushCbs)];
+          pendingPreFlushCbs.length = 0;
+          {
+              seen = seen || new Map();
+          }
+          for (preFlushIndex = 0; preFlushIndex < activePreFlushCbs.length; preFlushIndex++) {
+              // 检查递归更新问题
+              {
+                  checkRecursiveUpdates(seen, activePreFlushCbs[preFlushIndex]);
+              }
+              activePreFlushCbs[preFlushIndex]();
+          }
+          activePreFlushCbs = null;
+          preFlushIndex = 0;
+          currentPreFlushParentJob = null;
+          // 递归 flush 直到所有 pre jobs 被执行完成
+          flushPreFlushCbs(seen, parentJob);
+      }
+  }
+  // flush post cbs 和 pre cbs 差不多，唯一不同的点在于：
+  // 如果执行期间有新的任务进来 (queuePostFlushCb(cb)) 的时候
+  // 它不是在当前 post cbs 后面立即执行，而是当 pre cbs -> jobs -> post -cbs
+  // 执行完一轮之后在 flushJobs 的 finally 中重启新一轮的 flushJobs
+  // 所以，这期间如果有新的 pre cbs 或 Jobs 那么这两个都会在新的 post cbs
+  // 之前得到执行
+  function flushPostFlushCbs(seen) {
+      if (pendingPostFlushCbs.length) {
+          const deduped = [...new Set(pendingPostFlushCbs)];
+          pendingPostFlushCbs.length = 0;
+          // #1947 already has active queue, nested flushPostFlushCbs call
+          if (activePostFlushCbs) {
+              activePostFlushCbs.push(...deduped);
+              return;
+          }
+          activePostFlushCbs = deduped;
+          {
+              seen = seen || new Map();
+          }
+          activePostFlushCbs.sort((a, b) => getId(a) - getId(b));
+          for (postFlushIndex = 0; postFlushIndex < activePostFlushCbs.length; postFlushIndex++) {
+              // 递归 update 检查
+              {
+                  checkRecursiveUpdates(seen, activePostFlushCbs[postFlushIndex]);
+              }
+              activePostFlushCbs[postFlushIndex]();
+          }
+          activePostFlushCbs = null;
+          postFlushIndex = 0;
+      }
+  }
+  const getId = (job) => job.id == null ? Infinity : job.id;
+  // 开启三种任务 flush 操作，优先级 pre cbs > jobs > post cbs
+  function flushJobs(seen) {
+      isFlushPending = false;
+      isFlushing = true;
+      {
+          seen = seen || new Map();
+      }
+      flushPreFlushCbs(seen); // 默认的 job 类型
+      // flush 之前对 queue 排序
+      // 1. 组件更新顺序：parent -> child，因为 parent 总是在 child 之前
+      //    被创建，因此 parent render effect 有更低的优先级数字(数字越小越先创建？)
+      // 2. 如果组件在 parent 更新期间被卸载了，那么它的更新都会被忽略掉
+      queue.sort((a, b) => getId(a) - getId(b));
+      // 开始 flush
+      try {
+          for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
+              const job = queue[flushIndex];
+              if (job) {
+                  // 检查递归更新问题
+                  if (true) {
+                      checkRecursiveUpdates(seen, job);
+                  }
+                  callWithErrorHandling(job, null, 14 /* SCHEDULER */);
+              }
+          }
+      }
+      finally {
+          // 情况队列
+          flushIndex = 0;
+          queue.length = 0;
+          // flush `post` 类型的 flush cbs
+          flushPostFlushCbs(seen);
+          isFlushing = false;
+          currentFlushPromise = null;
+          // 代码执行到当前 tick 的时候，有可能有新的 job 加入
+          // some postFlushCb queued jobs!
+          // keep flushing until it drains.
+          if (queue.length || pendingPostFlushCbs.length) {
+              flushJobs(seen);
+          }
+      }
+  }
+  function checkRecursiveUpdates(seen, fn) {
+      if (!seen.has(fn)) {
+          seen.set(fn, 1);
+      }
+      else {
+          const count = seen.get(fn);
+          if (count > RECURSION_LIMIT) {
+              throw new Error(`Maximum recursive updates exceeded. ` +
+                  `This means you have a reactive effect that is mutating its own ` +
+                  `dependencies and thus recursively triggering itself. Possible sources ` +
+                  `include component template, render function, updated hook or ` +
+                  `watcher source function.`);
+          }
+          else {
+              seen.set(fn, count + 1);
+          }
+      }
   }
 
   // simple effect
@@ -3759,6 +4505,8 @@ var VueRuntimeTest = (function (exports) {
       };
       //
       // 6. scheduler 设置
+      // it is allowed to self-trigger (#1727)
+      job.allowRecurse = !!cb;
       let scheduler;
       // 6.1 flush is 'sync'，让依赖同步执行，即当值发生改变之后
       // 立即就会体现出来，因为依赖在赋值之后被立即执行了
@@ -3888,7 +4636,6 @@ var VueRuntimeTest = (function (exports) {
                       `hooks before the first await statement.`
                   ));
       }
-      return;
   }
   const createHook = (lifecycle) => (hook, target = currentInstance) => !isInSSRComponentSetup && injectHook(lifecycle, hook, target);
   const onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
@@ -3896,7 +4643,7 @@ var VueRuntimeTest = (function (exports) {
   const onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
   const onUpdated = createHook("u" /* UPDATED */);
   const onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
-  const onUnmount = createHook("um" /* UNMOUNTED */);
+  const onUnmounted = createHook("um" /* UNMOUNTED */);
   const onRenderTriggered = createHook("rtg" /* RENDER_TRIGGERED */);
   const onRenderTracked = createHook("rtc" /* RENDER_TRACKED */);
   const onErrorCaptured = (hook, target = currentInstance) => {
@@ -4100,6 +4847,28 @@ var VueRuntimeTest = (function (exports) {
           }
           return createVNode(type, propsOrChildren, children);
       }
+  }
+
+  /**
+   * Compiler runtime helper for creating dynamic slots object
+   * @private
+   */
+  function createSlots(slots, dynamicSlots) {
+      for (let i = 0; i < dynamicSlots.length; i++) {
+          const slot = dynamicSlots[i];
+          // 数组动态插槽由  <template v-for="..." #[...]> 生成
+          // 经过编译后的 slots: [{ name:'default', fn: ... }]
+          if (isArray(slot)) {
+              for (let j = 0; j < slot.length; j++) {
+                  slots[slot[j].name] = slot[j].fn;
+              }
+          }
+          else if (slot) {
+              // 条件语句生成的 slot 如 <template v-if="..." #foo>
+              slots[slot.name] = slot.fn;
+          }
+      }
+      return slots;
   }
 
   // Core API ------------------------------------------------------------------
@@ -4384,6 +5153,7 @@ var VueRuntimeTest = (function (exports) {
   exports.cloneVNode = cloneVNode;
   exports.createApp = createApp;
   exports.createRenderer = createRenderer;
+  exports.createSlots = createSlots;
   exports.createTextVNode = createTextVNode;
   exports.createVNode = createVNode;
   exports.customRef = customRef;
@@ -4395,6 +5165,7 @@ var VueRuntimeTest = (function (exports) {
   exports.effect = effect;
   exports.flushPostFlushCbs = flushPostFlushCbs;
   exports.flushPreFlushCbs = flushPreFlushCbs;
+  exports.getCurrentInstance = getCurrentInstance;
   exports.h = h;
   exports.handleError = handleError;
   exports.inject = inject;
@@ -4416,7 +5187,7 @@ var VueRuntimeTest = (function (exports) {
   exports.onMounted = onMounted;
   exports.onRenderTracked = onRenderTracked;
   exports.onRenderTriggered = onRenderTriggered;
-  exports.onUnmount = onUnmount;
+  exports.onUnmounted = onUnmounted;
   exports.onUpdated = onUpdated;
   exports.provide = provide;
   exports.proxyRefs = proxyRefs;
@@ -4449,6 +5220,7 @@ var VueRuntimeTest = (function (exports) {
   exports.warn = warn;
   exports.watch = watch;
   exports.watchEffect = watchEffect;
+  exports.withCtx = withCtx;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 

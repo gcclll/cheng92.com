@@ -50,7 +50,7 @@
    中调用，主要做的事情是处理 SSR，没有 render 函数有 template 时调用 compile 编
    译出 render 函数，兼容 2.x 的 options api
 
-* patch->processComponent(如何patch组件的？)
+* processComponent(如何patch组件的？)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: render-component
@@ -929,6 +929,406 @@ root:
 
 这里主要包含了 props 的更新规则，对于 children 的 diff 和 update 规则分析可以查
 看 [[/vue/vue-mind-map-runtime-core-2-render/#keyed-children][patchKeyedChildren diff 和 更新原理分析！]]
+
+组件更新，代码执行流程：
+
+状态变更 -> instance.update effect 执行 ->
+
+如果有 next vnode 触发 ~updateComponentPreRender()~ 更新 props 和 slots
+
+执行 beforeUpdate hook
+
+执行 onVnodeBeforeUpdate hook
+
+得到新树🌲 nextTree = renderComponentRoot(instance)
+
+老树🌲 prevTree = instance.subTree
+
+进行 patch(prevTree, nextTree) 操作
+
+执行 updated hook 和 onVnodeUpdated hook
+
+测试：
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  async ({
+    h,
+    render,
+    nodeOps,
+    serializeInner: inner,
+    ref,
+    nextTick,
+    defineComponent,
+  }) => {
+    const root = nodeOps.createElement("div");
+    const logRoot = () => log("root: " + inner(root));
+    let oa = { a: 1 },
+      ob = { b: 1 },
+      i = 0,
+      j = 0;
+    const defaultFn = () => (console.log(`fn called ${++i}`), oa);
+    const defaultBaz = () => (console.log(`baz called ${++j}`), ob);
+
+    let proxy;
+    logRoot();
+    try {
+      const Comp = {
+        props: {
+          foo: { default: 1 },
+          bar: { default: defaultFn },
+          baz: { type: Function, default: defaultBaz },
+        },
+        render() {
+          proxy = this;
+        },
+      };
+      const print = (s) => {
+        log(">>> " + s);
+        const prevBar = proxy.bar;
+        log("proxy.foo = " + proxy.foo);
+        // 因为无 type，而 default 是个函数，会被执行得到结果
+        log("prevBar === oa: " + (prevBar === oa));
+        // 因为 type Function ，所以default 是 Function 的话不会被执行
+        log("proxy.baz === defaultBaz, " + (proxy.baz === defaultBaz));
+        log("proxy.bar === prevBar, " + (proxy.bar === prevBar));
+      };
+      render(h(Comp, { foo: 2 }), root);
+      print("first");
+      // update
+      render(h(Comp, { foo: 3 }), root);
+      print("update");
+    } catch (e) {
+      log(e.message);
+    }
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedroot:
+{
+  type: {
+    props: { foo: [Object], bar: [Object], baz: [Object] },
+    render: [Function: render]
+  },
+  shapeFlag: 4
+}
+fn called 1
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+update effect
+normalize vnode
+patch component
+{ type: Symbol(Comment), shapeFlag: 0 }
+>>> first
+proxy.foo = 2
+prevBar === oa: true
+proxy.baz === defaultBaz, true
+proxy.bar === prevBar, true
+{
+  type: {
+    props: { foo: [Object], bar: [Object], baz: [Object] },
+    render: [Function: render],
+    __props: [ [Object], [Array] ]
+  },
+  shapeFlag: 4
+}
+update component
+should update component
+has changed props
+should update component....
+normal update
+update effect
+component update
+update comp pre render
+normalize vnode
+Cannot read property 'parentNode' of null
+#+end_example
+
+#+begin_quote
+❓ 没有触发 ~instance.update~ ?
+
+[[https://github.com/gcclll/stb-vue-next/commit/3771bfb42adaee8d3f84388d3d8d654ca44678fd][fix: props update invalid · gcclll/stb-vue-next@3771bfb]]
+
+修复后，回去重新测试。
+#+end_quote
+
+FIX 增加代码：
+#+begin_src typescript
+const updateComponent = (n1: VNode, n2: VNode, optimized: boolean) => {
+  console.log("update component");
+  const instance = (n2.component = n1.component)!;
+  if (shouldUpdateComponent(n1, n2, optimized)) {
+    console.log("should update component....");
+    if (
+      __FEATURE_SUSPENSE__ &&
+      instance.asyncDep && // async setup
+      instance.asyncResolved
+    ) {
+      // ...
+      return;
+    } else {
+      // 新增代码》》》》》》》》
+      // 正常更新
+      instance.next = n2;
+      // 考虑到 child 组件可能正在队列中排队，移除它避免
+      // 在同一个 flush tick 重复更新同一个子组件
+      // 当下一次更新来到时，之前的一次更新取消？
+      invalidateJob(instance.update);
+      // instance.update 是在 setupRenderEffect 中
+      // 定义的一个 reactive effect runner
+      // 主动触发更新
+      instance.update();
+    }
+    return;
+  } else {
+    // ...
+  }
+};
+#+end_src
+
+#+begin_quote
+❓ Cannot read property 'parentNode' of null
+
+这个报错发生在 instance.update effect 的 else 更新组件中，
+
+patch(... hostParentNode(prevTree.el!)!, ...)
+
+的时候，去取值 prevTree.el 得到的是空值，进入 hostParentNode 调用
+node.parentNode 报错的。
+
+这里为什么 prevTree.el 是 null ? 更新的话之前的 node 不应该已经加载好了吗？
+#+end_quote
+** component slots
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: comp-slots
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/a7884300c10c3cb3f0f5812ff2a6621651421e39][feat(add): init&update slots · gcclll/stb-vue-next@a788430]]
+
+修改点：
+
+
+1. 初始化， ~setupComponent()~ 中的 ~initSlots()~
+2. ~updateComponent()~ -> ~updateComponentPreRender()~ 中 ~updateSlots()~ 更新 slots
+
+
+对应动作： init -> update
+
+对应组件阶段： 初始化(initSlots()) -> 更新(updateSlots())
+
+*** 初始化(~initSlots()~)：
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: init-slots
+:END:
+
+#+begin_src typescript
+export const initSlots = (
+  instance: ComponentInternalInstance,
+  children: VNodeNormalizedChildren
+) => {
+  if (instance.vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+    const type = (children as RawSlots)._
+    if (type) {
+      instance.slots = children as InternalSlots
+      // make compiler marker non-enumerable
+      def(children as InternalSlots, '_', type)
+    } else {
+      normalizeObjectSlots(children as RawSlots, (instance.slots = {}))
+    }
+  } else {
+    instance.slots = {}
+    if (children) {
+      normalizeVNodeSlots(instance, children)
+    }
+  }
+  def(instance.slots, InternalObjectKey, 1)
+}
+#+end_src
+
+要分析整个，需要回顾下 [[/vue/vue-mind-map-runtime-core-1/#normalize-children][normalizeChildren(vnode, children)]] 处理逻辑，要搞清楚什么
+情况下会是 ~SLOTS_CHILDREN~ 。
+
+根据 ~normalizeChildren()~ 的实现中，可知需要满足下面几个条件：
+
+#+begin_src js
+if (isObject(vnode.children)) {
+  if (isElement(vnode.shapeFlag) || isTELEPORT(vnode.shapeFlag)) {
+    // default slot
+  } else {
+    // 非 ELEMENT 或 TELEPORT 类型
+    // 如： <Comp><template v-slot:named><div/></template></Comp>
+    // children 只有一个 template 会被解析成一个 vnode 对象
+    // 且 vnode type 是 template
+    type = ShapeFlags.SLOTS_CHILDREN;
+  }
+} else if (isFunction(vnode.children)) {
+  // children 是个函数
+  // 函数式组件 Comp = { render() {
+  //   return h('div', null, () => h('div') /* slot */)
+  // }}
+  type = ShapeFlags.SLOTS_CHILDREN;
+}
+#+end_src
+
+1. ~children = { _: ... }~ 内部插槽？
+
+2. normalizeObjectSlots: children 是对象类型：
+
+    ~{named: slotFn1, default: slotFn2 }~
+
+    遍历所有 key-value =>
+
+    (*推荐*)如果 value 是函数需要将 slotFn 用 withCtx 封装一层，让其在当前实例的上下文中正确✅执行。
+    #+begin_src typescript
+     const normalizeSlot = (
+       key: string,
+       rawSlot: Function,
+       ctx: ComponentInternalInstance | null | undefined
+     ): Slot =>
+       withCtx((props: any) => {
+         // warn: 在 Render 函数外执行了 slot function
+         return normalizeSlotValue(rawSlot(props));
+       }, ctx);
+    #+end_src
+
+    (*不推荐*)如果 value 不是函数，经过
+    #+begin_src typescript
+    const normalizeSlotValue = (value: unknown): VNode[] =>
+    isArray(value)
+        ? value.map(normalizeVNode)
+        : [normalizeVNode(value as VNodeChild)]
+    #+end_src
+
+    处理之后转成函数赋值 ~slots[key] = () => normalized~
+
+    最终都是将 slot value 转成一个函数保存到 ~instance.slots{}~ 中
+
+3. 非 ~SLOTS_CHILDREN~ ，那只有一种情况
+
+   children 中没有 ~<template v-slot:named ...>~ ，此时它所有的 child 都会被当做
+   默认插槽来处理。
+
+   #+begin_src typescript
+   const normalizeVNodeSlots = (
+     instance: ComponentInternalInstance,
+     children: VNodeNormalizedChildren
+   ) => {
+     const normalized = normalizeSlotValue(children);
+     instance.slots.default = () => normalized;
+   };
+   #+end_src
+
+   如：
+   #+begin_src js
+   const { log, shuffle, runtime_test, renderChildren } = require(process.env
+     .BLOG_DIR_VUE + "/lib.js");
+   import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+     async ({ h, createVNode: c }) => {
+       log.br();
+       const Comp = { template: "<div/>" };
+       const slot = () => {};
+       const node = h(Comp, slot);
+       log(">>> 函数作为 children 解析为默认插槽");
+       log.f(node, ["children", "type"]);
+       log(node.children);
+     }
+   );
+    #+end_src
+
+   #+RESULTS:
+   : undefined
+   :
+   : >>> 函数作为 children 解析为默认插槽
+   : {
+   :   type: { template: '<div/>' },
+   :   children: { default: [Function: slot], _ctx: null }
+   : }
+   : { default: [Function: slot], _ctx: null }
+
+*** 更新(~updateSlots()~)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: update-slots
+:END:
+
+更新插槽步骤：
+
+1. 合并 instance.slots 和 children
+2. 然后删除 children 中没有的插槽
+
+#+begin_src typescript
+export const updateSlots = (
+  instance: ComponentInternalInstance,
+  children: VNodeNormalizedChildren
+) => {
+  const { vnode, slots } = instance;
+  let needDeletionCheck = true;
+  let deletionComparisonTarget = EMPTY_OBJ;
+  console.log("update slots");
+  // children 是 函数或对象类型(非数组)
+  if (vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+    const type = (children as RawSlots)._;
+    if (type) {
+      console.log("update slots type");
+      // compiled slots.
+      if (__DEV__ && isHmrUpdating) {
+        // TODO
+      } else if (type === SlotFlags.STABLE) {
+        // compiled AND stable
+        // 不需要更新，跳过 slots 删除操作
+        needDeletionCheck = false;
+      } else {
+        // compiled but dynamic (v-if/v-for on slots)
+        // update slots, but skip normalization
+        extend(slots, children as Slots);
+      }
+    } else {
+      console.log("update slots no type");
+      needDeletionCheck = !(children as RawSlots).$stable;
+      normalizeObjectSlots(children as RawSlots, slots);
+    }
+    // 对象类型直接合并，这里记录需要进行删除操作的对象，children
+    // 上面只是进行了简单的对象合并操作
+    // 如： slots={a,b,d}, children = {a,b,c}
+    // 合并之后： slots={a,b,c,d},后面需要删除的是 d 这个插槽
+    deletionComparisonTarget = children as RawSlots;
+  } else if (children) {
+    // <Comp>...这里没有 <template #named ...> 情况</Comp>
+    // <Comp> 里面的所有内容都会被当做默认插槽来解析
+    console.log("update slots children");
+    // non slot object children (direct value)
+    // passed to a component
+    // 当做默认插槽来处理，解析后： slots.default = () => normalized
+    normalizeVNodeSlots(instance, children);
+    // 这里目的是为了只保留 default 其他都需要删除
+    deletionComparisonTarget = { default: 1 };
+  }
+
+  console.log({ needDeletionCheck });
+  // delete stale slots
+  // 删除旧的 slots
+  if (needDeletionCheck) {
+    for (const key in slots) {
+      // 非 `_` 内部插槽，且不再新的 children 中的
+      if (!isInternalKey(key) && !(key in deletionComparisonTarget)) {
+        delete slots[key];
+      }
+    }
+  }
+};
+#+end_src
 ** props tests
 
 传入的 rawProps 和组件自身的 props 经过处理之后(setFullProps()) 会将 rawProps 根
@@ -966,7 +1366,7 @@ import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
     let props, attrs, proxy;
     try {
       const Comp = defineComponent({
-        props: ["fooBar", "barBaz", 'foo-baz'],
+        props: ["fooBar", "barBaz", "foo-baz"],
         render() {
           console.log("comp render");
           props = this.$props;
@@ -994,18 +1394,81 @@ import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
 #+begin_example
 undefinedroot:
 >>>stateful
+{
+  type: {
+    props: [ 'fooBar', 'barBaz', 'foo-baz' ],
+    render: [Function: render]
+  },
+  shapeFlag: 4
+}
 component stateful ? 4
 call setup
 no setup
 [Function: render] render
 mount component
+update effect
 normalize vnode
 comp render
 patch component
+{ type: Symbol(Comment), shapeFlag: 0 }
 proxy.fooBar=1
 { fooBar: 1, fooBaz: 3 } { bar: 2 }
 root:
 #+end_example
+** component unmount
+
+[[https://github.com/gcclll/stb-vue-next/commit/79c5061781235abffd5d744781857fd3cfa0008a][feat(add): add unmount component · gcclll/stb-vue-next@79c5061]]
+
+主要工作：
+
+1. 执行 ~beforeUnmount~ 周期函数
+2. 停掉所有 effects 依赖
+3. 检查 update 函数，处理在异步 update 之前执行了 unmount
+4. 在 post queue 中执行 ~unmounted~ 周期函数
+5. 在 post queue 中标记 ~instance.isUnmounted=true~ 标记组件已经卸载了
+
+
+#+begin_quote
+三种队列任务， ~pre, post, job~ 执行顺序： pre > job > post，详情查看
+
+[[/vue/vue-mind-map-runtime-core-1/#scheduler][scheduler 任务调度机制]]
+#+end_quote
+
+#+begin_src typescript
+const unmountComponent = (
+  instance: ComponentInternalInstance,
+  parentSuspense: SuspenseBoundary | null,
+  doRemove?: boolean
+) => {
+  const { bum, effects, update, subTree, um } = instance;
+  // beforeUnmount hook
+  if (bum) {
+    invokeArrayFns(bum);
+  }
+  if (effects) {
+    for (let i = 0; i < effects.length; i++) {
+      stop(effects[i]);
+    }
+  }
+
+  // update may be null if a component is unmounted before its async
+  // setup has resolved.
+  if (update) {
+    stop(update);
+    unmount(subTree, instance, parentSuspense, doRemove);
+  }
+
+  // unmounted hook
+  if (um) {
+    queuePostRenderEffect(um, parentSuspense);
+  }
+  queuePostRenderEffect(() => {
+    instance.isUnmounted = true;
+  }, parentSuspense);
+
+  // TODO suspense
+};
+#+end_src
 ** normalize emits options
 
 [[https://github.com/gcclll/stb-vue-next/commit/b918dde38055d7e6faf6e2371647f805c10f2721][feat(add): props event init · gcclll/stb-vue-next@b918dde]]
@@ -1048,9 +1511,914 @@ instance.update = effect(function componentEffect() {
 报错。
 
 [[https://github.com/gcclll/stb-vue-next/commit/63675a485bf8223b3be8d76fa3ce28d397d8e726][fix: effect null options · gcclll/stb-vue-next@63675a4]]
+* processText|Comment|Static
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render-text
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/636e87099f5e1322cf2af0aeb82614e2fa6a7fe3][feat(add): processText updte · gcclll/stb-vue-next@636e870 · GitHub]]
+
+本节包含(主要源码，没啥好分析的)：
+
+1. 文本节点
+2. 注释节点
+3. 静态节点
+
+
+** Text
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Text
+:END:
+
+#+begin_src typescript
+const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
+  if (n1 == null /* old */) {
+    // 新节点，插入处理
+    hostInsert(
+      (n2.el = hostCreateText(n2.children as string)),
+      container,
+      anchor
+    );
+  } else {
+    // has old vnode, need to diff
+    const el = (n2.el = n1.el!);
+    if (n2.children !== n1.children) {
+      hostSetText(el, n2.children as string);
+    }
+  }
+};
+#+end_src
+
+因为在 compiler-core parse 阶段的文本处理中，如果是响铃的文本节点会被合并，如：
+
+~<div>{{ text1 }} {{ text2 }}</div>~ 最终会合并：
+
+~<div>{{ text1 + ' ' + text2 }}</div>~ 最终替换的是 ~<div/>~ 整个内容。
+
+** Comment
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Comment
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/448936662634690c5d2e5596e31d066b0f96cd63][feat(add): process comment node · gcclll/stb-vue-next@4489366 · GitHub]]
+
+#+begin_src typescript
+const processCommentNode: ProcessTextOrCommentFn = (
+    n1,
+    n2,
+    container,
+    anchor
+  ) => {
+    if (n1 == null) {
+      hostInsert(
+        (n2.el = hostCreateComment((n2.children as string) || '')),
+        container,
+        anchor
+      )
+    } else {
+      // there's no support for dynamic comments
+      n2.el = n1.el
+    }
+  }
+
+#+end_src
+
+** Static
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Static
+:END:
+
+patch -> case Static:
+
+#+begin_src typescript
+// case Static:
+if (n1 == null) {
+  mountStaticNode(n2, container, anchor, isSVG);
+} else if (__DEV__) {
+  patchStaticNode(n1, n2, container, isSVG);
+}
+// break
+#+end_src
+
+没有 old vnode -> mount
+
+有 old node -> patch
+
+*mount*:
+#+begin_src typescript
+const mountStaticNode = (
+  n2: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null,
+  isSVG: boolean
+) => {
+  // static nodes are only present when used with compiler-dom/runtime-dom
+  // which guarantees presence of hostInsertStaticContent.
+  [n2.el, n2.anchor] = hostInsertStaticContent!(
+    n2.children as string,
+    container,
+    anchor,
+    isSVG
+  );
+};
+#+end_src
+
+mount 时用到的 ~hostInsertStaticContent()~ 是在 runtime-dom 包中实现的，先预览下
+代码：
+
+#+begin_src typescript
+function insertStaticContent(content, parent, anchor, isSVG) {
+  const temp = isSVG
+    ? tempSVGContainer || (tempSVGContainer = doc.createElementNS(svgNS, "svg"))
+    : tempContainer || (tempContainer = doc.createElement("div"));
+  temp.innerHTML = content;
+  const first = temp.firstChild as Element;
+  let node: Element | null = first;
+  let last: Element = node;
+  while (node) {
+    last = node;
+    nodeOps.insert(node, parent, anchor);
+    node = temp.firstChild as Element;
+  }
+  return [first, last];
+}
+#+end_src
+
+可以看到 ~temp.innerHTML = content~ 一个简单的内容全替换操作。
+
+*patchStaticNode*: 因为静态节点在生产环境中会被提升，重用，因此不存在 patch 阶段。
+#+begin_src typescript
+const patchStaticNode = (
+  n1: VNode,
+  n2: VNode,
+  container: RendererElement,
+  isSVG: boolean
+) => {
+  // static nodes are only patched during dev for HMR
+  if (n2.children !== n1.children) {
+    const anchor = hostNextSibling(n1.anchor!);
+    // remove existing
+    removeStaticNode(n1);
+    // insert new
+    [n2.el, n2.anchor] = hostInsertStaticContent!(
+      n2.children as string,
+      container,
+      anchor,
+      isSVG
+    );
+  } else {
+    n2.el = n1.el;
+    n2.anchor = n1.anchor;
+  }
+};
+#+end_src
+
+*moveStaticNode*: 在 diff -> update 阶段 move() 中触发
+#+begin_src typescript
+const moveStaticNode = (
+  { el, anchor }: VNode,
+  container: RendererElement,
+  nextSibling: RendererNode | null
+) => {
+  let next;
+  while (el && el !== anchor) {
+    next = hostNextSibling(el);
+    hostInsert(el, container, nextSibling);
+    el = next;
+  }
+  hostInsert(anchor!, container, nextSibling);
+};
+#+end_src
+
+*removeStaticNode*: ~remove()~ 中触发
+#+begin_src typescript
+const removeStaticNode = ({ el, anchor }: VNode) => {
+  let next;
+  while (el && el !== anchor) {
+    next = hostNextSibling(el);
+    hostRemove(el);
+    el = next;
+  }
+  hostRemove(anchor!);
+};
+#+end_src
+* processFragment
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render-fragment
+:END:
+
+Fragment 的情况： children 有多个 child 的时候，会用一个 fragment 事先包起来。
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-fragment.svg]]
+
+~STABLE_FRAGMENT~ 情况：
+
+1. ~v-if~
+
+   首先要满足 children.length !== 1 即有一个以上的 children, 如：
+
+   ~<div><p/><p/></div>~
+
+   或者非第一个 child ELEMENT 类型，如：
+
+   ~<div><Comp/></div>~
+
+   其要满足 ~(children.length === 1 && firstChild.type === NodeTypes.FOR)~ 如：
+
+   ~<div v-for="item in list"><p/></div>~
+
+   才会被当做 ~PatchFlags.STABLE_FRAGMENT~
+
+   #+begin_src typescript
+    // vIf.ts
+    const needFragmentWrapper =
+      children.length !== 1 || firstChild.type !== NodeTypes.ELEMENT;
+    if (needFragmentWrapper) {
+      if (children.length === 1 && firstChild.type === NodeTypes.FOR) {
+        // ...
+      } else {
+        return createVNodeCall(
+          // ...
+          PatchFlags.STABLE_FRAGMENT +
+            (__DEV__ ? ` /* ${PatchFlagNames[PatchFlags.STABLE_FRAGMENT]} */` : ``),
+          // ...
+        );
+      }
+    }
+   #+end_src
+
+2. ~v-for~
+
+   #+begin_src typescript
+    // vFor.ts
+    const isStableFragment =
+        forNode.source.type === NodeTypes.SIMPLE_EXPRESSION &&
+        forNode.source.constType > 0
+      const fragmentFlag = isStableFragment
+        ? PatchFlags.STABLE_FRAGMENT
+        : keyProp
+          ? PatchFlags.KEYED_FRAGMENT
+          : PatchFlags.UNKEYED_FRAGMENT
+   #+end_src
+
+
+源码：
+#+begin_src typescript
+const processFragment = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    isSVG: boolean,
+    optimized: boolean
+  ) => {
+    const fragmentStartAnchor = (n2.el = n1 ? n1.el : hostCreateText(''))!
+    const fragmentEndAnchor = (n2.anchor = n1 ? n1.anchor : hostCreateText(''))!
+
+    let { patchFlag, dynamicChildren } = n2
+    if (patchFlag > 0) {
+      optimized = true
+    }
+
+    if (__DEV__ && isHmrUpdating) {
+      // HMR updated, force full diff
+      patchFlag = 0
+      optimized = false
+      dynamicChildren = null
+    }
+
+    if (n1 == null) {
+      hostInsert(fragmentStartAnchor, container, anchor)
+      hostInsert(fragmentEndAnchor, container, anchor)
+      // fragment 的 children 只会是 array children
+      // 因为他们要么是通过 compiler 生成的，要么是由数组创建的
+      mountChildren(
+        n2.children as VNodeArrayChildren,
+        container,
+        fragmentEndAnchor,
+        parentComponent,
+        parentSuspense,
+        isSVG,
+        optimized
+      )
+    } else {
+      if (
+        patchFlag > 0 &&
+        patchFlag & PatchFlags.STABLE_FRAGMENT &&
+        dynamicChildren &&
+        // #2715 the previous fragment could've been a BAILed one as a result
+        // of renderSlot() with no valid children
+        n1.dynamicChildren
+      ) {
+        // a stable fragment (template root or <template v-for>) doesn't need to
+        // patch children order, but it may contain dynamicChildren.
+        patchBlockChildren(
+          n1.dynamicChildren,
+          dynamicChildren,
+          container,
+          parentComponent,
+          parentSuspense,
+          isSVG
+        )
+        if (__DEV__ && parentComponent && parentComponent.type.__hmrId) {
+          traverseStaticChildren(n1, n2)
+        } else if (
+          // #2080 if the stable fragment has a key, it's a <template v-for> that may
+          //  get moved around. Make sure all root level vnodes inherit el.
+          // #2134 or if it's a component root, it may also get moved around
+          // as the component is being moved.
+          n2.key != null ||
+          (parentComponent && n2 === parentComponent.subTree)
+        ) {
+          traverseStaticChildren(n1, n2, true /* shallow */)
+        }
+      } else {
+        // keyed / unkeyed, or manual fragments.
+        // for keyed & unkeyed, since they are compiler generated from v-for,
+        // each child is guaranteed to be a block so the fragment will never
+        // have dynamicChildren.
+        patchChildren(
+          n1,
+          n2,
+          container,
+          fragmentEndAnchor,
+          parentComponent,
+          parentSuspense,
+          isSVG,
+          optimized
+        )
+      }
+    }
+  }
+#+end_src
+* TELEPORT
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: teleport
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/0fcfa324ac72cf74ff24677bfa2305dac2dde6ac][feat(init): Teleport · gcclll/stb-vue-next@0fcfa32 · GitHub]]
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-teleport.svg]]
+
+** 新增代码:
+
+*TeleportImpl*: 组件模板
+#+begin_src typescript
+export const TeleportImpl = {
+  __isTeleport: true,
+  process() {},
+  remove() {},
+  move: moveTeleport,
+  hydrate: hydrateTeleport
+}
+#+end_src
+
+*resolveTarget*: 根据选择器找到目标元素
+#+begin_src typescript
+const resolveTarget = <T = RendererElement>(
+  props: TeleportProps | null,
+  select: RendererOptions['querySelector']
+): T | null => {
+  const targetSelector = props && props.to
+  if (isString(targetSelector)) {
+    if (!select) {
+      // 无效选择器
+      return null
+    } else {
+      const target = select(targetSelector)
+      // Teleport 设置失败
+      return target as any
+    }
+  } else {
+    // 无效的 Teleport 目标
+    return targetSelector as any
+  }
+}
+#+end_src
+
+*moveTeleport*: 执行移动
+#+begin_src typescript
+function moveTeleport(
+  vnode: VNode,
+  container: RendererElement,
+  parentAnchor: RendererNode | null,
+  { o: { insert }, m: move }: RendererInternals,
+  moveType: TeleportMoveTypes = TeleportMoveTypes.REORDER
+) {
+  // TODO
+}
+#+end_src
+
+*hydrateTeleport*:
+#+begin_src typescript
+function hydrateTeleport(
+  node: Node,
+  vnode: TeleportVNode,
+  parentComponent: ComponentInternalInstance | null,
+  parentSuspense: SuspenseBoundary | null,
+  optimized: boolean,
+  {
+    o: { nextSibling, parentNode, querySelector }
+  }: RendererInternals<Node, Element>,
+  hydrateChildren: (
+    node: Node | null,
+    vnode: VNode,
+    container: Element,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    optimized: boolean
+  ) => Node | null
+): Node | null {
+  return vnode.anchor && nextSibling(vnode.anchor as Node)
+}
+#+end_src
+
+导出组件 ~Teleport~：
+#+begin_src typescript
+// Force-casted public typing for h and TSX props inference
+export const Teleport = (TeleportImpl as any) as {
+  __isTeleport: true
+  new (): { $props: VNodeProps & TeleportProps }
+#+end_src
+
+** process()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: teleport-process
+:END:
+
+#+begin_src typescript
+function process(/*省略参数*/) {
+  // ...
+
+  const disabled = isTeleportDisabled(n2.props);
+  const { shapeFlag, children } = n2;
+
+  if (n1 == null) {
+    // insert anchors in the main view
+    // <container><placeholder/><anchor/></container>
+    insert(placeholder, container, anchor);
+    // <container><main-anchor/><anchor/></container>
+    insert(mainAnchor, container, anchor);
+    // 根据选择器 <Teleport to="selector"/> selector
+    // 找到目标 DOM 元素
+    const target = (n2.target = resolveTarget(n2.props, querySelector));
+    // <target><!-- '' --></target>，用来作为插入时的参考节点
+    const targetAnchor = (n2.targetAnchor = createText(""));
+    if (target) {
+      insert(targetAnchor, target);
+      // #2652 we could be teleporting from a non-SVG tree into an SVG tree
+      isSVG = isSVG || isTargetSVG(target);
+    } /* else if warn ... */
+
+    const mount = (container: RendererElement, anchor: RendererNode) => {
+      // 将 vnode children 渲染到 target 元素内
+      // 会插入到 anchor 的前面,如： ~<target><children/><!--''--></target>~
+    };
+
+    if (disabled) {
+      // 失效状态，不直接渲染到目标元素中，而是挂在了 #app 内对应的
+      // 节点里面，等待状态 enable 再渲染回 target 元素
+      mount(container, mainAnchor);
+    } else if (target) {
+      // 直接渲染进目标元素
+      mount(target, targetAnchor);
+    }
+  } else {
+    // update content
+    // 非首次渲染
+    n2.el = n1.el;
+    // 已经渲染到 tar
+
+    if (n2.dynamicChildren) {
+      // 动态子节点 patch
+    } else if (!optimized) {
+      // patch n1|n2 children
+    }
+
+    if (disabled) {
+      // n2 new teleport disabled -> n1 old target enabled
+      // n2 直接移到 #app 结构中的 container 上，暂时不直接渲染到
+      // 目标元素上
+      if (!wasDisabled) {
+        // moveTeleport
+      }
+    } else {
+      // target changed
+      // teleport 的 to 属性值发生了变化，找到新的目标
+      // 进行移动
+      if ((n2.props && n2.props.to) !== (n1.props && n1.props.to)) {
+        // 1. 找新目标
+        // 2. 将 n2 移动到新的目标中
+        // ...
+      } else if (wasDisabled) {
+        // 状态变更
+        // disabled -> enabled
+        // move into teleport target
+        // 从 container 中将 n2 移到目标元素中
+      }
+    }
+  }
+}
+#+end_src
+
+对于 teleport 的 mount 和 update 两个共同点(也是重点)：
+
+1. 当 new teleport 是 disabled 时，不直接渲染到目标元素中，而是挂在当前
+   container 中待用
+2. 当 new teleport 状态 enabled 时，不论 old 什么状态，都会讲新的 teleport
+   children 渲染到目标元素下面。
+
+
+Teleport 的移动类型有：
+
+1. ~TARGET_CHANGE~ 目标发生了变化， teleport 的 ~to~ 属性变化
+
+   #+begin_src typescript
+   // move target anchor if this is a target change.
+   if (moveType === TeleportMoveTypes.TARGET_CHANGE) {
+     insert(vnode.targetAnchor!, container, parentAnchor);
+   }
+   #+end_src
+2. ~TOGGLE~ 状态发生了变化 enable -> disable 或 disable -> enable
+3. ~REORDER~ 目标元素内进行重新排序 ?
+
+   #+begin_src typescript
+   // move main view anchor if this is a re-order.
+   if (isReorder) {
+     insert(anchor!, container, parentAnchor);
+   }
+   #+end_src
+** TODO 测试
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({ h, render, Teleport, nodeOps, serializeInner: inner, ref }) => {
+    const target = nodeOps.createElement("div");
+    const root = nodeOps.createElement("div");
+
+    try {
+      render(
+        h(() => [
+          h(Teleport, { to: target }, h("div", "teleported")),
+          h("div", "root"),
+        ]),
+        root
+      );
+    } catch (e) {
+      console.log(e.message);
+    }
+
+    log([">>> root", inner(root)]);
+    log([">>> target", inner(target)]);
+  },
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+: undefinedcomponent stateful ? 0
+: mount component
+: update effect
+: patch component
+: >>> root
+: >>> target
+
+#+begin_quote
+❓ 没结果！！！！！！
+#+end_quote
+
+* SUSPENSE
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/fd651abed0f0bbfb4e41910909212faeca26e116][feat(add): suspense · gcclll/stb-vue-next@fd651ab]]
+
+Suspense 组件和 [[#teleport][Teleport]] 一样的组织结构和使用方式
+
+结构：
+
+#+begin_src js
+var Tmpl = {
+  __isSuspense: true,
+  process() {}
+}
+#+end_src
+
+然后在 process 中处理 mount 或 patch 流程，这里面和普通标签或普通组件的处理是一
+样的， mount or patch。
+
+下面来看下这个组件是如何实现的，功能又是如何？
+
+新增函数：
+
+#+begin_src typescript
+// 1. 模板
+// 根据注释说明，之所以采用这种结构是为了能让 Suspense 适用 tree-shaking
+export const SuspenseImpl = {
+  __isSuspense: true,
+  process(n1: VNode | null, n2: VNode /*...*/) {
+    if (n1 == null) {
+      // mount
+    } else {
+      // patch
+    }
+  },
+  hydrate: hydrateSuspense,
+  create: createSuspenseBoundary,
+};
+
+// 2. mountSuspense
+// 3. patchSuspense
+#+end_src
+
+列表：
+
+| 名称                       | 描述 |
+|----------------------------+------|
+| ~SuspenseImpl~             | -    |
+| ~mountSuspense()~          | -    |
+| ~patchSuspense()~          | -    |
+| ~SuspenseBoundary~         | -    |
+| ~createSuspenseBoundary()~ | -    |
+| ~hydrateSuspense()~        | -    |
+
+
+** SuspenseBoundary 数据结构
+
+只列出部分与 Suspense 关联性强的字段：
+
+| 名称            | 描述                                  |
+|-----------------+---------------------------------------|
+| vnode           | VNode 结构                            |
+| hiddenContainer | -                                     |
+| activeBranch    | 请求完成之后显示的组件分支 ~#default~ |
+| pendingBranch   | 请求中显示的分支 ~#fallback~          |
+| deps            | 组件依赖                              |
+| timeout         | 超时时间                              |
+| isInFallback    | -                                     |
+| isHydrating     | -                                     |
+| effects         | [] 依赖列表                           |
+| resolve(force)  | -                                     |
+| fallback()      | 参数： fallbackVnode                  |
+| move()          | -                                     |
+| next()          | -                                     |
+| registerDep()   | 注册实例依赖                          |
+
+
+#+begin_src typescript
+export interface SuspenseBoundary {
+  vnode: VNode<RendererNode, RendererElement, SuspenseProps>;
+  parent: SuspenseBoundary | null;
+  parentComponent: ComponentInternalInstance | null;
+  isSVG: boolean;
+  container: RendererElement;
+  hiddenContainer: RendererElement;
+  anchor: RendererNode | null;
+  activeBranch: VNode | null;
+  pendingBranch: VNode | null;
+  deps: number;
+  pendingId: number;
+  timeout: number;
+  isInFallback: boolean;
+  isHydrating: boolean;
+  isUnmounted: boolean;
+  effects: Function[];
+  resolve(force?: boolean): void;
+  fallback(fallbackVNode: VNode): void;
+  move(
+    container: RendererElement,
+    anchor: RendererNode | null,
+    type: MoveType
+  ): void;
+  next(): RendererNode | null;
+  registerDep(
+    instance: ComponentInternalInstance,
+    setupRenderEffect: SetupRenderEffectFn
+  ): void;
+  unmount(parentSuspense: SuspenseBoundary | null, doRemove?: boolean): void;
+}
+#+end_src
+
+** mountSuspense()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense-mount
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/802b9adfcebae8b9e0ba2f0ad7e9f995c3675920][feat(add): suspense mount · gcclll/stb-vue-next@802b9ad]]
+
+
+#+begin_src typescript
+function mountSuspense() {
+  const {
+    p: patch,
+    o: { createElement },
+  } = rendererInternals;
+  const hiddenContainer = createElement("div");
+  const suspense = (vnode.suspense = createSuspenseBoundary(
+    vnode,
+    parentSuspense,
+    parentComponent,
+    container,
+    hiddenContainer,
+    anchor,
+    isSVG,
+    optimized,
+    rendererInternals
+  ));
+
+  // start mounting the content subtree in an off-dom container
+  patch(
+    null,
+    (suspense.pendingBranch = vnode.ssContent!),
+    hiddenContainer,
+    null,
+    parentComponent,
+    suspense,
+    isSVG
+  );
+  // now check if we have encountered any async deps
+  if (suspense.deps > 0) {
+    // has async
+    // mount the fallback tree
+    patch(
+      null,
+      vnode.ssFallback!,
+      container,
+      anchor,
+      parentComponent,
+      null, // fallback tree will not have suspense context
+      isSVG
+    );
+    setActiveBranch(suspense, vnode.ssFallback!);
+  } else {
+    // Suspense has no async deps. Just resolve.
+    suspense.resolve();
+  }
+}
+
+// 设置激活的 branch
+function setActiveBranch(suspense: SuspenseBoundary, branch: VNode) {
+  suspense.activeBranch = branch;
+  const { vnode, parentComponent } = suspense;
+  const el = (vnode.el = branch.el);
+  // in case suspense is the root node of a component,
+  // recursively update the HOC el
+  if (parentComponent && parentComponent.subTree === vnode) {
+    parentComponent.vnode.el = el;
+    updateHOCHostEl(parentComponent, el);
+  }
+}
+#+end_src
+
+1. 创建一个 DOM 之后的 div，即还没渲染到 DOM 结构中的
+2. 构建 Suspense 组件结构，这个结构非 VNode ，而是挂在 vnode.suspense 上的一个
+   ~SuspenseBoundary~ 结构
+3. 开始 mount 内容里的子树
+4. 检测 Suspense 有没异步依赖，如果有，则需要先解析这些异步依赖，完成之后再激活 branch
+5. 没有异步依赖直接拿到结果解析出组件
+
+
+也就是说这里面需要重点关注的其实是“有没异步依赖的问题”。
+
+没有依赖的时候用到了 ~suspense.resolve()~ 这个应该是将创建的 off-dom div 挂到真
+实 DOM 上去。
+** suspense.resolve()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense-resolve
+:END:
+
+#+begin_src typescript
+function resolve(resume = false) {
+  const {
+    vnode,
+    activeBranch,
+    pendingBranch,
+    pendingId,
+    effects,
+    parentComponent,
+    container,
+  } = suspense;
+
+  if (suspense.isHydrating) {
+    suspense.isHydrating = false;
+  } else if (!resume) {
+    // 1. transition 支持，将 move() 操作注册到 afterLeave 回调
+    // 2. 卸载当前的 subTree 可能是 fallback
+    // 3. 不是 transition dely enter 进行 move()
+    // 这里最后执行的操作就是 move() 如果是 transition delay enter
+    // 则将 move() 注册到 afterLeave，否则直接执行 move() 将 suspense
+    // 内容渲染到真实DOM上
+    const delayEnter =
+      activeBranch &&
+      pendingBranch!.transition &&
+      pendingBranch!.transition.mode === "out-in";
+    if (delayEnter) {
+      activeBranch!.transition!.afterLeave = () => {
+        if (pendingId === suspense.pendingId) {
+          move(pendingBranch!, container, anchor, MoveType.ENTER);
+        }
+      };
+    }
+    // this is initial anchor on mount
+    let { anchor } = suspense;
+    // unmount current active tree
+    if (activeBranch) {
+      // if the fallback tree was mounted, it may have been moved
+      // as part of a parent suspense. get the latest anchor for insertion
+      anchor = next(activeBranch);
+      unmount(activeBranch, parentComponent, suspense, true);
+    }
+    if (!delayEnter) {
+      // move content from off-dom container to actual container
+      move(pendingBranch!, container, anchor, MoveType.ENTER);
+    }
+  }
+
+  // 标记当前激活状态的分支，此时是 #default
+  setActiveBranch(suspense, pendingBranch!);
+  suspense.pendingBranch = null;
+  suspense.isInFallback = false;
+
+  // flush buffered effects
+  // check if there is a pending parent suspense
+  // 注册的 effect 处理，这里的处理说明了 suspense 的父子依赖执行
+  // 的顺序问题， effects 是按照数组加入顺序执行的(详情可以查看 reactivity 文章)
+  // 所以 effects 的优先级是自上而下的，即 parent-parent > parent > children
+  let parent = suspense.parent;
+  let hasUnresolvedAncestor = false;
+  while (parent) {
+    if (parent.pendingBranch) {
+      // found a pending parent suspense, merge buffered post jobs
+      // into that parent
+      parent.effects.push(...effects);
+      hasUnresolvedAncestor = true;
+      break;
+    }
+    parent = parent.parent;
+  }
+  // no pending parent suspense, flush all jobs
+  // 如果没有挂起的 parent suspense 直接 flush 掉所有任务
+  // 结合上面的 while 举例：
+  // CompA -> CompB -> CompC
+  // 当解析到 CompC 时，一直往上检测 B 和 A 如果 B 有挂起的任务
+  // C 这里的任务不会被 flush，而是加入到 B 的队列等待执行
+  // 然后 C 解析完成，回溯到 B 的解析，此时又遵循同一套规则检测 A 的
+  // 挂起任务，直到最后要么立即执行 B 的任务要么 B 的任务也加入到 A
+  // 最后由 A 执行所有的任务(包含子 suspense 的)
+  if (!hasUnresolvedAncestor) {
+    queuePostFlushCb(effects);
+  }
+  suspense.effects = [];
+
+  // invoke @resolve event
+  const onResolve = vnode.props && vnode.props.onResolve;
+  if (isFunction(onResolve)) {
+    onResolve();
+  }
+}
+#+end_src
+
+分析如上面的注释， ~resolve()~ 主要目的就是将 off-dom div 上的 suspense 组件在异
+步事件完成后根据结果解析出对应的分支，将这个分支挂载到真实的 DOM 上去，同时激活
+它(显示出来)。
+
+其他处理：
+
+1. ~transition~ 的延迟进入处理，通过将 move() 操作注册到 ~afterLeave()~ 回调实现
+2. effects 任务处理，这里的任务处理机制是：
+
+   只有在 parent 没有任何挂起的任务时候才会立即得到执行，否则只会进行合并操作。
+** patchSuspense()
+
 * 测试
 
 #+begin_export html
+<div id="6MyGYf">
+<p style="background:red;color:white;" id="p0"></p>
+<p style="background:red;color:white;" id="p1"></p>
+<p style="background:red;color:white;" id="p2"></p>
+<p style="background:red;color:white;" id="p3"></p>
+<p style="background:red;color:white;" id="p4"></p>
+<p style="background:red;color:white;" id="p5"></p>
+<p style="background:red;color:white;" id="p6"></p>
+<p style="background:red;color:white;" id="p7"></p>
 <div id="dzwrLeuq5V"></div>
 <script src="/js/vue/tests/dzwrLeuq5V.js"></script>
 #+end_export
