@@ -190,6 +190,10 @@ var VueRuntimeTest = (function (exports) {
           value
       });
   };
+  const toNumber = (val) => {
+      const n = parseFloat(val);
+      return isNaN(n) ? val : n;
+  };
 
   const targetMap = new WeakMap();
   // effect 任务队列
@@ -1507,11 +1511,158 @@ var VueRuntimeTest = (function (exports) {
   // in the compiler, but internally it's a special built-in type that hooks
   // directly into the renderer.
   const SuspenseImpl = {
-  // TODO
+      // In order to make Suspense tree-shakable, we need to avoid importing it
+      // directly in the renderer. The renderer checks for the __isSuspense flag
+      // on a vnode's type and calls the `process` method, passing in renderer
+      // internals.
+      // 为了确保 tree-shakable Suspense 组件功能，避免直接在 renderer 中引入
+      // 而是在 renderer 中通过 __isSuspense 结合 true 检测
+      __isSuspense: true,
+      process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, 
+      // platform-specific impl passed from renderer
+      rendererInternals) {
+          if (n1 == null) {
+              mountSuspense(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, rendererInternals);
+          }
+      },
+      hydrate: hydrateSuspense,
+      create: createSuspenseBoundary
   };
   // Force-casted public typing for h and TSX props inference
   const Suspense = ( SuspenseImpl
       );
+  function mountSuspense(vnode, container, anchor, parentComponent, parentSuspense, isSVG, optimized, rendererInternals) {
+      const { p: patch, o: { createElement } } = rendererInternals;
+      const hiddenContainer = createElement('div');
+      const suspense = (vnode.suspense = createSuspenseBoundary(vnode, parentSuspense, parentComponent, container, hiddenContainer, anchor, isSVG, optimized, rendererInternals));
+      // start mounting the content subtree in an off-dom container
+      patch(null, (suspense.pendingBranch = vnode.ssContent), hiddenContainer, null, parentComponent, suspense, isSVG);
+      // now check if we have encountered any async deps
+      if (suspense.deps > 0) {
+          // has async
+          // mount the fallback tree
+          patch(null, vnode.ssFallback, container, anchor, parentComponent, null, // fallback tree will not have suspense context
+          isSVG);
+          setActiveBranch(suspense, vnode.ssFallback);
+      }
+      else {
+          // Suspense has no async deps. Just resolve.
+          suspense.resolve();
+      }
+  }
+  function createSuspenseBoundary(vnode, parent, parentComponent, container, hiddenContainer, anchor, isSVG, optimized, rendererInternals, isHydrating = false) {
+      const { p: patch, m: move, um: unmount, n: next, o: { parentNode, remove } } = rendererInternals;
+      const timeout = toNumber(vnode.props && vnode.props.timeout);
+      const suspense = {
+          vnode,
+          parent,
+          parentComponent,
+          isSVG,
+          container,
+          hiddenContainer,
+          anchor,
+          deps: 0,
+          pendingId: 0,
+          timeout: typeof timeout === 'number' ? timeout : -1,
+          activeBranch: null,
+          pendingBranch: null,
+          isInFallback: true,
+          isHydrating,
+          isUnmounted: false,
+          effects: [],
+          resolve(resume = false) {
+              const { vnode, activeBranch, pendingBranch, pendingId, effects, parentComponent, container } = suspense;
+              if (suspense.isHydrating) {
+                  suspense.isHydrating = false;
+              }
+              else if (!resume) {
+                  // 1. transition 支持，将 move() 操作注册到 afterLeave 回调
+                  // 2. 卸载当前的 subTree 可能是 fallback
+                  // 3. 不是 transition dely enter 进行 move()
+                  // 这里最后执行的操作就是 move() 如果是 transition delay enter
+                  // 则将 move() 注册到 afterLeave，否则直接执行 move() 将 suspense
+                  // 内容渲染到真实DOM上
+                  const delayEnter = activeBranch &&
+                      pendingBranch.transition &&
+                      pendingBranch.transition.mode === 'out-in';
+                  if (delayEnter) {
+                      activeBranch.transition.afterLeave = () => {
+                          if (pendingId === suspense.pendingId) {
+                              move(pendingBranch, container, anchor, 0 /* ENTER */);
+                          }
+                      };
+                  }
+                  // this is initial anchor on mount
+                  let { anchor } = suspense;
+                  // unmount current active tree
+                  if (activeBranch) {
+                      // if the fallback tree was mounted, it may have been moved
+                      // as part of a parent suspense. get the latest anchor for insertion
+                      anchor = next(activeBranch);
+                      unmount(activeBranch, parentComponent, suspense, true);
+                  }
+                  if (!delayEnter) {
+                      // move content from off-dom container to actual container
+                      move(pendingBranch, container, anchor, 0 /* ENTER */);
+                  }
+              }
+              // 标记当前激活状态的分支，此时是 #default
+              setActiveBranch(suspense, pendingBranch);
+              suspense.pendingBranch = null;
+              suspense.isInFallback = false;
+              // flush buffered effects
+              // check if there is a pending parent suspense
+              // 注册的 effect 处理，这里的处理说明了 suspense 的父子依赖执行
+              // 的顺序问题， effects 是按照数组加入顺序执行的(详情可以查看 reactivity 文章)
+              // 所以 effects 的优先级是自上而下的，即 parent-parent > parent > children
+              let parent = suspense.parent;
+              let hasUnresolvedAncestor = false;
+              while (parent) {
+                  if (parent.pendingBranch) {
+                      // found a pending parent suspense, merge buffered post jobs
+                      // into that parent
+                      parent.effects.push(...effects);
+                      hasUnresolvedAncestor = true;
+                      break;
+                  }
+                  parent = parent.parent;
+              }
+              // no pending parent suspense, flush all jobs
+              // 如果没有挂起的 parent suspense 直接 flush 掉所有任务
+              // 结合上面的 while 举例：
+              // CompA -> CompB -> CompC
+              // 当解析到 CompC 时，一直往上检测 B 和 A 如果 B 有挂起的任务
+              // C 这里的任务不会被 flush，而是加入到 B 的队列等待执行
+              // 然后 C 解析完成，回溯到 B 的解析，此时又遵循同一套规则检测 A 的
+              // 挂起任务，直到最后要么立即执行 B 的任务要么 B 的任务也加入到 A
+              // 最后由 A 执行所有的任务(包含子 suspense 的)
+              if (!hasUnresolvedAncestor) {
+                  queuePostFlushCb(effects);
+              }
+              suspense.effects = [];
+              // invoke @resolve event
+              const onResolve = vnode.props && vnode.props.onResolve;
+              if (isFunction(onResolve)) {
+                  onResolve();
+              }
+          },
+          fallback() { },
+          move(container, anchor, type) {
+              suspense.activeBranch &&
+                  move(suspense.activeBranch, container, anchor, type);
+              suspense.container = container;
+          },
+          next() {
+              return {};
+          },
+          registerDep() { },
+          unmount() { }
+      };
+      return suspense;
+  }
+  function hydrateSuspense(node, vnode, parentComponent, parentSuspense, isSVG, optimized, rendererInternals, hydrateNode) {
+      return {};
+  }
   function normalizeSuspenseChildren(vnode) {
       const { shapeFlag, children } = vnode;
       let content, fallback;
@@ -1553,6 +1704,17 @@ var VueRuntimeTest = (function (exports) {
       }
       else {
           queuePostFlushCb(fn);
+      }
+  }
+  function setActiveBranch(suspense, branch) {
+      suspense.activeBranch = branch;
+      const { vnode, parentComponent } = suspense;
+      const el = (vnode.el = branch.el);
+      // in case suspense is the root node of a component,
+      // recursively update the HOC el
+      if (parentComponent && parentComponent.subTree === vnode) {
+          parentComponent.vnode.el = el;
+          updateHOCHostEl(parentComponent, el);
       }
   }
 
@@ -1804,6 +1966,9 @@ var VueRuntimeTest = (function (exports) {
                   else if (shapeFlag & 64 /* TELEPORT */) {
                       type.process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, internals);
                   }
+                  else if ( shapeFlag & 128 /* SUSPENSE */) {
+                      type.process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, internals);
+                  }
                   break;
           }
       };
@@ -1954,10 +2119,19 @@ var VueRuntimeTest = (function (exports) {
           // patch props 处理
           if (patchFlag > 0) {
               console.log('patch element props');
+              // text
+              // This flag is matched when the element has only dynamic text children.
+              if (patchFlag & 1 /* TEXT */) {
+                  if (n1.children !== n2.children) {
+                      hostSetElementText(el, n2.children);
+                  }
+              }
           }
           const areChildrenSVG = isSVG && n2.type !== 'foreignObject';
           // patch children
-          if (dynamicChildren) ;
+          if (dynamicChildren) {
+              patchBlockChildren(n1.dynamicChildren, dynamicChildren, el, parentComponent, parentSuspense, areChildrenSVG);
+          }
           else if (!optimized) {
               // full diff
               patchChildren(n1, n2, el, null, parentComponent, parentSuspense, areChildrenSVG);
@@ -2059,6 +2233,21 @@ var VueRuntimeTest = (function (exports) {
           const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent, parentSuspense));
           setupComponent(instance);
           console.log('mount component');
+          // setup() 是个异步函数，返回了 promise ，在 setupComponent
+          // 中会将 setup 执行结果赋值给 instance.asyncDep，即 SUSPENSE 处理
+          if ( instance.asyncDep) {
+              // 将 setupRenderEffect 注册到 parent deps 这里的 deps 执行由一定的规则
+              // 如果 parent suspense 没有结束，child deps 不会立即执行，而是将它们
+              // 合并到 parent suspense deps 中等待 parent 状态完成了才会执行，对于
+              // parent deps 也遵循这个规则，直到没有未完成的 parent suspense 为止
+              parentSuspense && parentSuspense.registerDep(instance, setupRenderEffect);
+              // 这里等于是说先用一个注释节点占位，等异步完成之后替换
+              if (!initialVNode.el) {
+                  const placeholder = (instance.subTree = createVNode(Comment));
+                  processCommentNode(null, placeholder, container, anchor);
+              }
+              return;
+          }
           setupRenderEffect(instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized);
       };
       // 19. updateComponent
@@ -2487,7 +2676,7 @@ var VueRuntimeTest = (function (exports) {
                       // There is no stable subsequence (e.g. a reverse)
                       // OR current node is not among the stable sequence
                       if (j < 0 || i !== increasingNewIndexSequence[j]) {
-                          move(nextChild, container, anchor);
+                          move(nextChild, container, anchor, 2 /* REORDER */);
                       }
                       else {
                           j--;
@@ -2498,20 +2687,29 @@ var VueRuntimeTest = (function (exports) {
       };
       // 25. move， 交换操作
       const move = (vnode, container, anchor, moveType, parentSuspense = null) => {
-          const { el, shapeFlag } = vnode;
+          const { el, shapeFlag, type } = vnode;
+          console.log('moving...');
           // COMPONENT
           if (shapeFlag & 6 /* COMPONENT */) {
-              move(vnode.component.subTree, container, anchor);
+              console.log('move component');
+              move(vnode.component.subTree, container, anchor, moveType);
               return;
           }
-          // TODO SUSPENSE
+          // SUSPENSE
+          if ( shapeFlag & 128 /* SUSPENSE */) {
+              console.log('move suspense');
+              vnode.suspense.move(container, anchor, moveType);
+              return;
+          }
           // TODO TELEPORT
           // TODO Fragment
           // Static
           if (type === Static) {
+              console.log('move static');
               moveStaticNode(vnode, container, anchor);
           }
           {
+              console.log('move host insert');
               // 目前只实现普通元素的逻辑
               hostInsert(el, container, anchor);
           }

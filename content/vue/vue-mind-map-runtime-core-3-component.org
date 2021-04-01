@@ -2405,11 +2405,179 @@ function resolve(resume = false) {
 2. effects 任务处理，这里的任务处理机制是：
 
    只有在 parent 没有任何挂起的任务时候才会立即得到执行，否则只会进行合并操作。
+
+
+因为代码最后需要执行 ~move()~ 操作将 ~#default~ 替换 ~#fallback~ ，所以下面先实
+现 ~suspense.move()~ 再来测试。
+** suspense.move()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense-move
+:END:
+
+实现这个 move 有几个地方需要修改
+
+1. SuspenseBoundary 中的 move()
+
+   #+begin_src typescript
+   var foo = {
+     move(container, anchor, type) {
+       suspense.activeBranch &&
+         move(suspense.activeBranch, container, anchor, type);
+       suspense.container = container;
+     },
+   };
+   #+end_src
+
+2. renderer.ts 中的 move() 函数，实现 SUSPENSE 组件的处理
+
+   #+begin_src typescript
+   const move = () => {
+     // ...
+     // SUSPENSE
+     if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
+       console.log("move suspense");
+       vnode.suspense!.move(container, anchor, moveType);
+       return;
+     }
+     // ...
+   };
+   #+end_src
+
+3. 另外 mountComponent 中漏了对 SUSPENSE 的处理
+
+   #+begin_src typescript
+    const mountComponent = () => {
+      // ... create instance
+      // ... setupComponent
+
+      // setup() 是个异步函数，返回了 promise ，在 setupComponent
+      // 中会将 setup 执行结果赋值给 instance.asyncDep，即 SUSPENSE 处理
+      if (__FEATURE_SUSPENSE__ && instance.asyncDep) {
+        // 将 setupRenderEffect 注册到 parent deps 这里的 deps
+        // 执行由一定的规则, 如果 parent suspense 没有结束，child deps
+        // 不会立即执行，而是将它们合并到 parent suspense deps 中等待 parent 状态完成了才会执行，对于
+        // parent deps 也遵循这个规则，直到没有未完成的 parent suspense为止
+        parentSuspense && parentSuspense.registerDep(instance, setupRenderEffect);
+        // 这里等于是说先用一个注释节点占位，等异步完成之后替换
+        if (!initialVNode.el) {
+          const placeholder = (instance.subTree = createVNode(Comment));
+          processCommentNode(null, placeholder, container!, anchor);
+        }
+        return;
+      }
+
+      // ... setupRenderEffect SUSPENSE 不会进入到这里
+    };
+   #+end_src
+
+
+测试：
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  async ({
+    nextTick,
+    h,
+    render,
+    nodeOps,
+    serializeInner: inner,
+    ref,
+    Suspense,
+  }) => {
+    const deps = [];
+    function defineAsyncComponent(comp, delay = 0) {
+      return {
+        setup(props, { slots }) {
+          const p = new Promise((resolve) => {
+            setTimeout(() => {
+              resolve(() => h(comp, props, slots));
+            }, delay);
+          });
+          deps.push(p.then(() => Promise.resolve()));
+          return p;
+        },
+      };
+    }
+
+    const Async = defineAsyncComponent({
+      render() {
+        return h("div", "async");
+      },
+    });
+
+    const Comp = {
+      setup() {
+        return () =>
+          h(Suspense, null, {
+            default: h(Async),
+            fallback: h("div", "fallback"),
+          });
+      },
+    };
+
+    const root = nodeOps.createElement("div");
+    try {
+      render(h(Comp), root);
+    } catch (e) {
+      console.log(e);
+    }
+    console.log("before");
+    console.log(inner(root));
+
+    await Promise.all(deps);
+    await nextTick();
+    console.log("after");
+    console.log(inner(root));
+  },
+  (err) => {
+    console.log(err);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedcomponent stateful ? 4
+call setup
+[Function (anonymous)] render
+mount component
+update effect
+normalize vnode
+patch component
+component stateful ? 4
+call setup
+mount component
+moving...
+move component
+moving...
+move host insert
+before
+<!---->
+after
+<!---->
+#+end_example
+
+#+begin_quote
+❓. 结果发现并没变化？？？
+#+begin_example
+before
+<!---->
+after
+<!---->
+#+end_example
+
+既没有渲染 fallback 也没有渲染 default 的，为何？
+#+end_quote
+
 ** patchSuspense()
+
 
 * 测试
 
 #+begin_export html
+<p style="font-weight:800;font-size:28px;">Teleport Testing...</p>
 <div id="6MyGYf">
 <p style="background:red;color:white;" id="p0"></p>
 <p style="background:red;color:white;" id="p1"></p>
@@ -2421,5 +2589,12 @@ function resolve(resume = false) {
 <p style="background:red;color:white;" id="p7"></p>
 <div id="dzwrLeuq5V"></div>
 <script src="/js/vue/tests/dzwrLeuq5V.js"></script>
+
+<p style="font-weight:800;font-size:28px;">Suspense Testing...</p>
+<div id="WTYoDwLIkv"></div>
+<script src="/js/vue/tests/WTYoDwLIkv.js"></script>
+
 #+end_export
 
+
+[[/img/vue3/runtime-core/vue-sample-runtime-core-suspense.svg]]
