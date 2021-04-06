@@ -22,12 +22,12 @@
 要链接到本网站内文章，不排除有外链其他网站。
 #+end_quote
 
-- [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
+1. [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
 
    vue3 中的异步更新任务分为三种： pre cbs/queue jobs/post cbs，他们的执行都有一
    定的先后顺序，点击[[/vue/vue-mind-map-runtime-core/#scheduler][链接]]了解更多分析内容。
 
-- [[/vue/vue-mind-map-runtime-core-render/#keyed-children][vue3 diff 原理？]]
+2. [[/vue/vue-mind-map-runtime-core-render/#keyed-children][vue3 diff 原理？]]
 
   | old         | new           | 更新原则     |
   |-------------+---------------+--------------|
@@ -42,3 +42,11 @@
   诸如上面的实例是如何实现插入，新增，删除和移动的？
 
   这里又是如何利用“最长增长序列”来过滤掉不需要移动的节点的？
+
+3. [[/vue/vue-mind-map-runtime-core-3-component/#keep-alive][keep-alive 组件实现原理？]]
+
+   activate 和 deactivate 状态切换的实际原理是什么？
+
+   #+begin_quote
+   ⁉ 通过创建一个 off-dom div 来承接 deactivate 状态下的 DOM 🌲。
+   #+end_quote

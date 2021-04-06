@@ -2157,6 +2157,18 @@ export const SuspenseImpl = {
 | ~createSuspenseBoundary()~ | -    |
 | ~hydrateSuspense()~        | -    |
 
+脑图：
+
+[[/img/vue3/runtime-core/vue-runtime-core-suspense.svg]]
+
+#+begin_quote
+重点逻辑：
+1. Suspense 的渲染转折点发生在 ~mountComponent~ 中，将 ~setupRenderEffect~ 做了
+   一次封装，让其在 ~setup()~ 返回的 Promise 状态完成之后去执行
+2. 在整个 Suspense mount 或 patch 过程中，使用了 ~suspense.deps~ 来记录异步事件，
+   只有当这个值为 ~0~ 的时候说明可以进行解析并挂在到真实DOM上了(比如. 服务器端数
+   据请求完成)
+#+end_quote
 
 ** SuspenseBoundary 数据结构
 
@@ -2486,6 +2498,7 @@ import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
     ref,
     Suspense,
   }) => {
+    log.br()
     const deps = [];
     function defineAsyncComponent(comp, delay = 0) {
       return {
@@ -2539,7 +2552,9 @@ import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
 
 #+RESULTS:
 #+begin_example
-undefinedcomponent stateful ? 4
+undefined
+
+component stateful ? 4
 call setup
 [Function (anonymous)] render
 mount component
@@ -2549,14 +2564,34 @@ patch component
 component stateful ? 4
 call setup
 mount component
+process element
+mount elment
+{ shapeFlag: 9 }
+before
+<div>fallback</div>
+[Function (anonymous)] render
+update effect
+normalize vnode
+patch component
+component stateful ? 4
+call setup
+no setup
+[Function: render] render
+mount component
+update effect
+normalize vnode
+patch component
+process element
+mount elment
+{ shapeFlag: 9 }
+moving...
+move component
 moving...
 move component
 moving...
 move host insert
-before
-<!---->
 after
-<!---->
+<div>async</div>
 #+end_example
 
 #+begin_quote
@@ -2571,10 +2606,656 @@ after
 既没有渲染 fallback 也没有渲染 default 的，为何？
 #+end_quote
 
-** patchSuspense()
+上面的第二点有说到在 /renderer.ts/ 的 ~mountComponent()~ 中增加了对 ~SUSPENSE~
+的处理，这里面有个注册依赖的动作，这里注册的是 ~setupRenderEffect~ 函数，这个函
+数正是用来 mount & update 组件的，而在 /components/Suspense.ts/ 中并没有实现，所
+以问题就出在这里了！！！
 
+FIX： [[#suspense-register-dep][suspense.registerDep()]]
+
+** suspense.registerDep()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense-register-dep
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/e0fa81e82115f6a7e7f9b9f683061ef2c8886d0e][feat(add): suspense registerDeps · gcclll/stb-vue-next@e0fa81e]]
+
+#+begin_src typescript
+function registerDep(instance, setupRenderEffect) {
+  const isInPendingSuspense = !!suspense.pendingBranch;
+  if (isInPendingSuspense) {
+    suspense.deps++;
+  }
+  const hydratedEl = instance.vnode.el;
+  // 捕获 setup 执行的异常，或接受执行的结果
+  instance
+    .asyncDep!.catch((err) => {
+      handleError(err, instance, ErrorCodes.SETUP_FUNCTION);
+    })
+    .then((asyncSetupResult) => {
+      // 当 setup() 的 promise 状态变更之后重试
+      // 因为在解析之前组件可能已经被卸载了
+      if (
+        instance.isUnmounted ||
+        suspense.isUnmounted ||
+        suspense.pendingId !== instance.suspenseId
+      ) {
+        return;
+      }
+
+      // 从该组件开始重试，状态标记为已经完成
+      instance.asyncResolved = true;
+      const { vnode } = instance;
+      handleSetupResult(instance, asyncSetupResult, false);
+      if (hydratedEl) {
+        // 虚拟节点可能在 async dep 状态完成之前被某个更新替换掉了
+        vnode.el = hydratedEl;
+      }
+      const placeHolder = !hydratedEl && instance.subTree.el;
+      setupRenderEffect(
+        instance,
+        vnode,
+        // 组件可能在 resolve 之前被移除了
+        // 如果这个不是一个 hydration，instance.subTree 将会是个注释
+        // 占位节点
+        parentNode(hydratedEl || instance.subTree.el!),
+        hydratedEl ? null : next(instance.subTree),
+        suspense,
+        isSVG,
+        optimized
+      );
+      if (placeHolder) {
+        remove(placeHolder);
+      }
+      updateHOCHostEl(instance, vnode.el);
+      // only decrease deps count if suspense is not already resolved
+      // 没有任何依赖了就开始解析 Suspense
+      if (isInPendingSuspense && --suspense.deps === 0) {
+        suspense.resolve();
+      }
+    });
+}
+#+end_src
+
+这个函数主要实现点：
+
+1. 接受 ~setup()~ 执行的结果(~Promise~) asyncSetupResult 并捕获异常，对结果进行
+   分析处理
+2. 检测组件是不是已经卸载了，或者 suspense 被移除，就不需要继续处理了，退出即可
+
+   #+begin_src typescript
+    if (
+      instance.isUnmounted ||
+      suspense.isUnmounted ||
+      suspense.pendingId !== instance.suspenseId
+    ) {
+      return;
+    }
+   #+end_src
+3. 使用 ~handleSetupResult(instance, asyncSetupResult, false)~ 处理 setup 执行结
+   果，到底是 render 还是状态，需要解析
+4. 然后执行 setupRenderEffect 执行组件的 mount 或 update 操作
+5. 移除占位的注释节点
+6. suspense.deps 执行完成之后就可以开始解析 suspense 组件 进行 move 操作了。
+** patchSuspense()
+** suspense.unmount&fallback&其他
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense-other
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/080898d17073b322a1d8c86fba2bf271bc25e82f][feat(add): suspense unmount & fallback... · gcclll/stb-vue-next@080898d]]
+
+新增：
+
+1. ~patchSuspense()~ 和其他普通类型的处理差不多，无非就是检测 old 和 new branch 的
+   类型，进行 patch()，期间触发 ~onPending~ 事件
+2. ~suspense.fallback()~ 处理，当异步事件未完成时显示的 ~#fallback~ 分支处理，期间
+   触发 ~onFallback~ 事件
+3. ~suspense.unmount()~ 检测 activeBranch 和 pendingBranch 先卸载 active 随后卸载
+   pending 分支(前提是存在的情况下)
+** Suspense 组件测试
+
+#+begin_src js
+// `/js/vue/tests/Suspense.js'
+require(process.env.BLOG_DIR_VUE + "/tests/Suspense.js");
+#+end_src
+
+** 小结
+
+SUSPENSE 组件的大致执行流程
+
+1. patch 进入 switch default 检测到 shapeFlag 是 SUSPENSE
+2. 调用 type.process(n1,n2,...) 处理 Suspense 组件，根据 n1 决定是 mountSuspense
+   还是 patchSuspense 这里和其他类型组件处理逻辑一致
+3. 首次(mount), 进行 mountSuspense 创建 Suspense 组件，对 pendingBranch 进行 patch 操作
+   (挂在到一个非DOM树中的 'div' 元素(/off-dom/)，待用)，即异步操作还未完成时显示
+   的分支，如： ~#fallback~
+4. 非首次(update)，进行 patchSuspense 对比新旧的 branch 进行 patch
+
+
+要点：在 ~mountComponent()~ 中不是直接调用 ~setupRenderEffect()~ 而是调
+用 ~suspense.registerDep()~ 去处理 ~setup~ 执行的结果(~instance.asyncDep~)，它是
+个Promise 在其后的 then() 中接受 setup 执行结果，然后开始调用 setupRenderEffect
+mount 或 update 子树节点，待 suspense 上的所有依赖都完成之后开始 resolve()
+Suspense 组件将其挂在到真实的 DOM 中。
+
+#+begin_quote
+原理： setup() 返回 Promise，render 过程中注册渲染函数，待 promise 状态完成调用
+then 接受异步结果来渲染 Suspense 组件(任务为 ~post~ 类型)。
+#+end_quote
+* KEEP_ALIVE
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/a192cb42020ae44aa150e1dc9decc20bb6b01b96][feat(add): keep-alive render · gcclll/stb-vue-next@a192cb4]]
+
+KeepAlive 组件的 render 入口在 ~processComponent()~ 中，当 ~n1 == null~ 情况下，
+会去检测该组件是不是 ~keep-alive~ 类型，如果是直接调用 ~activate()~ 激活。
+
+#+begin_src diff
+// 17. processComponent
+  const processComponent = (
+  /*...*/) => {
+    if (n1 == null) {
+      // mount
+-      if (false /* keep alive */) {
+-        // TODO
++      if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
++        ;(parentComponent!.ctx as KeepAliveContext).activate(
++          n2,
++          container,
++          anchor,
++          isSVG,
++          optimized
++        )
+#+end_src
+
+unmount 操作时，如果是 keep-alive 直接调用 ~deactivate()~ 失效，而不是真正的从
+DOM 移除。
+
+[[https://github.com/gcclll/stb-vue-next/commit/024b24b9812f70d962cd2056a9164d6504d1ddd7][feat(add): keep-alive render unmount · gcclll/stb-vue-next@024b24b]]
+
+#+begin_src diff
+const unmount: UnmountFn = (...) => {
+// ...
+-    // TODO keep-alive
+-    // keep-alive
++    if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
++      ;(parentComponent!.ctx as KeepAliveContext).deactivate(vnode)
++      return
++    }
+// ...
+}
+#+end_src
+
+在 ~mountComponent()~ 中：
+
+#+begin_src diff
+  // 18. mountComponent
+  const mountComponent: MountComponentFn = (...) => {
+    const instance: ComponentInternalInstance = (initialVNode.component = createComponentInstance(
+      initialVNode,
+      parentComponent,
+      parentSuspense
+    ))
+
++    if (isKeepAlive(initialVNode)) {
++      ;(instance.ctx as KeepAliveContext).renderer = internals
++    }
+#+end_src
+
+这里将 keep-alive 组件的 setup() 函数中用到的一些 renderer 函数保存引用到
+ctx.renderer 上供后面 ~setup()~ 中使用。
+
+#+begin_src
+instance.ctx.renderer: {
+    p: patch,
+    m: move,
+    um: _unmount,
+    o: { createElement }
+}
+#+end_src
+
+keep-alive 作为内部组件，内置了 ~setup()~ 函数的实现，所以在
+
+patch -> processComponent -> mountComponent -> setupComponent
+
+时调用的就是这个内置的 setup() 函数。
+
+setup() 函数体大致代码：
+#+begin_src typescript
+function setup(props: KeepAliveProps, { slots }: SetupContext) {
+  const cache: Cache = new Map();
+  const keys: Keys = new Set();
+  let current: VNode | null = null;
+
+  const instance = getCurrentInstance()!;
+  const parentSuspense = instance.suspense;
+
+  const sharedContext = instance.ctx as KeepAliveContext;
+  const {
+    renderer: {
+      p: patch,
+      m: move,
+      um: _unmount,
+      o: { createElement },
+    },
+  } = sharedContext;
+  const storageContainer = createElement("div");
+
+  sharedContext.activate = (vnode, container, anchor, isSVG, optimized) => {};
+
+  sharedContext.deactivate = (vnode: VNode) => {};
+
+  // 对 renderer unmount 的一次封装
+  function unmount(vnode: VNode) {}
+
+  // 过滤掉缓存
+  function pruneCache(filter?: (name: string) => boolean) {}
+
+  function pruneCacheEntry(key: CacheKey) {}
+
+  // TODO 监听 include/exclude 属性变化
+  // TODO 在 render 之后缓存子树(subTree)
+  // TODO 注册生命周期
+
+  return () => {
+    // 该函数解析出原始 VNode 节点返回
+  };
+}
+#+end_src
+
+上面代码提供了一下信息：
+1. ~activate~ & ~deactivate()~ 函数是挂在 VNode 的 ctx 上的，并且是在 setup() 调
+   用期间产生
+2. 缓存机制
+3. 只注册了 ~mounted, unmounted, update~ 声明周期
+4. 最后返回的函数可以得到最原始的 VNode 节点
+
+
+注意看 ~processComponent()~ 中的判断:
+
+~if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) { activate() }~
+
+而 ~COMPONENT_KEPT_ALIVE~ 标记的赋值又是发生在 ~setup()~ 函数中，也就是说对于
+~keep-alive~ 组件首次加载不会进入到 activate() 而是直接按照普通组件处理调用
+~mountComponent()~ 去调用 ~setup()~ 初始化该 ~keep-alive~ 组件的一些函数等(其中
+就包含 ~activate~ 和 ~deactivate()~ 函数)
+
+当状态发生变化时根据特定条件最后执行激活才会去调用 ~activate()~ 而不是进入 ~mountComponent()~
+
+** activate()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-activate
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/267fdbdddbcafe62ac93c476bd75d22bbf3d9552][feat(add): keep-alive ctx.activate · gcclll/stb-vue-next@267fdbd]]
+
+#+begin_src typescript
+sharedContext.activate = (vnode, container, anchor, isSVG, optimized) => {
+  const instance = vnode.component!;
+  move(vnode, container, anchor, MoveType.ENTER, parentSuspense);
+  // props 可能发生变化，这里执行一次 patch 操作
+  patch(
+    instance.vnode,
+    vnode,
+    container,
+    anchor,
+    instance,
+    parentSuspense,
+    isSVG,
+    optimized
+  );
+  queuePostRenderEffect(() => {
+    instance.isDeactivated = false;
+    if (instance.a) {
+      // activated 周期函数
+      invokeArrayFns(instance.a);
+    }
+    const vnodeHook = vnode.props && vnode.props.onVnodeMounted;
+    if (vnodeHook) {
+      invokeVNodeHook(vnodeHook, instance.parent, vnode);
+    }
+  }, parentSuspense);
+};
+#+end_src
+
+激活 ~keep-alive~ 组件的函数，只有当非首次的时候，状态发生变更时会被调用，注意上
+面的任务类型 ~post~ ，周期函数的调用是异步发生的，会在下一个 tick 中赋值。
+** deactivate()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-deactivate
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/b340d57b5f1888ff1a0c6aae84d946a2f867f8b2][feat(add): keep-alive ctx.deactivate · gcclll/stb-vue-next@b340d57]]
+
+#+begin_src typescript
+sharedContext.deactivate = (vnode: VNode) => {
+  const instance = vnode.component!;
+  move(vnode, storageContainer, null, MoveType.LEAVE, parentSuspense);
+  queuePostRenderEffect(() => {
+    if (instance.da) {
+      invokeArrayFns(instance.da);
+    }
+    const vnodeHook = vnode.props && vnode.props.onVnodeUnmounted;
+    if (vnodeHook) {
+      invokeVNodeHook(vnodeHook, instance.parent, vnode);
+    }
+    instance.isDeactivated = true;
+  }, parentSuspense);
+};
+#+end_src
+
+如果看这里失活状态下组件是如何进行更新的？
+
+~storageContainer~ 是在 setup 中创建的一个空的 off-dom div 元素，这里等于是当组
+件失活时会将 keep-alive 先挂载到这个 off-dom div 上去.
+** unmount()
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-unmount
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/4ce0b9b43af304af28db7eae5d40211d3280459f][feat(add): keep-alive unmount · gcclll/stb-vue-next@4ce0b9b]]
+
+#+begin_src typescript
+// 对 renderer unmount 的一次封装
+function unmount(vnode: VNode) {
+  resetShapeFlag(vnode);
+  _unmount(vnode, instance, parentSuspense);
+}
+
+function resetShapeFlag(vnode: VNode) {
+  let shapeFlag = vnode.shapeFlag;
+  if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+    shapeFlag -= ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE;
+  }
+  if (shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
+    shapeFlag -= ShapeFlags.COMPONENT_KEPT_ALIVE;
+  }
+  vnode.shapeFlag = shapeFlag;
+}
+#+end_src
+** include & exclude props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-include-exclude
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/fdcc3060f9469256055d8dec39b6f46b3e6faa28][feat(add): keep-alive include & exclude props · gcclll/stb-vue-next@fdcc306]]
+
+主要增加两个函数实现，一个监听动作(~watch([include, exclude],...)~):
+
+#+begin_src typescript
+// 过滤掉缓存
+function pruneCache(filter?: (name: string) => boolean) {
+  cache.forEach((vnode, key) => {
+    const name = getComponentName(vnode.type as ConcreteComponent);
+    if (name && (!filter || !filter(name))) {
+      pruneCacheEntry(key);
+    }
+  });
+}
+
+function pruneCacheEntry(key: CacheKey) {
+  const cached = cache.get(key) as VNode;
+  if (!current || cached.type !== current.type) {
+    // 新增或节点类型发生变化，直接卸载掉老的
+    unmount(cached);
+  } else if (current) {
+    // 重置标记就可以了？
+    // 当前激活的实例不该再是 kept-alive
+    // 我们不能立即卸载但是稍后会进行卸载，所以这里先重置其标记
+    // 不能立即卸载？
+    // 是因为在 activate 和 deactivate 中的周期函数调用
+    // 是采用的 post 类型异步执行的缘故吗？
+    resetShapeFlag(current);
+  }
+  cache.delete(key);
+  keys.delete(key);
+}
+
+// 监听 include/exclude 属性变化
+watch(
+  () => [props.include, props.exclude],
+  ([include, exclude]) => {
+    // 支持三种类型
+    // 1. 字符串, 'a,b,c'
+    // 2. 正则表达式， /a|b|c/
+    // 3. 数组， ['a', 'b', 'c', /d|e/]
+    include && pruneCache((name) => matches(include, name));
+    exclude && pruneCache((name) => !matches(exclude, name));
+  },
+  { flush: "post", deep: true }
+);
+#+end_src
+
+*include* 指定需要缓存的组件名称
+
+*exclude* 指定不需要进行缓存的组件名称
+
+类型： ~String, RegExp, Array~
+** cache subtree
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-cache-subtree
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/efb757777be9f6c51a2fb1be56a33ee86fc42e43][feat(add): keep-alive cache subtree · gcclll/stb-vue-next@efb7577]]
+
+对  ~<keep-alive/>~ 的孩子节点🌲进行缓存。
+
+#+begin_src typescript
+// 在 render 之后缓存子树(subTree)
+let pendingCacheKey: CacheKey | null = null;
+const cacheSubtree = () => {
+  if (pendingCacheKey != null) {
+    cache.set(pendingCacheKey, getInnerChild(instance.subTree));
+  }
+};
+// 注册生命周期
+onMounted(cacheSubtree);
+onUpdated(cacheSubtree);
+
+onBeforeUnmount(() => {
+  cache.forEach((cached) => {
+    const { subTree, suspense } = instance;
+    const vnode = getInnerChild(subTree);
+    if (cached.type === vnode.type) {
+      // 有缓存的节点
+      // 当前实例会成为 keep-alive 的 unmount 一部分
+      resetShapeFlag(vnode);
+      // 但是在这里执行它的 deactivated 钩子函数
+      const da = vnode.component!.da;
+      da && queuePostRenderEffect(da, suspense);
+      return;
+    }
+    // 没有缓存的直接 unmount
+    unmount(cached);
+  });
+});
+#+end_src
+
+在 ~<keep-alive/>~ 卸载之前将已经缓存 ~deactivated~ 钩子函数推入队列等待执行，没
+有缓存的直接调用 ~unmount()~ 卸载掉。
+
+** setup() -> render 函数
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-setup-render
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/9b75803d90f6e285c063fbbf41042dc381de3cfe][feat(add): keep-alive return render function · gcclll/stb-vue-next@9b75803]]
+
+在 ~setupComponent()~ 中，最后调用 setup() 得到 setupResult ，最后会将这个
+setupResult 传递给 handleSetupResult() 去处理，返回结果，这里面当检测到
+setupResult 是个函数的时候，那么这个函数会被当做是 ~instance.render~ 函数处理。
+
+即，这里的 setupResult 是 ~<keep-alive/>~ 组件 children 的 render 函数。
+
+#+begin_src typescript
+function setup() {
+  // ...
+  return () => {
+    // 该函数解析出原始 VNode 节点返回
+    // 根据组件的执行流程，这个函数将会在 setupComponent() 中
+    // 执行 setup() 得到 setupResult ，传递给 handleSetupResult()
+    // 函数，这里面检测 setupResult 也就是这个匿名函数，如果它是函数
+    // 会直接被当做 render 函数处理(instance.render 或 instance.ssrRender)
+    // 结论就是，这个匿名函数是 render() 函数
+
+    pendingCacheKey = null;
+    if (!slots.default) {
+      // 组件支持默认插槽使用方式
+      return null;
+    }
+
+    const children = slots.default();
+    const rawVNode = children[0];
+    if (children.length > 1) {
+      // KeepAlive 组件只能包含一个组件作为 child
+      // 也就是说 ~<keep-alive><CompA/><CompB/></keep-alive/>~
+      // 是不合法的使用
+      current = null;
+      // warn...
+      return children;
+    } else if (
+      !isVNode(rawVNode) ||
+      (!(rawVNode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) &&
+        !(rawVNode.shapeFlag & ShapeFlags.SUSPENSE))
+    ) {
+      // 1. 非 VNode 类型节点
+      // 2. 既不是有状态组件(对象类型组件)也不是 Suspense 的时候
+      // 相反意味着，节点必须满足下面几种情况
+      // 1. 是 VNode 类型且是有状态组件(非函数式组件)
+      // 2. 或者是 VNode 类型且是Suspense 组件
+      current = null;
+      return rawVNode;
+    }
+
+    // 也就是说 keep-alive 只接受有状态组件或者 Suspense 作为唯一的 child
+    let vnode = getInnerChild(rawVNode);
+    const comp = vnode.type as ConcreteComponent;
+    const name = getComponentName(comp);
+    const { include, exclude, max } = props;
+
+    if (
+      // 无缓存的节点
+      (include && (!name || !matches(include, name))) ||
+      // 在不缓存的节点们之列
+      (exclude && name && matches(exclude, name))
+    ) {
+      current = vnode;
+      return rawVNode;
+    }
+
+    const key = vnode.key == null ? comp : vnode.key;
+    const cachedVNode = cache.get(key);
+
+    // 克隆一份如果它有被复用的话，因为我们即将修改它
+    if (vnode.el) {
+      vnode = cloneVNode(vnode);
+      if (rawVNode.shapeFlag & ShapeFlags.SUSPENSE) {
+        rawVNode.ssContent = vnode;
+      }
+    }
+
+    pendingCacheKey = key;
+
+    if (cachedVNode) {
+      vnode.el = cachedVNode.el;
+      vnode.component = cachedVNode.component;
+      if (vnode.transition) {
+        // 在 subTree 上递归更新 transition 钩子函数
+        setTransitionHooks(vnode, vnode.transition!);
+      }
+
+      // 避免 vnode 正在首次 mount
+      vnode.shapeFlag |= ShapeFlags.COMPONENT_KEPT_ALIVE;
+      // 标记 key 为最新的
+      keys.delete(key);
+      keys.add(key);
+    } else {
+      // 没有缓存的情况
+      keys.add(key);
+      // 删除最老的 entry，缓冲池已经满了，删除掉最老的那个
+      if (max && keys.size > parseInt(max as string, 10)) {
+        // 因为 Set 没有直接取指定位置元素的值
+        // 这里的目的是变相的取 Set 中第一个元素，即最早 add 的那个 key
+        // 如： new Set([1,2,3,4]) => keys.values() => <1,2,3,4>
+        // next() 得到迭代器下一个值 { value: 1, done: false }
+        // .value 得到第一个集合元素的值
+        pruneCacheEntry(keys.values().next().value);
+      }
+    }
+
+    // 避免 vnode 正在被卸载，在renderer unmount 中会检测
+    vnode.shapeFlag |= ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE;
+
+    current = vnode;
+
+    return rawVNode;
+  };
+}
+#+end_src
+
+最后返回的是 ~children[0]~ 节点。
+
+里面有个置位标识值得注意： ~ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE~
+
+这个作用是啥？
+
+1. ~unmount()~ 中调用 deactivate() 的条件
+
+   #+begin_src typescript
+   // keep-alive
+   if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+     (parentComponent!.ctx as KeepAliveContext).deactivate(vnode);
+     return;
+   }
+   #+end_src
+2. ~instance.update~ 的 effect 中触发 ~activated~ 周期函数的条件
+
+   #+begin_src typescript
+   // activated hook for keep-alive roots.
+   // #1742 activated hook must be accessed after first render
+   // since the hook may be injected by a child keep-alive
+   const { a } = instance;
+   if (a && initialVNode.shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+     queuePostRenderEffect(a, parentSuspense);
+   }
+   #+end_src
+** 测试
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive-tests
+:END:
+
+#+begin_src js
+// `/js/vue/tests/Suspense.js'
+require(process.env.BLOG_DIR_VUE + "/tests/KeepAlive.js");
+#+end_src
+
+#+RESULTS:
+: undefined
+:
+: Cannot read property '_vnode' of undefined
+
+#+begin_quote
+⚠ 有错误，待完成。。。vue-next 测试见最后一章节[[#testing][《测试》]]
+#+end_quote
 
 * 测试
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: testing
+:END:
 
 #+begin_export html
 <p style="font-weight:800;font-size:28px;">Teleport Testing...</p>
@@ -2594,6 +3275,9 @@ after
 <div id="WTYoDwLIkv"></div>
 <script src="/js/vue/tests/WTYoDwLIkv.js"></script>
 
+<p style="font-weight:800;font-size:28px;">KeepAlive Testing...</p>
+<div id="r9KorlFxQ9"></div>
+<script src="/js/vue/tests/r9KorlFxQ9.js"></script>
 #+end_export
 
 

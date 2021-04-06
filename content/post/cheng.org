@@ -12,6 +12,8 @@
 * 优质博文
 1. [[https://imququ.com/post/series.html][Jerry Qu, HTTP/HTTP2相关内容丰富的博客]]
 2. [[https://segmentfault.com/a/1190000037435824][浏览器是如何工作的：Chrome V8让你更懂JavaScript - SegmentFault 思否]]
+3. [[https://zhuanlan.zhihu.com/p/347492556][程序员经常看的开源月刊《HelloGitHub》第 58 期 - 知乎]]
+
 * 数学
 
 ** 数学符号大全

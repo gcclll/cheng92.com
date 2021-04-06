@@ -1524,6 +1524,9 @@ var VueRuntimeTest = (function (exports) {
           if (n1 == null) {
               mountSuspense(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized, rendererInternals);
           }
+          else {
+              patchSuspense(n1, n2, container, anchor, parentComponent, isSVG, rendererInternals);
+          }
       },
       hydrate: hydrateSuspense,
       create: createSuspenseBoundary
@@ -1548,6 +1551,111 @@ var VueRuntimeTest = (function (exports) {
       else {
           // Suspense has no async deps. Just resolve.
           suspense.resolve();
+      }
+  }
+  function patchSuspense(n1, n2, container, anchor, parentComponent, isSVG, { p: patch, um: unmount, o: { createElement } }) {
+      const suspense = (n2.suspense = n1.suspense);
+      suspense.vnode = n2;
+      n2.el = n1.el;
+      const newBranch = n2.ssContent;
+      const newFallback = n2.ssFallback;
+      const { activeBranch, pendingBranch, isInFallback, isHydrating } = suspense;
+      if (pendingBranch) {
+          suspense.pendingBranch = newBranch;
+          if (isSameVNodeType(newBranch, pendingBranch)) {
+              // same root type but content may have changed.
+              patch(pendingBranch, newBranch, suspense.hiddenContainer, null, parentComponent, suspense, isSVG);
+              if (suspense.deps <= 0) {
+                  suspense.resolve();
+              }
+              else if (isInFallback) {
+                  patch(activeBranch, newFallback, container, anchor, parentComponent, null, // fallback tree will not have suspense context
+                  isSVG);
+                  setActiveBranch(suspense, newFallback);
+              }
+          }
+          else {
+              // toggled before pending tree is resolved
+              suspense.pendingId++;
+              if (isHydrating) {
+                  // if toggled before hydration is finished, the current DOM tree is
+                  // no longer valid. set it as the active branch so it will be unmounted
+                  // when resolved
+                  suspense.isHydrating = false;
+                  suspense.activeBranch = pendingBranch;
+              }
+              else {
+                  unmount(pendingBranch, parentComponent, suspense);
+              }
+              // increment pending ID. this is used to invalidate async callbacks
+              // reset suspense state
+              suspense.deps = 0;
+              // discard effects from pending branch
+              suspense.effects.length = 0;
+              // discard previous container
+              suspense.hiddenContainer = createElement('div');
+              if (isInFallback) {
+                  // already in fallback state
+                  patch(null, newBranch, suspense.hiddenContainer, null, parentComponent, suspense, isSVG);
+                  if (suspense.deps <= 0) {
+                      suspense.resolve();
+                  }
+                  else {
+                      patch(activeBranch, newFallback, container, anchor, parentComponent, null, // fallback tree will not have suspense context
+                      isSVG);
+                      setActiveBranch(suspense, newFallback);
+                  }
+              }
+              else if (activeBranch && isSameVNodeType(newBranch, activeBranch)) {
+                  // toggled "back" to current active branch
+                  patch(activeBranch, newBranch, container, anchor, parentComponent, suspense, isSVG);
+                  // force resolve
+                  suspense.resolve(true);
+              }
+              else {
+                  // switched to a 3rd branch
+                  patch(null, newBranch, suspense.hiddenContainer, null, parentComponent, suspense, isSVG);
+                  if (suspense.deps <= 0) {
+                      suspense.resolve();
+                  }
+              }
+          }
+      }
+      else {
+          if (activeBranch && isSameVNodeType(newBranch, activeBranch)) {
+              // root did not change, just normal patch
+              patch(activeBranch, newBranch, container, anchor, parentComponent, suspense, isSVG);
+              setActiveBranch(suspense, newBranch);
+          }
+          else {
+              // root node toggled
+              // invoke @pending event
+              const onPending = n2.props && n2.props.onPending;
+              if (isFunction(onPending)) {
+                  onPending();
+              }
+              // mount pending branch in off-dom container
+              suspense.pendingBranch = newBranch;
+              suspense.pendingId++;
+              patch(null, newBranch, suspense.hiddenContainer, null, parentComponent, suspense, isSVG);
+              if (suspense.deps <= 0) {
+                  // incoming branch has no async deps, resolve now.
+                  suspense.resolve();
+              }
+              else {
+                  const { timeout, pendingId } = suspense;
+                  if (timeout > 0) {
+                      setTimeout(() => {
+                          if (suspense.pendingId === pendingId) {
+                              suspense.fallback(newFallback);
+                          }
+                      }, timeout);
+                  }
+                  else if (timeout === 0) {
+                      suspense.fallback(newFallback);
+                  }
+              }
+          }
       }
   }
   function createSuspenseBoundary(vnode, parent, parentComponent, container, hiddenContainer, anchor, isSVG, optimized, rendererInternals, isHydrating = false) {
@@ -1646,17 +1754,99 @@ var VueRuntimeTest = (function (exports) {
                   onResolve();
               }
           },
-          fallback() { },
+          fallback(fallbackVNode) {
+              if (!suspense.pendingBranch) {
+                  return;
+              }
+              const { vnode, activeBranch, parentComponent, container, isSVG } = suspense;
+              const onFallback = vnode.props && vnode.props.onFallback;
+              if (isFunction(onFallback)) {
+                  onFallback();
+              }
+              const anchor = next(activeBranch);
+              const mountFallback = () => {
+                  if (!suspense.isInFallback) {
+                      return;
+                  }
+                  // 加载 fallback 分支树
+                  patch(null, fallbackVNode, container, anchor, parentComponent, null, // fallback 不会有 suspense 内容
+                  isSVG);
+                  setActiveBranch(suspense, fallbackVNode);
+              };
+              const delayEnter = fallbackVNode.transition && fallbackVNode.transition.mode === 'out-in';
+              if (delayEnter) {
+                  activeBranch.transition.afterLeave = mountFallback;
+              }
+              // unmount current active branch
+              unmount(activeBranch, parentComponent, null, // no suspense so unmount hooks fire now
+              true // shouldRemove
+              );
+              suspense.isInFallback = true;
+              if (!delayEnter) {
+                  mountFallback();
+              }
+          },
           move(container, anchor, type) {
               suspense.activeBranch &&
                   move(suspense.activeBranch, container, anchor, type);
               suspense.container = container;
           },
           next() {
-              return {};
+              return suspense.activeBranch && next(suspense.activeBranch);
           },
-          registerDep() { },
-          unmount() { }
+          registerDep(instance, setupRenderEffect) {
+              const isInPendingSuspense = !!suspense.pendingBranch;
+              if (isInPendingSuspense) {
+                  suspense.deps++;
+              }
+              const hydratedEl = instance.vnode.el;
+              // 捕获 setup 执行的异常，或接受执行的结果
+              instance
+                  .asyncDep.catch(err => {
+                  handleError(err, instance, 0 /* SETUP_FUNCTION */);
+              })
+                  .then(asyncSetupResult => {
+                  // 当 setup() 的 promise 状态变更之后重试
+                  // 因为在解析之前组件可能已经被卸载了
+                  if (instance.isUnmounted ||
+                      suspense.isUnmounted ||
+                      suspense.pendingId !== instance.suspenseId) {
+                      return;
+                  }
+                  // 从该组件开始重试，状态标记为已经完成
+                  instance.asyncResolved = true;
+                  const { vnode } = instance;
+                  handleSetupResult(instance, asyncSetupResult);
+                  if (hydratedEl) {
+                      // 虚拟节点可能在 async dep 状态完成之前被某个更新替换掉了
+                      vnode.el = hydratedEl;
+                  }
+                  const placeHolder = !hydratedEl && instance.subTree.el;
+                  setupRenderEffect(instance, vnode, 
+                  // 组件可能在 resolve 之前被移除了
+                  // 如果这个不是一个 hydration，instance.subTree 将会是个注释
+                  // 占位节点
+                  parentNode(hydratedEl || instance.subTree.el), hydratedEl ? null : next(instance.subTree), suspense, isSVG, optimized);
+                  if (placeHolder) {
+                      remove(placeHolder);
+                  }
+                  updateHOCHostEl(instance, vnode.el);
+                  // only decrease deps count if suspense is not already resolved
+                  // 没有任何依赖了就开始解析 Suspense
+                  if (isInPendingSuspense && --suspense.deps === 0) {
+                      suspense.resolve();
+                  }
+              });
+          },
+          unmount(parentSuspense, doRemove) {
+              suspense.isUnmounted = true;
+              if (suspense.activeBranch) {
+                  unmount(suspense.activeBranch, parentComponent, parentSuspense, doRemove);
+              }
+              if (suspense.pendingBranch) {
+                  unmount(suspense.pendingBranch, parentComponent, parentSuspense, doRemove);
+              }
+          }
       };
       return suspense;
   }
@@ -1716,6 +1906,303 @@ var VueRuntimeTest = (function (exports) {
           parentComponent.vnode.el = el;
           updateHOCHostEl(parentComponent, el);
       }
+  }
+
+  function injectHook(type, hook, target = currentInstance, prepend = false) {
+      if (target) {
+          const hooks = target[type] || (target[type] = []);
+          // 将 hook 的执行封装成一个 error handling warpper 函数，并且缓存到 hook.__weh
+          // 上，这样在调度器里面调用的时候可以进行去重，因为 scheduler 里面执行的时候
+          // 有去重操作，这里的 __weh = 'with error handling'
+          const wrappedHook = hook.__weh ||
+              (hook.__weh = (...args) => {
+                  if (target.isUnmounted) {
+                      return;
+                  }
+                  // 在所有的声明周期函数中都 disable tracking
+                  // 因为它们有可能在 effects 中被调用
+                  pauseTracking();
+                  // 在 hook 执行期间设置 currentInstance = targt
+                  // 假设 hook 没有同步地触发其他 hooks，即在一个 hook 里面同步调用
+                  // 另一个声明周期函数？
+                  setCurrentInstance(target);
+                  const res = callWithAsyncErrorHandling(hook, target, type, args);
+                  setCurrentInstance(null);
+                  resetTracking();
+                  return res;
+              });
+          prepend ? hooks.unshift(wrappedHook) : hooks.push(wrappedHook);
+          return wrappedHook;
+      }
+      else {
+          // xxx -> onXxx
+          const apiName = toHandlerKey(ErrorTypeStrings[type].replace(/ hook$/, ''));
+          warn(`${apiName} is called when there is no active component instance to be ` +
+              `associated with. ` +
+              `Lifecycle injection APIs can only be used during execution of setup().` +
+              ( ` If you are using async setup(), make sure to register lifecycle ` +
+                      `hooks before the first await statement.`
+                  ));
+      }
+  }
+  const createHook = (lifecycle) => (hook, target = currentInstance) => !isInSSRComponentSetup && injectHook(lifecycle, hook, target);
+  const onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
+  const onMounted = createHook("m" /* MOUNTED */);
+  const onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
+  const onUpdated = createHook("u" /* UPDATED */);
+  const onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
+  const onUnmounted = createHook("um" /* UNMOUNTED */);
+  const onRenderTriggered = createHook("rtg" /* RENDER_TRIGGERED */);
+  const onRenderTracked = createHook("rtc" /* RENDER_TRACKED */);
+  const onErrorCaptured = (hook, target = currentInstance) => {
+      injectHook("ec" /* ERROR_CAPTURED */, hook, target);
+  };
+
+  function setTransitionHooks(vnode, hooks) {
+      if (vnode.shapeFlag & 6 /* COMPONENT */ && vnode.component) {
+          setTransitionHooks(vnode.component.subTree, hooks);
+      }
+      else if ( vnode.shapeFlag & 128 /* SUSPENSE */) {
+          vnode.ssContent.transition = hooks.clone(vnode.ssContent);
+          vnode.ssFallback.transition = hooks.clone(vnode.ssFallback);
+      }
+      else {
+          vnode.transition = hooks;
+      }
+  }
+
+  const isKeepAlive = (vnode) => vnode.type.__isKeepAlive;
+  const KeepAliveImpl = {
+      name: `KeepAlive`,
+      __isKeepAlive: true,
+      inheritRef: true,
+      props: {
+          include: [String, RegExp, Array],
+          exclude: [String, RegExp, Array],
+          max: [String, Number]
+      },
+      setup(props, { slots }) {
+          const cache = new Map();
+          const keys = new Set();
+          let current = null;
+          const instance = getCurrentInstance();
+          const parentSuspense = instance.suspense;
+          const sharedContext = instance.ctx;
+          const { renderer: { p: patch, m: move, um: _unmount, o: { createElement } } } = sharedContext;
+          const storageContainer = createElement('div');
+          sharedContext.activate = (vnode, container, anchor, isSVG, optimized) => {
+              const instance = vnode.component;
+              move(vnode, container, anchor, 0 /* ENTER */, parentSuspense);
+              // props 可能发生变化，这里执行一次 patch 操作
+              patch(instance.vnode, vnode, container, anchor, instance, parentSuspense, isSVG, optimized);
+              queuePostRenderEffect(() => {
+                  instance.isDeactivated = false;
+                  if (instance.a) {
+                      // activated 周期函数
+                      invokeArrayFns(instance.a);
+                  }
+                  const vnodeHook = vnode.props && vnode.props.onVnodeMounted;
+                  if (vnodeHook) {
+                      invokeVNodeHook(vnodeHook, instance.parent, vnode);
+                  }
+              }, parentSuspense);
+          };
+          sharedContext.deactivate = (vnode) => {
+              const instance = vnode.component;
+              move(vnode, storageContainer, null, 1 /* LEAVE */, parentSuspense);
+              queuePostRenderEffect(() => {
+                  if (instance.da) {
+                      invokeArrayFns(instance.da);
+                  }
+                  const vnodeHook = vnode.props && vnode.props.onVnodeUnmounted;
+                  if (vnodeHook) {
+                      invokeVNodeHook(vnodeHook, instance.parent, vnode);
+                  }
+                  instance.isDeactivated = true;
+              }, parentSuspense);
+          };
+          // 对 renderer unmount 的一次封装
+          function unmount(vnode) {
+              resetShapeFlag(vnode);
+              _unmount(vnode, instance, parentSuspense);
+          }
+          // 过滤掉缓存
+          function pruneCache(filter) {
+              cache.forEach((vnode, key) => {
+                  const name = getComponentName(vnode.type);
+                  if (name && (!filter || !filter(name))) {
+                      pruneCacheEntry(key);
+                  }
+              });
+          }
+          function pruneCacheEntry(key) {
+              const cached = cache.get(key);
+              if (!current || cached.type !== current.type) {
+                  // 新增或节点类型发生变化，直接卸载掉老的
+                  unmount(cached);
+              }
+              else if (current) {
+                  // 重置标记就可以了？
+                  // 当前激活的实例不该再是 kept-alive
+                  // 我们不能立即卸载但是稍后会进行卸载，所以这里先重置其标记
+                  // 不能立即卸载？
+                  // 是因为在 activate 和 deactivate 中的周期函数调用
+                  // 是采用的 post 类型异步执行的缘故吗？
+                  resetShapeFlag(current);
+              }
+              cache.delete(key);
+              keys.delete(key);
+          }
+          // 监听 include/exclude 属性变化
+          watch(() => [props.include, props.exclude], ([include, exclude]) => {
+              // 支持三种类型
+              // 1. 字符串, 'a,b,c'
+              // 2. 正则表达式， /a|b|c/
+              // 3. 数组， ['a', 'b', 'c', /d/, /e|f/]
+              include && pruneCache(name => matches(include, name));
+              exclude && pruneCache(name => !matches(exclude, name));
+          }, { flush: 'post', deep: true });
+          // 在 render 之后缓存子树(subTree)
+          let pendingCacheKey = null;
+          const cacheSubtree = () => {
+              if (pendingCacheKey != null) {
+                  cache.set(pendingCacheKey, getInnerChild(instance.subTree));
+              }
+          };
+          // 注册生命周期
+          onMounted(cacheSubtree);
+          onUpdated(cacheSubtree);
+          onBeforeUnmount(() => {
+              cache.forEach(cached => {
+                  const { subTree, suspense } = instance;
+                  const vnode = getInnerChild(subTree);
+                  if (cached.type === vnode.type) {
+                      // 有缓存的节点
+                      // 当前实例会成为 keep-alive 的 unmount 一部分
+                      resetShapeFlag(vnode);
+                      // 但是在这里执行它的 deactivated 钩子函数
+                      const da = vnode.component.da;
+                      da && queuePostRenderEffect(da, suspense);
+                      return;
+                  }
+                  // 没有缓存的直接 unmount
+                  unmount(cached);
+              });
+          });
+          return () => {
+              // 根据组件的执行流程，这个函数将会在 setupComponent() 中
+              // 执行 setup() 得到 setupResult ，传递给 handleSetupResult()
+              // 函数，这里面检测 setupResult 也就是这个匿名函数，如果它是函数
+              // 会直接被当做 render 函数处理(instance.render 或 instance.ssrRender)
+              // 结论就是，这个匿名函数是 render() 函数
+              pendingCacheKey = null;
+              if (!slots.default) {
+                  // 组件支持默认插槽使用方式
+                  return null;
+              }
+              const children = slots.default();
+              const rawVNode = children[0];
+              if (children.length > 1) {
+                  // KeepAlive 组件只能包含一个组件作为 child
+                  // 也就是说 ~<keep-alive><CompA/><CompB/></keep-alive/>~
+                  // 是不合法的使用
+                  current = null;
+                  // warn...
+                  return children;
+              }
+              else if (!isVNode(rawVNode) ||
+                  (!(rawVNode.shapeFlag & 4 /* STATEFUL_COMPONENT */) &&
+                      !(rawVNode.shapeFlag & 128 /* SUSPENSE */))) {
+                  // 1. 非 VNode 类型节点
+                  // 2. 既不是有状态组件(对象类型组件)也不是 Suspense 的时候
+                  // 相反意味着，节点必须满足下面几种情况
+                  // 1. 是 VNode 类型且是有状态组件(非函数式组件)
+                  // 2. 或者是 VNode 类型且是Suspense 组件
+                  current = null;
+                  return rawVNode;
+              }
+              // 也就是说 keep-alive 只接受有状态组件或者 Suspense 作为唯一的 child
+              let vnode = getInnerChild(rawVNode);
+              const comp = vnode.type;
+              const name = getComponentName(comp);
+              const { include, exclude, max } = props;
+              if (
+              // 无缓存的节点
+              (include && (!name || !matches(include, name))) ||
+                  // 在不缓存的节点们之列
+                  (exclude && name && matches(exclude, name))) {
+                  current = vnode;
+                  return rawVNode;
+              }
+              const key = vnode.key == null ? comp : vnode.key;
+              const cachedVNode = cache.get(key);
+              // 克隆一份如果它有被复用的话，因为我们即将修改它
+              if (vnode.el) {
+                  vnode = cloneVNode(vnode);
+                  if (rawVNode.shapeFlag & 128 /* SUSPENSE */) {
+                      rawVNode.ssContent = vnode;
+                  }
+              }
+              pendingCacheKey = key;
+              if (cachedVNode) {
+                  vnode.el = cachedVNode.el;
+                  vnode.component = cachedVNode.component;
+                  if (vnode.transition) {
+                      // 在 subTree 上递归更新 transition 钩子函数
+                      setTransitionHooks(vnode, vnode.transition);
+                  }
+                  // 避免 vnode 正在首次 mount
+                  vnode.shapeFlag |= 512 /* COMPONENT_KEPT_ALIVE */;
+                  // 标记 key 为最新的
+                  keys.delete(key);
+                  keys.add(key);
+              }
+              else {
+                  // 没有缓存的情况
+                  keys.add(key);
+                  // 删除最老的 entry，缓冲池已经满了，删除掉最老的那个
+                  if (max && keys.size > parseInt(max, 10)) {
+                      // 因为 Set 没有直接取指定位置元素的值
+                      // 这里的目的是变相的取 Set 中第一个元素，即最早 add 的那个 key
+                      // 如： new Set([1,2,3,4]) => keys.values() => <1,2,3,4>
+                      // next() 得到迭代器下一个值 { value: 1, done: false }
+                      // .value 得到第一个集合元素的值
+                      pruneCacheEntry(keys.values().next().value);
+                  }
+              }
+              // 避免 vnode 正在被卸载，在renderer unmount 中会检测
+              vnode.shapeFlag |= 256 /* COMPONENT_SHOULD_KEEP_ALIVE */;
+              current = vnode;
+              return rawVNode;
+          };
+      }
+  };
+  const KeepAlive = KeepAliveImpl;
+  function matches(pattern, name) {
+      if (isArray(pattern)) {
+          return pattern.some((p) => matches(p, name));
+      }
+      else if (isString(pattern)) {
+          return pattern.split(',').indexOf(name) > -1;
+      }
+      else if (pattern.test) {
+          return pattern.test(name);
+      }
+      /* istanbul ignore next */
+      return false;
+  }
+  function resetShapeFlag(vnode) {
+      let shapeFlag = vnode.shapeFlag;
+      if (shapeFlag & 256 /* COMPONENT_SHOULD_KEEP_ALIVE */) {
+          shapeFlag -= 256 /* COMPONENT_SHOULD_KEEP_ALIVE */;
+      }
+      if (shapeFlag & 512 /* COMPONENT_KEPT_ALIVE */) {
+          shapeFlag -= 512 /* COMPONENT_KEPT_ALIVE */;
+      }
+      vnode.shapeFlag = shapeFlag;
+  }
+  function getInnerChild(vnode) {
+      return vnode.shapeFlag & 128 /* SUSPENSE */ ? vnode.ssContent : vnode;
   }
 
   const isBuiltInDirective = /*#__PURE__*/ makeMap('bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text');
@@ -2037,7 +2524,6 @@ var VueRuntimeTest = (function (exports) {
       // 9. processElement, 处理元素
       const processElement = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
           isSVG = isSVG || n2.type === 'svg';
-          console.log('process element');
           if (n1 == null) {
               // no old
               mountElement(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
@@ -2052,10 +2538,8 @@ var VueRuntimeTest = (function (exports) {
           let el;
           let vnodeHook;
           const { type, shapeFlag, patchFlag, props } = vnode;
-          console.log('mount elment');
           {
               el = vnode.el = hostCreateElement(vnode.type, isSVG, props && props.is);
-              console.log({ shapeFlag });
               // 在处理 props 之前先 mount children ，因为
               // 有些 props 可能会依赖于 child 是否已经渲染出来
               // 比如： `<select value>`
@@ -2118,7 +2602,6 @@ var VueRuntimeTest = (function (exports) {
           // TODO HRM updating
           // patch props 处理
           if (patchFlag > 0) {
-              console.log('patch element props');
               // text
               // This flag is matched when the element has only dynamic text children.
               if (patchFlag & 1 /* TEXT */) {
@@ -2220,7 +2703,10 @@ var VueRuntimeTest = (function (exports) {
       const processComponent = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
           if (n1 == null) {
               // mount
-              {
+              if (n2.shapeFlag & 512 /* COMPONENT_KEPT_ALIVE */) {
+                  parentComponent.ctx.activate(n2, container, anchor, isSVG, optimized);
+              }
+              else {
                   mountComponent(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
               }
           }
@@ -2231,8 +2717,10 @@ var VueRuntimeTest = (function (exports) {
       // 18. mountComponent
       const mountComponent = (initialVNode, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
           const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent, parentSuspense));
+          if (isKeepAlive(initialVNode)) {
+              instance.ctx.renderer = internals;
+          }
           setupComponent(instance);
-          console.log('mount component');
           // setup() 是个异步函数，返回了 promise ，在 setupComponent
           // 中会将 setup 执行结果赋值给 instance.asyncDep，即 SUSPENSE 处理
           if ( instance.asyncDep) {
@@ -2252,10 +2740,8 @@ var VueRuntimeTest = (function (exports) {
       };
       // 19. updateComponent
       const updateComponent = (n1, n2, optimized) => {
-          console.log('update component');
           const instance = (n2.component = n1.component);
           if (shouldUpdateComponent(n1, n2, optimized)) {
-              console.log('should update component....');
               if (
                   instance.asyncDep && // async setup
                   instance.asyncResolved) {
@@ -2265,7 +2751,6 @@ var VueRuntimeTest = (function (exports) {
                   return;
               }
               else {
-                  console.log('normal update');
                   // 正常更新
                   instance.next = n2;
                   // 考虑到 child 组件可能正在队列中排队，移除它避免
@@ -2280,7 +2765,6 @@ var VueRuntimeTest = (function (exports) {
               return;
           }
           else {
-              console.log('should not update component....');
               // 没有更新，仅用 old child 的属性覆盖 new child
               n2.component = n1.component;
               n2.el = n1.el;
@@ -2290,7 +2774,6 @@ var VueRuntimeTest = (function (exports) {
       // 20. setupRenderEffect
       const setupRenderEffect = (instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized) => {
           instance.update = effect(function componentEffect() {
-              console.log('update effect');
               // 监听更新
               if (!instance.isMounted) {
                   // 还没加载完成，可能是第一次 mount 操作
@@ -2310,7 +2793,6 @@ var VueRuntimeTest = (function (exports) {
                   const subTree = (instance.subTree = renderComponentRoot(instance));
                   if (el && hydrateNode) ;
                   else {
-                      console.log('patch component');
                       patch(null, subTree, container, anchor, instance, parentSuspense, isSVG);
                       initialVNode.el = subTree.el;
                   }
@@ -2341,7 +2823,6 @@ var VueRuntimeTest = (function (exports) {
               else {
                   // updateComponent
                   // 当组件自身的状态或父组件调用 processComponent 时触发
-                  console.log('component update');
                   let { next, bu, u, parent, vnode } = instance;
                   let originNext = next;
                   let vnodeHook;
@@ -2393,7 +2874,6 @@ var VueRuntimeTest = (function (exports) {
       };
       // 21. updateComponentPreRender
       const updateComponentPreRender = (instance, nextVNode, optimized) => {
-          console.log('update comp pre render');
           nextVNode.component = instance;
           const prevProps = instance.vnode.props;
           instance.vnode = nextVNode;
@@ -2688,16 +3168,13 @@ var VueRuntimeTest = (function (exports) {
       // 25. move， 交换操作
       const move = (vnode, container, anchor, moveType, parentSuspense = null) => {
           const { el, shapeFlag, type } = vnode;
-          console.log('moving...');
           // COMPONENT
           if (shapeFlag & 6 /* COMPONENT */) {
-              console.log('move component');
               move(vnode.component.subTree, container, anchor, moveType);
               return;
           }
           // SUSPENSE
           if ( shapeFlag & 128 /* SUSPENSE */) {
-              console.log('move suspense');
               vnode.suspense.move(container, anchor, moveType);
               return;
           }
@@ -2705,11 +3182,9 @@ var VueRuntimeTest = (function (exports) {
           // TODO Fragment
           // Static
           if (type === Static) {
-              console.log('move static');
               moveStaticNode(vnode, container, anchor);
           }
           {
-              console.log('move host insert');
               // 目前只实现普通元素的逻辑
               hostInsert(el, container, anchor);
           }
@@ -2718,7 +3193,11 @@ var VueRuntimeTest = (function (exports) {
       const unmount = (vnode, parentComponent, parentSuspense, doRemove = false, optimized = false) => {
           const { type, props, ref, children, dynamicChildren, shapeFlag, patchFlag, dirs } = vnode;
           // TODO unset ref
-          // TODO keep-alive
+          // keep-alive
+          if (shapeFlag & 256 /* COMPONENT_SHOULD_KEEP_ALIVE */) {
+              parentComponent.ctx.deactivate(vnode);
+              return;
+          }
           // TODO 执行 onVnodeBeforeUnmount hook
           if (shapeFlag & 6 /* COMPONENT */) {
               // unmount component
@@ -4798,56 +5277,6 @@ var VueRuntimeTest = (function (exports) {
       return value;
   }
 
-  function injectHook(type, hook, target = currentInstance, prepend = false) {
-      if (target) {
-          const hooks = target[type] || (target[type] = []);
-          // 将 hook 的执行封装成一个 error handling warpper 函数，并且缓存到 hook.__weh
-          // 上，这样在调度器里面调用的时候可以进行去重，因为 scheduler 里面执行的时候
-          // 有去重操作，这里的 __weh = 'with error handling'
-          const wrappedHook = hook.__weh ||
-              (hook.__weh = (...args) => {
-                  if (target.isUnmounted) {
-                      return;
-                  }
-                  // 在所有的声明周期函数中都 disable tracking
-                  // 因为它们有可能在 effects 中被调用
-                  pauseTracking();
-                  // 在 hook 执行期间设置 currentInstance = targt
-                  // 假设 hook 没有同步地触发其他 hooks，即在一个 hook 里面同步调用
-                  // 另一个声明周期函数？
-                  setCurrentInstance(target);
-                  const res = callWithAsyncErrorHandling(hook, target, type, args);
-                  setCurrentInstance(null);
-                  resetTracking();
-                  return res;
-              });
-          prepend ? hooks.unshift(wrappedHook) : hooks.push(wrappedHook);
-          return wrappedHook;
-      }
-      else {
-          // xxx -> onXxx
-          const apiName = toHandlerKey(ErrorTypeStrings[type].replace(/ hook$/, ''));
-          warn(`${apiName} is called when there is no active component instance to be ` +
-              `associated with. ` +
-              `Lifecycle injection APIs can only be used during execution of setup().` +
-              ( ` If you are using async setup(), make sure to register lifecycle ` +
-                      `hooks before the first await statement.`
-                  ));
-      }
-  }
-  const createHook = (lifecycle) => (hook, target = currentInstance) => !isInSSRComponentSetup && injectHook(lifecycle, hook, target);
-  const onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
-  const onMounted = createHook("m" /* MOUNTED */);
-  const onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
-  const onUpdated = createHook("u" /* UPDATED */);
-  const onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
-  const onUnmounted = createHook("um" /* UNMOUNTED */);
-  const onRenderTriggered = createHook("rtg" /* RENDER_TRIGGERED */);
-  const onRenderTracked = createHook("rtc" /* RENDER_TRACKED */);
-  const onErrorCaptured = (hook, target = currentInstance) => {
-      injectHook("ec" /* ERROR_CAPTURED */, hook, target);
-  };
-
   function provide(key, value) {
       if (!currentInstance) {
           {
@@ -5340,6 +5769,7 @@ var VueRuntimeTest = (function (exports) {
 
   exports.Comment = Comment;
   exports.Fragment = Fragment;
+  exports.KeepAlive = KeepAlive;
   exports.Static = Static;
   exports.Suspense = Suspense;
   exports.Teleport = Teleport;

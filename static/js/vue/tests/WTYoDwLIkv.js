@@ -11,12 +11,17 @@ var app_WTYoDwLIkv = (function () {
 
   const deps = [];
 
-  const Async = defineAsyncComponent({
-    render() {
-      return h("div", "async");
+  const Async = defineComponent({
+    setup() {
+      const p = new Promise((resolve) => {
+        setTimeout(() => resolve(() => h("div", "async")), 2000);
+      });
+      // deps.push(p.then(() => Promise.resolve()));
+      return p;
     },
   });
-  const Comp = {
+
+  const Comp = defineComponent({
     setup() {
       return () =>
         h(Suspense, null, {
@@ -24,29 +29,23 @@ var app_WTYoDwLIkv = (function () {
           fallback: h("div", "fallback"),
         });
     },
+  });
+
+  const CompA = {
+    // setup() {
+    //   return () => h("div", "comp a");
+    // },
+    setup() {
+      return () => h("el-button", "el button");
+    },
   };
   const Root = defineComponent({
     setup() {
-      return () => h("div", null, Comp);
+      console.log("root setup...");
+      return () => h("div", { id: "root" }, [CompA]);
     },
   });
   const app = createApp(Root);
 
-  app.mount("#WTYoDwLIkv");
-
-  // 声明异步组件
-  function defineAsyncComponent(comp, delay = 0) {
-    return {
-      setup(props, { slots }) {
-        const p = new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(() => h(comp, props, slots));
-          }, delay);
-        });
-
-        deps.push(p.then(() => Promise.resolve()));
-        return p;
-      },
-    };
-  }
+  app.use(ElementPlus).mount("#WTYoDwLIkv");
 })();
