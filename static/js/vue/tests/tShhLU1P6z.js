@@ -6,7 +6,8 @@ var app_tShhLU1P6z = (function () {
       `<p><el-button type="primary" @click="count++">测试++</el-button>: {{count}}</p>` +
       `<p><el-button @click="add">新增</el-button>` +
       `<el-button @click="del">删除</el-button>` +
-      `<el-button @click="insert">插入</el-button></p>` +
+      `<el-button @click="insert">插入</el-button>` +
+      `<el-button @click="modify">修改</el-button></p>` +
       `<p>{{nums.join(',')}}</p>` +
       `<ul><li v-for="n in nums" :key="n">No. = {{ n }}</li></ul>`,
     mounted() {
@@ -25,11 +26,13 @@ var app_tShhLU1P6z = (function () {
 
       const nums = reactive([1, 3, 5, 8]);
       const random = (max = nums.length) => Math.floor(Math.random() * max);
+      const randIdx = () => random(nums.length - 1);
       const add = () => nums.push(random(100));
-      const del = () => nums.splice(random(nums.length - 1), 1);
-      const insert = () => nums.splice(random(nums.length - 1), 1, random(100));
+      const del = () => nums.splice(randIdx(), 1);
+      const insert = () => nums.splice(randIdx(), 1, random(100));
+      const modify = () => (nums[randIdx()] = random(50));
 
-      return { count, nums, add, del, insert };
+      return { count, nums, add, del, insert, modify };
     },
   });
   app.use(ElementPlus).mount("#" + id);
