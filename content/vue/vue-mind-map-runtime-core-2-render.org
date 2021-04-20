@@ -2492,6 +2492,10 @@ const patchUnkeyedChildren = (
 
 
 * 测试
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test
+:END:
 
 #+begin_export html
 <div id="visual"></div>
