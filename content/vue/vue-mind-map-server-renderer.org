@@ -1,0 +1,61 @@
+#+TITLE: Vue3 源码头脑风暴之 9 ☞ server-renderer
+#+DATE: <2021-04-20 14:45:52>
+#+TAGS[]: vue, vue3, server-renderer, ssr
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink inlineimages
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/runtime-dom.global.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+* buffer
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: buffer
+:END:
+
+#+begin_src typescript
+export function createBuffer() {
+  let appendable = false
+  const buffer: SSRBuffer = []
+
+  return {
+    getBuffer(): SSRBuffer {
+      // Return static buffer and await on items during unroll stage
+      return buffer
+    },
+    push(item: SSRBufferItem) {
+      const isStringItem = isString(item)
+      if (appendable && isStringItem) {
+        buffer[buffer.length - 1] += item as string
+      } else {
+        buffer.push(item)
+      }
+      appendable = isStringItem
+
+      if (isPromise(item) || (isArray(item) && item.hasAsync)) {
+        // promise, or child buffer with async, mark as async.
+        // this allows skipping unnecessary await ticks during unroll stage
+        // 标记为异步 buffer
+        buffer.hasAsync = true
+      }
+    }
+  }
+}
+#+end_src

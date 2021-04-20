@@ -16,7 +16,7 @@ var app_r9KorlFxQ9 = (function () {
     watch,
   } = Vue;
 
-  const logs = reactive([]);
+  let logs = reactive([]);
 
   const One = defineComponent({
     setup() {
@@ -104,6 +104,15 @@ var app_r9KorlFxQ9 = (function () {
       const insRef = ref(null);
       return h("div", [
         h(Log),
+        h(
+          "button",
+          {
+            onClick: () =>
+              (viewRef.value = viewRef.value === "one" ? "two" : "one"),
+          },
+          "切换"
+        ),
+        h("button", { onClick: () => logs.splice(0) }, "清理LOG"),
         h(KeepAlive, null, {
           default: () => h(views[viewRef.value], { ref: insRef }),
         }),
@@ -116,5 +125,5 @@ var app_r9KorlFxQ9 = (function () {
 
   var app = Vue.createApp(Root);
 
-  app.mount("#r9KorlFxQ9");
+  app.use(ElementPlus).mount("#r9KorlFxQ9");
 })();

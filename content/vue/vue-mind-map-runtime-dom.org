@@ -1,0 +1,1093 @@
+#+TITLE: Vue3 源码头脑风暴之 8 ☞ runtime-dom
+#+DATE: <2021-04-14 18:55:51>
+#+TAGS[]: vue, vue3, runtime-dom, patch
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink inlineimages
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/runtime-dom.global.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+@@html:<kbd>@@
+*[[https://github.com/gcclll/stb-vue-next][stb-vue-next]] 完全拷贝于 [[https://github.com/vuejs/vue-next][vue-next]] ，主要目的用于学习。*
+@@html:</kbd>@@
+
+#+begin_quote
+运行时的 DOM 操作。
+#+end_quote
+
+* patch props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: patch-props
+:END:
+** class
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: prop-class
+:END:
+
+#+begin_src typescript
+export const patchProp: DOMRendererOptions['patchProp'] = (
+  el,
+  key,
+  prevValue,
+  nextValue,
+  isSVG = false,
+  prevChildren,
+  parentComponent,
+  parentSuspense,
+  unmountChildren
+) => {
+  switch (key) {
+    // 特殊属性
+    case 'class':
+      patchClass(el, nextValue, isSVG)
+      break
+    case 'style':
+      break
+    default:
+      break
+  }
+}
+#+end_src
+
+class patch 操作:
+#+begin_src typescript
+export function patchClass(el: Element, value: string | null, isSVG: boolean) {
+  if (value == null) {
+    value = "";
+  }
+
+  if (isSVG) {
+    el.setAttribute("class", value);
+  } else {
+    const transitionClasses = (el as any) /* TODO ElementWithTransition */._vtc;
+    if (transitionClasses) {
+      // 合并类名
+      value = (value
+        ? [value, ...transitionClasses]
+        : [...transitionClasses]
+      ).join("");
+    }
+    el.className = value;
+  }
+}
+#+end_src
+
+#+begin_export html
+<script class="x6c22Ir">
+(function() {
+const { render, h, patchProp } = VueRuntimeDOM
+const el = document.createElement('div')
+patchProp(el, 'class', null, 'foo')
+console.log(el.className, el.outerHTML, '\nafter')
+patchProp(el, 'class', null, null)
+console.log(el.className, el.outerHTML)
+}())
+</script>
+<script>
+insertPreCode('x6c22Ir')
+</script>
+#+end_export
+
+输出结果：
+#+begin_example
+foo <div class="foo"></div>
+after
+<div class=""></div>
+#+end_example
+** style
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: prop-style
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/50468d8a453494336238c8b3fcef03cc754ae0e2][feat(add): runtime-dom, patch props style · gcclll/stb-vue-next@50468d8]]
+
+源码:
+1. 删除操作(next 为空的时候)
+2. 如果是字符串直接替换 cssText
+3. 如果是对象，将遍历所有属性重新设值，新有旧没有执行删除
+
+   比如：
+
+   ~old = { color: 'red', 'font-size': '32px' }~
+
+   ~next = { color: 'blue' }~
+
+   那么最终字体颜色会变成 ~blue~ ，字体大小被重置为默认大小。
+
+#+begin_src typescript
+export function patchStyle(el: Element, prev: Style, next: Style) {
+  const style = (el as HTMLElement).style
+
+  if (!next) {
+    // 删除操作
+    el.removeAttribute('style')
+  } else if (isString(next)) {
+    // 更新操作，全替换操作
+    if (prev !== next) {
+      style.cssText = next
+    }
+  } else {
+    // 如果是对象，根据对象内的属性逐个进行更新
+    for (const key in next) {
+      // 更新单个值
+      setStyle(style, key, next[key])
+    }
+
+    if (prev && !isString(prev)) {
+      // 删除老的不在 next 中的值
+      for (const key in prev) {
+        if (next[key] == null) {
+          setStyle(style, key, '')
+        }
+      }
+    }
+  }
+}
+#+end_src
+
+
+setStyle 代码：
+1. 支持对同一个属性设置不同的值，等于是取最后的那个值
+
+   如： ~color:red~ 设值 ~['blue', 'black', 'red']~ 最后还是 ~red~
+
+2. 支持 ~--webkit-xxx~ 前缀设置
+
+3. 自动添加 ~webkit, moz, ms~ 前缀
+
+#+begin_src typescript
+function setStyle(
+  style: CSSStyleDeclaration,
+  name: string,
+  val: string | string[]
+) {
+  if (isArray(val)) {
+    // 同一个属性设置多个值？取最后一个有效值
+    val.forEach(v => setStyle(style, name, v))
+  } else {
+    // 多浏览器的兼容处理，如： --webkit-...
+    if (name.startsWith('--')) {
+      // custom property definition
+      style.setProperty(name, val)
+    } else {
+      // 自动添加前缀
+      const prefixed = autoPrefix(style, name)
+      if (importantRE.test(val)) {
+        // 优先级最高的处理
+        // !important
+        style.setProperty(
+          hyphenate(prefixed),
+          val.replace(importantRE, ''),
+          'important'
+        )
+      } else {
+        style[prefixed as any] = val
+      }
+    }
+  }
+}
+#+end_src
+
+添加前缀(~WebKit, Mox, ms~)：
+
+#+begin_src typescript
+const prefixes = ['Webkit', 'Moz', 'ms']
+const prefixCache: Record<string, string> = {}
+
+// 自动添加前缀处理
+function autoPrefix(style: CSSStyleDeclaration, rawName: string): string {
+  const cached = prefixCache[rawName]
+  if (cached) {
+    return cached
+  }
+  let name = camelize(rawName)
+  if (name !== 'filter' && name in style) {
+    return (prefixCache[rawName] = name)
+  }
+  name = capitalize(name)
+  for (let i = 0; i < prefixes.length; i++) {
+    const prefixed = prefixes[i] + name
+    if (prefixed in style) {
+      return (prefixCache[rawName] = prefixed)
+    }
+  }
+  return rawName
+}
+#+end_src
+
+测试代码和结果：
+#+begin_export html
+<div class="xY4tcXk"></div>
+<script class="xY4tcXk" src="/js/vue/tests/xY4tcXk.js"></script>
+<a href="/js/vue/tests/xY4tcXk.js" target="_blank">点击查看测试源码</a>
+#+end_export
+** onXxx
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: prop-on-xxx
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/3402f03680c4579d526a5618f951d637dd933880][feat(add): runtime-dom event prop · gcclll/stb-vue-next@3402f03]]
+
+
+源码：
+1. prevValue 已经绑定到 el 上的一个事件句柄
+2. nextValue 新的事件句柄，如果两者同时存在是会进行替换
+3. rawName 事件名称，如： *onClick*
+
+#+begin_src typescript
+export function patchEvent(
+  el: Element & { _vei?: Record<string, Invoker | undefined> },
+  rawName: string,
+  prevValue: EventValue | null,
+  nextValue: EventValue | null,
+  instance: ComponentInternalInstance | null = null
+) {
+  // vue event invokers
+  const invokers = el._vei || (el._vei = {})
+  const existingInvoker = invokers[rawName]
+  if (nextValue && existingInvoker) {
+    // patch
+    existingInvoker.value = nextValue
+  } else {
+    const [name, options] = parseName(rawName)
+    if (nextValue) {
+      // add 添加事件
+      const invoker = (invokers[rawName] = createInvoker(nextValue, instance))
+      addEventListener(el, name, invoker, options)
+    } else if (existingInvoker) {
+      // remove 删除事件
+      removeEventListener(el, name, existingInvoker, options)
+      invokers[rawName] = undefined
+    }
+  }
+}
+#+end_src
+
+上面主要有几个步骤:
+1. 如果已经存在的事件句柄直接更新 ~exisitingInvoker.value~ 的值
+2. 解析事件名称主要是解析出 ~Once|Passive|Capture~ 三个事件修饰符
+
+   如：
+
+   ~onClick~ => ~['click', {}]~
+
+   ~onClickOnce~ => ~['click', {once: true}]~
+
+   ~onClickOnceCapture~ => ~['click', {once: true, capture: true}]~
+3. 添加事件 ~patchProp(el, 'onClick', null, fn)~
+4. 删除事件 ~patchProp(el, 'onClick', oldFn|null, null)~
+
+   当 newFn 传空值时，等于是删除该元素上绑定的 'onclick' 事件句柄。
+
+
+事件名解析:
+#+begin_src typescript
+// 解析事件名 onClick -> ['click']
+// onClickOnce -> ['click', { once: true }]
+// onClickOncePassive -> ['click', { once: true, passive: true }]
+function parseName(name: string): [string, EventListenerOptions | undefined] {
+  let options: EventListenerOptions | undefined
+  if (optionsModifierRE.test(name)) {
+    options = {}
+    let m
+    while ((m = name.match(optionsModifierRE))) {
+      name = name.slice(0, name.length - m[0].length)
+      ;(options as any)[m[0].toLowerCase()] = true
+      options
+    }
+  }
+  return [name.slice(2).toLowerCase(), options]
+}
+#+end_src
+
+invoker: 这个封装的重点在于当绑定事件的时候，记录绑定时的时间戳，然后在执行的时
+候去比较“当前触发的事件的事件戳(e.timeStamp)” 和 “事件句柄绑定时的时间戳”，只要
+前者比后者大就说明可以执行事件句柄了(_说实话，这里并没有很懂！！！_)。
+#+begin_src typescript
+function createInvoker(
+  initialValue: EventValue,
+  instance: ComponentInternalInstance | null
+) {
+  const invoker: Invoker = (e: Event) => {
+    // 异步边缘情况：内部点击事件触发 patch ，事件
+    // 句柄在 patch 阶段绑定在 outer element 上，
+    // 然后会被再次触发，这种情况的发生原因是浏览器在事件
+    // 冒泡期间触发了微任务时钟(microtask ticks)
+    // 解决方案：保存事件句柄被绑定瞬间的时间戳(timestamp)
+    // 然后事件句柄只有在“已保存的时间戳之后触发的事件”上去执行
+    const timeStamp = e.timeStamp || _getNow()
+    if (timeStamp >= invoker.attached - 1) {
+      callWithAsyncErrorHandling(
+        patchStopImmediatePropagation(e, invoker.value),
+        instance,
+        ErrorCodes.NATIVE_EVENT_HANDLER,
+        [e]
+      )
+    }
+  }
+  invoker.value = initialValue
+  invoker.attached = getNow()
+  return invoker
+}
+#+end_src
+
+另外事件句柄执行又是进行了一次封装的(~patchStopImmediatePropagation()~)，那这个
+函数是做什么用的呢？
+
+我们都知道一个元素是可以在一个事件名下绑定多个事件句柄的，当这个事件触发的时候会
+自动执行所有绑定的事件句柄。
+
+#+begin_quote
+[[https://developer.mozilla.org/en-US/docs/Web/API/Event/stopImmediatePropagation][Event.stopImmediatePropagation() - Web APIs | MDN]]
+
+Event.stopImmediatePropagation()
+The stopImmediatePropagation() method of the Event interface prevents other listeners of the same event from being called.
+
+这段意思是说 stopImmediatePropagation() 会阻止其他 listeners 继续执行。
+
+If several listeners are attached to the same element for the same event type, they are called in the order in which they were added. If stopImmediatePropagation() is invoked during one such call, no remaining listeners will be called.
+如果有多个 listeners 绑定到同一元素的同一事件类型上，他们会按照添加的顺序依次被
+执行。如果 stopImmediatePropagation() 在任意一个 listener 执行期间被调用，那么剩
+余的 listeners 就不会再被调用，也就是说在任意一个 listener 内可以控制后续的
+listeners 是否会被执行。
+#+end_quote
+
+再来看 ~patchStopImmediatePropagation()~ 源码：
+#+begin_src typescript
+function patchStopImmediatePropagation(
+  e: Event,
+  value: EventValue
+): EventValue {
+  if (isArray(value)) {
+    const originalStop = e.stopImmediatePropagation;
+    // 这里对事件的 stopImmediatePropagation 进行了二次封装
+    e.stopImmediatePropagation = () => {
+      originalStop.call(e);
+      // 加入了一个标识
+      (e as any)._stopped = true;
+    };
+
+    // 这里又对所有的 listeners 进行了二次封装
+    // 即如果 _stopped 是假值的情况下才调用 listener
+    // 意思就是结合 stopImmediatePropagation 这里做了手动管理
+    return value.map((fn) => (e: Event) => !(e as any)._stopped && fn(e));
+  } else {
+    return value;
+  }
+}
+#+end_src
+
+#+begin_quote
+❓ 初想会不会觉得多此一举 ❓
+#+end_quote
+
+那么我们将关键的代码放一起来看看：
+#+begin_src typescript
+// patchEvent
+const invokers = el._vei || (el._vei = {});
+const existingInvoker = invokers[rawName];
+if (nextValue && existingInvoker) {
+  // patch
+  existingInvoker.value = nextValue;
+}
+
+// createInvoker -> invoker
+if (timeStamp >= invoker.attached - 1) {
+  callWithAsyncErrorHandling(
+    patchStopImmediatePropagation(e, invoker.value),
+    instance,
+    ErrorCodes.NATIVE_EVENT_HANDLER,
+    [e]
+  );
+}
+#+end_src
+
+一个元素上不同 name 的事件都会保存到 DOM 元素的 el._vei上面，也就是说下次注册事
+件的时候会直接从这里取出 invoker，直接更新invoker.value 而不是重新创建了一个函数
+来接受这个事件句柄
+
+比如：
+
+*普通使用情况:*
+
+~el.addEventListener('click', fn1)~
+
+~el.addEventListener('click', fn2)~
+
+那么在 el 上会有两个句柄 fn1, fn2
+
+*使用patchEvent:*
+
+~patchEvent(el, 'click', null, fn1)~
+
+~patchEvent(el, 'click', null,fn2)~
+
+这里实际上并没有添加两个句柄 fn1, fn2 而是等于 fn1 = fn2 覆盖了此时 fn1 其实
+已经不存在了，并且此时绑定在 el 上的 click 事件的句柄就永远是第一次注册 fn1 时创
+建的那个 invoker (除非执行 ~patchEvent(el, 'click', null, null)~ 删除了这个
+invoker)
+
+那如何实现一个元素一个事件绑定多个句柄呢？
+
+这样: ~patchEvent(el, 'click', null, [fn1, fn2])~
+
+因为在 vue 中绑定的事件句柄最后都会被解析到一个数组中。
+
+正如上面分析的结果，也就是说 ~patchEvent()~ 永远只会在 el 上对于同名事件注册一个
+句柄 invoker，那么 ~event.stopImmediatePropagation()~ 在这里实际没有什么作用，它
+实际并不能控制 ~invoker.value~ 中真正的事件句柄执行。
+
+所以就有了 ~patchStopImmediatePropagation()~ 函数的封装，来变相实现
+~stopImmediatePropagation~ 对真正事件句柄的控制。
+
+测试：
+#+begin_export html
+<div class="xTDpGGF"></div>
+<script class="xTDpGGF" src="/js/vue/tests/xTDpGGF.js"></script>
+<a href="/js/vue/tests/xTDpGGF.js" target="_blank">点击查看测试源码</a>
+#+end_export
+** props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: prop-dom
+:END:
+
+一个函数处理几种情况，主要处理的是DOM元素上的一些内置属性
+
+1. ~innerHTML~ 或 ~textContent~
+
+   直接复制操作， ~el[key] = value || ''~ , 如果有 children 全部卸载掉。
+
+2. ~key=value~ 且标签非 ~PROGRESS~
+
+    ~el._value = value~ 保存原始值，这种针对有 ~value~ 的元素，比如： ~<input/>~
+
+3. 空值处理或真值处理(如： ~<select multiple>~)
+
+   boolean 处理成 ~true~, string 处理成 ~''~, number 处理成 ~0~ 。
+
+#+begin_src typescript
+// functions. The user is responsible for using them with only trusted content.
+export function patchDOMProp(
+  el: any,
+  key: string,
+  value: any,
+  // the following args are passed only due to potential innerHTML/textContent
+  // overriding existing VNodes, in which case the old tree must be properly
+  // unmounted.
+  prevChildren: any,
+  parentComponent: any,
+  parentSuspense: any,
+  unmountChildren: any
+) {
+  if (key === "innerHTML" || key === "textContent") {
+    if (prevChildren) {
+      unmountChildren(prevChildren, parentComponent, parentSuspense);
+    }
+    el[key] = value == null ? "" : value;
+    return;
+  }
+
+  if (key === "value" && el.tagName !== "PROGRESS") {
+    // store value as _value as well since
+    // non-string values will be stringified.
+    el._value = value;
+    const newValue = value == null ? "" : value;
+    if (el.value !== newValue) {
+      el.value = newValue;
+    }
+    return;
+  }
+
+  // 空值处理
+  if (value === "" || value == null) {
+    const type = typeof el[key];
+    if (value === "" && type === "boolean") {
+      // 比如： <select multiple> 编译成： { multiple: '' }
+      el[key] = true;
+      return;
+    } else if (value == null && type === "string") {
+      // 如： <div :id="null">
+      el[key] = "";
+      el.removeAttribute(key);
+      return;
+    } else if (type === "number") {
+      // 如： <img :width="null">
+      el[key] = 0;
+      el.removeAttribute(key);
+      return;
+    }
+  }
+
+  // some properties perform value validation and throw
+  try {
+    el[key] = value;
+  } catch (e) {
+    if (__DEV__) {
+      warn(
+        `Failed setting prop "${key}" on <${el.tagName.toLowerCase()}>: ` +
+          `value ${value} is invalid.`,
+        e
+      );
+    }
+  }
+}
+#+end_src
+
+测试：
+#+begin_export html
+<div class="xpgH6cz"></div>
+<script class="xpgH6cz" src="/js/vue/tests/xpgH6cz.js"></script>
+<a href="/js/vue/tests/xpgH6cz.js" target="_blank">点击查看测试源码</a>
+
+#+end_export
+** true/false-value
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: prop-true-false
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/580b0f380568bca491010bc17611cc52c873ec33][feat(add): runtime-dom patch v-model · gcclll/stb-vue-next@580b0f3]]
+
+true-value & false-value 属性在 [[/vue/vue-mind-map-compiler-ssr/#input-checkbox][compiler-ssr]] 中有详细分析，主要用于 SSR 下的
+~<input type="checkbox">~ 的时候。
+
+#+begin_src typescript
+// patchProp.ts
+// special case for <input v-model type="checkbox"> with
+// :true-value & :false-value
+// store value as dom properties since non-string values will be
+// stringified.
+if (key === "true-value") {
+  (el as any)._trueValue = nextValue;
+} else if (key === "false-value") {
+  (el as any)._falseValue = nextValue;
+}
+patchAttr(el, key, nextValue, isSVG);
+
+// modules/attrs.ts
+export const xlinkNS = "http://www.w3.org/1999/xlink";
+
+export function patchAttr(
+  el: Element,
+  key: string,
+  value: any,
+  isSVG: boolean
+) {
+  if (isSVG && key.startsWith("xlink:")) {
+    if (value == null) {
+      el.removeAttributeNS(xlinkNS, key.slice(6, key.length));
+    } else {
+      el.setAttributeNS(xlinkNS, key, value);
+    }
+  } else {
+    // note we are only checking boolean attributes that don't have a
+    // corresponding dom prop of the same name here.
+    const isBoolean = isSpecialBooleanAttr(key);
+    if (value == null || (isBoolean && value === false)) {
+      el.removeAttribute(key);
+    } else {
+      el.setAttribute(key, isBoolean ? "" : value);
+    }
+  }
+}
+
+// shared/src/domAttrConfig.ts
+const specialBooleanAttrs = `itemscope,allowfullscreen,formnovalidate,ismap,nomodule,novalidate,readonly`;
+export const isSpecialBooleanAttr = /*#__PURE__*/ makeMap(specialBooleanAttrs);
+#+end_src
+
+测试：
+#+begin_export html
+<div class="x4mBB2I"></div>
+<script class="x4mBB2I" src="/js/vue/tests/x4mBB2I.js"></script>
+<a href="/js/vue/tests/x4mBB2I.js" target="_blank">点击查看测试源码</a>
+#+end_export
+
+* nodeOps
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: node-ops
+:END:
+
+DOM 操作接口。
+
+[[https://github.com/gcclll/stb-vue-next/commit/88b8bda74f09f86cdea22094f7c18889e6a3860e][feat(add): nodeOps · gcclll/stb-vue-next@88b8bda]]
+
+| 接口名                                                | 描述                     | 原生接口                              |
+|-------------------------------------------------------+--------------------------+---------------------------------------|
+| ~insert(child, parent, anchor)~                       | 在 anchor 前面插入 child | ~parent.insertBefore(child, anchor)~  |
+| ~remove(child)~                                       | 删除某个子元素           | ~child.parentNode.removeChild(child)~ |
+| ~createElement(tag, isSVG, is)~                       | 创建元素(svg或普通元素)  | ~document.createElement~              |
+| ~createText(text)~                                    | 创建文本节点             | ~document.createTextNode(text)~       |
+| ~createComment(text)~                                 | 创建注释节点             | ~document.createComment(text)~        |
+| ~setText(node, text)~                                 | 设置节点文本内容         | ~node.nodeValue = text~               |
+| ~setElementText(el, text)~                            | 设置 textContent         | ~el.textContent~                      |
+| ~parentNode(node)~                                    | 取父元素                 | ~node.parentNode~                     |
+| ~nextSibling(node)~                                   | 取后面的兄弟节点         | ~node.nextSibling~                    |
+| ~querySelector(selector)~                             | 选择器查询               | ~document.querySelector(selector)~    |
+| ~setScopeId(el, id)~                                  | 给元素增加 id 属性       | ~el.setAttribute(id, '')~             |
+| ~cloneNode(el)~                                       | 深度克隆元素             | ~el.cloneNode(true)~                  |
+| ~insertStaticContent(content, parent, anchor, isSVG)~ | 插入静态内容？           | -                                     |
+|                                                       |                          |                                       |
+
+这个文件中就是一些对原生DOM增删改查接口的封装。
+* TODO Transition&Group
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: transition
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/444b0bbaf2ce053beed9fad8a8f7283ddcb952fb][feat(add): Transition&Group · gcclll/stb-vue-next@444b0bb]]
+
+* v-on 事件
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-on
+:END:
+
+这里面主要处理的是一些修饰符处理。
+
+[[https://github.com/gcclll/stb-vue-next/commit/9280816a48d59cbab1be623466ca71243dcded67][feat(add): v-on event · gcclll/stb-vue-next@9280816]]
+
+系统修饰符(几个系统按键)：
+
+~const systemModifiers = ['ctrl', 'shift', 'alt', 'meta']~
+
+支持的事件类型(键盘、鼠标、触控)：
+
+~type KeyedEvent = KeyboardEvent | MouseEvent | TouchEvent~
+
+修饰符对应在事件上的一些操作，因为修饰符最终的值体现是 boolean 值，因此这些布尔
+值需要对应在具体的事件上，就需要找到事件上的对方方法去处理，比如 ~@click.stop~
+解析后的修饰符 ~{stop: true}~ 对应事件上的 ~e.stopPropagation()~ 调用，阻止事件
+网上冒泡：
+
+#+begin_src typescript
+const modifierGuards: Record<
+  string,
+  (e: Event, modifiers: string[]) => void | boolean
+> = {
+  stop: (e) => e.stopPropagation(),
+  prevent: (e) => e.preventDefault(),
+  self: (e) => e.target !== e.currentTarget,
+  ctrl: (e) => !(e as KeyedEvent).ctrlKey,
+  shift: (e) => !(e as KeyedEvent).shiftKey,
+  alt: (e) => !(e as KeyedEvent).altKey,
+  meta: (e) => !(e as KeyedEvent).metaKey,
+  left: (e) => "button" in e && (e as MouseEvent).button !== 0,
+  middle: (e) => "button" in e && (e as MouseEvent).button !== 1,
+  right: (e) => "button" in e && (e as MouseEvent).button !== 2,
+  exact: (e, modifiers) =>
+    systemModifiers.some(
+      (m) => (e as any)[`${m}Key`] && !modifiers.includes(m)
+    ),
+};
+#+end_src
+
+最后根据修饰符守卫，将事件函数进一步封装，在执行这个函数之前执行修饰符对应的事件
+处理：
+
+#+begin_src typescript
+/**
+ * @private
+ */
+export const withModifiers = (fn: Function, modifiers: string[]) => {
+  return (event: Event, ...args: unknown[]) => {
+    for (let i = 0; i < modifiers.length; i++) {
+      const guard = modifierGuards[modifiers[i]]
+      if (guard && guard(event, modifiers)) return
+    }
+    return fn(event, ...args)
+  }
+}
+#+end_src
+
+vue2.x 上的一些兼容按键：
+#+begin_src typescript
+// Kept for 2.x compat.
+// Note: IE11 compat for `spacebar` and `del` is removed for now.
+const keyNames: Record<string, string | string[]> = {
+  esc: 'escape',
+  space: ' ',
+  up: 'arrow-up',
+  left: 'arrow-left',
+  right: 'arrow-right',
+  down: 'arrow-down',
+  delete: 'backspace'
+}
+#+end_src
+
+以及对应的封装函数:
+#+begin_src typescript
+/**
+ * @private
+ */
+export const withKeys = (fn: Function, modifiers: string[]) => {
+  return (event: KeyboardEvent) => {
+    if (!('key' in event)) return
+    const eventKey = hyphenate(event.key)
+    if (
+      // None of the provided key modifiers match the current event key
+      !modifiers.some(k => k === eventKey || keyNames[k] === eventKey)
+    ) {
+      return
+    }
+    return fn(event)
+  }
+}
+#+end_src
+
+* v-show 处理
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-show
+:END:
+
+这里处理也很简单，一个是检测有没 ~<transition>~ 没有直接使用原生的 ~display~ 属
+性。
+
+[[https://github.com/gcclll/stb-vue-next/commit/be2fd2987338c129fb7ea1e696fee9be79a56c2b][feat(add): v-show · gcclll/stb-vue-next@be2fd29]]
+
+#+begin_src typescript
+// 生命周期处理
+export const vShow: ObjectDirective<VShowElement> = {
+  beforeMount(el, { value }, { transition }) {
+    // 在加载之前检测检测是不是有 transition 动画
+    el._vod = el.style.display === 'none' ? '' : el.style.display
+    if (transition && value) {
+      transition.beforeEnter(el)
+    } else {
+      setDisplay(el, value)
+    }
+  },
+
+  mounted(el, { value }, { transition }) {
+    if (transition && value) {
+      transition.enter(el)
+    }
+  },
+  updated(el, { value, oldValue }, { transition }) {
+    if (transition && value !== oldValue) {
+      if (value) {
+        transition.beforeEnter(el)
+        setDisplay(el, true)
+        transition.enter(el)
+      } else {
+        transition.leave(el, () => {
+          setDisplay(el, false)
+        })
+      }
+    } else {
+      setDisplay(el, value)
+    }
+  },
+  beforeUnmount(el, { value }) {
+    setDisplay(el, value)
+  }
+}
+
+if (__NODE_JS__) {
+  vShow.getSSRProps = ({ value }) => {
+    if (!value) {
+      return { style: { display: 'none' } }
+    }
+  }
+}
+
+#+end_src
+
+实现隐藏和显示:
+#+begin_src typescript
+// 因为可能是 block 或者 inline-block 所以用 _vod 来记录
+// 隐藏之前的 display 值，方便后面复原
+function setDisplay(el: VShowElement, value: unknown): void {
+  el.style.display = value ? el._vod : "none";
+}
+#+end_src
+* v-model 处理
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-model
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/559705556174507701f9f6597a83915ff80e5e01][feat(add): v-model · gcclll/stb-vue-next@5597055]]
+
+四种类型 + 动态类型：
+
+1. *vModelText*, ~<input type="text" />~, 文本输入框
+
+   ~created()~, 监听事件 change(lazy?) 或 input
+
+   ~mounted()~, 修改 el.value 值，让结果体现出来
+
+   ~beforeUpdate()~, 在更新之前对值进行处理，比如： trim 修饰符去掉前后空格
+2. *vModelCheckbox*, ~<input type="checkbox" checked/>~, 复选框
+
+   ~created()~, 监听 change 事件，初始元素值
+
+   ~mounted()~, ~setChecked~, 更新值， value 可以是数组，集合，单个值
+
+   ~beforeUpdate()~, ~setChecked~, 同上
+
+   #+begin_src typescript
+   function setChecked(
+     el: HTMLInputElement,
+     { value, oldValue }: DirectiveBinding,
+     vnode: VNode
+   ) {
+     // store the v-model value on the element so it can be accessed by the
+     // change listener.
+     (el as any)._modelValue = value;
+     if (isArray(value)) {
+       el.checked = looseIndexOf(value, vnode.props!.value) > -1;
+     } else if (isSet(value)) {
+       el.checked = value.has(vnode.props!.value);
+     } else if (value !== oldValue) {
+       el.checked = looseEqual(value, getCheckboxValue(el, true));
+     }
+   }
+   #+end_src
+
+   注意这里，在 compiler 阶段， checkbox 可以通过 true-value 和 false-value 来绑
+   定两个属性，一个是选中时绑定的变量，一个是未选中时绑定的变量
+
+   #+begin_src typescript
+   // retrieve raw value for true-value and false-value set via :true-value or :false-value bindings
+   function getCheckboxValue(
+     el: HTMLInputElement & { _trueValue?: any; _falseValue?: any },
+     checked: boolean
+   ) {
+     const key = checked ? "_trueValue" : "_falseValue";
+     return key in el ? el[key] : checked;
+   }
+   #+end_src
+3. *vModelRadio*, ~<input type="radio">~, 单选框
+
+   ~created()~, 监听 change
+
+   ~beforeUpdate()~, 用比较后的 boolean 值更新 el.checked 值
+4. *vModelSelect*, ~<select><option :value="value"/></select>~
+
+   ~created()~, 监听 change 事件，遍历 el.options(~<option/>~)，得到所有
+   ~<option selected>~ 组件的 selected 属性值，将值赋给实际的 option DOM 元素，
+   这里会检测 ~el.multiple~ 来区分是可以多选还是单选，单选只取第一个值。
+
+   ~mounted()~, ~setSelected()~
+
+   ~beforeUpdate()~, 更新之前更新 ~el._assign~
+
+   ~updated()~, 实际更新 DOM option selected 值。
+
+   #+begin_src typescript
+   function setSelected(el: HTMLSelectElement, value: any) {
+     const isMultiple = el.multiple;
+     for (let i = 0, l = el.options.length; i < l; i++) {
+       const option = el.options[i];
+       const optionValue = getValue(option);
+       if (isMultiple) {
+         if (isArray(value)) {
+           option.selected = looseIndexOf(value, optionValue) > -1;
+         } else {
+           option.selected = value.has(optionValue);
+         }
+       } else {
+         if (looseEqual(getValue(option), value)) {
+           el.selectedIndex = i;
+           return;
+         }
+       }
+     }
+     if (!isMultiple) {
+       el.selectedIndex = -1;
+     }
+   }
+   #+end_src
+5. *vModelDynamic*, 标签名是动态的，只有运行期间才能决定是什么标签
+
+   有： ~<select>~, ~<textarea>~, ~<input type="checkbox">~, ~<input
+   type="radio">~ 最后默认为 ~<input type="text">~
+
+   最后根据具体情况去使用 1~4 中对应类型指令。
+
+   #+begin_src typescript
+    export const vModelDynamic: ObjectDirective<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    > = {
+      created(el, binding, vnode) {
+        callModelHook(el, binding, vnode, null, "created");
+      },
+      mounted(el, binding, vnode) {
+        callModelHook(el, binding, vnode, null, "mounted");
+      },
+      beforeUpdate(el, binding, vnode, prevVNode) {
+        callModelHook(el, binding, vnode, prevVNode, "beforeUpdate");
+      },
+      updated(el, binding, vnode, prevVNode) {
+        callModelHook(el, binding, vnode, prevVNode, "updated");
+      },
+    };
+   #+end_src
+
+   动态决定类型：
+
+   #+begin_src typescript
+   function callModelHook(
+     el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+     binding: DirectiveBinding,
+     vnode: VNode,
+     prevVNode: VNode | null,
+     hook: keyof ObjectDirective
+   ) {
+     let modelToUse: ObjectDirective;
+     switch (el.tagName) {
+       case "SELECT":
+         modelToUse = vModelSelect;
+         break;
+       case "TEXTAREA":
+         modelToUse = vModelText;
+         break;
+       default:
+         switch (vnode.props && vnode.props.type) {
+           case "checkbox":
+             modelToUse = vModelCheckbox;
+             break;
+           case "radio":
+             modelToUse = vModelRadio;
+             break;
+           default:
+             modelToUse = vModelText;
+         }
+     }
+     const fn = modelToUse[hook] as DirectiveHook;
+     fn && fn(el, binding, vnode, prevVNode);
+   }
+   #+end_src
+
+
+* useCssVars
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: use-css-vars
+:END:
+
+vue SFC 文件中的 ~<style>~ 中的 ~v-bind(varName)~ 处理。
+
+[[https://github.com/gcclll/stb-vue-next/commit/06b2291b777557530300db3337648a7ae71065c8][feat(add): use css vars · gcclll/stb-vue-next@06b2291]]
+
+#+begin_src typescript
+/**
+ * Runtime helper for SFC's CSS variable injection feature.
+ * vue 文件中的样式，CSS变量注入特性， color: v-bind(fontColor)
+ * @private
+ */
+export function useCssVars(getter: (ctx: any) => Record<string, string>) {
+  if (!__BROWSER__ && !__TEST__) return
+  const instance = getCurrentInstance()
+  if (!instance) {
+    __DEV__ &&
+      warn(`useCssVars is called without current active component instance.`)
+    return
+  }
+
+  const setVars = () =>
+    setVarsOnVNode(instance.subTree, getter(instance.proxy!))
+  onMounted(() => watchEffect(setVars, { flush: 'post' }))
+  onUpdated(setVars)
+}
+#+end_src
+
+给 vnode.el.style 设置自定义属性：
+
+#+begin_src typescript
+function setVarsOnVNode(vnode: VNode, vars: Record<string, string>) {
+  if (__FEATURE_SUSPENSE__ && vnode.shapeFlag & ShapeFlags.SUSPENSE) {
+    const suspense = vnode.suspense!
+    vnode = suspense.activeBranch!
+    if (suspense.pendingBranch && !suspense.isHydrating) {
+      // 在 runtime-dom 中分析过  effects 会等到
+      // 异步请求完成之后并且是在 parent.effects 没有任务的情况下才会
+      // 执行，这里将 CSS 的处理加入到组件 effect 队列等待所以
+      // 异步结束再处理样式
+      suspense.effects.push(() => {
+        setVarsOnVNode(suspense.activeBranch!, vars)
+      })
+    }
+  }
+
+  // drill down HOCs until it's a non-component vnode
+  // 找到最内层的非组件的子树节点
+  while (vnode.component) {
+    vnode = vnode.component.subTree
+  }
+
+  if (vnode.shapeFlag & ShapeFlags.ELEMENT && vnode.el) {
+    const style = vnode.el.style
+    for (const key in vars) {
+      style.setProperty(`--${key}`, vars[key])
+    }
+  } else if (vnode.type === Fragment) {
+    // 如果是个占位 fragment 直接给 children 设置
+    ;(vnode.children as VNode[]).forEach(c => setVarsOnVNode(c, vars))
+  }
+}
+#+end_src
+
+* useCssModule
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: use-css-module
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/2d47ce036d875aec687d3cf3c3c1e7c54825ad78][feat(add): use css module · gcclll/stb-vue-next@2d47ce0]]
+
+#+begin_src typescript
+export function useCssModule(name = "$style"): Record<string, string> {
+  /* istanbul ignore else */
+  if (!__GLOBAL__) {
+    const instance = getCurrentInstance()!;
+    if (!instance) {
+      __DEV__ && warn(`useCssModule must be called inside setup()`);
+      return EMPTY_OBJ;
+    }
+    const modules = instance.type.__cssModules;
+    if (!modules) {
+      __DEV__ && warn(`Current instance does not have CSS modules injected.`);
+      return EMPTY_OBJ;
+    }
+    const mod = modules[name];
+    if (!mod) {
+      __DEV__ &&
+        warn(`Current instance does not have CSS module named "${name}".`);
+      return EMPTY_OBJ;
+    }
+    return mod as Record<string, string>;
+  } else {
+    if (__DEV__) {
+      warn(`useCssModule() is not supported in the global build.`);
+    }
+    return EMPTY_OBJ;
+  }
+}
+#+end_src

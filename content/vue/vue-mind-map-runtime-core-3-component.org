@@ -12,9 +12,13 @@
   诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
-<script src="https://unpkg.com/vue@next"></script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]
@@ -26,7 +30,6 @@
 #+begin_quote
 本文为 runtime-core(2) 续集，上篇： [[/vue/vue-mind-map-runtime-core-2-render/][Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render]]
 #+end_quote
-
 
 * 流程图(脑图)
 :PROPERTIES:
@@ -2888,6 +2891,8 @@ function setup(props: KeepAliveProps, { slots }: SetupContext) {
 
 当状态发生变化时根据特定条件最后执行激活才会去调用 ~activate()~ 而不是进入 ~mountComponent()~
 
+[[/img/vue3/runtime-core/vue-runtime-core-keep-alive.svg]]
+
 ** activate()
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -3250,6 +3255,567 @@ require(process.env.BLOG_DIR_VUE + "/tests/KeepAlive.js");
 #+begin_quote
 ⚠ 有错误，待完成。。。vue-next 测试见最后一章节[[#testing][《测试》]]
 #+end_quote
+* set ref
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ref
+:END:
+
+官方使用文档: [[https://v3.vuejs.org/api/special-attributes.html#ref][Special Attributes | Vue.js]]
+
+官方示例：
+
+#+begin_src html
+<!-- vm.$refs.p will be the DOM node -->
+<p ref="p">hello</p>
+
+<!-- vm.$refs.child will be the child component instance -->
+<child-component ref="child"></child-component>
+
+<!-- When bound dynamically, we can define ref as a callback function, passing the element or component instance explicitly -->
+<child-component :ref="(el) => child = el"></child-component>
+#+end_src
+
+patch() 函数中对 ref 属性的处理(set ref)：
+
+[[https://github.com/gcclll/stb-vue-next/commit/a0a1344a13ebf9d403aaefe845bd573ef3a8eda8][feat(add): set ref · gcclll/stb-vue-next@a0a1344]]
+
+源码实现主要有几个步骤：
+1. ref 支持数据?
+2. 是不是异步组件 value = null
+3. 有状态组件(~STATEFULL_COMPONENT~, 分函数组件)
+
+   ~value = vnode.component!.exposed || vnode.component!.proxy~
+4. 其他情况下 value = vnode.el
+
+   即 2,3,4 都是为了设置 value 指向哪个引用，比如 vnode.el 在渲染之后会被赋值为当
+   前 vnode 对应的那个 DOM 元素。
+5. 断开 oldRef 引用
+6. 设置 ref，分三种情况
+
+   - ref 是字符串直接 ~refs[ref] = value~ 取 key 设值
+
+   - ref 是 Ref 类型， ~ref.value = value~
+
+   - ref 是函数类型， ~ref(value, refs)~ 调用
+
+
+    在设值的时候会根据 value 是否为空值来控制是否进行异步设置，等 Render 执行完
+    成之后再设置
+
+    #+begin_src typescript
+    if (value) {
+      (doSet as SchedulerCb).id = -1;
+      queuePostRenderEffect(doSet, parentSuspense);
+    } else {
+      doSet();
+    }
+    #+end_src
+
+
+源码:
+#+begin_src typescript
+const patch: PatchFn = (/*...*/) => {
+  // ...
+  // set ref
+  setRef(ref, n1 && n1.ref, parentSuspense, n2);
+};
+
+export const setRef = (
+  rawRef: VNodeNormalizedRef,
+  oldRawRef: VNodeNormalizedRef | null,
+  parentSuspense: SuspenseBoundary | null,
+  vnode: VNode | null
+) => {
+  if (isArray(rawRef)) {
+    rawRef.forEach((r, i) =>
+      setRef(
+        r,
+        oldRawRef && (isArray(oldRawRef) ? oldRawRef[i] : oldRawRef),
+        parentSuspense,
+        vnode
+      )
+    );
+    return;
+  }
+
+  let value:
+    | ComponentPublicInstance
+    | RendererNode
+    | Record<string, any>
+    | null;
+  // async 组件，可以通过 defineAsyncComponent 声明的组件
+  // loader 会赋给 __asyncLoader，如果是异步组件需要等组件渲染完成之后
+  // 再去设置 ref
+  if (!vnode || isAsyncWrapper(vnode)) {
+    value = null;
+  } else {
+    if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+      value = vnode.component!.exposed || vnode.component!.proxy;
+    } else {
+      value = vnode.el;
+    }
+  }
+
+  const { i: owner, r: ref } = rawRef;
+
+  if (__DEV__ && !owner) {
+    // warn 丢失 ref owner 上下文
+    return;
+  }
+
+  const oldRef = oldRawRef && (oldRawRef as VNodeNormalizedRefAtom).r;
+  const refs = owner.refs === EMPTY_OBJ ? (owner.refs = {}) : owner.refs;
+  const setupState = owner.setupState;
+
+  // unset old ref
+  if (oldRef != null && oldRef !== ref) {
+    if (isString(oldRef)) {
+      refs[oldRef] = null;
+      if (hasOwn(setupState, oldRef)) {
+        setupState[oldRef] = null;
+      }
+    } else if (isRef(oldRef)) {
+      oldRef.value = null;
+    }
+  }
+
+  if (isString(ref)) {
+    const doSet = () => {
+      refs[ref] = value;
+      if (hasOwn(setupState, ref)) {
+        setupState[ref] = value;
+      }
+    };
+
+    // #1789: 非空值，在 render 结束后设置
+    // 控制意味着是 unmount，它不应该重写同key 的其他 ref
+    if (value) {
+      (doSet as SchedulerCb).id = -1;
+      queuePostRenderEffect(doSet, parentSuspense);
+    } else {
+      doSet();
+    }
+  } else if (isRef(ref)) {
+    const doSet = () => {
+      ref.value = value;
+    };
+
+    if (value) {
+      (doSet as SchedulerCb).id = -1;
+      queuePostRenderEffect(doSet, parentSuspense);
+    } else {
+      doSet();
+    }
+  } else if (isFunction(ref)) {
+    callWithErrorHandling(ref, owner, ErrorCodes.FUNCTION_REF, [value, refs]);
+  } else if (__DEV__) {
+    // warn ...
+  }
+};
+#+end_src
+
+这里可以简单理解为：将 ~ref~ 设值为 ~vnode.el~ 这是个引用，因此当它有值的时候也
+等于是 ref 有值了，然后分为异步和同步，异步需要等 render 完成再去设置。
+* direcitve hooks
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dir-hooks
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/1343be213f6f0b95b2b37b16733b722e8c465099][feat(add): directive hooks · gcclll/stb-vue-next@1343be2]]
+
+执行指令声明周期钩子函数：
+#+begin_src typescript
+export function invokeDirectiveHook(
+  vnode: VNode,
+  prevVNode: VNode | null,
+  instance: ComponentInternalInstance | null,
+  name: keyof ObjectDirective
+) {
+  const bindings = vnode.dirs!
+  const oldBindings = prevVNode && prevVNode.dirs!
+  for (let i = 0; i < bindings.length; i++) {
+    const binding = bindings[i]
+    if (oldBindings) {
+      binding.oldValue = oldBindings[i].value
+    }
+    const hook = binding.dir[name] as DirectiveHook | undefined
+    if (hook) {
+      callWithAsyncErrorHandling(hook, instance, ErrorCodes.DIRECTIVE_HOOK, [
+        vnode.el,
+        binding,
+        vnode,
+        prevVNode
+      ])
+    }
+  }
+}
+#+end_src
+
+给组件注册指令集：
+#+begin_src typescript
+
+export function withDirectives<T extends VNode>(
+  vnode: T,
+  directives: DirectiveArguments
+): T {
+  const internalInstance = currentRenderingInstance
+  if (internalInstance === null) {
+    __DEV__ && warn(`withDirectives can only be used inside render functions.`)
+    return vnode
+  }
+  const instance = internalInstance.proxy
+  const bindings: DirectiveBinding[] = vnode.dirs || (vnode.dirs = [])
+  for (let i = 0; i < directives.length; i++) {
+    let [dir, value, arg, modifiers = EMPTY_OBJ] = directives[i]
+    if (isFunction(dir)) {
+      dir = {
+        mounted: dir,
+        updated: dir
+      } as ObjectDirective
+    }
+    bindings.push({
+      dir,
+      instance,
+      value,
+      oldValue: void 0,
+      arg,
+      modifiers
+    })
+  }
+  return vnode
+}
+#+end_src
+
+created, befoureMounted, mounted 发生在 mountElement()
+#+begin_src typescript
+// 发生在 mountChildren 之后
+if (dirs) {
+  invokeDirectiveHook(vnode, null, parentComponent, "created");
+}
+
+// ...
+
+// 在插入DOM之前执行
+if (dirs) {
+  invokeDirectiveHook(vnode, null, parentComponent, "beforeMount");
+}
+
+//  hostInsert(el, container, anchor)
+
+// 插入DOM之后执行，放入任务队列等待 render 结束
+if (
+  (vnodeHook = props && props.onVnodeMounted) ||
+  needCallTransitionHooks ||
+  dirs
+) {
+  queuePostRenderEffect(() => {
+    vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode);
+    needCallTransitionHooks && transition!.enter(el);
+    dirs && invokeDirectiveHook(vnode, null, parentComponent, "mounted");
+  }, parentSuspense);
+}
+#+end_src
+
+beforeUpdate, updated 发生在 mountChildren()
+#+begin_src diff
++    if ((vnodeHook = newProps.onVnodeBeforeUpdate)) {
++      invokeVNodeHook(vnodeHook, parentComponent, n2, n1)
++    }
+
++ if (dirs) {
++      invokeDirectiveHook(n2, n1, parentComponent, 'beforeUpdate')
++    }
+
++   if ((vnodeHook = newProps.onVnodeUpdated) || dirs) {
++      queuePostRenderEffect(() => {
++        vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, n2, n1)
++        dirs && invokeDirectiveHook(n2, n1, parentComponent, 'updated')
++      }, parentSuspense)
++    }
+#+end_src
+
+unmounted 发生在 unmount()
+#+begin_src diff
++    if ((vnodeHook = props && props.onVnodeUnmounted) || shouldInvokeDirs) {
++      queuePostRenderEffect(() => {
++        vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode)
++        shouldInvokeDirs &&
++          invokeDirectiveHook(vnode, null, parentComponent, 'unmounted')
++      }, parentSuspense)
++    }
+#+end_src
+
+测试：
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({
+    h,
+    render,
+    nodeOps,
+    serializeInner: inner,
+    ref,
+    currentInstance,
+    withDirectives,
+  }) => {
+    const count = ref(0);
+    let _vnode = null,
+      _prevVnode;
+
+    const beforeMount = (el, binding, vnode, prevVnode) => {
+      log(">>> before mounted");
+      log("el.tag = " + el.tag);
+      log("el.parentNode = " + el.parentNode);
+      log("root.children.length = " + root.children.length);
+
+      log(binding);
+      log("vnode = _vnode, " + (vnode === _vnode));
+      log("prev vnode = " + prevVnode);
+    };
+
+    const mounted = (el, binding, vnode, prevVnode) => {
+      log(">>> mounted");
+      log("el.tag = " + el.tag);
+      log("el.parentNode = root" + (el.parentNode === root));
+      log("root.children[0] = el" + (el.children[0] === el));
+
+      log(binding);
+      log("vnode = _vnode, " + (vnode === _vnode));
+      log("prev vnode = " + prevVnode);
+    };
+
+    const beforeUpdate = (el, binding, vnode, prevVnode) => {
+      log(">>> before update");
+      log("el.tag = " + el.tag);
+      log("el.parentNode = root" + (el.parentNode === root));
+      log("root.children[0] = el" + (el.children[0] === el));
+
+      log("节点应该还没更新 el.children[0].text = " + (count.value - 1));
+      log(binding);
+      log("vnode = _vnode, " + (vnode === _vnode));
+      log("prev vnode = _prevVnode" + (prevVNode === _prevVnode));
+    };
+
+    const updated = (el, binding, vnode, prevVnode) => {
+      log(">>> updated");
+      log("el.tag = " + el.tag);
+      log("el.parentNode = root" + (el.parentNode === root));
+      log("root.children[0] = el" + (el.children[0] === el));
+
+      log("节点应该已经更新 el.children[0].text = " + count.value);
+      log(binding);
+      log("vnode = _vnode, " + (vnode === _vnode));
+      log("prev vnode = _prevVnode" + (prevVNode === _prevVnode));
+    };
+
+    const beforeUnmount = (el, binding, vnode, prevVnode) => {
+      log(">>> before unmount");
+      log("el.tag = " + el.tag);
+      log("el.parentNode = root" + (el.parentNode === root));
+      log("root.children[0] = el" + (el.children[0] === el));
+
+      log("节点应该已经更新 el.children[0].text = " + count.value);
+      log(binding);
+      log("vnode = _vnode, " + (vnode === _vnode));
+      log("prev vnode = " + prevVNode);
+    };
+    const unmounted = (el, binding, vnode, prevVnode) => {
+      log(">>> unmounted");
+      log("el.tag = " + el.tag);
+      log("el.parentNode = " + el.parentNode);
+      log("root.children.length = " + el.children.length);
+
+      log("节点应该已经更新 el.children[0].text = " + count.value);
+      log(binding);
+      log("vnode = _vnode, " + (vnode === _vnode));
+      log("prev vnode = " + prevVNode);
+    };
+
+    const dir = {
+      beforeMount,
+      mounted,
+      beforeUpdate,
+      updated,
+      beforeUnmount,
+      unmounted,
+    };
+
+    let _instance = null;
+    const Comp = {
+      setup() {
+        _instance = currentInstance;
+      },
+      render() {
+        (_prevVnode = _vnode),
+          (_vnode = withDirectives(h("div", count.value), [
+            [
+              dir, // dir, v-dir
+              count.value, // value, v-dir:foo.ok=value
+              "foo", // argument
+              { ok: true }, // modifiers
+            ],
+          ]));
+        return _vnode;
+      },
+    };
+
+    const root = nodeOps.createElement("div");
+    render(h(Comp), root);
+  },
+
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedcomponent stateful ? 4
+call setup
+[Function: render] render
+normalize vnode
+>>> before mounted
+el.tag = div
+el.parentNode = null
+root.children.length = 0
+{
+  dir: {
+    beforeMount: [Function: beforeMount],
+    mounted: [Function: mounted],
+    beforeUpdate: [Function: beforeUpdate],
+    updated: [Function: updated],
+    beforeUnmount: [Function: beforeUnmount],
+    unmounted: [Function: unmounted]
+  },
+  instance: {},
+  value: 0,
+  oldValue: undefined,
+  arg: 'foo',
+  modifiers: { ok: true }
+}
+vnode = _vnode, true
+prev vnode = null
+>>> mounted
+el.tag = div
+el.parentNode = roottrue
+root.children[0] = elfalse
+{
+  dir: {
+    beforeMount: [Function: beforeMount],
+    mounted: [Function: mounted],
+    beforeUpdate: [Function: beforeUpdate],
+    updated: [Function: updated],
+    beforeUnmount: [Function: beforeUnmount],
+    unmounted: [Function: unmounted]
+  },
+  instance: {},
+  value: 0,
+  oldValue: undefined,
+  arg: 'foo',
+  modifiers: { ok: true }
+}
+vnode = _vnode, true
+prev vnode = null
+#+end_example
+* TODO component props
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: component-props
+:END:
+
+[[https://github.com/gcclll/stb-vue-next/commit/6f6a0bee8e84f93a5cdab83e4db87b9897b1e041][feat(add): patch props · gcclll/stb-vue-next@6f6a0be]]
+
+#+begin_src js
+const { log, f, shuffle, runtime_test, renderChildren } = require(process.env
+  .BLOG_DIR_VUE + "/lib.js");
+import(process.env.BLOG_DIR_VUE + "/runtime-test.global.js").then(
+  ({
+    h,
+    render,
+    nodeOps,
+    serializeInner: inner,
+    ref,
+    currentInstance,
+    withDirectives,
+    defineComponent,
+  }) => {
+    let props;
+    let attrs;
+    let proxy;
+
+    const Comp = defineComponent({
+      props: ["fooBar", "barBaz"],
+      render() {
+        props = this.$props;
+        attrs = this.$attrs;
+        proxy = this;
+      },
+    });
+
+    const _log = (title) => {
+      log([
+        '>>> ' + title,
+        '\nproxy.fooBar = ' + proxy.fooBar,
+        '\n> props\n', props,
+        '\n> attrs\n', attrs
+      ])
+    }
+
+    const root = nodeOps.createElement('div')
+    render(h(Comp, { fooBar: 1, bar: 2 }), root)
+    _log('test')
+
+    render(h(Comp, { 'foo-bar': 3, bar: 3, baz: 4, barBaz: 5 }), root)
+    _log('foo-bar 会转成 fooBar')
+
+    render(h(Comp, { qux: 5 }), root)
+    _log('删除 camel case')
+
+    log('\n>>> stateful with setup')
+  },
+
+  (err) => {
+    console.log(err.message);
+  }
+);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+undefinedcomponent stateful ? 4
+call setup
+no setup
+[Function: render] render
+normalize vnode
+>>> test
+proxy.fooBar = 1
+> props
+ { fooBar: 1 }
+> attrs
+ { bar: 2 }
+should update component
+has changed props
+normalize vnode
+>>> foo-bar 会转成 fooBar
+proxy.fooBar = 3
+> props
+ { fooBar: 3, barBaz: 5 }
+> attrs
+ { bar: 3, baz: 4 }
+should update component
+has changed props
+normalize vnode
+>>> 删除 camel case
+proxy.fooBar = undefined
+> props
+ { fooBar: undefined, barBaz: undefined }
+> attrs
+ { qux: 5 }
+#+end_example
 
 * 测试
 :PROPERTIES:
@@ -3278,7 +3844,30 @@ require(process.env.BLOG_DIR_VUE + "/tests/KeepAlive.js");
 <p style="font-weight:800;font-size:28px;">KeepAlive Testing...</p>
 <div id="r9KorlFxQ9"></div>
 <script src="/js/vue/tests/r9KorlFxQ9.js"></script>
+
+<p style="font-weight:800;font-size:28px;">Directive Testing...</p>
+<div id="VSkUTk5fho"></div>
+<script src="/js/vue/tests/VSkUTk5fho.js"></script>
+
 #+end_export
 
+** 脑图 & 测试结果 GIF
+1. keep-alive 测试变化 GIF(13M):
 
-[[/img/vue3/runtime-core/vue-sample-runtime-core-suspense.svg]]
+    [[/img/vue3/runtime-core/gifs/test-keep-alive.gif]]
+
+    结合[[#keep-alive-deactivate][源码]]
+
+    #+begin_src typescript
+    // deactivate()
+    const storageContainer = createElement("div");
+    move(vnode, storageContainer, null, MoveType.LEAVE, parentSuspense);
+    #+end_src
+
+    即， deactivated 的 DOM 节点其实并非直接删除了，而是移到到了一个  ~off-dom~
+   的元素上了，待重新激活的时候再移回来(在源码的 deactivate 和 activate 函数中增
+   加 ~storageContainer~ 打印).
+
+2. 测试脑图：
+
+    [[/img/vue3/runtime-core/vue-sample-runtime-core-suspense.svg]]

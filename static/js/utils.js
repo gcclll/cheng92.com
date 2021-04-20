@@ -93,6 +93,28 @@ function insertCssLink(url) {
   head.appendChild(link);
 }
 
+function insertPreCode(selector) {
+  const script = document.querySelector(`script.${selector}`);
+  const div = document.querySelector(`div.${selector}`);
+  const ref = div || script;
+  if (ref) {
+    let pre = document.querySelector(`pre.${selector}`);
+    if (!pre) {
+      pre = document.createElement("pre");
+      pre.className = [selector, "chroma"].join(" ");
+    }
+    pre.innerHTML =
+      `<code class="language-javascript" data-lang="javascript">` +
+      `// 测试代码\n` +
+      script.innerHTML +
+      `</code>`;
+    const parent = script.parentNode;
+    if (parent) {
+      parent.insertBefore(pre, ref);
+    }
+  }
+}
+
 function insertScript(url, options = {}) {
   var script = document.createElement("script");
   script.type = "text/javascript";
@@ -151,3 +173,23 @@ function g_append(el, content) {
 }
 
 var g_log = g_append;
+
+var i1 = 0;
+var logp = (wrapper, el, title, ps = [], parent) => {
+  el && wrapper.appendChild(el);
+  const p = document.createElement("p");
+  p.style.cssText = "color:blue;border-bottom:1px solid green;";
+  const ap = el && title;
+  const pss = Array.isArray(ps) ? ps.join("\n") : ps;
+  if (parent) {
+    parent.innerHTML = pss;
+    return parent;
+  }
+  p.innerText =
+    (title ? `>>> ${i1++}. ${title}\n` : "") +
+    pss +
+    "\n" +
+    (el ? el.className + " " + el.outerHTML + "\n" : "");
+  wrapper.appendChild(p);
+  return p;
+};

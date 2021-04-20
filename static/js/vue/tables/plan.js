@@ -64,6 +64,13 @@ var plans = [
     startTime: "2021-03-10",
     desc: "vue3 数据管理",
   },
+  {
+    link: "/vue/vue-core-patch-flags",
+    name: "vue3 功能细化",
+    status: "WAITING",
+    startTime: "2021-03-10",
+    desc: "功能细化分析",
+  },
 ];
 
 plans.forEach(function (plan) {

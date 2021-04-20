@@ -1,0 +1,59 @@
+#+TITLE: Vue3 功能细化（一） PatchFlags
+#+DATE: <2021-04-13 11:16:07>
+#+TAGS[]: vue3, vue-next, PatchFlags
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本系列为 vue-next 源码分析系列的旁系分支，主要目的在于对 vue3 源码中的一些细节进
+行分析。比如： ~PatchFlags~, ~ShapeFlags~, 等等
+#+end_quote
+
+* PatchFlags.BAIL
+
+使用：
+
+#+begin_src typescript
+// renderer > patch()
+// transition 组件中标记为 BAIL 类型，需要进行 full-diff
+if (n2.patchFlag === PatchFlags.BAIL) {
+  optimized = false;
+  n2.dynamicChildren = null;
+}
+#+end_src
+
+设值：
+#+begin_src typescript
+// components>BaseTranstion.ts > getTransitionRawChildren()
+// #1126 if a transition children list contains multiple sub fragments, these
+// fragments will be merged into a flat children array. Since each v-for
+// fragment may contain different static bindings inside, we need to de-op
+// these children to force full diffs to ensure correct behavior.
+if (keyedFragmentCount > 1) {
+  for (let i = 0; i < ret.length; i++) {
+    ret[i].patchFlag = PatchFlags.BAIL;
+  }
+}
+
+// components>TransitionGroup.ts > ....
+// TODO
+#+end_src

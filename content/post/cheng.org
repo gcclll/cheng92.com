@@ -9,10 +9,16 @@
 杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，:smile::smile:。
 #+end_quote
 
-* 优质博文
+* 优质博文(含 github)
 1. [[https://imququ.com/post/series.html][Jerry Qu, HTTP/HTTP2相关内容丰富的博客]]
 2. [[https://segmentfault.com/a/1190000037435824][浏览器是如何工作的：Chrome V8让你更懂JavaScript - SegmentFault 思否]]
 3. [[https://zhuanlan.zhihu.com/p/347492556][程序员经常看的开源月刊《HelloGitHub》第 58 期 - 知乎]]
+4. [[https://github.com/Troland/how-javascript-works][Troland/how-javascript-works: Knowledge about how javascript works, event loop,service worker,etc.]]
+
+   里面有些文章介绍了，事件循环等一些原理性的东西。
+5. [[https://openbase.com/][Openbase: choose the right package every time]]
+
+   技术选型网站，如 vue, react 等待。
 
 * 数学
 

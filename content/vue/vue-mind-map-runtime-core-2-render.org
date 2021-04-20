@@ -12,7 +12,7 @@
   诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
-<script src="https://unpkg.com/vue@next"></script>
+<script src="/js/vue/vue-next.js"></script>
 <script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/utils.js"></script>
 #+end_export

@@ -1,5 +1,5 @@
-#+TITLE: Vue3 核心原理和功能分析链
-#+DATE: <2021-01-13 22:51:17>
+#+TITLE: Vue3 自问自答系列❓❓❓
+#+DATE: <2021-04-15 18:31:06>
 #+TAGS[]: vue, vue3
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
@@ -22,12 +22,18 @@
 要链接到本网站内文章，不排除有外链其他网站。
 #+end_quote
 
-1. [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
+1. [[/vue/vue-mind-map-runtime-dom/#prop-on-xxx][vue3 事件绑定是如何实现的(stopImmediatePropagation 又是啥?)？]]
+
+   简述：一个元素一个事件名对应的事件只会绑定一个 listener 及 封装之后的
+   invoker，此时为了实现原生事件的 stopImmediatePropagation 功能，对
+   invoker.value 即事件句柄列表里面的所有事件句柄(函数)进行了重写。
+
+2. [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
 
    vue3 中的异步更新任务分为三种： pre cbs/queue jobs/post cbs，他们的执行都有一
    定的先后顺序，点击[[/vue/vue-mind-map-runtime-core/#scheduler][链接]]了解更多分析内容。
 
-2. [[/vue/vue-mind-map-runtime-core-render/#keyed-children][vue3 diff 原理？]]
+3. [[/vue/vue-mind-map-runtime-core-render/#keyed-children][vue3 diff 原理？]]
 
   | old         | new           | 更新原则     |
   |-------------+---------------+--------------|
@@ -43,7 +49,7 @@
 
   这里又是如何利用“最长增长序列”来过滤掉不需要移动的节点的？
 
-3. [[/vue/vue-mind-map-runtime-core-3-component/#keep-alive][keep-alive 组件实现原理？]]
+4. [[/vue/vue-mind-map-runtime-core-3-component/#keep-alive][keep-alive 组件实现原理？]]
 
    activate 和 deactivate 状态切换的实际原理是什么？
 
