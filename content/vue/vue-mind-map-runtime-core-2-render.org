@@ -7,11 +7,15 @@
 
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
 <kbd>
 <font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
   诗号：六道同坠，魔劫万千，引渡如来。
 </font>
 </kbd><br><br>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
 <script src="/js/vue/vue-next.js"></script>
 <script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/utils.js"></script>
@@ -2490,6 +2494,9 @@ const patchUnkeyedChildren = (
 * 测试
 
 #+begin_export html
+<div id="visual"></div>
+<hr/>
+<div id="annotated"></div>
 <div id="tShhLU1P6z"></div>
 <script src="/js/vue/tests/tShhLU1P6z.js"></script>
 #+end_export
