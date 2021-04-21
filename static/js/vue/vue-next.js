@@ -6692,9 +6692,6 @@ var Vue = (function (exports) {
         if (patchFlag & 128 /* KEYED_FRAGMENT */) {
           // this could be either fully-keyed or mixed (some keyed some not)
           // presence of patchFlag means children are guaranteed to be arrays
-          var delta1 = jsondiffpatch.diff(c1, c2);
-          console.log(delta1, "before");
-
           patchKeyedChildren(
             c1,
             c2,
@@ -6706,14 +6703,6 @@ var Vue = (function (exports) {
             slotScopeIds,
             optimized
           );
-          var delta2 = jsondiffpatch.diff(c1, c2);
-          document.getElementById(
-            "visual"
-          ).innerHTML = jsondiffpatch.formatters.html.format(delta2, c1);
-          document.getElementById(
-            "annotated"
-          ).innerHTML = jsondiffpatch.formatters.annotated.format(delta2, c1);
-          console.log(delta2, "after");
           return;
         } else if (patchFlag & 256 /* UNKEYED_FRAGMENT */) {
           // unkeyed

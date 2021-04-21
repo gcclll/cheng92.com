@@ -9,7 +9,7 @@ var app_tShhLU1P6z = (function () {
       `<el-button @click="insert">插入</el-button>` +
       `<el-button @click="modify">修改</el-button></p>` +
       `<p>{{nums.join(',')}}</p>` +
-      `<ul><li v-for="n in nums" :key="n">No. = {{ n }}</li></ul>`,
+      `<ul @vnode-updated="vnodeUpdated"><li v-for="n in nums" :key="n">No. = {{ n }}</li></ul>`,
     mounted() {
       log("option api mounted...");
     },
@@ -29,10 +29,14 @@ var app_tShhLU1P6z = (function () {
       const randIdx = () => random(nums.length - 1);
       const add = () => nums.push(random(100));
       const del = () => nums.splice(randIdx(), 1);
-      const insert = () => nums.splice(randIdx(), 1, random(100));
+      const insert = () => nums.splice(randIdx(), 0, random(100));
       const modify = () => (nums[randIdx()] = random(50));
+      const vnodeUpdated = (vnode, prevVnode) => {
+        domDiff(prevVnode?.children[0].children, vnode?.children[0].children);
+        // console.log(vnode, prevVnode, "vnode updated");
+      };
 
-      return { count, nums, add, del, insert, modify };
+      return { count, nums, add, del, insert, modify, vnodeUpdated };
     },
   });
   app.use(ElementPlus).mount("#" + id);
