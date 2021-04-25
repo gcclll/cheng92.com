@@ -1,0 +1,114 @@
+#+TITLE: Vue Vuex Persist Store(数据持久化)
+#+DATE: <2021-04-25 16:07:22>
+#+TAGS[]: vue, vuex, store, persist
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+官方仓库： [[https://github.com/championswimmer/vuex-persist][championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled)]]
+#+end_quote
+
+#+begin_export html
+<script src="/js/vue/vuex-persist.js"></script>
+#+end_export
+
+
+* VuexPersistence
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: constructor
+:END:
+
+构造函数:
+#+begin_src js
+function VuexPersistence(options) {
+  // ...
+}
+
+#+end_src
+
+** 存储源
+
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: literal_eg
+:END:
+
+初始化，并且决定用哪种方式存储数据，主要有三种方式：
+1. 用户定义存到哪里 options.storage
+2. H5 的 storage api localStorage 本地存储
+3. MockStorage 库内部的一个封装，内存存储方案
+
+#+begin_src js
+function VuexPersistence(options = {}) {
+  // 创建一个队列管理器实例
+  const _mutex = new SimplePromiseQueue()
+
+  this.key = options.key ?? 'vuex'
+
+  this.subscribed = false
+  this.mergeOption = options.mergeOption || 'replaceArrays'
+
+
+  let localStorateLitmus = true
+  // 支不支持 H5 storage api
+  try {
+    window.localStorage.getItem('')
+  } catch (err) {
+    localStorageLitmus = false
+  }
+
+  // 几种 storage 存储机制
+  // 1. 用户定义的
+  // 2. H5 storage api localStorage
+  // 3. mock storage 内存里的一个全局变量
+  // 4. 都不是应该报错
+  if (options.storage) {
+    this.storage = options.storage
+  }
+}
+#+end_src
+* queue 队列
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queue
+:END:
+
+一个简单的队列刷新类：
+#+begin_src js
+function SimplePromiseQueue() {
+  this._queue = []
+  this._flushing = false
+}
+
+const SPQ = SimplePromiseQueue
+const SPGP = SimplePromiseQueue.prototype
+
+// 入列，如果没有任务正在执行，立即 flush
+SPGP.enqueue = function enqueue(promise) {
+  this._queue.push(promise)
+  if (!this._flushing) return this.flushQueue()
+  return Promise.resolve()
+}
+
+SPGP.flushQueue = function flushQueue() {
+  this._flushing = true
+
+  const chain = () => {
+    const nextTask = this._queue.shift() // 先进先出
+    if (nextTask) {
+      // 递归，flush 所有任务
+      return nextTask.then(chain)
+    }
+
+    this._flushing = false
+  }
+  return Promise.resolve(chain())
+}
+#+end_src
+
+任务入列的时候，会检测队列是不是正在刷新，如果是只执行入列操作，这里返回一个
+~Promise.resolve()~ 方便后面任务的依次进行。
+
+~flushQueue()~ 将出列行为封装成一个函数，来达到所有任务按入列顺序执行。

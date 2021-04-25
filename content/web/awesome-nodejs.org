@@ -1,0 +1,76 @@
+#+TITLE: Awesome Web Development(WEB开发资源)
+#+DATE: <2021-04-23 16:45:54>
+#+TAGS[]: nodejs, web, javascript, typescript
+#+CATEGORIES[]: web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+本文以表格形式列出所有优秀库及相关对比。
+#+end_quote
+
+#+begin_export html
+状态：<span class="el-table__row flag DONE" style="padding:0 5px;">DONE 已完成</span>
+<span class="el-table__row flag DOING">DOING 进行中</span> 
+<span class="el-table__row flag PENDING">PENDING 暂停中</span>
+<span class="el-table__row flag WAITING">WAITING 计划中</span>
+<br/>
+
+<script src="/js/utils.js"></script>
+<script src="https://unpkg.com/vue@next"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+insertCssLink("/js/vue/css/awesome.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/awesome/common.js"></script>
+#+end_export
+
+#+begin_quote
+此文初衷，有时候去找一些库的时候，第一反应就是 ~awesome-xxx~， 比如：
+~awesome-emacs~, ~awesome-nodejs~ ... ，但是这些项目基本就只有一个链接，当想决定
+使用哪个的时候往往需要一个个点开去对比下星级和提交记录。
+
+此文就是为了方便查看库的星级和 build status 而产生。
+
+而此文的实现基于 ~vue-next~ + ~element-plus~
+#+end_quote
+
+* Tools
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: tools
+:END:
+
+1. [[https://shields.io/category/analysis][Shields.io: Quality metadata badges for open source projects]]
+
+   生成 github 图标的.
+
+    #+begin_export html
+    <img src="https://img.shields.io/github/stars/gcclll/cheng92.com?style=social"/>
+    #+end_export
+
+
+* Node.js
+
+
+** Logging 日志功能
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: node-logging
+:END:
+
+#+begin_export html
+<div id="nodejs-logging"></div>
+<script src="/js/vue/awesome/node-logging.js"></script>
+#+end_export
+** Command-line utilities 命令行工具
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: cmd-line-utils
+:END: 
+
+#+begin_export html
+<div id="nodejs-cmd-line-utils"></div>
+<script src="/js/vue/awesome/node-cmd-line-utils.js"></script>
+#+end_export

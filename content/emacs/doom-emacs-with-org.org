@@ -480,6 +480,7 @@ Uses `current-date-time-format' for the formatting the date/time."
                (battery))
   (display-battery-mode 1))                     ; 显示电量
 (global-subword-mode 1)                         ; Iterate through CamelCase words
+(prettier-js-mode)
 #+end_src
 *** abbrev 缩写表
 

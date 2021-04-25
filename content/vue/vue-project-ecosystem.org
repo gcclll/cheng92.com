@@ -1,0 +1,199 @@
+#+TITLE: Vue3 开发生态链(vuex, vue-router, ...)
+#+DATE: <2021-04-21 16:53:02>
+#+TAGS[]: vue, vue3, vue-router, vuex, i18n
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink inlineimages
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+该文记录着实际开发过程中使用到的 vue3 及其生态中相关的框架或库遇到的各种问题，和
+其他收集。
+#+end_quote
+
+* 相关项目
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: link
+:END:
+
+[[https://github.com/xiaoxian521/vue-pure-admin][xiaoxian521/vue-pure-admin: ✨ 🚀Vue3.0+TypeScript+Vite2.0+Element-Plus编写的一
+套后台管理系统]]
+* vue-enxt
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vue-next
+:END:
+
+** template ref 使用
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: tpl-ref
+:END:
+
+[[/vue/vue-mind-map-runtime-core-3-component/#ref][runtime-core ref 属性解析&分析]]
+
+模板： attrs 形式使用 ref 将会绑定 elForm 。
+#+begin_src html
+<templet>
+  <el-form ref="elForm"/>
+</templet>
+#+end_src
+
+setup:
+
+#+begin_src typescript
+defineComponent({
+  setup(props, ctx) {
+    // 声明 element ref 变量
+    const elForm = ref(null)
+
+    // 使用
+    onMounted(() => {
+      elForm.value.validate(/* bala bala... */)
+    })
+
+    return { elForm }
+  }
+})
+#+end_src
+
+注意点：
+1. ~ref="elForm"~ 不能使用 ~v-bind:ref~ 只能是 ~attrs~
+2. 使用时 ~elForm.value~ 因为它是个 ~Ref~ 类型
+
+* vue-router-next
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vue-router-next
+:END:
+
+[[https://github.com/vuejs/vue-router-next][vuejs/vue-router-next: The Vue 3 official router]]
+
+* vuex
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vuex
+:END:
+
+[[https://github.com/vuejs/vuex/tree/4.0][vuejs/vuex at 4.0]]
+
+[[https://next.vuex.vuejs.org/installation.html#npm][Installation | Vuex]]
+
+** 使用
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vuex-usage
+:END:
+
+creation:
+
+#+begin_src typescript
+import { createStore } from "vuex";
+import permission from "./modules/permission";
+
+const store = createStore({
+  modules: {
+    permission,
+  },
+});
+
+export default store;
+#+end_src
+
+模块： 权限菜单 (permission)
+#+begin_src typescript
+// './modules/permission'
+// State
+const state: PermissionState = {
+  asyncMenus: [] as MenuItem[],
+  minorRoutes: [] as RouteConfigRecord[],
+  get mountedRoutes(): RouteConfigRecord[] {
+    // TODO 根据当前用户从服务器获取权限菜单，跟新到 asyncMenus 中
+    // 根据过滤后的结果进行渲染
+    return toBeMounted;
+  },
+};
+
+// mutation 不可直接调用的，必须通过 commit(SET_MENUS) 来调用
+// 更新状态
+const mutations = {
+  [SET_MENUS](state: PermissionState, menus: MenuItem[]): void {
+    state.asyncMenus = menus;
+  },
+
+  [SET_MINOR_ROUTES](state: PermissionState, routes: RouteConfigRecord[]) {
+    state.minorRoutes = routes;
+  },
+};
+
+// action 组件中可通过 store.dispatch('permission/getMenus') 来触发
+// 对应的 action, 注意这里如果是模块化需要加上 'permission/'
+const actions = {
+  async getMenus({ commit }: ActionContext) {
+    if (state.asyncMenus.length) {
+      return state.asyncMenus;
+    }
+
+    const res = await getMenuList();
+    commit(SET_MENUS, res.data);
+    return res.data;
+  },
+};
+
+// 最后将结果导出，形成一个 store 模块 permission
+export default {
+  state,
+  mutations,
+  actions,
+  namespaced: true,
+};
+#+end_src
+** 数据持久化
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vuex-persist
+:END:
+* vue-i18n-next
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: i18n
+:END:
+
+[[https://github.com/intlify/vue-i18n-next][intlify/vue-i18n-next: Vue I18n for Vue 3]]
+
+Docs: [[https://vue-i18n.intlify.dev/installation.html][Installation | Vue I18n]]
+
+Usage： [[https://lokalise.com/blog/vue-i18n/?utm_source=google&utm_medium=cpc&utm_campaign=GENERIC_i18n-vuejs&gclid=CjwKCAjwmv-DBhAMEiwA7xYrd7ANX_aqFQTLUvwubzttdV17rEvpRlq8m8GZjCjk6kqQ1bGFg_kdhBoCaKwQAvD_BwE][Vue i18n: Building a multi-lingual app - Lokalise Blog]]
+
+1. vue-i18n esm-bundler 警告
+
+   #+begin_quote
+   You are running the esm-bundler build of vue-i18n. It is recommended to configure your bundler to explicitly replace feature flag globals with boolean literals to get proper tree-shaking in the final bundle.
+   #+end_quote
+
+   [[https://github.com/xiaoxian521/vue-pure-admin/commit/f2db3acee2629ec26bc531a5b0b4be9eaec14dab][fix：解决vue-i18n在开发环境下的告警 · xiaoxian521/vue-pure-admin@f2db3ac]]
+
+   #+begin_src diff
+   alias: {
+     "@": path.resolve(__dirname, "./src"),
++  "vue-i18n": "vue-i18n/dist/vue-i18n.cjs.js",
+   };
+   #+end_src
+

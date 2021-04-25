@@ -194,7 +194,15 @@ var logp = (wrapper, el, title, ps = [], parent) => {
   return p;
 };
 
-function domDiff(c1, c2, { v, a } = { v: "visual", a: "annotated" }) {
+function domDiff(
+  c1,
+  c2,
+  { v, a, ...option } = { v: "visual", a: "annotated" }
+) {
+  console.log(jsondiffpatch);
+  // jsondiffpatch = jsondiffpatch.create({
+  //   ...option,
+  // });
   var delta = jsondiffpatch.diff(c1, c2);
   document.getElementById(v).innerHTML = jsondiffpatch.formatters.html.format(
     delta,

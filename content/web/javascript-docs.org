@@ -27,7 +27,11 @@
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: event-cap-bub
-:END: 
+:END:
+
+[[https://segmentfault.com/a/1190000008227026][白话解释 Javascript事件preventDefault,stopPropagation及return false的区别 -
+SegmentFault 思否]]
+
 * 操作符
 ** delete
 :PROPERTIES:

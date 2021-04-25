@@ -1,0 +1,63 @@
+#+TITLE: 将 VSCode 打造成 Emacs
+#+DATE: <2021-04-22 16:14:44>
+#+TAGS[]: vscode, emacs
+#+CATEGORIES[]: vscode
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+当前使用的 Doom-Emacs，但是在进行 vue 开发过程中总会遇到一些问题，用起来并不是很
+丝滑！！！ 故。。。。。
+#+end_quote
+
+* Settings Sync
+
+配置上传和下载，绑定 Github & Gist。
+
+* key bindings(LeaderMode)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: key-bind
+:END:
+
+第一步先将按键绑定搞起来。
+
+** SPC
+
+| key         | function |
+|-------------+----------|
+| *bookmark*  | -        |
+| ~SPC b m~   | 设置标签 |
+| ~SPC <RET>~ | 列出标签 |
+|             |          |
+** Command(⌘)
+
+| key         | function               |
+|-------------+------------------------|
+| *<Command>* |                        |
+| ~S-0~       | 打开侧边栏并聚焦       |
+| ~S-b~       | 打开/隐藏侧边栏        |
+| ~S-F1~      | 打开项目Dashboard      |
+| ~S-'~       | 引号切换("'`)          |
+| ~S-shift-\~ | 跳转到匹配括号         |
+|-------------+------------------------|
+| *S-k*       | Quokka, 实时调试 js/Ts |
+| ~S-k j~     | javascript             |
+| ~S-k t~     | typescript             |
+| ~S-k q~     | 在当前文件启动 Quokka  |
+
+** Emacs style
+
+
+| key     | function             |
+|---------+----------------------|
+| ~C-c f~ | 在当前目录下创建文件 |
+| ~C-c F~ | 在当前目录下创建目录 |
+
+** vim 按键
+
+| key   | function               |
+|-------+------------------------|
+| ~f/F~ | ace jump，字符/单词    |
+| ~yw~  | 复制光标后面的单词内容 |
+| ~dw~  | 删除光标后面的单词内容 |
