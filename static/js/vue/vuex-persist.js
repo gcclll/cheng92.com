@@ -26,6 +26,45 @@ function VuexPersistence(options = {}) {
     this.storage = options.storage
   }
 
+  this.asyncStorage = options.asyncStorage || false
+
+  this.installApi()
+}
+
+const VPP = VuexPersistence.prototype
+VPP.installApi = function() {
+  if (this.asyncStorage) {
+    // TODO
+  } else {
+    // 清空数据
+    this.restoreState = (key, storage) => {
+      const value = (storage).getItem(key)
+      if (typeof value === 'string') {
+        return JSON.parse(value || '{}')
+      } else {
+        return (value || {})
+      }
+    }
+
+    this.saveState = (key, state, storage) => {
+      storage.setItem(key, JSON.stringify(state))
+    }
+
+    //  vuex 安装接口
+    this.plugin = (store) => {
+      const savedState = this.restoreState(this.key, this.storage)
+
+      // TODO strict mode
+      store.replaceState(merge(store.state, savedState || {}))
+
+      this.subscriber(store)((mutation, state) => {
+        if (this.filter(mutation)) {
+          this.saveState(this.key, this.reducer(state), this.storage)
+        }
+      })
+      this.subscribed = true
+    }
+  }
 }
 
 function SimplePromiseQueue() {
@@ -56,4 +95,17 @@ SPGP.flushQueue = function flushQueue() {
     this._flushing = false
   }
   return Promise.resolve(chain())
+}
+
+const options = {
+  replaceArrays: {
+    arrayMerge: (destinationArray, sourceArray, options) => sourceArray
+  },
+  concatArrays: {
+    arrayMerge: (target, source, options) => target.concat(...source)
+  }
+}
+
+function merge(into, from, mergeOption = {}) {
+  return deepmerge(into, from, options[mergeOption])
 }

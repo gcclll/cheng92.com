@@ -8,6 +8,10 @@
 #+begin_quote
 当前使用的 Doom-Emacs，但是在进行 vue 开发过程中总会遇到一些问题，用起来并不是很
 丝滑！！！ 故。。。。。
+
+
+[2021-04-25 20:58:16] 习惯这东西真实难改，还是继续 Emacs 吧， 虽然 vscode 也整的
+差不多了(~"sync.gist": "26eb4c3f161740254c0f21de867adf87"~)。
 #+end_quote
 
 * Settings Sync

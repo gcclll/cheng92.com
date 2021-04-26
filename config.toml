@@ -74,6 +74,11 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   weight = 70
   identifier = "categories"
   url = "/categories/"
+# [[menu.main]]
+#   name = "Search"
+#   weight = 80
+#   identifier = "search"
+#   url = "/search/"
 
 [params]
   google_fonts = [
@@ -256,7 +261,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
 #  isHTML = false
 #
 [outputs]
- home = ["HTML", "RSS", "Algolia"]
+ home = ["HTML", "RSS", "Algolia", "JSON"]
 #  page = ["HTML", "MarkDown"]
 #  section = ["HTML", "RSS"]
 #  taxonomy = ["HTML", "RSS"]
@@ -272,3 +277,5 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   appId = "EDIKM3W4HV"
   indexName = "cheng92.com"
   searchOnlyKey = "ac1e64640788e5697016a58be1ec7232"
+  vars = ["title", "summary", "date", "publishdate", "expirydate", "permalink"]
+  params = ["categories", "tags"]

@@ -170,6 +170,9 @@ export default {
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: vuex-persist
 :END:
+
+[[/vue/vue-vuex-persist/][vuex-persist 数据持久化，源码简析]]
+
 * vue-i18n-next
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

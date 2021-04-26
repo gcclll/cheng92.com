@@ -1,4 +1,4 @@
-#+TITLE: Vue Vuex Persist Store(数据持久化)
+#+TITLE: Vue Vuex Persist Store(数据持久化) - 简化版
 #+DATE: <2021-04-25 16:07:22>
 #+TAGS[]: vue, vuex, store, persist
 #+CATEGORIES[]: vue
@@ -10,9 +10,8 @@
 #+end_quote
 
 #+begin_export html
-<script src="/js/vue/vuex-persist.js"></script>
+<script src="/js/deepmerge.js"></script>
 #+end_export
-
 
 * VuexPersistence
 :PROPERTIES:
@@ -20,12 +19,17 @@
 :CUSTOM_ID: constructor
 :END:
 
+#+begin_quote
+原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的时候执
+行去更新 persist store。
+#+end_quote
+
+
 构造函数:
 #+begin_src js
 function VuexPersistence(options) {
   // ...
 }
-
 #+end_src
 
 ** 存储源
@@ -69,6 +73,171 @@ function VuexPersistence(options = {}) {
   }
 }
 #+end_src
+** [save|restore]State
+
+这两个函数直接操作 store 存储源。
+
+#+begin_src js
+// 清空数据
+this.restoreState = (key, storage) => {
+  const value = storage.getItem(key);
+  if (typeof value === "string") {
+    return JSON.parse(value || "{}");
+  } else {
+    return value || {};
+  }
+};
+
+this.saveState = (key, state, storage) => {
+  storage.setItem(key, JSON.stringify(state));
+};
+#+end_src
+
+** plugin(store)
+
+给 vuex 使用的一个函数
+
+#+begin_src js
+const vuexLocal = new VuexPersistence({
+  storage: window.localStorage,
+  modules: ["permission", "film", "settings"],
+});
+
+createStore({
+  // ...
+  plugins: [vuexLocal.plugin],
+});
+
+// vuex Store: constructor > 安装插件
+// apply plugins
+plugins.forEach((plugin) => plugin(this));
+#+end_src
+
+实现:
+#+begin_src js
+//  vuex 安装接口
+this.plugin = (store) => {
+  const savedState = this.restoreState(this.key, this.storage);
+
+  // TODO strict mode
+  store.replaceState(merge(store.state, savedState || {}));
+
+  this.subscriber(store)((mutation, state) => {
+    if (this.filter(mutation)) {
+      this.saveState(this.key, this.reducer(state), this.storage);
+    }
+  });
+
+  this.subscribed = true;
+};
+
+// vuex replaceState，直接理解为替换 state 就行了
+function replaceState(state) {
+  this._withCommit(() => {
+    this._state.data = state;
+  });
+}
+
+// 订阅啥？
+this.subscriber(store)((mutation: MutationPayload, state: S) => {
+  if (this.filter(mutation)) {
+    this.saveState(this.key, this.reducer(state), this.storage);
+  }
+});
+#+end_src
+** subscriber(store)
+
+#+begin_src typescript
+const subscriber = (store: Store<S>) => (
+  handler: (mutation: MutationPayload, state: S) => any
+) => store.subscribe(handler);
+#+end_src
+
+vuex subscribe:
+#+begin_src typescript
+function subscribe(fn, options) {
+  return genericSubscribe(fn, this._subscribers, options);
+}
+
+function genericSubscribe(fn, subs, options) {
+  if (subs.indexOf(fn) < 0) {
+    options && options.prepend ? subs.unshift(fn) : subs.push(fn);
+  }
+  return () => {
+    const i = subs.indexOf(fn);
+    if (i > -1) {
+      subs.splice(i, 1);
+    }
+  };
+}
+
+// commit
+function commit(_type, _payload, _options) {
+  // ... 省略 commit mutation 操作
+
+  // 注意看这里，说明每次 commit mutation 操作
+  // 更新 state 的时候都会执行
+  this._subscribers
+    .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
+    .forEach((sub) => sub(mutation, this.state));
+
+  // ... warn
+}
+#+end_src
+
+有了上面的 vuex 源码部分，再来看这 vuex-persist 的 subscribe 干了啥
+
+#+begin_src js
+// 订阅啥？
+this.subscriber(store)((mutation: MutationPayload, state: S) => {
+  if (this.filter(mutation)) {
+    this.saveState(this.key, this.reducer(state), this.storage);
+  }
+});
+#+end_src
+
+这里等于是给 vuex this._subscribers 注入了一个函数，这个函数会在每次 vuex commit
+mutation 的时候去执行来更新 store 里面的 state。
+
+#+begin_src js
+this.saveState = (key, state, storage) => {
+  storage.setItem(key, JSON.stringify(state));
+};
+#+end_src
+** modules
+
+支持多模块 - 对应了 vuex 的 modules。
+
+#+begin_src typescript
+this.reducer =
+  options.reducer != null
+    ? options.reducer
+    : options.modules == null
+    ? (state: S) => state
+    : (state: any) =>
+        (options!.modules as string[]).reduce(
+          (a, i) => merge(a, { [i]: state[i] }, this.mergeOption),
+          {
+            /* start empty accumulator*/
+          }
+        );
+
+// 使用：当 commit mutation 状态更新，根据是不是有 modules
+// 调用 recuder 决定如何存储，比如： modules [a, b]
+// 存储的时候 localStorage = { a: xxx, b: xxx }
+// 如果没有 modules ，默认用的是 key : 'vuex'
+// 所以 localStorage = { vuex: xxx }
+this.subscriber(store)((mutation: MutationPayload, state: S) => {
+  if (this.filter(mutation)) {
+    this._mutex.enqueue(
+      this.saveState(this.key, this.reducer(state), this.storage) as Promise<
+        void
+      >
+    );
+  }
+});
+#+end_src
+
 * queue 队列
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
