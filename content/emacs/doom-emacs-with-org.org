@@ -735,6 +735,7 @@ tables.]]
 
         ;; org
         (:rot ("DONE" "DOING" "WAITING" "PENDING"))
+        (:rot ("increment", "decrement"))
 
         ))
 #+end_src

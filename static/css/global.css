@@ -38,3 +38,11 @@ iframe.vue-test {
   width: 100%;
   height: 300px;
 }
+
+.el-table__row.flag {
+  padding: 2px 5px;
+}
+
+.post .post-content .table-wrapper > table {
+  margin: 0;
+}

@@ -1,0 +1,1023 @@
+#+TITLE: Vue3 功能拆解② Scheduler 渲染机制
+#+DATE: <2021-04-13 11:16:07>
+#+TAGS[]: vue3, vue-next, PatchFlags
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本系列为 vue-next 源码分析系列的旁系分支，主要目的在于对 vue3 源码中的一些细节进
+行分析。本文讲述的是 vue3 中的一些任务调度，主要集中内容在任务类别和调度顺序问题。
+
+#+end_quote
+
+该链接是 vue3 scheduler 的源码分析：
+
+[[/vue/vue-mind-map-runtime-core-1/#scheduler][Vue3 源码头脑风暴之 7 ☞ runtime-core(1) - 若叶知秋 - scheduler 任务调度机制]]
+
+而本文主要集中点在于 vue3 中哪里使用到了这个机制，执行顺序又是怎么样的❓❓❓
+
+* scheduler Apis 回顾
+
+#+begin_quote
+这节是针对 vue3 里 scheduler api 的一些回顾，更详细的源码分析查看上面的链接。
+#+end_quote
+
+下面列出 scheduler.ts 这个文件相关的 API，后面会根据这些 api 去查找哪里用到这个
+机制(之前源码阅读分析过程中，并没有特别关注，因此也很难回想具体哪些地方有用到，
+所以通过搜索更直接点)
+
+| name                                 | brief                          |
+|--------------------------------------+--------------------------------|
+| ~nextTick(fn?)~                      | 下一个时钟执行 fn 后后面的代码 |
+| ~queueJob(job: SchedulerJob)~        | job 入列                       |
+| ~queueFlush()~                       | flush 所有 Jobs                |
+| ~flushJobs(seen?: CountMap)~         | queueFlush 中调用              |
+| ~queuePreFlushCb(cb: SchedulerCb)~   | pre 类型的任务                 |
+| ~flushPreFlushCbs(seen, parentJob)~  | flush pre 类型任务             |
+| ~queuePostFlushCb(cb: SchedulerCbs)~ | post 类型的任务                |
+| ~flushPostFlushCbs(seen?: CountMap)~ | flush post 类型任务            |
+
+从表中可知这里有三种类型的任务 ~job | pre | post~ 。
+
+本文也将是围绕这三种类型去分析，了解具体哪些操作属于上面三种类型(比如：组件渲
+染，更新，删除等待)。
+
+简单回顾每个 api 功能:
+
+1. ~queueJob~ 任务入列之后会立即调用 ~queueFlush~ 去 flush jobs
+
+   #+begin_src typescript
+   export function queueJob(job: SchedulerJob) {
+     // the dedupe search uses the startIndex argument of Array.includes()
+     // by default the search index includes the current job that is being run
+     // so it cannot recursively trigger itself again.
+     // if the job is a watch() callback, the search will start with a +1 index to
+     // allow it recursively trigger itself - it is the user's responsibility to
+     // ensure it doesn't end up in an infinite loop.
+     if (
+       (!queue.length ||
+         !queue.includes(
+           job,
+           isFlushing && job.allowRecurse ? flushIndex + 1 : flushIndex
+         )) &&
+       job !== currentPreFlushParentJob
+     ) {
+       queue.push(job);
+       queueFlush();
+     }
+   }
+
+   function queueFlush() {
+     if (!isFlushing && !isFlushPending) {
+       isFlushPending = true;
+       currentFlushPromise = resolvedPromise.then(flushJobs);
+     }
+   }
+   #+end_src
+
+2. ~queuePreFlushCb~ 针对 pre cb，调用 ~queueCb~ 去入列同时立即 ~queueFlush~
+
+   #+begin_src typescript
+   export function queuePreFlushCb(cb: SchedulerCb) {
+     queueCb(cb, activePreFlushCbs, pendingPreFlushCbs, preFlushIndex);
+   }
+   #+end_src
+
+   相关的全局变量:
+   #+begin_src typescript
+   // 还未被执行的任务，如果当前 tick 正在 flush pre cbs 的时候
+   // 有新的任务进来，会被添加到这个数组中
+   const pendingPreFlushCbs: SchedulerCb[] = [];
+   // 正在被执行的任务，此时如果 pendingPreFlushCbs 中有新的任务进来的
+   // 时候，会被合并到这个队列中被继续执行，因为 flushPreFlushCbs() 函数实现
+   // 最后是递归调用自身，而递归结束的条件就是 pendingPreFlushCbs.length
+   let activePreFlushCbs: SchedulerCb[] | null = null;
+   // flush 过程中正在执行的任务索引
+   let preFlushIndex = 0;
+   #+end_src
+
+   所以 pre cbs 在同一个 tick 下如果有新的任务会在正在被执行的任务队列执行完成之
+   后立即被执行。
+
+3. ~queuePostFlushCb~ 针对 post cb，调用 ~queueCb~ 去入列同时立即执行 ~queueFlush~
+
+4. 最后是 flushCbs 决定了三种类型任务执行优先级
+
+   #+begin_src typescript
+   function flushJobs(seen?: CountMap) {
+     // ...
+
+     // pre cbs 先执行
+     flushPreFlushCbs(seen);
+
+     // jobs 后执行
+     try {
+       for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
+         const job = queue[flushIndex];
+         if (job) {
+           if (__DEV__) {
+             checkRecursiveUpdates(seen!, job);
+           }
+           callWithErrorHandling(job, null, ErrorCodes.SCHEDULER);
+         }
+       }
+     } finally {
+
+       // 最后再执行 post cbs
+       flushPostFlushCbs(seen);
+
+       // 这里是为了保证 post cbs 和 jobs 全部执行，因为 post cbs
+       // 并没有向 pre cbs 那样递归调用自己，而只是为了防止嵌套使用增加
+       // 了个处理机制，将新来的 pending post cbs 加入队列后继续执行
+       // 而这里的检测是为了在前一次调用 flushPostFlushCbs 完全结束之后
+       // 再次调用了 queuePostFlushCb 进行了入列操作的一次清理操作
+       if (queue.length || pendingPostFlushCbs.length) {
+         flushJobs(seen);
+       }
+     }
+   }
+   #+end_src
+
+
+这里借助 pre cbs 做个简单的例子：
+
+#+begin_src js
+let pendingPreFlushCbs = [];
+let activePreFlushCbs = null;
+let preFlushIndex = 0;
+let isFlushing = false
+let resolvedPromise = Promise.resolve()
+
+function queuePreFlushCb(cb) {
+  // cb 没有正在执行才进入等待队列
+  if (!activePreFlushCbs || !activePreFlushCbs.includes(cb))
+    pendingPreFlushCbs.push(cb);
+
+  // 立即刷新队列
+  if (!isFlushing) {
+    // 这里需要异步执行，让所有任务在同一个 tick 里面执行
+    // 不然进来一个就会立即执行
+    resolvedPromise.then(flushPreFlushCbs)
+  }
+}
+
+function flushPreFlushCbs() {
+  isFlushing  = true
+  // 一开始入列的是 pending 所以最开始这里应该是有任务的
+  if (pendingPreFlushCbs.length) {
+    // 为了去重使用集合，得到下面将执行的任务队列
+    activePreFlushCbs = [...new Set(pendingPreFlushCbs)];
+    // 这里情况等待队列，准备接受新的任务
+    pendingPreFlushCbs.length = 0;
+
+    for (
+      preFlushIndex = 0;
+      preFlushIndex < activePreFlushCbs.length;
+      preFlushIndex++
+    ) {
+      // 开始执行任务
+      activePreFlushCbs[preFlushIndex]();
+    }
+
+    // 执行完成之后，清理数据
+    activePreFlushCbs = null;
+    preFlushIndex = 0;
+
+    // 递归知道所有任务执行完成
+    flushPreFlushCbs();
+  }
+}
+
+const cb1 = () => console.log("\ncb 1");
+const cb2 = () => {
+  console.log("cb 2")
+  // 这里在执行任务期间，插入新的任务 cb2.1 看它会在什么时候被执行
+  queuePreFlushCb(() => console.log('cb 2.1'))
+};
+const cb3 = () => {
+  // 同理，只不过这里放在打印之前
+  queuePreFlushCb(() => console.log('cb 3.1'))
+  console.log("cb 3")
+};
+const cb4 = () => console.log("cb 4");
+console.log(">>> 结果");
+[cb1, cb2, cb3, cb4].forEach((cb) => queuePreFlushCb(cb));
+#+end_src
+
+#+RESULTS:
+: >>> 结果
+: undefined
+: cb 1
+: cb 2
+: cb 3
+: cb 4
+: cb 2.1
+: cb 3.1
+
+结果如上， cb1 -> cb2 -> cb3 -> cb4 按照添加的顺序执行了，然后 cb2.1 和 cb3.1 均
+在 1234 后面执行，这是因为 ~for~ 循环的缘故，动态取了 ~activePreFlushCbs.length~
+而这个 ~activePreFlushCbs~ 在循环执行过程中被扩充了，所以会继续执行直到最后一个
+元素。
+
+通过这个例子我们可以看到 pre cbs 会在同一个 tick 下先执行已存在的任务，当这些任
+务(即 for 循环)还没结束执行又有了新的任务入列，则会随后立即执行。
+
+而对于 post cbs 则有点区别：
+
+1. 并没有递归 flush
+2. 在任务嵌套的时候也和 pre cbs 有点类似，会将这些嵌套的任务放到队列后面继续执行
+
+
+#+begin_src js
+let pendingPostFlushCbs = [];
+let activePostFlushCbs = null;
+let postFlushIndex = 0;
+let isFlushing = false;
+let resolvedPromise = Promise.resolve();
+
+// 入列，这个跟 queuePreFlushCb 一样
+function queuePostFlushCb(cb) {
+  if (!activePostFlushCbs || !activePostFlushCbs.includes(cb)) {
+    pendingPostFlushCbs.push(cb);
+  }
+
+  if (!isFlushing) {
+    resolvedPromise.then(flushPostFlushCbs);
+  }
+}
+
+// 出列
+function flushPostFlushCbs() {
+  isFlushing = true;
+  if (pendingPostFlushCbs.length) {
+    const deduped = [...new Set(pendingPostFlushCbs)];
+    pendingPostFlushCbs.length = 0;
+    if (activePostFlushCbs) {
+      // 表示有 post cbs 正在执行了，有嵌套调用，即之前调用 flushPostFlushCbs
+      // 还没结束，那么这里只需要扩充 activePostFlushCbs 队列就行了
+      activePostFlushCbs.push(...deduped);
+      return;
+    }
+
+    // 首次调用 flushPostFlushCbs 或者前一次调用已经结束了
+    activePostFlushCbs = deduped;
+
+    // 根据 job.id 升序先将任务排序
+    // activePostFlushCbs.sort((a, b) => getId(a) - getId(b))
+    for (
+      postFlushIndex = 0;
+      postFlushIndex < activePostFlushCbs.length;
+      postFlushIndex++
+    ) {
+      activePostFlushCbs[postFlushIndex]();
+    }
+    activePostFlushCbs = null;
+    postFlushIndex = 0;
+  }
+}
+function getId(job) {
+  return job.id == null ? Infinity : job.id;
+}
+
+// 测试:
+const cb1 = () => console.log("\ncb 1");
+const cb2 = () => {
+  console.log("cb 2");
+  queuePostFlushCb(() => console.log("cb 2.1"));
+};
+const cb3 = () => {
+  queuePostFlushCb(() => console.log("cb 3.1"));
+  console.log("cb 3");
+};
+const cb4 = () => console.log("cb 4");
+console.log(">>> 结果：");
+[cb1, cb2, cb3, cb4].forEach((cb) => queuePostFlushCb(cb));
+#+end_src
+
+#+RESULTS:
+: >>> 结果：
+: undefined
+: cb 1
+: cb 2
+: cb 3
+: cb 4
+: cb 2.1
+: cb 3.1
+
+结果和 pre cb 实现也一样，而这里在 vue3 实现中 post cb 有根据 ~job.id~ 进行升序
+排序，即 job.id 小的会先执行，那这个 job id 又是个怎么大小机制的？？？
+
+pre, post, job 小结：
+
+| 类型   | 优先级 | 是否排序             | flush 机制                                                                       |
+|--------+--------+----------------------+----------------------------------------------------------------------------------|
+| ~pre~  |      1 | 不排序，按照加入顺序 | 自动触发 flush, 递归自身直到所有任务结束，在任务未完全结束之前不会重复调用 flush |
+| ~post~ |      2 | 按照 job.id 排序     | 自动触发 flush, 不会递归，但支持嵌套调用来扩展执行任务队列                       |
+| ~job~  |      3 | 按照 job.id 排序     | 自动触发 flush，不会递归，flush 过程中接受新 job                                 |
+
+* queueJob(job)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queue-job
+:END:
+
+[[/img/tmp/search-queue-job.png]]
+
+如上图搜索结果，使用点：
+
+1. /runtime-core/src/componentPublicInstance.ts/ 文件中强制更新 api 里面使用
+
+   ~$forceUpdate: i => () => queueJob(i.update)~
+
+2. /runtime-core/src/hmr.ts/ 中调用
+
+   ~queueJob(instance.parent.update)~
+
+   将实例父组件的更新加入执行队列，热更新功能，发生在开发环境中，当重新加载的时
+   候强制去更新父组件。
+* queuePreFlushCb(cb)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queue-pre-cb
+:END:
+
+[[/img/tmp/search-queue-pre-flush-cb.png]]
+
+/runtime-core/src/apiWatch.ts/ 的 ~doWatch()~ 中调用
+
+#+begin_src typescript
+function doWatch(
+  source: WatchSource | WatchSource[] | WatchEffect | object,
+  cb: WatchCallback | null,
+  { immediate, deep, flush, onTrack, onTrigger }: WatchOptions = EMPTY_OBJ,
+  instance = currentInstance
+): WatchStopHandle {
+  // ...
+
+  // default: 'pre'
+  scheduler = () => {
+    if (!instance || instance.isMounted) {
+      queuePreFlushCb(job);
+    } else {
+      // with 'pre' option, the first call must happen before
+      // the component is mounted so it is called synchronously.
+      job();
+    }
+  };
+
+  // ...
+}
+#+end_src
+
+没有实例或组件实例还没完全加载完的时候将 job 放入队列去执行，这里的含义就如源码
+的注释， watch 的 job 首次执行必须发生在实例已创建完成组件未完成渲染之前。
+* queuePostFlushCb(cb)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queue-post-cb
+:END:
+
+[[/img/tmp/search-queue-post-flush-cb.png]]
+
+1. /runtime-core/src/hmr.ts/ 中 unmark 组件
+
+** Suspense 组件中使用
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: suspense
+:END:
+
+/runtime-core/src/components/Suspense.ts/ 中 Suspense 组件使用
+
+组件模板的 resolve 方法：
+#+begin_src typescript
+const suspense: SuspenseBoundary = {
+    resolve(resume = false) {
+    // ...
+
+    // flush buffered effects
+    // check if there is a pending parent suspense
+    let parent = suspense.parent;
+    let hasUnresolvedAncestor = false;
+    while (parent) {
+        if (parent.pendingBranch) {
+        // found a pending parent suspense, merge buffered post jobs
+        // into that parent
+        parent.effects.push(...effects);
+        hasUnresolvedAncestor = true;
+        break;
+        }
+        parent = parent.parent;
+    }
+    // no pending parent suspense, flush all jobs
+    if (!hasUnresolvedAncestor) {
+        queuePostFlushCb(effects);
+    }
+    suspense.effects = [];
+
+    // ...
+    },
+};
+#+end_src
+
+注意代码中调用的前提是 ~hasUnresolvedAncestor~ 即不存在祖先组件中还有未完成的
+分支(~parent.pendingBranch~)，随后才会将当前的 Suspense 的组件的 effects 推入
+post cbs 队列等待执行。
+
+第二个使用的地方(封装了一个 Suspense 组件的 effects 入列函数)：
+#+begin_src typescript
+export function queueEffectWithSuspense(
+  fn: Function | Function[],
+  suspense: SuspenseBoundary | null
+): void {
+  if (suspense && suspense.pendingBranch) {
+    if (isArray(fn)) {
+      suspense.effects.push(...fn);
+    } else {
+      suspense.effects.push(fn);
+    }
+  } else {
+    queuePostFlushCb(fn);
+  }
+}
+#+end_src
+
+这个函数作用是可以手动给一个 Suspense 组件增加一个 effect ，封装之后的函数使用轨
+迹。
+
+[[/img/tmp/search-queue-effect-with-suspense.png]]
+
+renderer.ts -> [[#search-queue-post-render-effect][queuePostRenderEffect]]:
+#+begin_src typescript
+export const queuePostRenderEffect = __FEATURE_SUSPENSE__
+  ? queueEffectWithSuspense
+  : queuePostFlushCb;
+#+end_src
+
+hydratation.ts 中执行 onVnodeMounted 钩子函数的 hooks:
+#+begin_src typescript
+const hydrateElement = (
+  el: Element,
+  vnode: VNode,
+  parentComponent: ComponentInternalInstance | null,
+  parentSuspense: SuspenseBoundary | null,
+  optimized: boolean
+) => {
+  if (patchFlag !== PatchFlags.HOISTED) {
+    // ...
+
+    if ((vnodeHooks = props && props.onVnodeMounted) || dirs) {
+      queueEffectWithSuspense(() => {
+        vnodeHooks && invokeVNodeHook(vnodeHooks, parentComponent, vnode);
+        dirs && invokeDirectiveHook(vnode, null, parentComponent, "mounted");
+      }, parentSuspense);
+    }
+
+    // ...
+  }
+  return el.nextSibling;
+};
+#+end_src
+
+** queuePostRenderEffect() 使用轨迹
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queue-post-render-effect
+:END:
+
+这个函数总结来说有三个地方使用到：
+
+1. 组件的 ref 属性值变更时的回调执行
+2. 组件的各个周期函数()的 hooks 执行
+3. watch 函数中的选项如果指定为 ~flush: post~ 时，当做 post cb 执行
+
+*** renderer.ts:
+#+begin_src typescript
+export const queuePostRenderEffect = __FEATURE_SUSPENSE__
+  ? queueEffectWithSuspense
+  : queuePostFlushCb;
+#+end_src
+
+[[/img/tmp/search-queue-post-render-effect.png]]
+
+1. setRef() 中
+
+   设置组件 ref 属性，指向最终渲染之后DOM 树中的 DOM 元素引用。
+
+   #+begin_src typescript
+   export const setRef = (
+     rawRef: VNodeNormalizedRef,
+     oldRawRef: VNodeNormalizedRef | null,
+     parentSuspense: SuspenseBoundary | null,
+     vnode: VNode | null
+   ) => {
+     // ...
+
+     if (isString(ref)) {
+       const doSet = () => {
+         refs[ref] = value;
+         if (hasOwn(setupState, ref)) {
+           setupState[ref] = value;
+         }
+       };
+       // #1789: for non-null values, set them after render
+       // null values means this is unmount and it should not overwrite another
+       // ref with the same key
+       if (value) {
+         (doSet as SchedulerCb).id = -1;
+         queuePostRenderEffect(doSet, parentSuspense);
+       } else {
+         doSet();
+       }
+     } else if (isRef(ref)) {
+       const doSet = () => {
+         ref.value = value;
+       };
+       if (value) {
+         (doSet as SchedulerCb).id = -1;
+         queuePostRenderEffect(doSet, parentSuspense);
+       } else {
+         doSet();
+       }
+     }
+     // ...
+   };
+   #+end_src
+
+   上面两次调用针对的是两种类型，实际作用都是一样的，等组件渲染完成之后去执行：
+
+   #+begin_src typescript
+   (doSet as SchedulerCb).id = -1; // 这里 id 设置为 -1 表明执行优先级最高
+   // 因为 post 和 job 类型都有根据 job.id 进行排序，在执行所有 cbs/jobs 之前
+   queuePostRenderEffect(doSet, parentSuspense);
+   #+end_src
+
+2. mountElement() 中
+
+   首次加载元素时调用的函数。
+
+   #+begin_src typescript
+    const mountElement = (
+      vnode: VNode,
+      container: RendererElement,
+      anchor: RendererNode | null,
+      parentComponent: ComponentInternalInstance | null,
+      parentSuspense: SuspenseBoundary | null,
+      isSVG: boolean,
+      optimized: boolean
+    ) => {
+      // ...
+
+      hostInsert(el, container, anchor);
+      if (
+        (vnodeHook = props && props.onVnodeMounted) ||
+        needCallTransitionHooks ||
+        dirs
+      ) {
+        queuePostRenderEffect(() => {
+          vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode);
+          needCallTransitionHooks && transition!.enter(el);
+          dirs && invokeDirectiveHook(vnode, null, parentComponent, "mounted");
+        }, parentSuspense);
+      }
+    };
+   #+end_src
+
+   渲染组件的时候， onVnodeMounted hooks 执行队列。
+
+3. patchElement() 中
+
+   #+begin_src typescript
+    const patchElement = (
+      n1: VNode,
+      n2: VNode,
+      parentComponent: ComponentInternalInstance | null,
+      parentSuspense: SuspenseBoundary | null,
+      isSVG: boolean,
+      optimized: boolean
+    ) => {
+      // ...
+
+      if ((vnodeHook = newProps.onVnodeUpdated) || dirs) {
+        queuePostRenderEffect(() => {
+          vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, n2, n1);
+          dirs && invokeDirectiveHook(n2, n1, parentComponent, "updated");
+        }, parentSuspense);
+      }
+    };
+   #+end_src
+
+   onVnodeUpdated hooks 执行队列。
+
+4. setupRenderEffect() 函数中
+
+   当组件状态更新时会调用 ~instance.update~ ，这里是执行 ~setup()~ 之后的一个组件更新
+   函数的一个封装函数。
+
+   #+begin_src typescript
+    const setupRenderEffect: SetupRenderEffectFn = (
+      instance,
+      initialVNode,
+      container,
+      anchor,
+      parentSuspense,
+      isSVG,
+      optimized
+    ) => {
+      // create reactive effect for rendering
+      instance.update = effect(
+        function componentEffect() {
+          if (!instance.isMounted) {
+            // ...
+            // mounted hook
+            if (m) {
+              queuePostRenderEffect(m, parentSuspense);
+            }
+            // onVnodeMounted
+            if ((vnodeHook = props && props.onVnodeMounted)) {
+              const scopedInitialVNode = initialVNode;
+              queuePostRenderEffect(() => {
+                invokeVNodeHook(vnodeHook!, parent, scopedInitialVNode);
+              }, parentSuspense);
+            }
+            // activated hook for keep-alive roots.
+            // #1742 activated hook must be accessed after first render
+            // since the hook may be injected by a child keep-alive
+            const { a } = instance;
+            if (
+              a &&
+              initialVNode.shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE
+            ) {
+              queuePostRenderEffect(a, parentSuspense);
+            }
+            instance.isMounted = true;
+
+            // #2458: deference mount-only object parameters to prevent memleaks
+            initialVNode = container = anchor = null as any;
+          } else {
+            // updateComponent
+            // ...
+            next.el = nextTree.el;
+            // updated hook
+            if (u) {
+              queuePostRenderEffect(u, parentSuspense);
+            }
+            // onVnodeUpdated
+            if ((vnodeHook = next.props && next.props.onVnodeUpdated)) {
+              queuePostRenderEffect(() => {
+                invokeVNodeHook(vnodeHook!, parent, next!, vnode);
+              }, parentSuspense);
+            }
+          }
+        },
+        __DEV__ ? createDevEffectOptions(instance) : prodEffectOptions
+      );
+    };
+   #+end_src
+
+   这里有四个调用也均和声明周期 hooks 有关
+
+   ~mounted~, ~onVnodeMounted~, ~updated~, ~onVnodeUpdated~ 四个周期的 hooks 执
+   行队列。
+
+5. move() 函数
+
+   节点移动操作。
+
+   #+begin_src typescript
+   const move: MoveFn = (
+     vnode,
+     container,
+     anchor,
+     moveType,
+     parentSuspense = null
+   ) => {
+     // ...
+
+     if (needTransition) {
+       if (moveType === MoveType.ENTER) {
+         transition!.beforeEnter(el!);
+         hostInsert(el!, container, anchor);
+         queuePostRenderEffect(() => transition!.enter(el!), parentSuspense);
+       }
+     } else {
+       hostInsert(el!, container, anchor);
+     }
+   };
+   #+end_src
+
+   当使用了 transition 组件的时候，进入动画的任务队列。
+
+6. unmount() 函数
+
+   卸载组件。
+
+   #+begin_src typescript
+    const unmount: UnmountFn = (
+    vnode,
+    parentComponent,
+    parentSuspense,
+    doRemove = false,
+    optimized = false
+  ) => {
+    // ...
+    if ((vnodeHook = props && props.onVnodeUnmounted) || shouldInvokeDirs) {
+      queuePostRenderEffect(() => {
+        vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode)
+        shouldInvokeDirs &&
+          invokeDirectiveHook(vnode, null, parentComponent, 'unmounted')
+      }, parentSuspense)
+    }
+  }
+   #+end_src
+
+   组件卸载的一个周期函数 ~onVnodeUnmounted~ 的 hooks。
+
+7. unmountComponent() 组件卸载函数
+
+   #+begin_src typescript
+    const unmountComponent = (
+    instance: ComponentInternalInstance,
+    parentSuspense: SuspenseBoundary | null,
+    doRemove?: boolean
+  ) => {
+    // ...
+    // unmounted hook
+    if (um) {
+      queuePostRenderEffect(um, parentSuspense)
+    }
+    queuePostRenderEffect(() => {
+      instance.isUnmounted = true
+    }, parentSuspense)
+  }
+   #+end_src
+
+   组件卸载时的钩子函数 unmounted hooks
+*** KeepAlive.ts
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: keep-alive
+:END:
+
+1. activated 周期函数
+2. deactiveated 周期函数
+
+#+begin_src typescript
+const KeepAliveImpl = {
+
+  setup(props: KeepAliveProps, { slots }: SetupContext) {
+    sharedContext.activate = (vnode, container, anchor, isSVG, optimized) => {
+      // ...
+      queuePostRenderEffect(() => {
+        instance.isDeactivated = false
+        if (instance.a) {
+          invokeArrayFns(instance.a)
+        }
+        const vnodeHook = vnode.props && vnode.props.onVnodeMounted
+        if (vnodeHook) {
+          invokeVNodeHook(vnodeHook, instance.parent, vnode)
+        }
+      }, parentSuspense)
+    }
+
+    sharedContext.deactivate = (vnode: VNode) => {
+      const instance = vnode.component!
+      move(vnode, storageContainer, null, MoveType.LEAVE, parentSuspense)
+      queuePostRenderEffect(() => {
+        if (instance.da) {
+          invokeArrayFns(instance.da)
+        }
+        const vnodeHook = vnode.props && vnode.props.onVnodeUnmounted
+        if (vnodeHook) {
+          invokeVNodeHook(vnodeHook, instance.parent, vnode)
+        }
+        instance.isDeactivated = true
+      }, parentSuspense)
+    }
+
+    // ...
+    onBeforeUnmount(() => {
+      cache.forEach(cached => {
+        const { subTree, suspense } = instance
+        const vnode = getInnerChild(subTree)
+        if (cached.type === vnode.type) {
+          // current instance will be unmounted as part of keep-alive's unmount
+          resetShapeFlag(vnode)
+          // but invoke its deactivated hook here
+          const da = vnode.component!.da
+          da && queuePostRenderEffect(da, suspense)
+          return
+        }
+        unmount(cached)
+      })
+    })
+
+    return () =>  { /* render */ }
+  }
+}
+#+end_src
+*** apiWatch.ts
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: api-watch
+:END:
+
+watch api 中，当指定选项 ~flush:post~ 时，会将 Job 当做 post cb 去执行(默认是
+pre cb 类型)。
+
+#+begin_src typescript
+function doWatch(
+  source: WatchSource | WatchSource[] | WatchEffect | object,
+  cb: WatchCallback | null,
+  { immediate, deep, flush, onTrack, onTrigger }: WatchOptions = EMPTY_OBJ,
+  instance = currentInstance
+): WatchStopHandle {
+
+  // ...
+  let scheduler: ReactiveEffectOptions['scheduler']
+  if (flush === 'sync') {
+    scheduler = job
+  } else if (flush === 'post') {
+    scheduler = () => queuePostRenderEffect(job, instance && instance.suspense)
+  } else {
+    // default: 'pre'
+  }
+
+  // ...
+
+  recordInstanceBoundEffect(runner, instance)
+
+  // initial run
+  if (cb) {
+    // ...
+  } else if (flush === 'post') {
+    queuePostRenderEffect(runner, instance && instance.suspense)
+  } else {
+    runner()
+  }
+
+  return () => { /*...*/ }
+
+#+end_src
+* flushPreFlushCbs(seen, parentJob)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flush-pre
+:END:
+
+[[/img/tmp/search-flush-pre-flush-cbs.png]]
+
+组件更新函数中：
+#+begin_src typescript
+const updateComponentPreRender = (
+  instance: ComponentInternalInstance,
+  nextVNode: VNode,
+  optimized: boolean
+) => {
+  nextVNode.component = instance;
+  const prevProps = instance.vnode.props;
+  instance.vnode = nextVNode;
+  instance.next = null;
+  updateProps(instance, nextVNode.props, prevProps, optimized);
+  updateSlots(instance, nextVNode.children);
+
+  // props update may have triggered pre-flush watchers.
+  // flush them before the render update.
+  flushPreFlushCbs(undefined, instance.update);
+};
+#+end_src
+
+* flushPostFlushCbs(seen)
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flush-post
+:END:
+
+[[/img/tmp/search-flush-post-flush-cbs.png]]
+
+#+begin_src typescript
+const render: RootRenderFunction = (vnode, container) => {
+  if (vnode == null) {
+    if (container._vnode) {
+      unmount(container._vnode, null, null, true);
+    }
+  } else {
+    patch(container._vnode || null, vnode, container);
+  }
+  flushPostFlushCbs();
+  container._vnode = vnode;
+};
+#+end_src
+
+hydrate:
+#+begin_src typescript
+const hydrate: RootHydrateFunction = (vnode, container) => {
+  if (__DEV__ && !container.hasChildNodes()) {
+    warn(
+      `Attempting to hydrate existing markup but container is empty. ` +
+        `Performing full mount instead.`
+    );
+    patch(null, vnode, container);
+    return;
+  }
+  hasMismatch = false;
+  hydrateNode(container.firstChild!, vnode, null, null);
+  flushPostFlushCbs();
+  if (hasMismatch && !__TEST__) {
+    // this error should show up in production
+    console.error(`Hydration completed but contains mismatches.`);
+  }
+};
+#+end_src
+
+* 总结
+
+任务调度均发生在 runtime-core 阶段，所以下面的文件均在 /runtime-core/src/../ 下
+
+#+begin_export html
+<div id="NlqF2kMRXC"></div>
+<script src="/js/vue/tables/scheduler-api.js"></script>
+#+end_export
+
+如上表可得出结论：
+
+1. watch api 的 Job 归纳为 pre cb 类型，先于 post 和 job 执行
+
+   特殊情况： watch api 指定了 ~{flush: 'post'}~ 时候也属于 post cb 类型
+
+2. 组件的生命周期函数 hooks 归纳为 post cb 类型，后于 pre 和 job 执行
+
+3. ~$forceUpdate~ 组件强制更新归纳为 job 类型，会在 pre cb 后面，先于 post cb 执行
+
+
+#+begin_quote
+所以: watch job > force update job > 声明周期 hooks job
+#+end_quote
+
+测试([[/js/vue/tests/b56ivpbdBF.js]])：
+#+begin_export html
+<div id="b56ivpbdBF"></div>
+<script src="/js/vue/tests/b56ivpbdBF.js"></script>
+#+end_export
+
+通过上面的几个按钮可以测试看出 pre, post, job 执行顺序。
+
+比如：点击 +/- 按钮，如下输出：
+#+begin_example
+watch pre cb: {"newVal":-1,"oldVal":0}
+watch post cb: {"newVal":-1,"oldVal":0}
+updated hook post cb before
+updated hook post cb after
+#+end_example
+
+点击 $forceUpdate 按钮，如下输出：
+#+begin_example
+job: from $forceUpdate
+watch pre cb: {"newVal":0,"oldVal":-1}
+watch post cb: {"newVal":0,"oldVal":-1}
+updated hook post cb before
+updated hook post cb after
+#+end_example
+
+调换下： watch api 调用顺序，把 ~{flush: 'post'}~ 放前面
+#+begin_src js
+watch(
+  count,
+  (newVal, oldVal) => {
+    log("watch post cb: " + toStr({ newVal, oldVal }));
+  },
+  { flush: "post" }
+);
+
+watch(count, (newVal, oldVal) => {
+  log("watch pre cb: " + toStr({ newVal, oldVal }));
+});
+#+end_src
+
+#+begin_example
+watch pre cb: {"newVal":-1,"oldVal":0}
+watch post cb: {"newVal":-1,"oldVal":0}
+updated hook post cb before
+updated hook post cb after
+#+end_example
+
+输出结果依旧是 pre 先于 post 执行。

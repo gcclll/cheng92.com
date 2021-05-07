@@ -1,4 +1,4 @@
-#+TITLE: Vue3 功能细化（一） PatchFlags
+#+TITLE: Vue3 功能拆解① PatchFlags
 #+DATE: <2021-04-13 11:16:07>
 #+TAGS[]: vue3, vue-next, PatchFlags
 #+CATEGORIES[]: vue
