@@ -73,7 +73,7 @@ var plans = [
   },
 ];
 
-plans.forEach(function (plan) {
+plans.forEach(function(plan) {
   plan.class = prefix + " " + prefix + "-" + plan.class;
 });
 
@@ -95,7 +95,7 @@ Vue.createApp({
       return row.status;
     },
   },
-  data: function () {
+  data: function() {
     return {
       hi: "xxxx",
       plans,
@@ -104,3 +104,8 @@ Vue.createApp({
 })
   .use(ElementPlus)
   .mount("#table-plan");
+
+
+///////////////////////////////////////////////////////////////////////////////
+//                                V3BOSS PlAN                                //
+///////////////////////////////////////////////////////////////////////////////

@@ -596,8 +596,19 @@ https://github.com/PicGo
       $ npm install
       $ ncu -u && npm update && npm install
     #+end_src
-2. 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
-3. 添加 submodule 失败 ?
+2. git ignore 无效(如： ~.log/~)？
+
+   #+begin_src shell
+   alias git-ignore-logs="mv .log ~/Desktop && git rm -r .log && git commit -m 'clear logs' && git push"
+
+   # commands
+   $ mv .log ~/Desktop
+   $ git rm -r .log
+   $ git commit -m "clear logs"
+   $ git push
+   #+end_src
+3. 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
+4. 添加 submodule 失败 ?
 
     #+begin_example
       ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
@@ -623,18 +634,18 @@ https://github.com/PicGo
    2. ~$ rm -rf themes/even~
    3. ~$ cd ../..~
    4. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
-4. ssh 登录次数过多问题(many authentication)
+5. ssh 登录次数过多问题(many authentication)
 
    ~$ ssh-add -D~ 删除认证缓存
-5. macos install adb
+6. macos install adb
 
    ~$  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"~
    
    ~$ brew cask install android-platform-tools~
    
    ~$ adb devices~
-6. 批量下载 bilibili 视频(you-get 命令)？
-7. macos in stall java environment ?
+7. 批量下载 bilibili 视频(you-get 命令)？
+8. macos in stall java environment ?
 
    https://mkyong.com/java/how-to-install-java-on-mac-osx/
 
@@ -647,7 +658,7 @@ https://github.com/PicGo
    ~$ /usr/libexec/java_home -V~
 
    ~$ java -version~
-8. git merge 的时候忽略指定文件？
+9. git merge 的时候忽略指定文件？
 
    https://www.jianshu.com/p/09b546b936a7
 

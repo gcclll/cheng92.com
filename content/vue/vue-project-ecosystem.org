@@ -35,7 +35,7 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 
 [[https://github.com/xiaoxian521/vue-pure-admin][xiaoxian521/vue-pure-admin: ✨ 🚀Vue3.0+TypeScript+Vite2.0+Element-Plus编写的一
 套后台管理系统]]
-* vue-enxt
+* vue-next
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: vue-next
@@ -172,6 +172,107 @@ export default {
 :END:
 
 [[/vue/vue-vuex-persist/][vuex-persist 数据持久化，源码简析]]
+** 疑难杂症
+
+*** state: get mountedRoutes 没有触发？
+
+问题缘由:
+
+1. getMenus 从服务端请求权控菜单
+
+   #+begin_src typescript
+   const actions: ActionTree<PermissionState, RootState> = {
+     async getMenus({ commit, state }: ActionContext<PermissionState, RootState>) {
+       if (state.asyncMenus.length) {
+         return state.asyncMenus;
+       }
+
+       const res = await getMenuList();
+       commit(SET_MENUS, res.data);
+       console.log(state.mountedRoutes, "xxx");
+       return res.data;
+     },
+   };
+   #+end_src
+
+2. state: get mountedRoutes()
+
+   然后，希望在之后取 mountedRoutes 的时候能从 asyncMenus 中过滤出特定权限的路由，
+   但是貌似这个 getter 怎么都没执行，因为里面的 console.log 并没有打印出来。
+   #+begin_src typescript
+   const state = {
+     get mountedRoutes(): RouteConfigRecord[] {
+       console.log(this.asyncMenus, asyncRoutes, "0000");
+       const toBeMounted = filterRoutesByMenu(asyncRoutes, this.asyncMenus);
+
+       toBeMounted.forEach((r: RouteConfigRecord) => {
+         if (r.children && r.children.length && r.meta!.showInMenu) {
+           const menuRoutes = r.children.filter((child) => child.meta!.showInMenu);
+           if (menuRoutes.length) {
+             r.redirect = menuRoutes[0].path;
+           }
+         }
+       });
+       return toBeMounted;
+     },
+   };
+   #+end_src
+
+
+#+begin_quote
+❗ 在 vue3 中响应式通过 Proxy + Reflect 来实现的，去 get mountedRoutes 最后执行的是
+~Reflect.get(state, 'mountedRoutes', ...)~ 这底层估计不会去访问 getter 访问器，
+才导致不生效。
+#+end_quote
+
+解决方案(折中方案)：
+#+begin_src typescript
+const state: PermissionState = {
+  asyncMenus: [] as MenuItem[],
+  minorRoutes: [] as RouteConfigRecord[],
+  // ADD1 不使用 getter
+  mountedRoutes: [] as RouteConfigRecord[]
+}
+
+const mutations: MutationTree<PermissionState> = {
+  // ADD2 增加一个 mutation 去更新路由列表
+  [SET_MOUNTED_ROUTES](state: PermissionState) {
+    const menus: MenuItem[] = state.asyncMenus
+    const toBeMounted = filterRoutesByMenu(asyncRoutes, menus)
+    toBeMounted.forEach((r: RouteConfigRecord) => {
+      if (r.children?.length && r.meta?.showInMenu) {
+        const menuRoutes = r.children.filter((child) => child.meta!.showInMenu)
+        if (menuRoutes.length) {
+          r.redirect = menuRoutes[0].path
+        }
+      }
+    })
+    state.mountedRoutes = toBeMounted
+  }
+}
+
+const actions: ActionTree<PermissionState, RootState> = {
+  async getMenus({ commit, state }: ActionContext<PermissionState, RootState>) {
+    if (state.asyncMenus.length) {
+      return state.asyncMenus
+    }
+
+    const res = await getMenuList()
+    commit(SET_MENUS, res.data)
+    // ADD3 这里当更新菜单的时候同步过滤出有效路由
+    commit(SET_MOUNTED_ROUTES)
+    return res.data
+  },
+}
+#+end_src
+
+结果：
+#+begin_src console
+[[Target]]: Object
+asyncMenus: (4) [{…}, {…}, {…}, {…}]
+minorRoutes: []
+mountedRoutes: (4) [{…}, {…}, {…}, {…}]
+#+end_src
 
 * vue-i18n-next
 :PROPERTIES:
