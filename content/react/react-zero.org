@@ -161,6 +161,10 @@ container.appendChild(node)
 [[/img/react/react-render-brief.svg]]
 
 * createElement
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: create-element
+:END: 
 
 JSX 实例:
 #+begin_src js
@@ -336,4 +340,149 @@ const Didact = {
 function render(element, container) {
   // TODO
 }
+#+end_src
+
+渲染当前树根节点和子节点元素渲染工作：
+#+begin_src js
+// ReactDOM.render
+function render(element, container) {
+  // 1. 创建当前树根节点元素
+  const dom = document.createElement(element.type)
+
+  // 2. 遍历所有的 children 创建子元素
+  element.props.children.forEach(child => render(child, dom /*parent*/))
+
+  container.appendChild(dom)
+}
+#+end_src
+
+但是节点类型有可能是纯文本的，比如 [[#create-element][createElement 一节]] 中的例子里面的
+~<a>bar</a>~ 就有一个纯文本的 ~"bar"~ 节点，这个节点经过 createElement 之后结构
+是： ~{type: 'TEXT_ELEMENT', props: {...}}~ ，所以这里面只需要针对
+~TEXT_ELEMENT~ 做下特殊处理，如果是文本就创建一个空的文本节点来容乃该文本内容。
+
+#+begin_src diff
+// ReactDOM.render
+function render(element, container) {
+  // 1. 创建当前树根节点元素
+-  const dom = document.createElement(element.type)
++  const dom =
++    element.type === "TEXT_ELEMENT"
++      ? document.createTextNode("")
++      : document.createElement(element.type);
+
+  // 2. 遍历所有的 children 创建子元素
+  element.props.children.forEach((child) => render(child, dom /*parent*/));
+
+  container.appendChild(dom);
+}
+#+end_src
+
+最后是 props 的处理，这里记得要排除 ~props.children~
+
+#+begin_src diff
+// ReactDOM.render
+function render(element, container) {
+  // 1. 创建当前树根节点元素
+  const dom =
+    element.type === "TEXT_ELEMENT"
+      ? document.createTextNode("")
+      : document.createElement(element.type);
+
++  const isProperty = (key) => key !== "children";
++  Object.keys(element.props)
++    .filter(isProperty)
++    .forEach((name) => (dom[name] = element.props[name]));
+
+  // 2. 遍历所有的 children 创建子元素
+  element.props.children.forEach((child) => render(child, dom /*parent*/));
+
+  container.appendChild(dom);
+}
+#+end_src
+
+最后该阶段完整的代码：
+#+begin_src js
+console.log("\n");
+const Didact = {
+  createElement,
+  render,
+};
+
+// ReactDOM.render
+function render(element, container) {
+  // 1. 创建当前树根节点元素
+  const dom =
+    element.type === "TEXT_ELEMENT"
+      ? document.createTextNode("")
+      : document.createElement(element.type);
+
+  const isProperty = (key) => key !== "children";
+  Object.keys(element.props)
+    .filter(isProperty)
+    .forEach((name) => (dom[name] = element.props[name]));
+
+  // 2. 遍历所有的 children 创建子元素
+  element.props.children.forEach((child) => render(child, dom /*parent*/));
+
+  container.appendChild(dom);
+}
+
+// React.createElement
+function createElement(type, props, ...children) {
+  return {
+    type,
+    props: {
+      ...props,
+      children: children.map((child) =>
+        typeof child === "object" ? child : createTextElement(child)
+      ),
+    },
+  };
+}
+
+function createTextElement(text) {
+  return {
+    type: "TEXT_ELEMENT",
+    props: {
+      nodeValue: text, // 类似 textContent 可以修改节点文本内容的属性
+      children: [],
+    },
+  };
+}
+#+end_src
+
+测试:
+#+begin_export html
+<div id="qoCIUr"></div>
+<script type="module">
+import { Didact } from '/js/react/didact.js'
+console.log(Didact)
+
+const container = document.getElementById('qoCIUr')
+const element = Didact.createElement('div', {
+  id: 'foo',
+}, Didact.createElement('a', null, 'bar'),
+Didact.createElement('b'))
+
+Didact.render(element, container)
+</script>
+#+end_export
+
+测试代码：
+#+begin_src js
+import { Didact } from "/js/react/didact.js";
+console.log(Didact);
+
+const container = document.getElementById("qoCIUr");
+const element = Didact.createElement(
+  "div",
+  {
+    id: "foo",
+  },
+  Didact.createElement("a", null, "bar"),
+  Didact.createElement("b")
+);
+
+Didact.render(element, container);
 #+end_src
