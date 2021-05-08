@@ -1,0 +1,118 @@
+#+TITLE: Vue3 功能拆解③ 组件更新机制
+#+DATE: <2021-05-08 10:38:23>
+#+TAGS[]: vue3, vue-next, component
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本系列为 vue-next 源码分析系列的旁系分支，主要目的在于对 vue3 源码中的一些细节进
+行分析。本文讲述的是 vue3 中组件的更新机制，比如：属性变更父子组件更新顺序是如
+何？。
+#+end_quote
+
+根据组件的渲染流程，我们知道组件的更新实际是通过 effect 封装了一个
+instance.update 函数，当组件状态发生变化时会自动触发这个 update 函数执行，因为这
+状态代理属性有收集到这个 update 函数。
+
+instance.update:
+
+~instance.update = effect(function componentEffect() {/*...*/})~
+
+在 [[/vue/vue-mind-map-reactivity/][vue-package-reactivity]] 一节中有更详细的 ~effect~ 源码分析。
+
+组件简要渲染，函数执行流程:
+
+[[/img/vue3/runtime-core/vue-runtime-core-render-component-brief.svg]]
+
+精简之后的 instance.update 函数：
+#+begin_src typescript
+function componentEffect() {
+  if (!instance.isMounted) {
+    // mount component
+    // invoke beforeMount(bm) hook
+    // invoke vnode before mount hook
+    const subTree = (instance.subTree = renderComponentRoot(instance));
+      patch(null, subTree, container, anchor, instance, parentSuspense, isSVG);
+      initialVNode.el = subTree.el;
+    // queue post - mounted(m) hook
+    // queue post - vnode mounted hook
+    // queue post - activated(a) hook
+    instance.isMounted = true;
+    // #2458: deference mount-only object parameters to prevent memleaks
+    initialVNode = container = anchor = null as any;
+  } else {
+    // updateComponent
+
+    if (next) {
+      next.el = vnode.el;
+      updateComponentPreRender(instance, next, optimized);
+    } else {
+      next = vnode;
+    }
+
+    // invoke beforeUpdate(bu) hook
+    // invoke onVnodeBeforeUpdate hook
+    const nextTree = renderComponentRoot(instance);
+    const prevTree = instance.subTree;
+    instance.subTree = nextTree;
+
+    // patch
+    patch(
+      prevTree,
+      nextTree,
+      // parent may have changed if it's in a teleport
+      hostParentNode(prevTree.el!)!,
+      // anchor may have changed if it's in a fragment
+      getNextHostNode(prevTree),
+      instance,
+      parentSuspense,
+      isSVG
+    );
+    next.el = nextTree.el;
+    // queue post - updated(u) hook
+    // queue post - onVnodeUpdated
+  }
+}
+#+end_src
+
+主要分为 mount 和 update 两部分(if...else)
+
+*mount*: beforeMount hook -> onVnodeBefoureMount -> renderComponentRoot subTree ->
+patch subTree -> mounted hook -> onVnodeMounted -> [ activated hook ]
+
+*update*: next ? -> beforeUpdate hook -> onVnodeBeforeUpdate ->
+renderComponentRoot nextTree -> patch -> updated hook -> onVnodeUpdated
+
+两个阶段中，有一个相关联的部分， subTree <-> nextTree 等于一个是 old tree 一个是
+new tree， mount 阶段 ~patch(null, subTree)~ update 阶段 ~patch(subTree, nextTree)~
+
+tree 的产生一样来自同一个函数：
+
+mount: ~renderComponentRoot(instance)~
+
+update:  ~renderComponentRoot(instance)~
+
+这个函数里面会去执行 instance 的 render 函数得到最新的 vnode tree ，等于是状态更
+新触发这个函数去执行 render 得到最新的组件 vnode truee。
+
+render 函数来源：如果是函数组件就是该函数本身(~instance.type~)，如果是对象组件则
+是对象内部的 ~instance.render~ 函数(可能来自 setup 返回的函数)。
