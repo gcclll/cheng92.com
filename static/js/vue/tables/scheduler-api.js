@@ -1,32 +1,37 @@
 (function() {
   const { h, createApp, defineComponent } = Vue;
-  const { ElTable, ElTableColumn } = ElementPlus;
+  const { ElTable, ElTableColumn, ElLink } = ElementPlus;
 
   const apis = [
     {
       name: "queueJob",
       locate: "componentPublicInstance.ts",
       desc: "$foceUpdate 强制更新时",
+      link: "#queue-job",
     },
     {
       name: "queuePreFlushCb",
       locate: "apiWatch.ts",
       desc: "watch job 非首次调用的时候",
+      link: "#queue-pre-cb",
     },
     {
       name: "queuePostFlushCb",
       locate: "Suspense.ts",
       desc: "封装成了 queueEffectWithSuspense",
+      link: "#queue-post-cb",
     },
     {
       name: "queueEffectWithSuspense",
       locate: "renderer.ts",
       desc: "封装成了 queuePostRenderEffect",
+      link: "#suspense",
     },
     {
       name: "queuePostRenderEffect",
       locate: "renderer.ts - setRef",
       desc: "当 ref 值更新时用来链接真实DOM元素的",
+      link: "#queue-post-render-effect",
     },
     {
       name: "",
@@ -70,11 +75,13 @@
       locate: "renderer.ts - updateComponentPreRender",
       desc:
         "组件更新之前 flush post cbs，属性更新可能触发了 pre-flush watchers，组件更新之前先触发这些 jobs",
+      link: "#flush-pre",
     },
     {
       name: "flushPostFlushCbs",
       locate: "renderer.ts - render",
       desc: "组件 patch 之后触发一次 post cbs flush",
+      link: "#flush-post",
     },
   ];
 
@@ -110,7 +117,24 @@
                 prop: "desc",
                 label: "简介",
               },
-            ].map((props) => h(ElTableColumn, props)),
+            ].map((props) =>
+              h(ElTableColumn, props, {
+                default:
+                  props.prop === "name"
+                    ? ({ row }) => {
+                      return row.link
+                        ? h(
+                          ElLink,
+                          {
+                            href: row.link,
+                          },
+                          { default: () => row.name }
+                        )
+                        : row.name;
+                    }
+                    : null,
+              })
+            ),
         }
       );
     },
