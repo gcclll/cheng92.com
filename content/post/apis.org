@@ -1,0 +1,16 @@
+#+TITLE: JavaScript API 研究
+#+DATE: <2021-05-08 14:06:35>
+#+TAGS[]: web, javascript, api
+#+CATEGORIES[]: web, javascript
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+这里包含了本博客所有对 API 分析的文章链接，所有分析从伪码实现角度触发，参考来自
+[[https://tc39.es/ecma262/][ECMAScript® 2022 Language Specification]] 规范。
+#+end_quote
+
+
+JavaScript:
+
+1. [[/web/apis/js-api-number-parseint/][parseInt(n, radix)]]

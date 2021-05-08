@@ -1,7 +1,7 @@
 #+TITLE: JavaScript Api - Number.parseInt(s, r)
 #+DATE: <2021-01-25 17:58:20>
 #+TAGS[]: javascript, api, Number
-#+CATEGORIES[]: javascript
+#+CATEGORIES[]: javascript, web
 #+LANGUAGE: zh-cn
 #+STARTUP: indent ^:{}
 
@@ -236,3 +236,52 @@ log(parse('EEE', 16))
 #+RESULTS:
 : 3822
 : undefined
+
+#+begin_quote
+❓❓❓ parseInt(0.0000005) = 5  ❓❓❓
+#+end_quote
+
+测试：
+#+begin_src js
+function test(res) {
+  console.log(`parseInt(${res}) = ` + parseInt(res))
+}
+
+test(0.5)
+test(0.05)
+test(0.005)
+test(0.0005)
+test(0.00005)
+test(0.000005)
+test(0.0000005)
+test(0.00000005)
+test(0.000000005)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+parseInt(0.5) = 0
+parseInt(0.05) = 0
+parseInt(0.005) = 0
+parseInt(0.0005) = 0
+parseInt(0.00005) = 0
+parseInt(0.000005) = 0
+parseInt(5e-7) = 5
+parseInt(5e-8) = 5
+parseInt(5e-9) = 5
+undefined
+#+end_example
+
+😭😭😭😭😭😭😭😭😭😭
+
+结果不用分析了吧，上面的结果很明显了，超过6位的小数在 toString 的时候被转成了指
+数表示形式了，而 parseInt 实现伪码一开始就会将传进去的数字转成字符串，所以最后在
+识别字符串的时候遇到了 ~e~ 就终止了，最终得到 5 的结果。
+
+本着追根究底的原则，还是去看下 toString 里面是怎么处理的吧 🚆
+
+[[https://tc39.es/ecma262/#sec-tostring][ECMAScript® 2022 Language Specification - toString]]
+
+[[/img/tmp/ecma-tostring.png]]
+
+这里就要看下数字是如何转成字符串的： [[/web/apis/js-api-number-tostring/][Number::toString ( x )]]

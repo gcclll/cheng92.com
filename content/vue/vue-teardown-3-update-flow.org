@@ -116,3 +116,36 @@ update:  ~renderComponentRoot(instance)~
 
 render 函数来源：如果是函数组件就是该函数本身(~instance.type~)，如果是对象组件则
 是对象内部的 ~instance.render~ 函数(可能来自 setup 返回的函数)。
+
+测试([[/js/vue/tests/L3jBmxJfNN.js]])：父子组件更新顺序
+
+#+begin_export html
+<div id="L3jBmxJfNN"></div>
+<script src="/js/vue/tests/L3jBmxJfNN.js"></script>
+#+end_export
+
+上面链接可以查看测试源码。
+
+这里我们在父子组件中均增加组件更新 hook:
+
+#+begin_src js
+const Child = defineComponent({
+  setup() {
+    onUpdated(() => log("child updated"));
+    onBeforeUpdate(() => log("child before update"));
+  },
+  // ...
+});
+
+const Parent = defineComponent({
+  setup() {
+    onUpdated(() => log("parent updated"));
+    onBeforeUpdate(() => log("parent before update"));
+  },
+  // ...
+});
+#+end_src
+
+点击按钮可以改变父子组件颜色，查看输出结果，会发现
+
+1. 只更新父组件背景色，只会触发 parent log

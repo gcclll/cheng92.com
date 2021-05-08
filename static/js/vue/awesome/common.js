@@ -1,11 +1,37 @@
-
-; (function() {
-  const { h } = Vue
+(function() {
+  const { h } = Vue;
   const { ElImage, ElTable, ElTableColumn, ElLink, ElPopover } = ElementPlus;
 
-  const createLink = (row) => () => h(ElLink, { href: row.link, target: "_blank" }, {
-    default: () => row.name
-  })
+  const createLink = (row) => () =>
+    h(
+      ElLink,
+      { href: row.link, target: "_blank" },
+      {
+        default: () => row.name,
+      }
+    );
+
+  function renderBrief(row) {
+    return h(
+      "span",
+      null,
+      row.site
+        ? [
+          h(
+            ElLink,
+            {
+              href: row.site,
+              target: "_blank",
+            },
+            {
+              default: () => h("i", { class: "el-icon-link" }),
+            }
+          ),
+          h("span", row.brief),
+        ]
+        : row.brief
+    );
+  }
 
   window.tableMetas = [
     {
@@ -14,17 +40,45 @@
       width: 160,
       slots: {
         default: ({ row }) =>
-          row.preview ? h(ElPopover, {
-            placement: 'right',
-            trigger: 'hover',
-            width: 700
-          }, {
-            reference: createLink(row),
-            default: () => h(ElImage, { src: row.preview, fit: 'contain' })
-          }) : createLink(row)()
+          row.preview
+            ? h(
+              ElPopover,
+              {
+                placement: "right",
+                trigger: "hover",
+                width: 700,
+              },
+              {
+                reference: createLink(row),
+                default: () =>
+                  h(ElImage, { src: row.preview, fit: "contain" }),
+              }
+            )
+            : createLink(row)(),
       },
     },
-    { prop: "brief", label: "brief", width: 220 },
+    {
+      prop: "brief",
+      label: "Brief",
+      width: 220,
+      slots: {
+        default: ({ row }) =>
+          row.zhBrief
+            ? h(
+              ElPopover,
+              {
+                placement: "top",
+                trigger: "hover",
+                width: 300,
+              },
+              {
+                reference: () => renderBrief(row),
+                default: () => h("span", row.zhBrief),
+              }
+            )
+            : renderBrief(row),
+      },
+    },
     {
       prop: "status",
       label: "Status",
@@ -44,7 +98,7 @@
     },
   ];
 
-  window.createTable = createTable
+  window.createTable = createTable;
   function createTable(data) {
     return function TableComponent() {
       return h(
@@ -61,17 +115,14 @@
           },
         }
       );
-    }
+    };
   }
-
-
-}())
+})();
 
 function generateStatusAndStars(user, name = user) {
-
   return {
     status: `https://img.shields.io/travis/${user}/${name}`,
     stars: `https://img.shields.io/github/stars/${user}/${name}?style=social`,
-    link: `https://github.com/${user}/${name}`
-  }
+    link: `https://github.com/${user}/${name}`,
+  };
 }

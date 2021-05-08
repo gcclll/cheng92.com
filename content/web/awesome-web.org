@@ -10,12 +10,6 @@
 #+end_quote
 
 #+begin_export html
-状态：<span class="el-table__row flag DONE" style="padding:0 5px;">DONE 已完成</span>
-<span class="el-table__row flag DOING">DOING 进行中</span> 
-<span class="el-table__row flag PENDING">PENDING 暂停中</span>
-<span class="el-table__row flag WAITING">WAITING 计划中</span>
-<br/>
-
 <script src="/js/utils.js"></script>
 <script src="https://unpkg.com/vue@next"></script>
 <script>
@@ -31,9 +25,15 @@ insertCssLink("/js/vue/css/awesome.css");
 ~awesome-emacs~, ~awesome-nodejs~ ... ，但是这些项目基本就只有一个链接，当想决定
 使用哪个的时候往往需要一个个点开去对比下星级和提交记录。
 
-此文就是为了方便查看库的星级和 build status 而产生。
+1. 此文就是为了方便查看库的星级和 build status 而产生。
 
-而此文的实现基于 ~vue-next~ + ~element-plus~
+2. 文中表格的实现基于 ~vue-next~ + ~element-plus~
+
+3. 鼠标放在英文简介上面会出现中文翻译（自己+google翻译的仅供参考）。
+
+4. 鼠标放到表中名称链接上面会展示预览图或GIF动画(部分有)
+
+5. 描述前面如果有一个链接说明这个库有自己的文档网站
 #+end_quote
 
 * Tools
@@ -50,9 +50,16 @@ insertCssLink("/js/vue/css/awesome.css");
     <img src="https://img.shields.io/github/stars/gcclll/cheng92.com?style=social"/>
     #+end_export
 
+* JavaScript
 
+JavaScript 相关的库(比如：数字，日期，字符串，货币转换操作等)。
+
+** Number
+#+begin_export html
+<div id="js-number"></div>
+<script src="/js/vue/awesome/js-number.js"></script>
+#+end_export
 * Node.js
-
 
 ** Logging 日志功能
 :PROPERTIES:

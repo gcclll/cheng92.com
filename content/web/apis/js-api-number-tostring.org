@@ -1,0 +1,171 @@
+#+TITLE: JavaScript Api - Number::toString ( x ) - TODO
+#+DATE: <2021-05-08 14:19:44>
+#+TAGS[]: javascript, api, Number
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent ^:{}
+
+#+begin_quote
+[[https://tc39.es/ecma262/#sec-numeric-types-number-tostring][Number::toString ( x )]]
+#+end_quote
+在进行伪码之前，这里先要弄清楚几点：
+
+1. 标准中的 n, k, s 分别代表什么意思？
+
+   n: 这个数有点迷惑，比如： 100, n = 3; 0.01, n = -2，如果是整数表示正数位数，
+   如果是浮点数就表示小数点的位数
+
+   s: 表示一个值的范围
+
+   k: 应该表示整数部分
+
+2. 标准中为什么 n 的上限是 21 ?
+
+   上限是 21 是因为超过21位的数字会转成指数表示形式，如下：
+
+   [[/img/gifs/number-21-bit.gif]]
+
+   所以这里将 n 上限设置为 21 一旦超出就会转成指数来表示，这个时候字符串化就是另
+   一种处理方式了。
+
+3. 标准步骤中使用到的一些16进制表示的符号都是什么？
+
+   #+begin_src js
+   ;[0x002E, 0x0030, 0x0065, 0x002b, 0x002D /**/].forEach(n => console.log(String.fromCharCode(n)))
+   #+end_src
+
+   #+RESULTS:
+   : .
+   : 0
+   : e
+   : +
+   : -
+   : undefined
+
+   |   code | char |
+   |--------+------|
+   | 0x002E | ~.~  |
+   | 0x0030 | ~0~  |
+   | 0x0065 | ~e~  |
+   | 0x002B | ~+~  |
+   | 0x002D | ~-~  |
+
+
+-----
+
+弄清楚了上面的三点，接下来就可以逐步去实现数字转字符串操作了：
+
+伪码：
+
+#+begin_src js
+function floatn(n) {
+  // 小数点后面数个数
+  let c = 0;
+  while ((n *= 10) % 10) {
+    console.log("n =" + n);
+    c++;
+  }
+  return c;
+}
+function intn(n) {
+  let c = 0;
+  while (n) {
+    c++;
+    n = Math.floor(n / 10);
+  }
+  return c;
+}
+function bit(m) {
+  let c = 0,
+    k = 0,
+    n = 0;
+  if (m > 0 && m < 10) {
+    // 1 ~ 10 之间的数包括浮点数
+    k = 1;
+  }
+}
+function /*Number::*/ toString(x) {
+  if (isNaN(x)) return NaN;
+
+  if (x === +0 || x === -0) return "0";
+
+  if (x < +0) {
+    // 负数
+    return;
+    /*Numbr::*/ toString(-x);
+  }
+
+  if (x === +Infinity) {
+    return "Infinity";
+  }
+
+  const nx = Math.floor(x);
+  let n = bit(x), // 整个数字的数字部分长度，不含小数点
+    k = bit(nx), // 整数部分长度
+    s;
+  // 取值范围：k >= 1, Math.pow(10, k-1) <= s <= Math.pow(10, k)
+  // s x Math.pow(10, n - k)
+
+  if (k <= n <= 21) {
+    return "" + x; // 直接转成字符串就可以了
+  } else if (0 < n <= 21) {
+    // TODO
+  } else if (-6 < n <= 0) {
+    return "" + x; // 0.000005
+  } else if (k === 1) {
+    return s + "e" + (n - 1 < 0 ? "-" : "+") + Math.abs(n - 1); // 1e+5 or 1e-5
+  } else {
+    return (
+      s[0] +
+      "." +
+      s.slice(1, k) +
+      "e" +
+      (n - 1 < 0 ? "-" : "+") +
+      Math.abs(n - 1)
+    );
+  }
+
+  return x;
+}
+
+console.log(floatn(0.1001), intn(100.12));
+#+end_src
+
+#+RESULTS:
+#+begin_example
+n =1.001
+n =10.009999999999998
+n =100.09999999999998
+n =1000.9999999999998
+n =10009.999999999998
+n =100099.99999999999
+n =1000999.9999999999
+n =10009999.999999998
+n =100099999.99999999
+n =1000999999.9999999
+n =10009999999.999998
+n =100099999999.99998
+n =1000999999999.9999
+n =10009999999999.998
+n =100099999999999.98
+n =1000999999999999.9
+n =10009999999999998
+n =100099999999999980
+n =1000999999999999900
+n =10009999999999998000
+n =100099999999999980000
+n =1.0009999999999999e+21
+n =1.001e+22
+n =1.0009999999999999e+23
+n =1.0009999999999999e+24
+n =1.0009999999999998e+25
+n =1.0009999999999997e+26
+n =1.0009999999999998e+27
+28 3
+undefined
+#+end_example
+
+
+#+RESULTS:
+: 6
+: undefined
