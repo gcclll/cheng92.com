@@ -140,7 +140,7 @@ function insertFrame(pageName, js, path = "") {
   ifr.name = Math.random().toString(36).substring(2);
   window.myifr = ifr;
 
-  ifr.onload = function () {
+  ifr.onload = function() {
     if (js) {
       const doc = ifr.contentDocument;
       const script = document.createElement("script");
@@ -152,7 +152,7 @@ function insertFrame(pageName, js, path = "") {
   ifr.src = path + (pageName || "");
 }
 
-function noop() {}
+function noop() { }
 
 function runAsync(fn, timeout) {
   setTimeout(fn, timeout || 2000);
@@ -197,18 +197,38 @@ var logp = (wrapper, el, title, ps = [], parent) => {
 function domDiff(
   c1,
   c2,
-  { v, a, ...option } = { v: "visual", a: "annotated" }
+  { v = 'visual', a = 'annotated', ...option } = {}
 ) {
   console.log(jsondiffpatch);
   // jsondiffpatch = jsondiffpatch.create({
   //   ...option,
   // });
   var delta = jsondiffpatch.diff(c1, c2);
-  document.getElementById(v).innerHTML = jsondiffpatch.formatters.html.format(
-    delta,
-    c1
-  );
-  document.getElementById(
-    a
-  ).innerHTML = jsondiffpatch.formatters.annotated.format(delta, c1);
+  if (option.html !== false) {
+    document.getElementById(v).innerHTML = jsondiffpatch.formatters.html.format(
+      delta,
+      c1
+    );
+  }
+
+  if (option.annotated !== false) {
+    document.getElementById(
+      a
+    ).innerHTML = jsondiffpatch.formatters.annotated.format(delta, c1);
+  }
+}
+
+function preCodeString(s, lang = 'javascript') {
+  return `
+    <pre style="margin: 5px;" class="chroma">
+      <code class="language-${lang}" data-lang="${lang}">${s}</code>
+    </pre>`
+}
+
+function json2obj(s) {
+  return JSON.parse(s)
+}
+
+function obj2json(o, p = '', s = '') {
+  return p + JSON.stringify(o) + s
 }

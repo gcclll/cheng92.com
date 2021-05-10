@@ -5,10 +5,6 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-#+begin_quote
-本文以表格形式列出所有优秀库及相关对比。
-#+end_quote
-
 #+begin_export html
 <script src="/js/utils.js"></script>
 <script src="https://unpkg.com/vue@next"></script>

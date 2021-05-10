@@ -1,0 +1,253 @@
+#+TITLE: Vue3 功能拆解④ 组件 props & attrs
+#+DATE: <2021-05-10 18:14:53>
+#+TAGS[]: vue3, vue-next, component, props, attrs
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文从源码角度讲解了，组件的属性归类问题，当给一个组件传递个属性时，在该组件内部
+它属于props 还是 attrs 。
+#+end_quote
+
+这两个属性在组件上是如何区分的？
+
+当父组件给子组件传递属性的时候，最终都划分到那个对象上了？
+
+先上实例，点击按钮可查看对应结果分析([[/js/vue/tests/7jAWzTeF1O.js]]):
+#+begin_export html
+
+<div id="x7jAWzTeF1O"></div>
+<hr/>
+<script src="/js/vue/tests/7jAWzTeF1O.js"></script>
+#+end_export
+
+首先，在 compiler 阶段所有属性都会被编译到 vnode.props 上，在 runtime-core patch
+阶段才会区分 props 和 attrs，那这些属性又是如何做的区分，当开发的时候给子组件传
+递的属性最终都放到哪个里面了？
+
+这里面就得好好掰扯掰扯了！！！
+
+根据之前的源码分析，组件 patch 流程: processComponent -> mountComponent 或
+updateComponent 这里我们以组件首次渲染进入 mountComponent 为例。
+
+mountComopnent 简化之后其实就两个部分：
+
+1. setupComponent() 初始化 props, slots 执行 setup 等待
+2. setupRenderEffect() 给当前组件实例注册 instance.update 组件更新时调用的
+   effect 函数。
+
+
+所以这里先忽略第 *2* 点，只讲讲 mount 阶段 ~setupComopnent()~ 中属性初始化处理
+(~setupComponent: initProps()~)。
+
+#+begin_src typescript
+export function setupComponent(
+  instance: ComponentInternalInstance,
+  isSSR = false
+) {
+  isInSSRComponentSetup = isSSR
+
+  const { props, children, shapeFlag } = instance.vnode
+  // 这里区分有无状态组件，无状态组件就是函数组件，对象组件是有状态组件
+  const isStateful = shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+  // 这里是重点， isSSR 是服务端渲染的问题这里暂不讨论
+  initProps(instance, props, isStateful, isSSR)
+  initSlots(instance, children)
+
+  const setupResult = isStateful
+    ? setupStatefulComponent(instance, isSSR)
+    : undefined
+  isInSSRComponentSetup = false
+  return setupResult
+}
+#+end_src
+
+props 初始化操作：
+#+begin_src typescript
+
+export function initProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null,
+  isStateful: number, // result of bitwise flag comparison
+  isSSR = false
+) {
+  const props: Data = {}
+  const attrs: Data = {}
+  def(attrs, InternalObjectKey, 1)
+  setFullProps(instance, rawProps, props, attrs)
+  // validation
+  if (__DEV__) {
+    validateProps(props, instance)
+  }
+
+  if (isStateful) {
+    // stateful
+    instance.props = isSSR ? props : shallowReactive(props)
+  } else {
+    if (!instance.type.props) {
+      // functional w/ optional props, props === attrs
+      instance.props = attrs
+    } else {
+      // functional w/ declared props
+      instance.props = props
+    }
+  }
+  instance.attrs = attrs
+}
+#+end_src
+
+~def(attrs, InternalObjectKey, 1)~
+
+   增加: ~attrs.__vInterval = true~ 属性
+
+函数最后的 isStateful 判断是检测函数组件或对象组件的，如果是函数组件，一般没有
+props 属性，除非手动给函数增加一个 props ，不过一般不这么用，如果有 props 建议还
+是用对象组件，所以这里等于说函数的 props 即 attrs， attrs 即 props。
+
+~setFullProps(instance, rawProps, props, attrs)~ 这个是重点部分，因为在这里开始
+区分 props 和 attrs。
+
+#+begin_src typescript
+function setFullProps(
+  instance: ComponentInternalInstance,
+  rawProps: Data | null,
+  props: Data,
+  attrs: Data
+) {
+  const [options, needCastKeys] = instance.propsOptions;
+  if (rawProps) {
+    for (const key in rawProps) {
+      const value = rawProps[key];
+      // key, ref are reserved and never passed down
+      if (isReservedProp(key)) {
+        continue;
+      }
+      // prop option names are camelized during normalization, so to support
+      // kebab -> camel conversion here we need to camelize the key.
+      let camelKey;
+      if (options && hasOwn(options, (camelKey = camelize(key)))) {
+        props[camelKey] = value;
+      } else if (!isEmitListener(instance.emitsOptions, key)) {
+        // Any non-declared (either as a prop or an emitted event) props are put
+        // into a separate `attrs` object for spreading. Make sure to preserve
+        // original key casing
+        attrs[key] = value;
+      }
+    }
+  }
+
+  if (needCastKeys) {
+    const rawCurrentProps = toRaw(props);
+    for (let i = 0; i < needCastKeys.length; i++) {
+      const key = needCastKeys[i];
+      props[key] = resolvePropValue(
+        options!,
+        rawCurrentProps,
+        key,
+        rawCurrentProps[key],
+        instance
+      );
+    }
+  }
+}
+#+end_src
+
+两段处理代码
+
+1. rawProps 处理，来自 compiler 阶段编译后的 vnode.props
+
+   - key, ref 保留属性，即不会往下传递的属性，等于是作用于该元素自身的
+
+   - 其次，options -> instanceOptions 中存在的 key 的属性属于 *props*
+
+   - 最后，非 emits 选项中的属性属于 *attrs*
+
+2. needCastKeys 一些需要初始化值的属性的 key，比如： Boolean 类型值需要初始化成
+   ~false~ 。
+
+
+这里涉及 options 里的属性 ~instance.propsOptions~ 这个在初始化组件实例的时候顺带
+初始化了
+
+~propsOptions: normalizePropsOptions(type, appContext)~
+
+这个值是个数组： ~[normalized, needCastKeys]~
+
+*normalized* 是检测类型定义之后的 props，比如：
+
+~{foo: [Boolean, String]}~ => ~normalized.foo = {type: [Boolean, String]}~
+
+表示 foo 可以是布尔类型或者字符串类型。
+
+~{foo: Function}~ => ~normalized.foo = { type: Function}~
+
+*needCastKeys* 表示是需要对属性值进行处理或者叫初始化的keys，比如： ~{ foo:
+Boolean, bar: { default: 1 } }~ 那么 foo 的值要在 ~setFullProps()~ 里面转成
+~false~ 值，以及 ~bar=1~ ，所以最后这个 props 实际等于 ~{foo: false,
+bar: 1}~ 转换规则在 ~setFullProps() -> resolvePropValue()~ 中完成。
+
+规则如下：
+
+1. ~{foo: { default: function() {/*...*/} }}~
+
+   类型不是 Function 但是 default 值是个函数，则需要执行这个函数得到该属性最终的
+   默认值 ~{foo: default(props) }~ 传给这个函数是整个 props 对象。
+
+2. ~{foo: { default: function() {/*...*/}, type: Function }}~
+   类型是函数，表示这个属性本身就是函数，不需要做什么处理，直接将这个函数当做默
+   认值处理 ~{foo: default}~
+
+3. ~{foo: {default: 100}}~ 等价于 ~{foo: 100}~ default 是普通类型的具体值的处理
+
+4. ~BooleanFlags.shouldCast~ 表示类型定义中有 ~Boolean~ 类型
+
+   ~BooleanFlags.shouldCastTrue~ 时可能情况 ~{foo: [Boolean, String]}~, ~{foo:
+   [Boolean]}~ 要么只有 ~Boolean~ 要么 ~Boolean~ 在 ~String~ 前面，表示优先级更
+   高。
+
+   几种情况：
+
+   - ~<Child/>~, ~{foo: Boolean}~, 结果: ~{foo: false}~
+   - ~<Child/ foo=true>~, ~{foo: Boolean}~, 结果： ~{foo: true}~
+   - ~<Child foo=""/>~, ~{foo: [Boolean, String]}~, 结果: ~{foo: true}~
+
+     这种情况比较特殊，vue 的处理是当两种类型都存在，且 Boolean 在 String 前面的
+     时候，会将值为 ~""~ 的空串，转成 ~true~ ，作为 foo 的默认值。
+
+
+最后的结果会在 ~comp.__props = [normalized, needCastKeys]~ 保存一份。
+
+~normalizePropsOptions()~ 函数就不展开分析了，这里我们只需要知道 needCastKeys 是
+做什么的。
+
+#+begin_quote
+所以：
+
+*props*: option api props 里面的存在的 key 归结为 props
+
+*attrs*: 其他情况，除了 emits 中存在的 key 之外都归结为 attrs
+#+end_quote

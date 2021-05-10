@@ -19,6 +19,7 @@
 insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 </script>
 <script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/tests/common.js"></script>
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]
@@ -149,3 +150,42 @@ const Parent = defineComponent({
 点击按钮可以改变父子组件颜色，查看输出结果，会发现
 
 1. 只更新父组件背景色，只会触发 parent log
+2. 只更新子组件背景色，只会触发 child log
+3. 更新父组件背景色，同时改变父组件中传递给子组件的属性
+
+   子组件 style.backgroud 属性绑定 bgcolor，该值来自 parent 传递进来的 attrs，这
+   里为何是 ~attrs~ 而不是 ~props~ ?
+
+   #+begin_src js
+   function changeParentColorWithProp() {
+     changeParentColor();
+     bgcolor.value = bgcolor.value === "black" ? "coral" : "black";
+   }
+
+   const Child = defineComponent({
+     setup() {
+       onUpdated(() => log("child updated"));
+       onBeforeUpdate(() => log("child before update"));
+     },
+     render() {
+       const { bgcolor } = this.$attrs;
+       return h(
+         "p",
+         {
+           style: {
+             background: bgcolor.value || childBgColor.value,
+           },
+           onVnodeUpdated(newVnode, oldVnode) {
+             log(
+               "child vnode updated, new: " +
+                 newVnode.props.style.background +
+                 ", old: " +
+                 oldVnode.props.style.background
+             );
+           },
+         },
+         "我是子组件"
+       );
+     },
+   });
+   #+end_src

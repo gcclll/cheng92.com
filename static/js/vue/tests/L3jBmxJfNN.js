@@ -1,13 +1,16 @@
 (function() {
   const { h, createApp, ref, reactive, defineComponent, onUpdated, onBeforeUpdate } = Vue
   const { ElButton, ElCard } = ElementPlus
-  const logs = reactive(['测试日志：'])
-  const log = m => logs.push(typeof m === 'object' ? JSON.stringify(m) : m)
+  const { log, Log } = useLog()
 
   const parentBgColor = ref('blue')
   const bgcolor = ref('')
   function changeParentColor() {
     parentBgColor.value = parentBgColor.value === 'blue' ? 'green' : 'blue'
+  }
+
+  function changeParentColorWithProp() {
+    changeParentColor()
     bgcolor.value = bgcolor.value === 'black' ? 'coral' : 'black'
   }
 
@@ -28,7 +31,11 @@
       return h('p', {
         style: {
           background: bgcolor.value || childBgColor.value,
+        },
+        onVnodeUpdated(newVnode, oldVnode) {
+          log('child vnode updated, new: ' + newVnode.props.style.background + ', old: ' + oldVnode.props.style.background)
         }
+
       }, '我是子组件')
     }
   })
@@ -45,6 +52,9 @@
           background: parentBgColor.value,
           color: 'white',
           padding: '5px 10px'
+        },
+        onVnodeUpdated(newVnode, oldVnode) {
+          log('parent vnode updated, new: ' + newVnode.props.style.background + ', old: ' + oldVnode.props.style.background)
         }
       }, [
         '父组件',
@@ -65,11 +75,10 @@
         h(ElButton, { type: "warning", onClick: changeChildColor }, {
           default: () => '改变子组件背景色'
         }),
-        h(ElCard, {
-          style: { marginTop: '5px' }
-        }, {
-          default: () => logs.map(log => h('div', log))
-        })
+        h(ElButton, { type: "danger", onClick: changeParentColorWithProp }, {
+          default: () => '改变父子组件背景色'
+        }),
+        Log
       ])
     }
   })
