@@ -1,0 +1,363 @@
+#+TITLE: JavaScript Equality Comparison, 等号运算符
+#+DATE: <2021-05-11 14:17:39>
+#+TAGS[]: javascript
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent ^:{}
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+#+begin_quote
+~==~, ~===~ 运算符详解。
+
+[[https://tc39.es/ecma262/#sec-abstract-equality-comparison][ECMAScript® 2022 Language Specification - Equality Comparison]]
+#+end_quote
+
+一般推荐使用相等比较的时候使用 ~===~ 是为了避免类型强转带来未知问题，但有时候后
+端返回的数据结构如果不规范就经常会出现恒等不合理情况，这篇文章会从 ECMA 标准的实
+现步骤，通过伪码形式来实现和展示相等和恒等的原理。
+
+#+begin_quote
+在开始之前，要做一些准备工作。。。
+#+end_quote
+
+严格相等 ~===~ ：
+#+begin_src js
+function strictEqual(x, y) {
+  // TODO
+  return x === y;
+}
+#+end_src
+
+将字符串转成 ~BigInt~ 类型:
+#+begin_quote
+标准里的描述：
+7.1.14 StringToBigInt ( argument )
+Apply the algorithm in 7.1.4.1 with the following changes:
+
+Replace the StrUnsignedDecimalLiteral production with DecimalDigits to not allow Infinity, decimal points, or exponents.
+If the MV is NaN, return NaN, otherwise return the BigInt which exactly corresponds to the MV, rather than rounding to a Number.
+#+end_quote
+ 实现： 通过测试，只要字符串里包含非数字的符号就会报错，这里提前拦截模拟报错，实
+ 际最后还是通过 ~BigInt()~ 来进行转换，而对于非字符串类型最终会转成字符串之后再
+ 处理。
+#+begin_src js
+function StringToBigInt(v) {
+  if (typeof v !== "string") v = "" + v;
+  if (isNaN(v)) return NaN;
+  if (/[^\d]/g.test(v)) {
+    // 包含非数字的都不合法报错
+    throw new SyntaxError(`不能将 ${v} 转成 BigInt。`);
+  }
+  return MyBigInt(v); // 这里直接使用 BigInt
+}
+
+function MyBigInt(v) {
+  if (this instanceof MyBigInt) {
+    throw new TypeError(" 不支持 new 操作。");
+  }
+  let prim = toPrimitive(v, "number");
+  if (typeof prim === 'number') {
+    return NumberToBigInt(prim);
+  }
+  return BigInt(v);
+}
+
+function NumberToBigInt(v) {
+  return BigInt(v);
+}
+function toPrimitive(v) {
+  return +v
+}
+// 测试：
+let val = StringToBigInt("100")
+console.log(val);
+try {
+  val = StringToBigInt('100.00')
+} catch(e) {
+  console.log(e.message)
+}
+#+end_src
+
+#+RESULTS:
+: 100n
+: 不能将 100.00 转成 BigInt。
+: undefined
+
+toPrimitive 将对象转成原始类型，标准的实现有点复杂，主要原理还是实现类型的 ~Symbol.toPrimitive~
+#+begin_src js
+//  简化版：将 x 转成原始类型
+function toPrimitive(x, ref) {
+  if (!isRef(x)) return x;
+  if (isString(ref)) {
+    return "" + x;
+  } else if (isNum(ref)) {
+    return +x;
+  } else if (isBigInt(ref)) {
+    if (isNum(x)) {
+      throw new TypeError("BigInt 不能转成 number");
+    } else if (isString(x)) {
+      return "" + x;
+    }
+  } else if (isSymbol(ref)) {
+    return Symbol(x);
+  }
+}
+// Symbol.toPrimitive
+// 实现如： obj = { [Symbol.toPrimitive](hint) { ... } }
+// 这里涉及到各种对象类型转成原始类型的，涉及内容太多这里就不展开去实现了
+function _ToPrimitive(input, preferredType) {
+  let hint;
+  if (isRef(input)) {
+    let exoticToPrim = GetMethod(input, "@@toPrimitive");
+    if (exoticToPrim !== undefined) {
+      if (!preferredType) {
+        hint = "default";
+      } else if (preferredType === "string") {
+        hint = "string";
+      } else {
+        hint = "number";
+      }
+
+      let result = exoticToPrim(input, hint);
+      if (typeof result !== "object") {
+        return result;
+      } else {
+        throw TypeError("类型不能转成原始类型");
+      }
+    } else {
+      if (!preferredType) {
+        preferredType = "number";
+      }
+    }
+    return OrdinaryToPrimitive(input, preferredType);
+  }
+  return input;
+}
+#+end_src
+
+比如：
+#+begin_src js
+const obj = {
+  [Symbol.toPrimitive](hint) {
+    if (hint === "number") {
+      return 100;
+    } else if (hint === "string") {
+      return "foo";
+    }
+    return null;
+  },
+};
+console.log(Number(obj));
+console.log(+obj);
+console.log(String(obj));
+#+end_src
+
+#+RESULTS:
+: 100
+: 100
+: foo
+: undefined
+
+
+转成数字：
+#+begin_src js
+// 转成数字
+function ToNumber(v) {
+  if (v === undefined) {
+    return NaN;
+  } else if (v === null) {
+    return +0;
+  } else if (v === true) {
+    return 1;
+  } else if (v === false) {
+    return +0;
+  } else if (typeof v === "number") {
+    return v;
+  } else if (typeof v === "string") {
+    return v; // TODO
+  } else if (Array.isArray(v)) {
+    return Number(v.toString());
+  } else if (typeof v === "symbol") {
+    throw new TypeError("Symbol 不能转成 number.");
+  } else if (typeof v === "bigint") {
+    throw Number(v);
+  } else if (typeof v === "object") {
+    return Number(v);
+  }
+  return v;
+}
+
+function tryCatch(fn) {
+  let val;
+  try {
+    val = fn();
+  } catch (e) {
+    console.log(e.message);
+  }
+  return val;
+}
+
+// 测试
+console.log("null: " + ToNumber(null));
+console.log("unefined: " + ToNumber(undefined));
+console.log("{}: " + ToNumber({}));
+console.log("[]: " + ToNumber([]));
+console.log("Symbol('xx'): " + tryCatch(() => ToNumber(Symbol("xx"))));
+console.log("BigInt(100): " + tryCatch(() => ToNumber(BigInt(100))));
+#+end_src
+
+转换规则：
+
+| 类型      |      结果 | -                                    |
+|-----------+-----------+--------------------------------------|
+| null      |         0 |                                      |
+| undefined |       NaN | 先转成 ~"undefined"~                 |
+| []        |         0 | 先 ~String([])~ -> ~''~              |
+| {}        |       NaN | 先 ~String({})~ -> ~[object Object]~ |
+| "xx"      |       NaN | -                                    |
+| 100n      |       100 | BigInt 可以转成 Number               |
+| Symbol    | TypeError | 不能转                               |
+
+#+begin_src js
+// 非严格相等， == 的实现
+function equal(x, y) {
+  // 类型一样就直接返回 x === y 的结果
+  if (Type(x) === Type(y)) {
+    return strictEqual(x, y);
+  }
+
+  // 1. 即 null == undefined => true
+  if ((x === null && y === undefined) || (x === undefined && y === null)) {
+    return true;
+  }
+
+  // 2. 内部属性无法直接获取，这里到时候使用对象普通属性模拟
+  if (isObject(x) && hasOwn(x, "[[IsHTMLDDA]]")) {
+    if (y === null || y === undefined) {
+      return true;
+    }
+  }
+
+  if (isObject(y) && hasOwn(y, "[[IsHTMLDDA]]")) {
+    if (x === null || x === undefined) {
+      return true;
+    }
+  }
+
+  // 3. 如果其中有一个是字符串，将字符串转成数字之后进行比较
+  if (isNum(x) && isString(y)) {
+    return strictEqual(x, ToNumber(y));
+  }
+
+  if (isString(x) && isNum(y)) {
+    return strictEqual(ToNumber(x), y);
+  }
+
+  // 4. BigInt 类型和字符串比较，将字符串转成 BigInt 类型
+  if (isBigInt(x) && isString(y)) {
+    let n = StringToBigInt(y);
+    if (isNaN(n)) {
+      return false;
+    }
+    return equal(x, n);
+  }
+
+  if (isString(x) && isBigInt(y)) {
+    return equal(y, x);
+  }
+
+  // 5. 如果是布尔类型转成数字再进行比较
+  if (isBool(x)) {
+    return equal(ToNumber(x), y);
+  }
+  if (isBool(y)) {
+    return equal(x, ToNumber(y));
+  }
+
+  // 6. 如果其中有一个是引用类型，将其转成原始类型再比较
+  if (isRef(y) && (isString(x) || isNum(x) || isBigInt(x) || isSymbol(x))) {
+    return equal(x, ToPrimitive(y));
+  }
+
+  if (isRef(x) && (isString(y) || isNum(y) || isBigInt(y) || isSymbol(y))) {
+    return equal(ToPrimitive(x), y);
+  }
+
+  // 7. BigInt 和 Number 类型
+  if (isBigInt(x) && isNum(y)) {
+    if (isNaN(x) || strictEqual(x, +Infinity) || strictEqual(x === -Infinity)) {
+      return false;
+    }
+    if (isNaN(y) || strictEqual(y, +Infinity) || strictEqual(y === -Infinity)) {
+      return false;
+    }
+
+    return equal(R(x), R(y));
+  }
+
+  return false;
+}
+#+end_src
+
+这里主要有 8 种情况(~equal(x, y)~):
+
+1. 如果 x, y 类型一样，直接返回 ~x === y~ 结果，不需要进行类型转换
+2. 如果 ~null == undefined~ 或 ~undefined == null~ 进行比较，直接返回 ~true~
+3. 如果 x 是对象且有 ~[[IsHTMLDDA]]~ 内部属性，且 y 是 null 或 undefined 直接返
+   回 ~true~, 反之亦然。
+4. 如果 x number, y string 则将其中字符串转成 number 再进行 ~x === y~ 比较，反之
+   亦然。
+5. 如果 x BigInt, y string 则将其中字符串转成 BigInt 再进行 ~x === y~ 比较，反之
+   亦然。
+6. 如果 x boolean 将 x 转成 number 再 ~equal(number(x), y)~ 重新比较，反之亦然。
+7. 如果 x 是引用类型(即 ~typeof x === 'object'~)，而 y 是普通类型(String,
+   Number, BigInt, Symbol)，那么将 x 转成原始类型再比较，即
+   ~equal(toPrimitive(x), y)~, 反之亦然
+8. 如果 x BigInt, y number 又区分几种情况
+
+   - 如果 x: ~NaN~ 返回 NaN
+
+   - 如果 x: ~+Infinity~ 返回 false
+
+   - 如果 x: ~-Infinity~ 返回 false
+
+   - 否则返回 ~equal(R(x), R(y))~ [[https://tc39.es/ecma262/#%E2%84%9D][R 不太清楚啥意思？]]
+
+
+#+begin_quote
+测试：可以通过表格下面的输入框输入左右值点击提交会更新表格，有两个结果，一个是
+~equal(x,y)~ 是该文根据 ECMA 标准实现的相等比较， ~x==y~ 是直接使用 ~==~ 符号得
+到的结果为了形成对比，最后一列信息是每一行的数据在执行 ~equal(x,y)~ 过程中标识了
+哪个值进行了类型转换([[/js/tests/web/equal.js][/js/tests/web/equal.js]]), 表格采用 Vue + ElementPlus 生成，
+源码文件： [[/js/tests/X6j10iPkmj.js][/js/tests/X6j10iPkmj.js]]。
+#+end_quote
+
+#+begin_export html
+<div id="X6j10iPkmj"></div>
+<script src="/js/tests/web/equal.js"></script>
+<script src="/js/tests/X6j10iPkmj.js"></script>
+#+end_export
+
+* TODO IsHTMLDDA 问题
+
+[[https://github.com/tc39/proposal-optional-chaining/issues/108][How does this interact with [[IsHTMLDDA]​] · Issue #108 · tc39/proposal-optional-chaining]]

@@ -1,0 +1,129 @@
+#+TITLE: Vue3 功能拆解⑤ directives 指令系统
+#+DATE: <2021-05-11 09:23:56>
+#+TAGS[]: vue3, vue-next, component, directives
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文从源码角度讲解了组件的指令系统，包含各种内置指令以及自定义指令原理。
+#+end_quote
+
+ 指令列表
+
+ | 指令名称             | 用途                                      |
+ |----------------------+-------------------------------------------|
+ | [[#v-text][v-text]]               | 替换元素 textContext                      |
+ | [[#v-html][v-html]]               | 替换元素 innerHTML                        |
+ | [[#v-show][v-show]]               | 显示隐藏元素 display 属性                 |
+ | [[#v-if][v-if[else/else-if]​]]   | 条件渲染，off-dom 操作                    |
+ | [[#v-for][v-for]]                | 列表渲染，循环操作                        |
+ | [[#v-on][v-on]]                 | 事件绑定                                  |
+ | [[#v-bind][v-bind]]               | 状态绑定                                  |
+ | [[#v-model][v-model]]              | 双向绑定                                  |
+ | [[#v-slot][v-slot]]               | 插槽指令, ~v-slot:name="scope"~           |
+ | [[#v-pre][v-pre]]                | 代码指令                                  |
+ | [[#v-cloak][v-cloak]]              | 组件渲染完成之前元素一直是 ~display:none~ |
+ | [[#v-once][v-once]]               | 只渲染一次，缓存机制实现                  |
+ | [[#v-is][v-is]]                 | ?                                         |
+
+
+* TODO v-text
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-text
+:END:
+* TODO v-html
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-html
+:END:
+
+* TODO v-show
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-show
+:END:
+
+* TODO v-if
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-if
+:END:
+
+* TODO v-for
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-for
+:END:
+
+* TODO v-on
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-on
+:END:
+
+* TODO v-bind
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-bind
+:END:
+
+* TODO v-model
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-model
+:END:
+
+* TODO v-slot
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-slot
+:END:
+
+* TODO v-pre
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-pre
+:END:
+
+* TODO v-cloak
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-cloak
+:END:
+
+* TODO v-once
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-once
+:END:
+
+* TODO v-is
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-is
+:END:
