@@ -1,5 +1,5 @@
 (function() {
-  const { h, createApp, defineComponent, onMounted, onUpdated, ref, reactive } = Vue
+  const { watch, h, createApp, defineComponent, onMounted, onUpdated, ref, reactive } = Vue
   const { ElButton } = ElementPlus
   const { log, Log } = useLog({ unshift: true })
   const { Description, setDesc } = useDescription({ html: true, display: 'block', desc: '点击下面的按钮查看相关信息。' })
@@ -51,7 +51,6 @@
           ...propsFromParent,
           onVnodeUpdated: (newVnode, oldVnode) => {
             diff(oldVnode.props, newVnode.props, 1)
-            diff(oldVnode.attrs, newVnode.attrs, 2)
             log(...[
               '--- child vnode updated---',
               'new = ' + obj2json(newVnode.props),

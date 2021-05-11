@@ -251,3 +251,12 @@ bar: 1}~ 转换规则在 ~setFullProps() -> resolvePropValue()~ 中完成。
 
 *attrs*: 其他情况，除了 emits 中存在的 key 之外都归结为 attrs
 #+end_quote
+
+| 实例                     | defined?                       | props, 默认值 | attrs |
+|--------------------------+--------------------------------+---------------+-------|
+| ~<Child name="child"/>~  | no                             | no            | yes   |
+| ~<Child name="child"/>~  | yes                            | yes           | no    |
+| ~<Child name='' />~      | yes, ~Boolean~                 | yes, ~false~  | no    |
+| ~<Child name='' />~      | yes, ~[Boolean,String]~        | yes, ~true~   | no    |
+| ~<Child name="child" />~ | yes, ~[String]~, ~default: fn~ | yes, ~fn()~   | no    |
+| ~<Child onClick="fn"/>~  | no                             | yes           | no    |
