@@ -358,6 +358,25 @@ function equal(x, y) {
 <script src="/js/tests/X6j10iPkmj.js"></script>
 #+end_export
 
+
+最终总结(类型比较)：
+
+| 类型1   | 类型2     | 需要强转类型                       |
+|---------+-----------+------------------------------------|
+| number  | string    | string -> number                   |
+| null    | undefined | 直接返回 true                      |
+| bigint  | string    | string -> bigint                   |
+| boolean | number    | boolean -> number, false-0, true-1 |
+| object  | 普通类型  | object -> 普通类型                 |
+
+根据上表的类型转换，可以轻松判断出一些诡异的现象，比如：
+
+~0 == [0]~ : ~[0]~ 先转字符串即 ~"0"~ 然后再转成数字 ~0~ 结果: ~true~
+
+~10 == ["10"]~ => ["10"] => "10" => 10
+
+~false == 0~, ~true == 1~ 结果都是 true 都是因为 boolean 转成了 0 或 1
+
 * TODO IsHTMLDDA 问题
 
 [[https://github.com/tc39/proposal-optional-chaining/issues/108][How does this interact with [[IsHTMLDDA]​] · Issue #108 · tc39/proposal-optional-chaining]]

@@ -1,5 +1,5 @@
 (function() {
-  const { h, createApp, ref, reactive, defineComponent, watch } = Vue;
+  const { readonly, h, createApp, ref, reactive, defineComponent, watch } = Vue;
   const { ElTable, ElTableColumn, ElInput, ElButton } = ElementPlus;
 
   const left = ref(""),
@@ -18,6 +18,7 @@
         row.result = equal(row.left, row.right);
         row.result2 = row.left == row.right;
         row.key = i;
+        row.info = getLogInfo();
       });
     },
     { immediate: true }
@@ -59,11 +60,9 @@
       label: "信息",
       width: "280px",
       slots: {
-        default: () =>
+        default: ({ row }) =>
           h("div", {
-            innerHTML: [logNumber, logPrimitive, logError]
-              .map((err) => err)
-              .join(""),
+            innerHTML: row.info,
           }),
       },
     },

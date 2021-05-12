@@ -4,7 +4,7 @@ const hasOwn = Object.prototype.hasOwnProperty;
 const isNum = (v) => typeof v === "number";
 const isString = (v) => typeof v === "string";
 const isBigInt = (v) => typeof v === "bigint";
-const isBool = (v) => typeof v === "bool";
+const isBool = (v) => typeof v === "boolean";
 const isSymbol = (v) => typeof v === "symbol";
 const isRef = (v) => typeof v === "object";
 const toString = Object.prototype.toString;
@@ -121,6 +121,7 @@ function equal(x, y) {
     return equal(y, x);
   }
 
+  console.log(x, typeof x, "xxx");
   // 5. 如果是布尔类型转成数字再进行比较
   if (isBool(x)) {
     return equal(ToNumber(x), y);
@@ -208,11 +209,28 @@ function showStr(v) {
   if (isArray(v)) {
     return `[${showStr(v[0])}]`;
   }
-  return typeof v === "string" ? `"${v}"` : v;
+  return typeof v === "string"
+    ? `"${v}"`
+    : typeof v === "object"
+      ? JSON.stringify(v)
+      : typeof v === "boolean"
+        ? "" + v
+        : v;
 }
 
 // equal = (x, y) => tryCatch(() => equal(x, y));
 
+function clearLogInfo() {
+  logNumber = "";
+  logPrimitive = "";
+  logError = "";
+}
+
+function getLogInfo() {
+  const v = logNumber + logPrimitive + logError;
+  clearLogInfo();
+  return v;
+}
 try {
   module.exports = {
     equal,
