@@ -1,0 +1,32 @@
+#+TITLE: 华为鸿蒙(Huawei Harmony) - 资源收集
+#+DATE: <2021-05-12 18:02:59>
+#+TAGS[]: huawei, harmony
+#+CATEGORIES[]: huawei
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* Harmony
+
+[[https://developer.huawei.com/en/][Huawei Developers - Building a Better Connected World with Developers]]
+
+[[https://gitee.com/openharmony/][OpenHarmony: OpenHarmony是开放原子开源基金会（OpenAtom Foundation）旗下开源项目，定位是一款面向全场景的开源分布式操作系统，第一个版本支持128K-128M设备上运行。]]
+
+[[https://gitee.com/openharmony/docs][docs: OpenHarmony documentation | OpenHarmony开发者文档]]
+
+* 前端相关
+
+[[https://gitee.com/openharmony/ace_engine_lite][ace_engine_lite: ACE JS lite framework | 轻量级JS核心开发框架]]
+
+[[https://developer.harmonyos.com/cn/docs/documentation/js-framework-file-0000000000611396][JS API参考-文件组织]]
+
+[[https://developer.harmonyos.com/cn/docs/documentation/js-apis-overview-0000001056361791][JS API参考-概述]]
+
+* 问题
+
+1. HarmonyOS Launch: The Huawei Lite Wearable Simulator supports only ?
+
+   Tools -> HVD Manager
+   [[/img/tmp/hw-os-issues-01.png]]
+
+   下面按照需要选一个模拟器：
+   [[/img/tmp/WX20210513-161347.png]]

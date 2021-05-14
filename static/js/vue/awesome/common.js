@@ -1,15 +1,35 @@
 (function() {
   const { h } = Vue;
-  const { ElImage, ElTable, ElTableColumn, ElLink, ElPopover } = ElementPlus;
+  const { ElTag, ElImage, ElTable, ElTableColumn, ElLink, ElPopover } = ElementPlus;
 
-  const createLink = (row) => () =>
-    h(
-      ElLink,
-      { href: row.link, target: "_blank" },
-      {
-        default: () => row.name,
-      }
-    );
+  const createLink = (row) => () => {
+    return h('div', {
+      style: { position: 'relative' }
+    }, [
+      h(
+        ElLink,
+        {
+          href: row.link, target: "_blank", style: {
+            'max-width': '90px'
+          }
+        },
+        {
+          default: () => row.name,
+        }
+      ),
+      row.free ? h(ElTag, {
+        type: 'success', effect: 'dark', size: 'mini', style: {
+          position: 'absolute',
+          height: '12px',
+          'line-height': '10px',
+          'font-size': '9px'
+        }
+      }, {
+        default: () => 'free'
+      }) : null
+    ])
+  }
+
 
   function renderBrief(row) {
     return h(

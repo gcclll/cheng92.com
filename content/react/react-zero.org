@@ -21,6 +21,10 @@
 #+end_quote
 
 * 代码脑图
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: map
+:END:
 
 #+begin_src js
 const element = <h1 title="foo">Hello</h1>;
@@ -44,6 +48,10 @@ ReactDOM.render(element, container);
 8. 钩子函数的实现 ~useState~
 
 * 预览
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: preview
+:END:
 
 react 使用实例：
 #+begin_src js
@@ -327,8 +335,12 @@ import(process.env.BLOG_JS + "/react/didact.js").then(({ default: Didact }) => {
 : { type: 'div', props: { id: 'foo', children: [ [Object], [Object] ] } }
 
 * render
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render
+:END:
 
-增加 render 函数，它的目的在一开始也说了，就是讲 vnode 渲染到真实DOM，至于怎么渲
+增加 render 函数，它的目的在一开始也说了，就是将 vnode 渲染到真实DOM，至于怎么渲
 染，结构又是怎么处理的，这之后会慢慢的去完成。
 #+begin_src js
 const Didact = {
@@ -485,4 +497,709 @@ const element = Didact.createElement(
 );
 
 Didact.render(element, container);
+#+end_src
+* 并发模式(workLoop())
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: concurrent
+:END:
+
+
+注意看上一节最后的代码，在 [[#render][render]] 中会递归调用来完成 children 的渲染工作，这里就
+会出现一个问题，只要 render 一旦执行，在渲染完整棵树之前是不能停止的，否则将导致
+页面不完整。
+
+#+begin_quote
+昨天微信里面看到一篇文章：
+
+[[https://mp.weixin.qq.com/s/g_-blGV4CVF5EogYZaPMzQ][Event Loop 和 JS 引擎、渲染引擎的关系]]
+
+这里面大概讲述了一些JS 和 渲染之间的一些关系，而这里的实现和这文章里讲述的一些原
+理是相通的。
+#+end_quote
+
+要解决 render 递归的问题，大致的思想是通过 Fiber 将渲染任务封装，在某一个空闲的
+时刻去执行这些 Fibers 进行实际的渲染，这样不至于阻塞主任务的执行。
+
+这里的每个 Fiber 也被称作 work unit，当一个 work unit 完成会自动找到下一个应该执
+行的 work unit 也就是下一个 Fiber，为什么叫应该呢，因为每个 Fiber 上面不止有一个
+引用指向下一个 Fiber，然后如何决定下一个 work unit 跟渲染的优先级有关系。
+
+每个 Fiber 上面最多有三个引用 parent, first child, parent sibling 三个节点。
+
+优先级是: first child > parent sibling > parent。
+
+如何执行 work unit ?
+
+#+begin_src js
+let nextUnitOfWork = null
+function workLoop(deadline) {
+  let shouldYield = false
+  while (nextUnitOfWork && !shouldYield) {
+    // 执行当前的 work unit 返回下一个将要执行的 work unit
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork)
+    // 没有空闲的时间了
+    shouldYield = deadline.timeRemaining() < 1
+  }
+  // 下个空闲时间去执行下一次 work unit loop
+  requestIdleCallback(workLoop)
+}
+
+function performUnitOfWork(nextUnitOfWork) {
+  // TODO
+}
+#+end_src
+
+[[/img/js/request-idle-callback.png]]
+
+这里使用 ~requestIdleCallback~ 这个函数会在渲染之前检查是不是有空闲的时间，如果
+有则执行回调，或者超时了强制执行回调。
+
+#+begin_quote
+React 已经不用这个了，而是自己实现了 [[https://github.com/facebook/react/tree/master/packages/scheduler][react/packages/scheduler at master ·
+facebook/react]] 来管理 fiber 的执行时机。
+#+end_quote
+* Fibers
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: fibers
+:END:
+
+上一节在实现 ~workLoop()~ 提到了 work unit 即 fiber。
+
+为了方便管理一个 work unit ，需要一个比较合理的结构，里面能保存一些相关的信息，
+比如 parent, first child, parent sibling 引用， VNode 节点信息，等待。
+
+这个结果就是: Fiber tree 由一个个 fiber 结构通过链接组成的树，其实就是类似 Vue
+中的 VNode 节点树。
+
+例如：
+#+begin_src js
+Didact.render(
+  <div>
+    <h1>
+      <p />
+      <a />
+    </h1>
+    <h2 />
+  </div>,
+  container
+)
+#+end_src
+
+有如下的结构，该结构让每个节点都最多持有三个引用，从而更方便的找到下一个 work unit:
+
+[[/img/react/fiber-0.png]]
+
+render 查找步骤拆解：
+
+~root~ -> ~<div>~ -> ~<h1>~ -> ~<p>~ 这是遵循 first child 优先级最高查找的结果，一旦这个
+过程渲染完成，接下来应该找 ~<p>~ 的 sibling(因为 sibling 优先级高于 parent 低于
+first child):
+
+~<a>~ -> ~<h2>~ 因为 ~<a>~ 既没有 first child 也没有 sibling 所以找 parent
+sibling 即 ~<h2>~ 然后继续找发现 ~<div>~ 并没有 sibling，一直如此知道根节点。
+
+更新 render 函数，将 DOM 元素的创建从 render 中抽离出来成 ~createDom~ 函数，这里开始使用 fiber:
+#+begin_src js
+function createDom(fiber) {
+  // 1. 创建当前树根节点元素
+  const dom =
+    fiber.type === "TEXT_ELEMENT"
+      ? document.createTextNode("")
+      : document.createElement(fiber.type);
+
+  const isProperty = (key) => key !== "children";
+  Object.keys(fiber.props)
+    .filter(isProperty)
+    .forEach((name) => (fiber[name] = fiber.props[name]));
+
+  return dom;
+}
+
+let nextUnitOfWork = null
+function render(element, container) {
+  // 构建 root fiber 作为第一个 nextUnitOfWork
+  nextUnitOfWork = {
+    dom: container,
+    props: {
+      children: [element]
+    }
+  }
+}
+#+end_src
+
+在 render 一开始会创建一个 root fiber 并且将它作为第一个 ~nextUnitOfWork~ ，而后
+面则是执行 ~performUnitOfWork~ 这里面主要完成三部分任务：
+
+1. 将 fiber 对应的 element 添加到 DOM
+2. 为 *1* 中的 ~element.children~ 创建 fibers
+3. 找到合适的下一个 work unit 返回
+
+#+begin_src js
+function performUnitOfWork(fiber) {
+  // 1. 创建 fiber dom 元素
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber);
+  }
+
+  // 2. 将 fiber dom 添加到 parent DOM 树中去
+  if (fiber.parent) {
+    fiber.parent.dom.appendChild(fiber.dom);
+  }
+
+  // 3. 处理 children
+  const elements = fiber.props.children;
+  let index = 0;
+  let prevSibling = null;
+
+  while (index < elements.length) {
+    const element = elements[index];
+
+    // 为每个 child 构建 fiber 结构
+    const newFiber = {
+      type: element.type,
+      props: element.props,
+      parent: fiber, // 指向父级 fiber 的引用
+      dom: null, // 指向真实DOM元素的引用
+    };
+
+    if (indx === 0) {
+      // 表示是 parent 的第一个 child，标记为 first child
+      firber.child = newFiber; // 第一个引用，优先级最高
+    } else {
+      // 非第一次的时候，等于是节点的兄弟节点
+      // 第二个引用，优先级低于 first child
+      prevSibling.sibling = newFiber;
+    }
+
+    prevSibling = newFiber;
+    index++;
+  }
+
+  // 到这里 fiber 结构初始化完成，此时每个 fiber 也有了自己的
+  // 三个引用 fiber.child, fiber.parent, fiber.sibling
+  // 下面将要去找到当前 Fiber 的下一个 work unit，查找遵循优先级:
+  // fiber.child > fiber.sibling > fiber.parent.sibling
+  if (fiber.child) {
+    return fiber.child;
+  }
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      // 第一次这里找的是当前节点的兄弟节点，如果没找到
+      // 依着 fiber 树往上找 parent 的 sibling
+      return nextFiber.sibling;
+    }
+
+    nextFiber = fiber.parent;
+  }
+}
+#+end_src
+* Render and Commit 阶段
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render-commit
+:END:
+
+到现在为止，前面都只是在 fiber tree 基础上去做了处理（创建 DOM 元素，链接 fiber
+tree，找下一个 work unit），但实际并没有开始渲染。
+
+并且这里 performUnitOfWork 实现中有个问题：
+#+begin_src js
+if (fiber.parent) {
+  fiber.parent.dom.appendChild(fiber.dom);
+}
+#+end_src
+
+即这里每次执行 work unit 的时候都会立即将 fiber.dom 添加到 parent 的 DOM 🌲中去，
+然后这个操作很有可能在完成整棵树的渲染之前被浏览器给终止了。
+
+怎么解决这个问题？
+
+从根上去解决这个问题，即在 render 中不用一开始就去进行 append 操作，而是从 root
+开始去跟踪整个树的结构变化，将 root 也封装成 fiber。
+
+#+begin_src js
+let wipRoot = null
+function render(element, container) {
+  wipRoot = {
+    dom: container,
+    props: {
+      children: [element]
+    }
+  }
+
+  nextUnitOfWork = wipRoot
+}
+#+end_src
+
+然后，一旦 wookLoop() 的一次循环结束了就进行一次提交，去一次性完成渲染任务。
+
+那怎么判断说一次循环结束了？
+
+#+begin_src js
+function commitRoot() {
+  // 执行 DOM 渲染
+  commitWork(wipRoot.child);
+  // 提交完成之后要重置，等待下一次更新的任务
+  wipRoot = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) return;
+
+  // 这里顺序也是一样 fiber -> fiber.child -> fiber.sibling
+  const domParent = fiber.parent.dom;
+  domParent.appendChild(fiber.dom);
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}
+
+function workLoop(deadline) {
+  let shouldYield = false;
+  while (nextUnitOfWork && !shouldYield) {
+    // 执行当前的 work unit 返回下一个将要执行的 work unit
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    // 没有空闲的时间了
+    shouldYield = deadline.timeRemaining() < 1;
+  }
+
+  // 这里检测没有下一个 work unit 了，说明整个树遍历完成了
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot();
+  }
+
+  // 下个空闲时间去执行下一次 work unit loop
+  requestIdleCallback(workLoop);
+}
+#+end_src
+* updating and deleting 更新和删除
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: update-delete
+:END:
+
+这一节将讲述如何将 old fiber 和 new fiber 进行比较来判断是进行 update 还是
+delete 操作。
+
+所以 Fiber 里面需要对上一次的提交的 fiber tree 进行备份。
+
+这里用 ~currentRoot~ 表示 new fiber 用 fiber.alternate 来保存 old fiber。
+
+#+begin_src diff
++ let currentRoot = null
+function commitRoot() {
+  commitWork(wipRoot.child)
++  // 当前渲染的树进行备份
++  currentRoot = wipRoot
+  wipRoot = null
+}
+
+function render(element, container) {
+  wipRoot = {
+    dom: container,
+    props: {
+      children: [element]
+    },
++    // 保存一份老树
++    alternate: currentRoot
+  }
+
+  nextUnitOfWork = wipRoot
+}
+#+end_src
+
+将 ~performUnitOfWork~ 中创建 Fiber 的抽离到 ~reconcileChildren~ 中去方便添加更
+新和删除操作。
+
+#+begin_src js
+function reconcileChildren(wipFiber, elements) {
+  let index = 0;
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child
+  let prevSibling = null;
+
+  while (index < elements.length) {
+    // 这个 element 是将要更新到DOM中的节点
+    const element = elements[index];
+    let newFiber = null
+
+    // 比较 oldFiber 和 element
+    // 类型一样，属于更新
+    const sameType = oldFiber && element && oldFiber.type === element.type
+    // 下面的更新并非是直接立即更新，而是为 Fiber 赋予新的属性来标识该节点
+    // 在 commit 阶段应该执行什么操作
+
+    if (sameType) {
+      // 更新节点
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom,
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: 'UPDATE'
+      }
+    }
+
+    if (element && !sameType) {
+      // 添加节点
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        parent: wipFiber,
+        alternate: null,
+        effectTag: 'PLACEMENT'
+      }
+    }
+
+    if (oldFiber && !sameType) {
+      // 删除节点
+      oldFiber.effecTag = 'DELETION'
+      // 因为 commit 是从 root 从上往下提交的，且在提交阶段
+      // 已经丢失了 old fiber，因为上面结构已经更新了，因此这里需要记录
+      // 哪些节点需要删除
+      deletion.push(oldFiber)
+    }
+
+    // 为每个 child 构建 fiber 结构
+    newFiber = {
+      type: element.type,
+      props: element.props,
+      parent: fiber, // 指向父级 fiber 的引用
+      dom: null, // 指向真实DOM元素的引用
+    };
+
+    if (indx === 0) {
+      // 表示是 parent 的第一个 child，标记为 first child
+      firber.child = newFiber; // 第一个引用，优先级最高
+    } else {
+      // 非第一次的时候，等于是节点的兄弟节点
+      // 第二个引用，优先级低于 first child
+      prevSibling.sibling = newFiber;
+    }
+
+    prevSibling = newFiber;
+    index++;
+  }
+}
+#+end_src
+
+然后修改 render ，初始化或重置 deletion:
+#+begin_src js
+let deletion = null
+// ReactDOM.render
+function render(element, container) {
+  wipRoot = {
+    dom: container,
+    props: {
+      children: [element],
+    },
+    alternate: currentRoot,
+  };
+
+  // 初始化或重置待删除的节点，因为 fiber tree 更新发生在 commit 之前
+  // 因此在 commit 阶段 old fiber 已经被替换了，所以在 fiber tree 更新的
+  // 时候就要将要删除的 old fiber 缓存起来
+  deletion = [];
+  nextUnitOfWork = wipRoot;
+}
+#+end_src
+
+然后在提交阶段 commitRoot 中执行删除
+#+begin_src js
+function commitRoot() {
+  deletion.forEach(commitWork) // 执行节点删除
+  commitWork(wipRoot.child)
+  currentRoot = wipRoot
+  wipRoot = null
+}
+
+#+end_src
+
+最后修改 commitWork 去处理新增的 fiber.effectTag 根据不同类型执行相应的增加、删
+除、更新操作。
+
+#+begin_src js
+function commitWork(fiber) {
+  if (!fiber) return;
+
+  // 这里顺序也是一样 fiber -> fiber.child -> fiber.sibling
+  const domParent = fiber.parent.dom;
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
+    // 添加新节点
+    domParent.appendChild(fiber.dom);
+  } else if (fiber.effectTag === "DELETION") {
+    domParent.removeChild(fiber.dom);
+  } else if (fiber.effectTag === "UPDATE" && fiber.dom != null) {
+    // 更新节点
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  }
+
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}
+#+end_src
+
+更新节点，需要对状态进行对比，进行更新：
+#+begin_src js
+const isProperty = (key) => key !== "children";
+// 新属性
+const isNew = (prev, next) => (key) => prev[key] !== next[key];
+// 要删除的属性
+const isGone = (prev, next) => (key) => !key in next;
+function updateDom(dom, prevProps, nextProps) {
+  // 删除
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps, nextProps))
+    .forEach((name) => (dom[name] = ""));
+
+  // 更新新增
+  Object.keys(nextProps)
+  .filter(isProperty)
+  .filter(isNew(prevProps, nextProps))
+  .forEach(name => (dom[name] = nextProps[name]))
+}
+#+end_src
+
+处理特殊属性：事件属性的处理，需要将原来的 handler 先移除再添加新的 handler。
+#+begin_src js
+const isEvent = (key) => key.startsWith("on");
+const isProperty = (key) => key !== "children" && !isEvent(key);
+// 新属性
+const isNew = (prev, next) => (key) => prev[key] !== next[key];
+// 要删除的属性
+const isGone = (prev, next) => (key) => !key in next;
+function updateDom(dom, prevProps, nextProps) {
+  // 移除或更新 event listeners
+  Object.keys(prevProps)
+    .filter(isEvent)
+    .filter((key) => !(key in nextProps) || isNew(prevProps, nextProps)(key))
+    .forEach((name) => {
+      const eventType = name.toLowerCase().substring(2);
+      dom.removeEventListener(eventType, prevProps[name]);
+    });
+  // 删除
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps, nextProps))
+    .forEach((name) => (dom[name] = ""));
+
+  // 更新新增
+  Object.keys(nextProps)
+    .filter(isProperty)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => (dom[name] = nextProps[name]));
+
+  // 新增事件属性
+  Object.keys(nextProps)
+    .filter(isEvent)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => {
+      const eventType = name.toLowerCase().substring(2);
+      dom.addEventListener(eventType, nextProps[name]);
+    });
+}
+#+end_src
+* 函数组件
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: function-component
+:END:
+
+如实例：
+#+begin_src js
+function App(props) {
+  return <h1>Hi {props.name}</h1>
+}
+const element = <App name="foo"/>
+// jsx -> js
+function App(props) {
+  return Didact.createElement('h1', null, "Hi ", props.name)
+}
+const element = Didact.createElement(App, {
+  name: 'foo'
+})
+#+end_src
+
+函数组件与普通组件不同点:
+
+1. 来自函数组件的 Fiber 没有 DOM 节点
+2. fiber.children 来自函数执行的结果，而不是直接从 props 中取
+
+
+修改 performUnitOfWork 增加函数组件判断:
+#+begin_src js
+function performUnitOfWork(fiber) {
+  const isFunctionComponent = fiber.type instanceof Function
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber)
+  } else {
+    updateHostComponent(fiber)
+  }
+
+  // 到这里 fiber 结构初始化完成，此时每个 fiber 也有了自己的
+  // 三个引用 fiber.child, fiber.parent, fiber.sibling
+  // 下面将要去找到当前 Fiber 的下一个 work unit，查找遵循优先级:
+  // fiber.child > fiber.sibling > fiber.parent.sibling
+  if (fiber.child) {
+    return fiber.child;
+  }
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      // 第一次这里找的是当前节点的兄弟节点，如果没找到
+      // 依着 fiber 树往上找 parent 的 sibling
+      return nextFiber.sibling;
+    }
+
+    nextFiber = nextFiber.parent;
+  }
+}
+#+end_src
+
+更新函数组件 ~updateFunctionComponent(fiber)~ :
+#+begin_src js
+function updateFunctionComponent(fiber) {
+  // 执行函数组件得到 children
+  const children = [fiber.type(fiber.props)]
+  reconcileChildren(fiber, children)
+}
+#+end_src
+
+更新普通组件 ~updateHostComponent(fiber)~ 直接把 performUnitOfWork 中原来的处理
+挪进来就 OK:
+#+begin_src js
+function updateHostComponent(fiber) {
+  // 1. 创建 fiber dom 元素
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber);
+  }
+
+  reconcileChildren(fiber, fiber.props.children);
+}
+#+end_src
+
+因为函数组件并没有 DOM 元素，所以 commit 阶段需要进行判断，如果没有就往上找父级
+的 dom 元素作为 parent 。
+#+begin_src js
+function commitWork(fiber) {
+  if (!fiber) return;
+
+  // 这里顺序也是一样 fiber -> fiber.child -> fiber.sibling
+  const domParentFiber = fiber.parent;
+  // 如果是函数组件是没有 dom 的，那么需要找到它的父级作为目标 parent
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent;
+  }
+  const domParent = domParentFiber.dom;
+
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
+    // 添加新节点
+    domParent.appendChild(fiber.dom);
+  } else if (fiber.effectTag === "UPDATE" && fiber.dom != null) {
+    // 更新节点
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  } else if (fiber.effectTag === "DELETION") {
+    commitDeletion(fiber, domParent);
+  }
+
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}
+#+end_src
+
+删除的时候也必须找到有 child 的 fiber, commitDeletion ：
+#+begin_src js
+function commitDeletion(fiber, domParent) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom)
+  } else {
+    commitDeletion(fiber.child, domParent)
+  }
+}
+#+end_src
+* hooks
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hooks
+:END:
+
+添加状态和 hooks。
+
+在函数组件中我们可以通过 ~useState~ hook 来获取状态以及改变状态的函数 ~setState~
+让我们能在函数组件中来更新状态，从而来更新UI。
+
+实例：
+#+begin_src js
+function Counter() {
+const [state, setState] = useState(1)
+  return (
+    <h1 onClick={() => setState(c => c+1)}>
+      Count: { state }
+    </h1>
+  )
+}
+const elment = <Counter/>
+#+end_src
+
+实现 useState 并且修改函数组件的更新函数 updateFunctionComponent 让状态的修改能
+触发该函数执行:
+#+begin_src js
+function useState(initial) {
+}
+
+let wipFiber = null
+let hookIndex = null
+function updateFunctionComponent(fiber) {
+  wipFiber = fiber
+  hookIndex = 0
+  wipFiber.hooks = []
+
+  const children = [fiber.type(fiber.props)]
+  reconcileChildren(fiber, children)
+}
+#+end_src
+
+新增 fiber.hooks 目的是为了在同一个组件内可以多次调用 ~useState~, 并且记录每个
+hook 所在的索引 hookIndex 。
+
+当组件调用 ~useState~ 时候，在里面要去检测是不是有 old hook，从 fiber.alternate
+根据 hookIndex 去找。
+#+begin_src js
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex];
+
+  // 如果有老的 hook ，要将老的 hook state 更新过来
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    // 缓存状态更新的 action
+    queue: [],
+  };
+
+  // 更新之前先执行 actions 更新状态，因此在状态返回之前是最新的
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach((action) => (hook.state = action(hook.state)));
+
+  const setState = (action) => {
+    hook.queue.push(action);
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    // 状态更新，插入新的 work unit
+    nextUnitOfWork = wipRoot;
+    deletion = [];
+  };
+
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
+}
 #+end_src

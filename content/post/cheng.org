@@ -19,6 +19,7 @@
 5. [[https://openbase.com/][Openbase: choose the right package every time]]
 
    技术选型网站，如 vue, react 等待。
+6. [[https://www.zhihu.com/question/275283903/answer/829212144][(22 封私信 / 82 条消息) 国内有哪些类似于聚合数据这样的提供免费接口api的 服务供应商？ - 知乎]]
 
 * 数学
 
