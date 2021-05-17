@@ -193,7 +193,7 @@ function performUnitOfWork(fiber) {
   // 三个引用 fiber.child, fiber.parent, fiber.sibling
   // 下面将要去找到当前 Fiber 的下一个 work unit，查找遵循优先级:
   // fiber.child > fiber.sibling > fiber.parent.sibling
-  if (!fiber.child) {
+  if (fiber.child) {
     return fiber.child;
   }
 
@@ -285,6 +285,10 @@ function reconcileChildren(wipFiber, elements) {
       // 已经丢失了 old fiber，因为上面结构已经更新了，因此这里需要记录
       // 哪些节点需要删除
       deletion.push(oldFiber);
+    }
+
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling
     }
 
     // 三个引用
