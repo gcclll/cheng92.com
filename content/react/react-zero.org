@@ -13,6 +13,7 @@
   诗号：半神半圣亦半仙，全儒全道是全贤，脑中真书藏万卷，掌握文武半边天。
 </font>
 </kbd><br><br>
+<script src="/js/react/didact.js"></script>
 <img  src="/img/bdx/shz-001.jpg"/>
 #+end_export
 
@@ -467,8 +468,8 @@ function createTextElement(text) {
 测试:
 #+begin_export html
 <div id="qoCIUr"></div>
-<script type="module">
-import { Didact } from '/js/react/didact.js'
+<script>
+(function() {
 console.log(Didact)
 
 const container = document.getElementById('qoCIUr')
@@ -478,12 +479,12 @@ const element = Didact.createElement('div', {
 Didact.createElement('b'))
 
 Didact.render(element, container)
+}());
 </script>
 #+end_export
 
 测试代码：
 #+begin_src js
-import { Didact } from "/js/react/didact.js";
 console.log(Didact);
 
 const container = document.getElementById("qoCIUr");
@@ -1003,6 +1004,26 @@ function updateDom(dom, prevProps, nextProps) {
     });
 }
 #+end_src
+
+修改 createDom 初创建 DOM 元素的时候执行一次 ~updateDom(dom, {}, fiber.props)~
+
+#+begin_src diff
+function createDom(fiber) {
+  const dom = fiber.type === 'TEXT_ELEMENT'
+    ? document.createTextNode('')
+    : document.createElement(fiber.type)
+
+-  const isProperty = (key) => key !== "children";
+-  Object.keys(fiber.props)
+-    .filter(isProperty)
+-    .forEach((name) => (fiber[name] = fiber.props[name]));
+
++  updateDom(dom, {}, fiber.props)
+
+  return dom
+}
+#+end_src
+
 * 函数组件
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -1211,6 +1232,17 @@ function useState(initial) {
 :END:
 
 [[/img/react/react-src-code.svg]]
+
+* 测试
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test
+:END:
+
+#+begin_export html
+<div id="qvJvTTqyJw"></div>
+<script src="/js/react/tests/qvJvTTqyJw.js"></script>
+#+end_export
 
 * 总结
 :PROPERTIES:

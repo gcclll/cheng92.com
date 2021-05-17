@@ -1,10 +1,18 @@
 console.log("\n");
-const Didact = {
+function log(...s) {
+  console.log.apply(console, ['Didact: ', ...s])
+}
+
+log.fn = (ths, s) => log(`[${ths.name}], ${s}`)
+
+var Didact = {
   createElement,
   render,
+  useState
 };
 
 function createElement(type, props, ...children) {
+  log('create element: ', type);
   return {
     type,
     props: {
@@ -17,6 +25,7 @@ function createElement(type, props, ...children) {
 }
 
 function createTextElement(text) {
+  log('create text element: ', text);
   return {
     type: "TEXT_ELEMENT",
     props: {
@@ -32,8 +41,9 @@ let nextUnitOfWork = null;
 let deletion = null;
 
 function render(element, container) {
+  log('render', element)
   wipRoot = {
-    type: container,
+    dom: container,
     props: {
       children: [element],
     },
@@ -68,7 +78,10 @@ function workLoop(deadline) {
   requestIdleCallback(workLoop);
 }
 
+requestIdleCallback(workLoop)
+
 function commitRoot() {
+  log('commitRoot, wipRoot = ', wipRoot)
   deletion.forEach(commitWork);
   // 提交 children 渲染
   commitWork(wipRoot.child);
@@ -80,6 +93,7 @@ function commitRoot() {
 
 // 真正执行渲染的地方
 function commitWork(fiber) {
+  log('commitWork', fiber)
   if (!fiber) return;
 
   // 找到要渲染的组件的父级元素，用来作为目标的 parent
@@ -121,6 +135,7 @@ const isNew = (prev, next) => (key) => prev[key] !== next[key];
 // 要删除的属性
 const isGone = (prev, next) => (key) => !key in next;
 function updateDom(dom, prevProps, nextProps) {
+  log('updateDom', { dom, prevProps, nextProps })
   // 移除或更新 event listeners
   Object.keys(prevProps)
     .filter(isEvent)
@@ -154,6 +169,7 @@ function updateDom(dom, prevProps, nextProps) {
 
 // 删除的时候要考虑有没 fiber.dom 如果没有一直往下找有 fiber.dom 的子节点
 function commitDeletion(fiber, parent) {
+  log('commitDeletion', fiber, parent)
   if (fiber.dom) {
     parent.removeChild(fiber.dom);
   } else {
@@ -162,6 +178,7 @@ function commitDeletion(fiber, parent) {
 }
 
 function performUnitOfWork(fiber) {
+  log('performUnitOfWork, fiber =', fiber)
   const isFunctionComponent = fiber.type instanceof Function;
   if (isFunctionComponent) {
     // 函数组件，函数组件没有 fiber.dom
@@ -193,6 +210,7 @@ let hookIndex = null;
 let wipFiber = null;
 // 函数组件没有 dom ，且 children 需要执行函数获得
 function updateFunctionComponent(fiber) {
+  log('updateFunctionComponent, fiber = ', fiber)
   // 初始化 state hooks，每个函数组件内可多次调用 useState
   // 在 setState 时候的 action 会保存到 hooks[] 中去等待组件下次
   // 调用的时候执行，所以在函数组件返回之前它的状态就已经是最新的了
@@ -204,15 +222,27 @@ function updateFunctionComponent(fiber) {
   reconcileChildren(fiber, children);
 }
 
-function updateHostComponent() {
+function updateHostComponent(fiber) {
+  log('updateHostComponent, fiber=', fiber)
   if (!fiber.dom) {
     fiber.dom = createDom(fiber);
   }
   reconcileChildren(fiber, fiber.props.children);
 }
 
+function createDom(fiber) {
+  log('createDom, fiber =', fiber);
+  const dom = fiber.type === 'TEXT_ELEMENT'
+    ? document.createTextNode('')
+    : document.createElement(fiber.type)
+
+  updateDom(dom, {}, fiber.props)
+  return dom
+}
+
 // 根据不同操作类型，组织新的 child fiber 结构
 function reconcileChildren(wipFiber, elements) {
+  log('reconcileChildren, wipFiber = ', wipFiber, elements)
   let index = 0;
   let oldFiber = wipFiber.alternate && wipFiber.alternate.child;
   let prevSibling = null;
@@ -260,7 +290,7 @@ function reconcileChildren(wipFiber, elements) {
     // 三个引用
     if (index === 0) {
       // 表示是 parent 的第一个 child，标记为 first child
-      fiber.child = newFiber;
+      wipFiber.child = newFiber;
     } else {
       // 非第一次的时候，等于是节点的兄弟节点
       // 第二个引用，优先级低于 first child
@@ -273,6 +303,7 @@ function reconcileChildren(wipFiber, elements) {
 }
 
 function useState(initial) {
+  log('useState, initial = ', initial)
   const oldHook =
     wipFiber.alternate &&
     wipFiber.alternate.hooks &&
