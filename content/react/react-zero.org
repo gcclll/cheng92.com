@@ -1203,3 +1203,26 @@ function useState(initial) {
   return [hook.state, setState];
 }
 #+end_src
+
+* 最终源码流程图
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: src-map
+:END:
+
+[[/img/react/react-src-code.svg]]
+
+* 总结
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: summary
+:END:
+
+通过[[https://pomb.us/build-your-own-react/][作者]]的这个实现，对 react 的部分主要功能有了一定的认知，文内涉及的主要知识点：
+
+1. createElement 实现
+2. render 函数的实现
+3. fiber tree 的处理(初始化，更新，删除，新增等)
+4. commit 阶段处理，实际渲染DOM和 fiber tree 的遍历是分开的
+5. useState hook 函数实现的基础原理，通过 wipFiber + hookIndex 来实现函数组件和
+   useState 的连接，从而互相影响。
