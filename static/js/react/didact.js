@@ -1,9 +1,21 @@
 console.log("\n");
+let _clog = console.log
 function log(...s) {
-  console.log.apply(console, ['Didact: ', ...s])
+  if (_clog) {
+    _clog.apply(console, ['Didact: ', ...s])
+  }
 }
 
 log.fn = (ths, s) => log(`[${ths.name}], ${s}`)
+
+log.stop = function() {
+  _clog = null
+  return log
+}
+log.resume = function() {
+  _clog = console.log
+  return log
+}
 
 var Didact = {
   createElement,
@@ -98,9 +110,9 @@ function commitWork(fiber) {
 
   // 找到要渲染的组件的父级元素，用来作为目标的 parent
   // 但是由于函数组件没有 dom 元素，所以要考虑到 fiber 没有 dom 的情况
-  // 下去逐级往上找到右 dom 元素的那个祖先元素作为 parent
-  const domParentFiber = fiber.parent;
-  while (!domParentFiber) {
+  // 逐级往上找到有 dom 元素的那个祖先元素作为 parent
+  let domParentFiber = fiber.parent;
+  while (!domParentFiber.dom) {
     domParentFiber = domParentFiber.parent;
   }
   const domParent = domParentFiber.dom;
@@ -137,7 +149,7 @@ const isGone = (prev, next) => (key) => !key in next;
 function updateDom(dom, prevProps, nextProps) {
   log('updateDom', { dom, prevProps, nextProps })
   // 移除或更新 event listeners
-  Object.keys(prevProps)
+  prevProps && Object.keys(prevProps)
     .filter(isEvent)
     .filter((key) => !(key in nextProps) || isNew(prevProps, nextProps)(key))
     .forEach((name) => {
@@ -146,19 +158,19 @@ function updateDom(dom, prevProps, nextProps) {
     });
 
   // 删除普通属性
-  Object.keys(prevProps)
+  prevProps && Object.keys(prevProps)
     .filter(isProperty)
     .filter(isGone(prevProps, nextProps))
     .forEach((name) => (dom[name] = ""));
 
   // 更新或新增
-  Object.keys(nextProps)
+  nextProps && Object.keys(nextProps)
     .filter(isProperty)
     .filter(isNew(prevProps, nextProps))
     .forEach((name) => (dom[name] = nextProps[name]));
 
   // 新增事件属性
-  Object.keys(nextProps)
+  nextProps && Object.keys(nextProps)
     .filter(isEvent)
     .filter(isNew(prevProps, nextProps))
     .forEach((name) => {
@@ -227,7 +239,10 @@ function updateHostComponent(fiber) {
   if (!fiber.dom) {
     fiber.dom = createDom(fiber);
   }
-  reconcileChildren(fiber, fiber.props.children);
+
+  if (fiber.props && fiber.props.children) {
+    reconcileChildren(fiber, fiber.props.children);
+  }
 }
 
 function createDom(fiber) {
@@ -326,6 +341,7 @@ function useState(initial) {
   const setState = (action) => {
     hook.queue.push(action);
 
+    log('setState, currentRoot = ', currentRoot, action)
     // 将一次更新组织成一个新的 work unit(fiber)，赋值给
     // nextUnitOfWork 等待去执行
     wipRoot = {

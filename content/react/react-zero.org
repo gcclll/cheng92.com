@@ -1244,6 +1244,9 @@ function useState(initial) {
 <script src="/js/react/tests/qvJvTTqyJw.js"></script>
 #+end_export
 
+diff 还没有深入实现，没做到 setState 只更新相应的文本 ~count = 0~ 组件。
+
+还有待继续研究！！！
 * 总结
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
