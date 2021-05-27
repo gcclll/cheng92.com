@@ -57,6 +57,12 @@ insertCssLink("/js/vue/css/awesome.css");
 
 JavaScript 相关的库(比如：数字，日期，字符串，货币转换操作等)。
 
+** URL
+#+begin_export html
+<div id="js-url"></div>
+<script src="/js/vue/awesome/js-url.js"></script>
+#+end_export
+
 ** Number
 #+begin_export html
 <div id="js-number"></div>

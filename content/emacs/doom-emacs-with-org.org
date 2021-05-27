@@ -93,6 +93,19 @@ Uses `current-date-time-format' for the formatting the date/time."
   (interactive)
   (insert (format-time-string current-time-format (current-time)))
   )
+
+(defun my/capitalize-first-char (&optional string)
+  "Capitalize only the first character of the input STRING."
+  (when (and string (> (length string) 0))
+    (let ((first-char (substring string nil 1))
+          (rest-str   (substring string 1)))
+      (concat (capitalize first-char) rest-str))))
+(defun my/lowcase-first-char (&optional string)
+  "Capitalize only the first character of the input STRING."
+  (when (and string (> (length string) 0))
+    (let ((first-char (substring string nil 1))
+          (rest-str   (substring string 1)))
+      (concat first-char rest-str))))
 #+end_src
 * 模块(init.el)
 使用到的包：
@@ -520,12 +533,6 @@ const _h = (...args) => f(h(...args))
 ")
 
 
-                                            ;; org prop, tags
-                                            ("8cid" "
-:PROPERTIES:
-:COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: literal_eg
-:END:")
                                             ;; markdown
                                             ("8font" "<font color='red' size='2'>xx</font>")
                                             ;; html template for hugo
@@ -1085,6 +1092,7 @@ This file shouldn't be byte compiled.
 ;; org
 (package! org-fancy-priorities)
 (package! org-pretty-tags)
+;; (package! org-special-block-extras)
 #+end_src
 
 编程类：
@@ -1110,11 +1118,11 @@ This file shouldn't be byte compiled.
 (package! dap-mode)
 #+end_src
 * 任务
-** DONE [#A] test [1/2]
-1. [ ] xx
+** HOLD [#A] test [2/2]
+1. [X] xx
 2. [X] yy
 ** WAIT test2
 ** TODO [#B] test2
-** TODO [#C] test2
+** TODO [#B] test2
 ** TODO test2
 ** TODO test2

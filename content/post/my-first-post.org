@@ -1,6 +1,6 @@
 #+TITLE: My First Post
 #+DATE: <2020-09-03 15:24:05>
-#+TAGS[]:
+#+TAGS[]: demo
 #+CATEGORIES[]:
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
@@ -13,6 +13,131 @@ window.g_need_fold = 1
 
 [[https://www.cnblogs.com/Open_Source/archive/2011/07/17/2108747.html#sec-9][Org-mode 简明手册 - open source - 博客园]]
 
+* colorful text
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: colorful-text
+:END:
+
+@@html:<font color="red">red...</font>@@xxx
+
+
+#+begin_red
+@@html:<font color="red">red text...</font>@@
+#+end_red
+
+* blocks
+#+begin_comment
+comment..
+#+end_comment
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+tip....
+#+end_tip
+
+
+#+begin_danger
+@@html:<strong class="block-first-child">Note</strong>@@
+
+
+danger...
+danger...
+danger...
+danger...
+danger...
+#+end_danger
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+warning...
+#+end_warn
+#+begin_demo :class demo2 :title note
+xxx -- ~demo~
+xxx -- ~demo~
+xxx -- ~demo~
+xxx -- ~demo~
+xxx -- ~demo~
+xxx -- ~demo~
+xxx -- ~demo~
+#+end_demo
+
+#+begin_𝒳
+I /love/ Emacs!
+#+end_𝒳
+
+#+begin_example
+~example~
+#+end_example
+
+#+begin_src warn
+warn
+#+end_src
+
+#+begin_export ascii
+120 120 120
+#+end_export
+
+#+begin_center
+center content
+#+end_center
+
+#+begin_export latex
+xx
+#+end_export
+
+#+begin_quote :warn
+quote ....
+#+end_quote
+
+
+#+html: <br>
+#+begin_box
+octoicon:report Note that kbd:C-x_C-e evaluates a Lisp form!
+#+end_box
+
+#+LATEX_HEADER: \usepackage{multicol}
+#+LATEX_HEADER: \usepackage{tcolorbox}
+#+latex: In the LaTeX output, we have a glossary.
+
+show:GLOSSARY
+
+badge:Thanks|for_reading
+tweet:https://github.com/alhassy/org-special-block-extras
+badge:|buy_me_a coffee|gray|https://www.buymeacoffee.com/alhassy|buy-me-a-coffee
+
+#+begin_details Answer
+link-here:solution
+Syntactically, ~(apply f '(x0 ... xN)) = (f x0 ... xN)~.
+
+[[remark:Musa][Ain't that cool?]]
+
+#+begin_spoiler aqua
+That is, [[color:magenta][we can ((apply)) a function to a list of arguments!]]
+#+end_spoiler
+
+#+end_details
+
+#+begin_demo
+demo block...
+#+end_demo
+
+#+begin_parallel
+[[color:orange][Are you excited to learn some Lisp?]] [[blue:Yes!]]
+
+Pop-quiz: How does doc:apply work?
+#+end_parallel
+
+
+#+begin_example
+test example
+test ~example~
+test example
+test example
+#+end_example
+
 * restclient
 
 #+begin_src restclient
@@ -21,7 +146,6 @@ User-Agent: Emacs Restclient
 #+end_src
 
 * valign test
-
 * head 1
 ** head 2
 *** head 3
@@ -164,3 +288,9 @@ icons:
 ** header2
 *** header3
 **** header4
+
+* hugo themes
+
+[[https://learn.netlify.app/en/]]
+
+[[https://github.com/matcornic/hugo-theme-learn/raw/master/images/screenshot.png]]

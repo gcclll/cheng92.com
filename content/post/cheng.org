@@ -586,7 +586,67 @@ https://github.com/PicGo
 
 ** 其他
 
-1. 怎么更新项目中所有的 ~npm~ 包?
+1. Pulling without specifying how to reconcile divergent branches is ... ?
+
+   #+begin_warn
+   @@html:<p><strong>WARNING</strong></p>@@
+
+    hint: Pulling without specifying how to reconcile divergent branches is
+    hint: discouraged. You can squelch this message by running one of the following
+    hint: commands sometime before your next pull:
+    hint:
+    hint:   git config pull.rebase false  # merge (the default strategy)
+    hint:   git config pull.rebase true   # rebase
+    hint:   git config pull.ff only       # fast-forward only
+    hint:
+    hint: You can replace "git config" with "git config --global" to set a default
+    hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+    hint: or --ff-only on the command line to override the configured default per
+    hint: invocation.
+   #+end_warn
+
+   修复:
+   #+begin_src shell
+   # 全局设置
+   $ git config --global pull.ff only
+   #+end_src
+
+2. kex_exchange_identification: read: Connection reset by peer?
+
+   #+begin_warn
+   @@html:<p><strong>WARNING</strong></p>@@
+
+   $ git clone git@code.aliyun.com:gccll/cloudboss.git
+    Cloning into 'cloudboss'...
+    kex_exchange_identification: read: Connection reset by peer
+    fatal: Could not read from remote repository.
+
+    Please make sure you have the correct access rights
+    and the repository exists.
+   #+end_warn
+
+   网络问题，直接换个网络就行了。
+
+3. hugo even 修改 scss 没反应 ?
+
+   需要 hugo extended 版本：
+   #+begin_src shell
+   #/bin/bash
+
+   mkdir $HOME/src
+   cd $HOME/src
+   git clone https://github.com/gohugoio/hugo.git
+   cd hugo
+   go install --tags extended
+   #+end_src
+
+   brew:
+   #+begin_src shell
+   $ brew install hugo
+   $ cd /opt/local/bin
+   $ ln -s /usr/local/bin/hugo /opt/local/bin/hugo
+   #+end_src
+4. 怎么更新项目中所有的 ~npm~ 包?
 
    [[https://flaviocopes.com/update-npm-dependencies/][  参考链接。]]
 
@@ -597,7 +657,7 @@ https://github.com/PicGo
       $ npm install
       $ ncu -u && npm update && npm install
     #+end_src
-2. git ignore 无效(如： ~.log/~)？
+5. git ignore 无效(如： ~.log/~)？
 
    #+begin_src shell
    alias git-ignore-logs="mv .log ~/Desktop && git rm -r .log && git commit -m 'clear logs' && git push"
@@ -608,8 +668,8 @@ https://github.com/PicGo
    $ git commit -m "clear logs"
    $ git push
    #+end_src
-3. 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
-4. 添加 submodule 失败 ?
+6. 华为手机:iphone:现在哪里去现在谷歌商城? -> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
+7. 添加 submodule 失败 ?
 
     #+begin_example
       ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
@@ -635,38 +695,38 @@ https://github.com/PicGo
    2. ~$ rm -rf themes/even~
    3. ~$ cd ../..~
    4. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
-5. ssh 登录次数过多问题(many authentication)
+8. ssh 登录次数过多问题(many authentication)
 
    ~$ ssh-add -D~ 删除认证缓存
-6. macos install adb
+9. macos install adb
 
    ~$  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"~
    
    ~$ brew cask install android-platform-tools~
    
    ~$ adb devices~
-7. 批量下载 bilibili 视频(you-get 命令)？
-8. macos in stall java environment ?
+10. 批量下载 bilibili 视频(you-get 命令)？
+11. macos in stall java environment ?
 
-   https://mkyong.com/java/how-to-install-java-on-mac-osx/
+    https://mkyong.com/java/how-to-install-java-on-mac-osx/
 
-   ~$ brew tap adoptopenjdk/openjdk~
+    ~$ brew tap adoptopenjdk/openjdk~
 
-   ~$ brew search jdk~
+    ~$ brew search jdk~
 
-   ~$ brew cask install adoptopenjdk11~
+    ~$ brew cask install adoptopenjdk11~
 
-   ~$ /usr/libexec/java_home -V~
+    ~$ /usr/libexec/java_home -V~
 
-   ~$ java -version~
-9. git merge 的时候忽略指定文件？
+    ~$ java -version~
+12. git merge 的时候忽略指定文件？
 
-   https://www.jianshu.com/p/09b546b936a7
+    https://www.jianshu.com/p/09b546b936a7
 
-   - ~$ git config --global merge.ours.driver true~
+    - ~$ git config --global merge.ours.driver true~
 
-   - ~$ echo 'index.php merge=ours' >> .gitattributes~
+    - ~$ echo 'index.php merge=ours' >> .gitattributes~
 
-   - ~$ git add .gitattributes~
+    - ~$ git add .gitattributes~
 
-   - ~$ git commit -m 'chore: Preserve index.php during merges'~
+    - ~$ git commit -m 'chore: Preserve index.php during merges'~

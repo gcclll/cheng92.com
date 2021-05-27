@@ -133,3 +133,31 @@ link: [[#literal_eg][literal_eg]]
 - ~#+attr_css~ 增加 css 样式，比如：
   1. 设置宽高： ~#+attr_css: :width 100px :height 200px :text-align center~ ，注意和 html 属性区
      分开
+* snippets
+:PROPERTIES:
+:COLUMNS: %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: snippets
+:END:
+
+** 首字母大写
+
+新增函数：
+
+#+begin_src emacs-lisp
+(defun my/capitalize-first-char (&optional string)
+  "Capitalize only the first character of the input STRING."
+  (when (and string (> (length string) 0))
+    (let ((first-char (substring string nil 1))
+          (rest-str   (substring string 1)))
+      (concat (capitalize first-char) rest-str))))
+#+end_src
+
+然后在 snippet 文件中调用：
+#+begin_example
+# -*- mode: snippet -*-
+# name: intro
+# key: zname
+# --
+Hi, my name is ${1:$$(my/capitalize-first-char yas-text)}.
+$0
+#+end_example
