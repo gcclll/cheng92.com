@@ -35,6 +35,18 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 
 [[https://github.com/xiaoxian521/vue-pure-admin][xiaoxian521/vue-pure-admin: ✨ 🚀Vue3.0+TypeScript+Vite2.0+Element-Plus编写的一
 套后台管理系统]]
+* vue3 + tsx
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: vue-next-tsx
+:END:
+
+[[https://zhoubangfu.com/a/a208cbd1][vue3+tsx环境创建及使用跳坑项-之间的个人博客]]
+
+插件： ~@vitejs/plugin-vue-jsx~
+
+[[https://github.com/vuejs/jsx-next][vuejs/jsx-next: JSX for Vue 3]]
+
 * vue-next
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

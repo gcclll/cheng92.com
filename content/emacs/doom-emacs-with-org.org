@@ -238,9 +238,9 @@ Uses `current-date-time-format' for the formatting the date/time."
        ;;(haskell +dante)  ; a language that's lazier than I am
        ;;hy                ; readability of scheme w/ speed of python
        ;;idris             ; a language you can depend on
-       (json +lsp)              ; At least it ain't XML
+       (json)              ; At least it ain't XML
        ;;(java +meghanada) ; the poster child for carpal tunnel syndrome
-       (javascript +lsp)        ; all(hope(abandon(ye(who(enter(here))))))
+       (javascript)        ; all(hope(abandon(ye(who(enter(here))))))
        ;;julia             ; a better, faster MATLAB
        ;;kotlin            ; a better, slicker Java(Script)
        (latex             ; writing papers in Emacs has never been so fun
@@ -290,7 +290,7 @@ Uses `current-date-time-format' for the formatting the date/time."
        ;;solidity          ; do you need a blockchain? No.
        ;;swift             ; who asked for emoji variables?
        ;;terra             ; Earth and Moon in alignment for performance.
-       (web +lsp)               ; the tubes
+       (web)               ; the tubes
        yaml              ; JSON, but readable
 
        :email
@@ -501,8 +501,8 @@ Uses `current-date-time-format' for the formatting the date/time."
                (battery))
   (display-battery-mode 1))                     ; 显示电量
 (global-subword-mode 1)                         ; Iterate through CamelCase words
-(prettier-js-mode 1)
-(delete-selection-mode 1)
+;; (prettier-js-mode 1)
+;; (delete-selection-mode 1)
 #+end_src
 *** abbrev 缩写表
 
@@ -550,6 +550,15 @@ const _h = (...args) => f(h(...args))
 #+begin_src emacs-lisp
 (add-to-list 'initial-frame-alist '(fullscreen . maximized))
 (add-hook 'org-mode-hook 'turn-on-auto-fill)
+
+(defun maybe-use-prettier ()
+  "Enable prettier-js-mode if an rc file is located."
+  (if (locate-dominating-file default-directory ".prettierrc")
+      (prettier-js-mode +1)))
+(add-hook 'typescript-mode-hook 'maybe-use-prettier)
+(add-hook 'js2-mode-hook 'maybe-use-prettier)
+(add-hook 'web-mode-hook 'maybe-use-prettier)
+(add-hook 'rjsx-mode-hook 'maybe-use-prettier)
 #+end_src
 ** 主题配置
 #+begin_src emacs-lisp
@@ -687,6 +696,12 @@ tables.]]
   :config (dap-auto-configure-mode))
 (use-package! dap-java
   :ensure nil)
+
+;; 关闭自动格式化，全局关闭
+;; (setq +form-with-lsp nil)
+;; 指定模式
+(setq-hook! 'typescript-mode-hook +format-with-lsp nil)
+(setq-hook! 'typescript-tsx-mode-hook +format-with-lsp nil)
 #+end_src
 
 2021-02-23 11:17:14
@@ -1117,12 +1132,27 @@ This file shouldn't be byte compiled.
 (package! lsp-java)
 (package! dap-mode)
 #+end_src
-* 任务
-** HOLD [#A] test [2/2]
-1. [X] xx
-2. [X] yy
-** WAIT test2
-** TODO [#B] test2
-** TODO [#B] test2
-** TODO test2
-** TODO test2
+* 问题
+1. lsp 不能识别 webpack/vite 别名？
+
+   #+begin_src diff
+   {
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "strict": true,
+        "jsx": "preserve",
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "lib": ["esnext", "dom"],
++        "paths": {
++          "@/*": ["src/*"]
++        }
+      },
+    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
+    }
+   #+end_src
+
+   在 ~tsconfig.json~ 中增加一项配置 ~paths~ 告诉 lsp 别名含义。
