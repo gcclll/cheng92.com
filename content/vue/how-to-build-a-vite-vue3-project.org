@@ -1,0 +1,33 @@
+#+TITLE: 如何开始一个 vite + vue3 + ... 项目
+#+DATE: <2021-05-29 16:25:06>
+#+TAGS[]: vue3, vite
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent shrink inlineimages
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+
+* vue-i18n-next
+
+#+begin_src diff
+alias: {
+     '/@': pathResolve('src'),
++     'vue-i18n': 'vue-i18n/dist/vue-i18n.cjs.js'
+},
+#+end_src

@@ -545,6 +545,14 @@ https://github.com/qiniu/qshell
 ** PicGo
 
 https://github.com/PicGo
+* git
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: git
+:END:
+
+怎么只拉取代码而忽略 ~.git/~ 文件夹 ?
+
 * 问题列表
 ** golang
 

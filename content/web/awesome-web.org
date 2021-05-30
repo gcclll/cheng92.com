@@ -90,3 +90,9 @@ JavaScript 相关的库(比如：数字，日期，字符串，货币转换操�
 <div id="nodejs-cmd-line-utils"></div>
 <script src="/js/vue/awesome/node-cmd-line-utils.js"></script>
 #+end_export
+* stylelint
+
+#+begin_export html
+<div id="stylelint"></div>
+<script src="/js/vue/awesome/stylelint.js"></script>
+#+end_export
