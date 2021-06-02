@@ -9,7 +9,59 @@
 各种疑难杂症集合。
 #+end_quote
 [[/img/tmp/tftz-001.jpg]]
-* WEB
+* golang
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: golang
+:END:
+*** go get 无法下载问题？
+
+    ~Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout~
+
+    https://shockerli.net/post/go-get-golang-org-x-solution/
+
+   - ~export GO111MODULE=on~
+
+   - ~export GOPROXY=https://goproxy.io~
+* emacs
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: emacs
+:END:
+
+*** lsp 不能识别 webpack/vite 别名？
+
+   [[https://github.com/vuejs/vetur/issues/890][Default FAQ js(ts)config for webpack aliases doesn't work. · Issue #890 ·
+   vuejs/vetur]]
+
+   #+begin_src diff
+   {
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "strict": true,
+        "jsx": "preserve",
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "lib": ["esnext", "dom"],
++        "paths": {
++          "@/*": ["src/*"]
++        }
+      },
+    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
+    }
+   #+end_src
+
+   在 ~tsconfig.json~ 中增加一项配置 ~paths~ 告诉 lsp 别名含义。
+
+* web
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: web
+:END:
+
 *** require.cache 缓存问题?
 
    在学习 vue3.0 代码中遇到一个问题，在 org-src-block 中 require vue package 文
@@ -30,3 +82,183 @@
 
    即。在 require 之前先删除缓存，然后使用 ~requireUncached(path)~ 去引入文件。
 #+end_quote
+
+*** 怎么在 html 中使用 ~.svg~ 文件
+
+   #+begin_src html
+     <img src="your.svg"/>
+     <object data="your.svg"/>
+      <iframe src="your.svg"/>
+      <embed src="your.svg"/>
+      <div style="background:url(your.svg)">...</div>
+   #+end_src
+
+   1) https://vecta.io/blog/best-way-to-embed-svg
+*** google fonts 加速
+
+   @@html:<kbd>@@直连更快...@@html:</kbd>@@
+
+   | site                         | name          | ping    |
+   |------------------------------+---------------+---------|
+   | http://fonts.useso.com       | 360           | unknown |
+   | http://fonts.lug.ustc.edu.cn | 中科大        | 66ms    |
+   | http://fonts.css.network     | 捷速网络 香港 | 160ms   |
+   | http://fonts.gmirror.org     | 七牛          | timeout |
+*** IE8 解决 ~Object.defineProperty~ 兼容性问题
+
+   http://lpsjj.cn/thread-222-1-1.html
+
+* 其他
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: other
+:END:
+
+
+*** Pulling without specifying how to reconcile divergent branches is ... ?
+
+   #+begin_warn
+   @@html:<p><strong>WARNING</strong></p>@@
+
+    hint: Pulling without specifying how to reconcile divergent branches is
+    hint: discouraged. You can squelch this message by running one of the following
+    hint: commands sometime before your next pull:
+    hint:
+    hint:   git config pull.rebase false  # merge (the default strategy)
+    hint:   git config pull.rebase true   # rebase
+    hint:   git config pull.ff only       # fast-forward only
+    hint:
+    hint: You can replace "git config" with "git config --global" to set a default
+    hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+    hint: or --ff-only on the command line to override the configured default per
+    hint: invocation.
+   #+end_warn
+
+   修复:
+   #+begin_src shell
+   # 全局设置
+   $ git config --global pull.ff only
+   #+end_src
+
+*** kex_exchange_identification: read: Connection reset by peer?
+
+   #+begin_warn
+   @@html:<p><strong>WARNING</strong></p>@@
+
+   $ git clone git@code.aliyun.com:gccll/cloudboss.git
+    Cloning into 'cloudboss'...
+    kex_exchange_identification: read: Connection reset by peer
+    fatal: Could not read from remote repository.
+
+    Please make sure you have the correct access rights
+    and the repository exists.
+   #+end_warn
+
+   网络问题，直接换个网络就行了。
+
+*** hugo even 修改 scss 没反应 ?
+
+   需要 hugo extended 版本：
+   #+begin_src shell
+   #/bin/bash
+
+   mkdir $HOME/src
+   cd $HOME/src
+   git clone https://github.com/gohugoio/hugo.git
+   cd hugo
+   go install --tags extended
+   #+end_src
+
+   brew:
+   #+begin_src shell
+   $ brew install hugo
+   $ cd /opt/local/bin
+   $ ln -s /usr/local/bin/hugo /opt/local/bin/hugo
+   #+end_src
+*** 怎么更新项目中所有的 ~npm~ 包?
+
+   [[https://flaviocopes.com/update-npm-dependencies/][  参考链接。]]
+
+   #+begin_src shell
+      $ npm install -g npm-check-updates
+      $ ncu -u
+      $ npm update
+      $ npm install
+      $ ncu -u && npm update && npm install
+    #+end_src
+*** git ignore 无效(如： ~.log/~)？
+
+   #+begin_src shell
+   alias git-ignore-logs="mv .log ~/Desktop && git rm -r .log && git commit -m 'clear logs' && git push"
+
+   # commands
+   $ mv .log ~/Desktop
+   $ git rm -r .log
+   $ git commit -m "clear logs"
+   $ git push
+   #+end_src
+*** 华为手机:iphone:现在哪里去现在谷歌商城?
+
+-> [[https://www.huaweicentral.com/download-latest-google-play-store-application-apk/][下载地址]]
+
+*** 添加 submodule 失败 ?
+
+    #+begin_example
+      ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
+      A git directory for 'themes/even' is found locally with remote(s):
+        origin	https://github.com/olOwOlo/hugo-theme-even.git
+      If you want to reuse this local git directory instead of cloning again from
+        https://github.com/gcclll/hugo-theme-even.git
+      use the '--force' option. If the local git directory is not the correct repo
+      or you are unsure what this means choose another name with the '--name' option.
+    #+end_example
+
+    本意就是 fork themes/even 出来修改，结果出现问题。
+
+    *解决方案 1:*
+
+   1. ~$ git ls-files stage themes/even~
+   2. ~$ git rm --cached themes/even~
+   3. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
+
+   *解决方案 2:*
+
+   1. ~$ cd .git/modules~
+   2. ~$ rm -rf themes/even~
+   3. ~$ cd ../..~
+   4. ~$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even~
+*** ssh 登录次数过多问题(many authentication)
+
+   ~$ ssh-add -D~ 删除认证缓存
+*** macos install adb
+
+   ~$  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"~
+
+   ~$ brew cask install android-platform-tools~
+
+   ~$ adb devices~
+*** 批量下载 bilibili 视频(you-get 命令)？
+*** macos in stall java environment ?
+
+    https://mkyong.com/java/how-to-install-java-on-mac-osx/
+
+    ~$ brew tap adoptopenjdk/openjdk~
+
+    ~$ brew search jdk~
+
+    ~$ brew cask install adoptopenjdk11~
+
+    ~$ /usr/libexec/java_home -V~
+
+    ~$ java -version~
+*** git merge 的时候忽略指定文件？
+
+    https://www.jianshu.com/p/09b546b936a7
+
+    - ~$ git config --global merge.ours.driver true~
+
+    - ~$ echo 'index.php merge=ours' >> .gitattributes~
+
+    - ~$ git add .gitattributes~
+
+    - ~$ git commit -m 'chore: Preserve index.php during merges'~

@@ -42,6 +42,12 @@
 | [[https://github.com/KaratasFurkan/.emacs.d][GitHub - KaratasFurkan/.emacs.d: My literate Emacs configuration]] | -     |
 
 
+* 更新日志
+[2021-05-30]
+
+1. add scrollkeeper 定位行时闪烁(~M-v,M-f~)
+2. add cacltext 数学计算
+3. add ~gcl/async-shell-command-silently~
 * 自定义函数
 #+begin_src emacs-lisp :comments no
 ;;;###autoload
@@ -106,6 +112,18 @@ Uses `current-date-time-format' for the formatting the date/time."
     (let ((first-char (substring string nil 1))
           (rest-str   (substring string 1)))
       (concat first-char rest-str))))
+
+(defun gcl/async-shell-command-silently (command)
+  "async shell command silently."
+  (interactive)
+  (let
+      ((display-buffer-alist
+        (list
+         (cons
+          "\\*Async Shell Command\\*.*"
+          (cons #'display-buffer-no-window nil)))))
+    (async-shell-command
+     command)))
 #+end_src
 * 模块(init.el)
 使用到的包：
@@ -269,7 +287,7 @@ Uses `current-date-time-format' for the formatting the date/time."
         +present
         +protocol
         +pomodoro
-        ;; +roam
+        +roam
         )
        php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
@@ -525,16 +543,39 @@ TODO
 #+end_src
 *** 同步配置
 
+怎么不每次都弹出 ~*Async Shell Command*~ 窗口()？
+
+~gcl/async-shell-command-silently~ 静默异步执行命令，命令会在 ~*mini buffer*~ 中
+显示。
+
 #+begin_src emacs-lisp
 (defadvice! +literate-tangle-async-h ()
   "A very simplified version of `+literate-tangle-h', but async."
   :override #'+literate-tangle-h
   (let ((default-directory doom-private-dir))
-    (async-shell-command
-     (format "emacs --batch --eval \"(progn \
+    (gcl/async-shell-command-silently (format "emacs --batch --eval \"(progn \
 (require 'org) (setq org-confirm-babel-evaluate nil) \
-(org-babel-tangle-file \\\"%s\\\"))\""
+(org-babel-tangle-file \\\"%s\\\"))\" \
+&& /bin/bash ~/.gclrc/shl/cp-config-org.sh"
              +literate-config-file))))
+#+end_src
+*** window
+
+标题设置成项目目录名称。
+
+#+begin_src emacs-lisp
+(setq frame-title-format
+      '(""
+        (:eval
+         (if (s-contains-p org-roam-directory (or buffer-file-name ""))
+             (replace-regexp-in-string
+              ".*/[0-9]*-?" "☰ "
+              (subst-char-in-string ?_ ?  buffer-file-name))
+           "%b"))
+        (:eval
+         (let ((project-name (projectile-project-name)))
+           (unless (string= "-" project-name)
+             (format (if (buffer-modified-p)  " ◉ %s" "  ●  %s") project-name))))))
 #+end_src
 ** 主题配置
 
@@ -671,8 +712,7 @@ tables.]]
 (use-package! dap-mode
   :after lsp-mode
   :config (dap-auto-configure-mode))
-(use-package! dap-java
-  :ensure nil)
+(use-package! dap-java)
 
 ;; 关闭自动格式化，全局关闭
 ;; (setq +form-with-lsp nil)
@@ -696,19 +736,23 @@ tables.]]
 
 (use-package! org-fancy-priorities
   :diminish
-  :ensure t
   :hook (org-mode . org-fancy-priorities-mode)
   :config
   (setq org-fancy-priorities-list '("🅰" "🅱" "🅲" "🅳" "🅴")))
 
 (use-package! org-pretty-tags
   :diminish org-pretty-tags-mode
-  :ensure t
   :config
   (setq org-pretty-tags-surrogate-strings
         '(("work"  . "⚒")))
 
   (org-pretty-tags-global-mode))
+#+end_src
+
+**** org-roam
+
+#+begin_src emacs-lisp
+(setq org-roam-directory "~/.doom.d/.local/roam/")
 #+end_src
 *** parrot, 多单词切换
 
@@ -956,7 +1000,6 @@ _p_ : Previous
 #+begin_src emacs-lisp
 ;; hungry delete
 (use-package! smart-hungry-delete
-  :ensure t
   :bind (("<backspace>" . smart-hungry-delete-backward-char)
          ("C-d" . smart-hungry-delete-forward-char))
   :defer nil ;; dont defer so we can add our functions to hooks
@@ -999,7 +1042,6 @@ _p_ : Previous
 (global-set-key [remap scroll-up-command] #'scrollkeeper-contents-up)
 (global-set-key [remap scroll-down-command] #'scrollkeeper-contents-down)
 #+end_src
-
 ** 开发配置
 *** WEB 开发
 
@@ -1091,6 +1133,7 @@ This file shouldn't be byte compiled.
 ;; org
 (package! org-fancy-priorities)
 (package! org-pretty-tags)
+(package! org-roam :disable t)
 ;; (package! org-special-block-extras)
 #+end_src
 
@@ -1120,31 +1163,5 @@ This file shouldn't be byte compiled.
   :recipe (:host github :repo "msnoigrs/ox-rst"))
 (package! scrollkeeper
   :recipe (:host github :repo "alphapapa/scrollkeeper.el"))
+;; (package! gif-screencast)
 #+end_src
-* 问题
-1. lsp 不能识别 webpack/vite 别名？
-
-   [[https://github.com/vuejs/vetur/issues/890][Default FAQ js(ts)config for webpack aliases doesn't work. · Issue #890 ·
-   vuejs/vetur]]
-
-   #+begin_src diff
-   {
-    "compilerOptions": {
-        "target": "esnext",
-        "module": "esnext",
-        "moduleResolution": "node",
-        "strict": true,
-        "jsx": "preserve",
-        "sourceMap": true,
-        "resolveJsonModule": true,
-        "esModuleInterop": true,
-        "lib": ["esnext", "dom"],
-+        "paths": {
-+          "@/*": ["src/*"]
-+        }
-      },
-    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
-    }
-   #+end_src
-
-   在 ~tsconfig.json~ 中增加一项配置 ~paths~ 告诉 lsp 别名含义。
