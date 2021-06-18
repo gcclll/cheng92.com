@@ -417,3 +417,6 @@ IsPermanent: 0
 即需要进行扁平化处理，将所有的嵌套转成路径方式 ~a[b][c][d][e]:1~ 等于是：
 
 ~{ a: { b: { c: { d: { e:1 } } } } }~
+** el-table index 全部为 0 问题
+
+[[https://github.com/element-plus/element-plus/issues/2143][[bug report] El table column type = "index" error after using row key attribute in El table · Issue #2143 · element-plus/element-plus]]

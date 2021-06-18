@@ -6,3 +6,12 @@
 #+STARTUP: indent
 
 * 测试
+* 选择器
+** :not + :last-child
+
+可以通过
+#+begin_src css
+element:not(:last-child) {
+  // 作用于非最后一个元素上
+}
+#+end_src

@@ -582,7 +582,8 @@ TODO
 #+begin_src emacs-lisp
 (setq doom-theme 'doom-vibrant)
 
-(setq doom-font (font-spec :family "JetBrains Mono" :size 16))
+;; (setq doom-font (font-spec :family "JetBrains Mono" :size 16))
+(setq doom-font (font-spec :family "Fira Code" :size 16))
 #+end_src
 
 ** Package 配置
@@ -688,7 +689,9 @@ tables.]]
         ))
 
 (use-package! company-lsp
-  :commands company-lsp)
+  :commands company-lsp
+  :config
+  (set-company-backend! 'lsp-mode 'company-lsp))
 
 (use-package! lsp-mode
   :hook (
@@ -706,6 +709,9 @@ tables.]]
   :config
   (setq lsp-idle-delay 0.500
         lsp-enable-file-watchers nil))
+
+;; (use-package! lsp-css
+;;   :hook ((css-mode less-mode scss-mode) . lsp-css-enable))
 
 (use-package! lsp-java
   :config (add-hook 'java-mode-hook 'lsp))
@@ -1154,6 +1160,10 @@ This file shouldn't be byte compiled.
 (package! import-js :disable t)
 (package! tide :disable t)
 (package! eldoc :disable t)
+;; (package! lsp-css
+;;       :recipe (:host
+;;                github
+;;                :repo "emacs-lsp/lsp-css"))
 
 ;; java
 (package! lsp-java)
@@ -1165,3 +1175,30 @@ This file shouldn't be byte compiled.
   :recipe (:host github :repo "alphapapa/scrollkeeper.el"))
 ;; (package! gif-screencast)
 #+end_src
+* 问题
+1. lsp 不能识别 webpack/vite 别名？
+
+   [[https://github.com/vuejs/vetur/issues/890][Default FAQ js(ts)config for webpack aliases doesn't work. · Issue #890 ·
+   vuejs/vetur]]
+
+   #+begin_src diff
+   {
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "strict": true,
+        "jsx": "preserve",
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "lib": ["esnext", "dom"],
++        "paths": {
++          "@/*": ["src/*"]
++        }
+      },
+    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
+    }
+   #+end_src
+
+   在 ~tsconfig.json~ 中增加一项配置 ~paths~ 告诉 lsp 别名含义。

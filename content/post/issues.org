@@ -28,7 +28,6 @@
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: emacs
 :END:
-
 *** lsp 不能识别 webpack/vite 别名？
 
    [[https://github.com/vuejs/vetur/issues/890][Default FAQ js(ts)config for webpack aliases doesn't work. · Issue #890 ·
@@ -55,7 +54,15 @@
    #+end_src
 
    在 ~tsconfig.json~ 中增加一项配置 ~paths~ 告诉 lsp 别名含义。
+*** company-caf error
 
+[[https://www.gitmemory.com/issue/company-mode/company-mode/1027/710347661][frontend company-pseudo-tooltip-frontend error - company-mode]]
+
+#+begin_example
+But, I suppose I can get in ~/.emacs.d/.local/straight/repos/company-mode and git pull Did this but got this warning You are not currently on a branch. Please specify which branch you want to merge with. See git-pull(1) for details.
+
+=git pull <remote> <branch>=
+#+end_example
 * web
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -107,7 +114,15 @@
 *** IE8 解决 ~Object.defineProperty~ 兼容性问题
 
    http://lpsjj.cn/thread-222-1-1.html
+* typescript
+** TypeScript error: Property 'X' does not exist on type 'Window'
 
+#+begin_src typescript
+declare const window: any
+#+end_src
+** TS2307: Cannot find module 'X' or its corresponding type declarations.
+
+是因为找不到 vue 文件，直接加上后缀 x.vue 就好了。
 * 其他
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]

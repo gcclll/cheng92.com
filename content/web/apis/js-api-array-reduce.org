@@ -1,0 +1,55 @@
+#+TITLE: JavaScript Api - Array.prototype.reduce
+#+DATE: <2021-06-02 17:07:35>
+#+TAGS[]: javascript, api, reduce
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent ^:{}
+
+TODO
+
+#+begin_quote
+Array.prototype.reduce()
+#+end_quote
+
+
+#+begin_src js
+function deepFindFirstChild(
+  parent,
+  path,
+) {
+  if (path && Array.isArray(path)) {
+    path.push(parent.id)
+  }
+  if (!parent?.children?.length) {
+    return path ? [parent, path] : parent
+  }
+
+  return deepFindFirstChild(parent.children[0], path)
+}
+
+var obj = {
+  id: 0,
+  children: [{
+    id: 1,
+    children: [{
+      id: 2,
+      children: [{
+        id: 3,
+        children: [{
+          id: 4
+        }]
+      }]
+    }]
+  }]
+  }
+
+try {
+  const res = deepFindFirstChild(obj, [])
+  console.log(res);
+} catch(e) {
+  console.log(e.message);
+}
+#+end_src
+
+#+RESULTS:
+: [{ id: 4 } (\, [0 (\, 1) (\, 2) (\, 3) (\, 4)])]
