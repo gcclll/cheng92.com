@@ -1,0 +1,252 @@
+#+TITLE: Preact 源码学习（一）
+#+DATE: <2021-06-20 16:59:52>
+#+TAGS[]: preact, react
+#+CATEGORIES[]: react, preact
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+* 项目初始化
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: initialization
+:END:
+
+
+preact src 下最基础的目录结构
+
+#+begin_example
+  /Users/simon/github/react/stb-preact/src:
+  total used in directory 80K available 4.3 GiB
+  drwxr-xr-x  4 simon staff  128 Jun 20 17:32 diff
+  -rw-r--r--  1 simon staff   56 Jun 20 17:29 clone-element.js
+  -rw-r--r--  1 simon staff   45 Jun 20 17:29 component.js
+  -rw-r--r--  1 simon staff   58 Jun 20 17:30 create-context.js
+  -rw-r--r--  1 simon staff  373 Jun 20 17:28 create-element.js
+  -rw-r--r--  1 simon staff 8.2K Jun 20 17:21 index.d.ts
+  -rw-r--r--  1 simon staff  391 Jun 20 17:28 index.js
+  -rw-r--r--  1 simon staff 4.9K Jun 20 17:32 internal.d.ts
+  -rw-r--r--  1 simon staff  31K Jun 20 17:21 jsx.d.ts
+  -rw-r--r--  1 simon staff  587 Jun 20 17:32 options.js
+  -rw-r--r--  1 simon staff  103 Jun 20 17:27 render.js
+#+end_example
+
+重点代码：
+
+1. diff 节点比较算法核心代码
+2. component.js ~Component~ 组件类
+3. render.js ~render~ 函数
+
+* 基本使用
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: usage
+:END:
+
+官方的栗子：
+
+#+begin_src js
+import { h, render } from 'preact';
+// Tells babel to use h for JSX. It's better to configure this globally.
+// See https://babeljs.io/docs/en/babel-plugin-transform-react-jsx#usage
+// In tsconfig you can specify this with the jsxFactory
+/** @jsx h */
+
+// create our tree and append it to document.body:
+render(<main><h1>Hello</h1></main>, document.body);
+
+// update the tree in-place:
+render(<main><h1>Hello World!</h1></main>, document.body);
+// ^ this second invocation of render(...) will use a single DOM call to update the text of the <h1>
+#+end_src
+
+函数组件：
+
+#+begin_src js
+import {  render, h } from 'preact'
+import { useState } from 'preact/hooks'
+
+/** @jsx h*/
+const App = () => {
+  const [input, setInput] = useState('')
+  return (
+    <div>
+      <p>some thing....</p>
+      <input value={input} onChange={e => setInput(e.target.value)}/>
+    </div>
+  )
+}
+
+render(<App/>, document.body)
+#+end_src
+
+所以，首先需要实现的是 ~h/createElement~ 和 ~render~, 前者构造 VNode 树，后者利
+用 VNode tree 实施渲染，加入 DOM 。
+
+* h/createElement 函数
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: h-createElement
+:END:
+
+[[https://github.com/gcclll/stb-preact/commit/efb88ce9ae3ef142d46389bcb12edf686b9f9f35][feat: h -> createElement · gcclll/stb-preact@efb88ce]]
+
+_src/create-element.js_ 内容：
+
+| name             | 参数                        | brief              |
+|------------------+-----------------------------+--------------------|
+| ~createElement~  | type, props, children       | h 函数，构造 VNode |
+| ~createVNode~    | type,props,key,ref,original | createElement调用  |
+| ~createRef~      | -                           | ~{current: null}~  |
+| ~Fragment~       | props                       | -                  |
+| ~isValidElement~ | vnode                       | -                  |
+
+~createElement(type, props, children)~:
+
+1. props 处理，过滤出 ~key,ref~ 属性，这两个非元素原生属性
+2. 检测 children 合并成数组，当作改节点的子节点
+3. 如果 type 是个函数，考虑是否有初始化默认的 props
+4. 最后调用 createVNode 构造虚拟节点
+
+#+begin_src js
+export function createElement(type, props, children) {
+	let normalizedProps = {},
+		key,
+		ref,
+		i;
+
+	for (i in props) {
+		if (i == 'key') key = props[i];
+		else if (i == 'ref') ref = props[i];
+		else normalizedProps[i] = props[i];
+	}
+
+	// 有 children 事的处理,
+	// h('div', { ref: 'xxx' }, children[])
+	// h('div', { ref: 'xxx' }, child1, child2, child3, ...)
+	if (arguments.length > 2) {
+		normalizedProps.children =
+			arguments.length > 3 ? slice.call(arguments, 2) : children;
+	}
+
+	// 函数组件？
+	// If a Component VNode, check for and apply defaultProps
+	// Note: type may be undefined in development, must never error here.
+	if (typeof type === 'function' && type.defaultProps != null) {
+		for (i in type.defaultProps) {
+			if (normalizedProps[i] === undefined) {
+				normalizedProps[i] = type.defaultProps[i];
+			}
+		}
+	}
+
+	return createVNode(type, normalizedProps, key, ref, null);
+}
+#+end_src
+
+~createVNode(type, props, key, ref, original)~:
+
+单纯初始化虚拟节点的结构。
+
+1. ~_nextDom~ 用来链接下一个被渲染的节点
+
+   这跟 react 的 fiber 貌似有点关联，不知道这里有没用到 fiber. 根据 [[/react/react-zero/#fibers][fiber 结构原
+   理]]，查找下一个执行单元的优先级是： first child -> sibling -> parent sibling
+
+2. constructor 这里赋值为 ~undefined~ 目的是为了识别 VNode(/vue 的 __v_isVNode ???/) ?
+
+#+begin_src js
+// 构造虚拟节点
+export function createVNode(type, props, key, ref, original) {
+	const vnode = {
+		type,
+		props,
+		key,
+		ref,
+		_children: null,
+		_parent: null,
+		_depth: 0,
+		_dom: null,
+		// 必须初始化成 `undefined`, 最终回被设置成 dom.nextSibling 的值
+		// react fiber 结构查找优先级： first child -> sibling -> parent sibling
+		_nextDom: undefined,
+		_component: null,
+		_hydrating: null,
+		constructor: undefined, // 用来检测是不是有效的元素？
+		_original: original == null ? ++vnodeId : original
+	};
+
+	// ？？？ 可以加工处理？？？
+	if (options.vnode != null) options.vnode(vnode);
+
+	return vnode;
+}
+#+end_src
+
+最后有个 ~if (options.vnode != null) options.vnode(vnode);~ 判断，这个不知道是不
+是提供给开发者对 vnode 进行加工处理的能力？
+
+#+begin_src js
+const react = require(process.env.HOME + '/github/react/stb-preact/dist/preact.js');
+console.log(react);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+{
+  render: [Function (anonymous)],
+  hydrate: [Function (anonymous)],
+  createElement: [Function: u],
+  h: [Function: u],
+  Fragment: [Function (anonymous)],
+  createRef: [Function (anonymous)],
+  isValidElement: [Function: o],
+  Component: [Function (anonymous)],
+  cloneElement: [Function (anonymous)],
+  createContext: [Function (anonymous)],
+  toChildArray: [Function (anonymous)],
+  options: { __e: [Function: __e] }
+}
+undefined
+#+end_example
+
+虚拟节点：
+#+begin_src js
+const { h } = require(process.env.HOME + '/github/react/stb-preact/dist/preact.js');
+console.log(">>> h('div', { key: 1 })");
+console.log(h('div', { key: 1 }));
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> h('div', { key: 1 })
+{
+  type: 'div',
+  props: {},
+  key: 1,
+  ref: undefined,
+  __k: null,
+  __: null,
+  __b: 0,
+  __e: null,
+  __d: undefined,
+  __c: null,
+  __h: null,
+  constructor: undefined,
+  __v: 1
+}
+undefined
+#+end_example
+
+上面输出结果，被别名化了，这跟 preact 用的打包方式有关系，对应关系在
+~mangle.json~ 中。
+
+| key | value           |
+|-----+-----------------|
+| __k | _children       |
+| __  | _list           |
+| __b | _depth          |
+| __e | _force          |
+| __d | _nextDom        |
+| __c | _cleanup        |
+| __h | _pendingEffects |
+| __v | _original       |
