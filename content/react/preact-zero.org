@@ -5,6 +5,10 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_quote
+建议学习 preact 之前，先看 [[https://www.cheng92.com/react/react-zero/][Build Your Own React - 若叶知秋]] 或 [[https://pomb.us/build-your-own-react/][Build your own React]]
+#+end_quote
+
 * 项目初始化
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -250,3 +254,59 @@ undefined
 | __c | _cleanup        |
 | __h | _pendingEffects |
 | __v | _original       |
+* render()
+
+~render(vnode, parentDom, replaceNode)~
+
+[[https://github.com/gcclll/stb-preact/commit/dcd5b4114b3bad4c6b463902c4b28f5957e69f19][feat: render · gcclll/stb-preact@dcd5b41]]
+
+#+begin_src js
+export function render(vnode, parentDom, replaceNode) {
+	if (options._root) options._root(vnode, parentDom);
+
+	let isHydrating = typeof replaceNode === 'function';
+
+	// 为了支持在同一个 DOM node 上多次调用 `render()`, 那么就需要有个
+	// 引用能之前上一次渲染的树结构。默认没有该属性，同时也代表是该树第一次
+	// 加载
+	let oldVNode = isHydrating
+		? null
+		: (replaceNode && replaceNode._children) || parentDom._children;
+
+	// 让父节点持有子节点引用
+	vnode = (
+		(!isHydrating && replaceNode) ||
+		parentDom
+	)._children = createElement(Fragment, null, [vnode]);
+
+	// 1. diff()
+
+	// 2. commitRoot(commitQueue, vnode)
+}
+#+end_src
+
+Fragment 实现：
+#+begin_src js
+export function Fragment(props) {
+	return props.children;
+}
+#+end_src
+
+很奇怪吗？
+
+~createElement(Fragment, null, [vnode])~ 等价于
+
+~createElement(props.children, null, [vnode])~
+
+Fragment 是个函数，而 createElement 对 type 的判断为函数时的处理是对  default
+props 的检测和合并操作。
+
+根据 [[react/react-zero/#function-component][函数组件处理]] 可知这个处理会在 commit 阶段完成，先不管这个。
+
+继续往下，将涉及到两个核心内容：
+
+1. diff, 进行对比更新 VNode
+2. work unit commit, 提交渲染任务
+
+两个都是重点且核心的内容。
+* diff()
