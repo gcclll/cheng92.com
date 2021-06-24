@@ -123,6 +123,12 @@ declare const window: any
 ** TS2307: Cannot find module 'X' or its corresponding type declarations.
 
 是因为找不到 vue 文件，直接加上后缀 x.vue 就好了。
+* macos
+
+[[https://developer.apple.com/forums/thread/121776][Can't delete APFS local snapshots | Apple Developer Forums]]
+
+~$ tmutil thinlocalsnapshots / 999999999999999 4~
+
 * 其他
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
