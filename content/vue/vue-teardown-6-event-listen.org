@@ -1,0 +1,402 @@
+#+TITLE: Vue3 功能拆解⑥ directives 事件绑定机制
+#+DATE: <2021-06-28 09:28:23>
+#+TAGS[]: vue3, vue-next, component, directives
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文从源码角度讲解了vue中的事件注册机制(v-on 指令)。
+#+end_quote
+
+该文分析的相关代码在 packages/runtime-dom 包中，主要针对 v-on 的事件注册机制原理
+进行分析一篇文章，相关代码并不多，理解起来也不会有什么困难。
+
+props 属性 patch 入口： [[https://github.com/vuejs/vue-next/blob/master/packages/runtime-dom/src/patchProp.ts][runtime-dom/src/patchProp.ts]]
+
+针对 v-on 处理的代码分支：
+
+
+#+begin_src typescript
+
+export const patchProp: DOMRendererOptions['patchProp'] = (
+  el,
+  key,
+  prevValue,
+  nextValue,
+  isSVG = false,
+  prevChildren,
+  parentComponent,
+  parentSuspense,
+  unmountChildren
+) => {
+  switch (key) {
+      // ... class, style 属性的处理，主要是进行合并操作
+    default:
+      if (isOn(key)) {
+        // ignore v-model listeners
+        // v-on 事件属性处理逻辑
+        if (!isModelListener(key)) {
+          patchEvent(el, key, prevValue, nextValue, parentComponent)
+        }
+      } else if (shouldSetAsProp(el, key, nextValue, isSVG)) {
+        // ... dom 原生属性处理
+      } else {
+        // ...
+      }
+      break
+  }
+}
+#+end_src
+
+所以重点代码在
+
+~patchEvent(el, key, prevValue, nextValue, parentComponent)~
+
+也就是 _runtime-dom/src/modules/events.ts_ 中
+
+#+begin_src typescript
+export function patchEvent(
+  el: Element & { _vei?: Record<string, Invoker | undefined> },
+  rawName: string,
+  prevValue: EventValue | null,
+  nextValue: EventValue | null,
+  instance: ComponentInternalInstance | null = null
+) {
+  // vei = vue event invokers
+  const invokers = el._vei || (el._vei = {})
+  const existingInvoker = invokers[rawName]
+  if (nextValue && existingInvoker) {
+    // patch
+    existingInvoker.value = nextValue
+  } else {
+    const [name, options] = parseName(rawName)
+    if (nextValue) {
+      // add
+      const invoker = (invokers[rawName] = createInvoker(nextValue, instance))
+      addEventListener(el, name, invoker, options)
+    } else if (existingInvoker) {
+      // remove
+      removeEventListener(el, name, existingInvoker, options)
+      invokers[rawName] = undefined
+    }
+  }
+}
+#+end_src
+
+可以看到这里实现是一种特殊处理方式，而不是简单的直接调用 addEventListener 和
+removeEventListener 直接将所有事件句柄注册到 element 上。
+
+#+begin_src typescript
+  const invokers = el._vei || (el._vei = {})
+  const existingInvoker = invokers[rawName]
+#+end_src
+
+*el._vei => vue event invokers*
+
+
+参数说明：
+
+| name      | desc                                  |
+|-----------+---------------------------------------|
+| el        | 事件的目标元素                        |
+| rawName   | 事件名称                              |
+| prevValue | 绑定在 el 上 rawName 对应事件的老句柄 |
+| nextValue | 绑定在 el 上 rawName 对应事件的新句柄 |
+| instance  | 当前组件的实例                        |
+
+参数重点在于  prevValue & nextValue 这两个分别对应了事件的处理新旧函数。
+
+对于所有的 prevValue & nextValue 对应的事件处理函数都不会是直接被注册，而是会被
+封装成一个 Invoker 形式存在。
+
+而 Invoker 来自 createInvoker(nextValue):
+
+一个二次封装函数：
+
+#+begin_src typescript
+function createInvoker(
+  initialValue: EventValue,
+  instance: ComponentInternalInstance | null
+) {
+  const invoker: Invoker = (e: Event) => {
+    // async edge case #6566: inner click event triggers patch, event handler
+    // attached to outer element during patch, and triggered again. This
+    // happens because browsers fire microtask ticks between event propagation.
+    // the solution is simple: we save the timestamp when a handler is attached,
+    // and the handler would only fire if the event passed to it was fired
+    // AFTER it was attached.
+    const timeStamp = e.timeStamp || _getNow()
+    if (timeStamp >= invoker.attached - 1) {
+      callWithAsyncErrorHandling(
+        patchStopImmediatePropagation(e, invoker.value),
+        instance,
+        ErrorCodes.NATIVE_EVENT_HANDLER,
+        [e]
+      )
+    }
+  }
+  invoker.value = initialValue
+  invoker.attached = getNow()
+  return invoker
+}
+#+end_src
+
+返回一个
+#+begin_src typescript
+interface Invoker extends EventListener {
+  value: EventValue
+  attached: number
+}
+#+end_src
+
+封装过程重点做了几件事情：
+
+1. invoker 里面 ~callWithAsyncErrorHandling()~ 方式执行了事件句柄函数
+
+   拦截事件处理函数执行过程中差生的错误异常，这些异常可以通过 vue 的全局配置来捕
+   获：
+
+   #+begin_src js
+   const instance = createApp(App)
+   instance.config.errorHandler = function(err, vm, info) {
+     // 处理错误异常
+   }
+   #+end_src
+
+2. 执行前提是 ~timeStamp >= invoker.attached - 1~
+
+   注释内容：
+   #+begin_quote
+   async edge case #6566: inner click event triggers patch, event handler
+    attached to outer element during patch, and triggered again. This happens
+    because browsers fire microtask ticks between event propagation. the
+    solution is simple: we save the timestamp when a handler is attached, and the handler would only fire if the event passed to it was fired AFTER it was attached.
+   #+end_quote
+
+   个人翻译理解： _事件注册期间会同时注册到 outer element 上，这是因为浏览器会在
+   事件冒泡期间触发微任务 ticks，从而导致会被重复触发事件。_
+
+   解决方案就是记录事件注册完成时的时间戳，在执行的时候检测是不是过了该时间，只
+   有过了该时间触发的才会去执行。
+
+3. 记录时间戳
+
+   #+begin_src js
+   invoker.value = initialValue
+   invoker.attached = getNow()
+   #+end_src
+
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+注意在 invoker 函数中有个特殊步骤：
+
+~patchStopImmediatePropagation(e, invoker.value)~ 这是做什么的？？？
+
+稍后再讲~~
+#+end_tip
+
+回头在看 [[https://github.com/vuejs/vue-next/blob/master/packages/runtime-dom/src/patchProp.ts][patchProp()]]
+
+~el._vei~ 上保存了所有的 <eventName, fns> 事件和事件句柄的映射关系。
+
+当发现新事件来到时，首先检测的是当前事件名是不是曾经注册过事件句柄，如果注册过就
+继续复用并且直接覆盖之前的注册的事件句柄:
+
+#+begin_src typescript
+if (nextValue && existingInvoker) {
+  // patch
+ existingInvoker.value = nextValue
+}
+#+end_src
+
+但是请注意，这里的覆盖并非是直接就将 element 上的 listener 删除了再赋值
+(~addEventListener~)的操作。
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+时刻注意，绑定到 element 上的 event listener 永远都是一个 Invoker，且一旦第一次
+注册了之后这个 Invoker 就会一直作为该 element 上 event name 对应的 event listener
+存在。之后的所有变更都是发生在封装之后的 Invoker 上的，如上面的赋值操作，改变的
+只是 invoker.value 。
+#+end_warn
+
+而对于这个 value 值是个  ~type EventValue = Function | Function[]~ 类型，这个值
+的处理发生在 [[/vue/vue-mind-map-compiler-core-transform-generate/#headline-28][compiler-core]] 和 [[/vue/vue-mind-map-compiler-dom/#v-on][compiler-dom]] 阶段的 vOn.ts 中，这里就不多做赘述了，
+有兴趣的可以通过链接查看之前相关的分析(compiler-core 重点在于模指令的解析，
+compiler-dom 阶段重点在于修饰符的处理上)。
+
+继续看 patchEvent :
+
+#+begin_src typescript
+if (nextValue && existingInvoker) {
+    // patch
+    existingInvoker.value = nextValue
+} else {
+  const [name, options] = parseName(rawName)
+  if (nextValue) {
+    // add
+    const invoker = (invokers[rawName] = createInvoker(nextValue, instance))
+    addEventListener(el, name, invoker, options)
+  } else if (existingInvoker) {
+      // remove
+    removeEventListener(el, name, existingInvoker, options)
+      invokers[rawName] = undefined
+  }
+}
+#+end_src
+
+两个 if...else，这段代码很容易理解不是！！！
+
+需要注意的是最后的一个 ~else if (existingInvoker)~ 到这里的时候会将事件句柄给移
+除。
+
+比如：
+
+~<div @click="null" />~
+~<div @click="" />~
+~<div @click="false" />~
+
+等等，事件句柄是一些空值的时候会当作是移除操作。
+
+那么到这里基本也完成了事件的『封装-注册-移除』部分代码。
+
+- 封装： ~Invoker~ 记录 attach 时间戳防止重复触发，捕获异常
+- 注册：一个事件名只会注册一个 ~Invoker~ 后续操作都是针对这个 invoker 而言
+- 移除：使用 v-on 最后解析得到的值如果是空值时会被视为移除操作
+
+那么之前说到的 ~patchStopImmediatePropagation(e, invoker.value)~ 又是什么操作？
+
+对于原生的事件有个原生的函数 ~event.stopImmediatePropagation()~ 这个函数的含义：
+它可以在任意一个事件句柄函数中调用，来阻止后面的事件被调用。
+
+比如：
+#+begin_src js
+const a = () => {
+  // log a
+}
+const b = (e) => {
+  // log b
+  e.stopImmediatePropagation()
+}
+const c = () => {
+  // log c
+}
+const d = () => {
+  // log d
+}
+
+el.addEventListener('click', a)
+el.addEventListener('click', b)
+el.addEventListener('click', c)
+el.addEventListener('click', d)
+
+// 完了之后触发 click 会得到结果
+// log a
+// log b
+
+// c/d 不会被执行，这就是 stopImmediatePropagation 的作用。
+#+end_src
+
+因此 vue events.ts 中的 ~patchStopImmediatePropagation(e: Event, value:
+EventValue)~ 就是为了模拟这个作用，来让这个原生功能生效，因为 events.ts 中对事件
+的绑定上面说过了，针对element上同一事件名的事件只会有一个句柄 Invoker 函数，所以
+原生的 stopImmediatePropagation 功能就会失效。
+
+功能模拟：只有 invoker.value 是个数组时才会生效。
+
+#+begin_src typescript
+function patchStopImmediatePropagation(
+  e: Event,
+  value: EventValue
+): EventValue {
+  if (isArray(value)) {
+    const originalStop = e.stopImmediatePropagation
+    e.stopImmediatePropagation = () => {
+      originalStop.call(e)
+      ;(e as any)._stopped = true
+    }
+    return value.map(fn => (e: Event) => !(e as any)._stopped && fn(e))
+  } else {
+    return value
+  }
+}
+#+end_src
+
+其实就是重写了 e.stopImmediatePropagation 给事件注册一个 ~_stopped~ 属性，然后将
+value 中所有的 fn 进一步进行封装返回一个全新的 fn:
+
+~(e: Event) => !(e as any)._stopped && fn(e)~
+
+通过检测 _stoppped 标记来达到阻止后续函数的执行的目的。
+
+最后，这里还有个针对三个修饰符的处理(~/(?:Once|Passive|Capture)$/~)，因为在
+compiler-dom 阶段，这三个修饰符会被单独解析，比如：
+
+~<div @click.once=.../>~
+
+最后被解析成 ~onClickOnce~ 依此类推： ~onClickPassive~, ~onClickCapture~ 所以这
+里要进行拆分一下，等于是拆分出：
+
+~{once: true, passive: true, capture: true}~ 的结构。
+
+源码：
+#+begin_src typescript
+const optionsModifierRE = /(?:Once|Passive|Capture)$/
+
+function parseName(name: string): [string, EventListenerOptions | undefined] {
+  let options: EventListenerOptions | undefined
+  if (optionsModifierRE.test(name)) {
+    options = {}
+    let m
+    while ((m = name.match(optionsModifierRE))) {
+      name = name.slice(0, name.length - m[0].length)
+      ;(options as any)[m[0].toLowerCase()] = true
+      options
+    }
+  }
+  return [name.slice(2).toLowerCase(), options]
+}
+#+end_src
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+*小结*：
+
+有点湊篇幅的嫌疑 😪
+
+内容其实很简单，四个函数，两次封装。
+
+1. createInvoker 封装事件句柄函数 Invoker
+2. patchEvent 检测 el._vei 注册 invoker.value
+3. patchStopImmediatePropagation 通过添加 event._stopped 模拟原生功能，拦截后面
+   的函数执行
+4. parseName 三个修饰符的处理工作 ~once/passive/capture~
+#+end_warn
