@@ -22,31 +22,6 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 <script src="/js/vue/tests/common.js"></script>
 #+end_export
 
-* vue diff 全过程源码解析？
-
-[[https://www.cheng92.com/vue/vue-mind-map-runtime-core-2-render/#keyed-children][Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render - 若叶知秋]]
-
-
-简述： 两个 while + if...else if...else
-
-while1 检测 patch 头部相同节点
-
-while2 检测 patch 尾部相同节点
-
-经过两个 while 处理之后剩下的只有不规则的两组(new & old)序列。
-
-if 执行新增
-
-else if 执行删除
-
-else 依照『最长增长序列』算法进行分析，决定是删除还是新增或插入。
-
-最长增长序列：找到一组序列中路径最长的递增序列，比如：
-
-~2,3,1,4~ 最长增长序列就是 ~2,3,4~
-
-剩下的元素只可能比这个序列中的元素值小(如： ~1~)
-
 * props ? attrs ?
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
@@ -270,31 +245,6 @@ bar: 1}~ 转换规则在 ~setFullProps() -> resolvePropValue()~ 中完成。
 *attrs*: 其他情况，除了 emits 中存在的 key 之外都归结为 attrs
 #+end_quote
 
-
-* setup 函数如何解析？又是如何执行？
-
-执行流程：
-
-render ->
-
-patch ->
-
-processComponent ->
-
-mountComponent ->
-
-createComponentInstance -> 创建组件实例，初始化组件结构
-
-setupComponent -> 初始化 props 和 slots，有状态组件处理
-
-setupStatefulComponent -> 给 instance.ctx 增加代理，执行 setup() 函数
-
-也就是说在 setup 执行之前 props, emits, slots 都已经可以访问了，并且这个函数在组
-件整个生命周期中只会调用一次，因为后面组件的更新时直接调用 ~instance.update~ 来
-完成，不会进入 mountComponent 。
-
-[[/vue/vue-mind-map-runtime-core-3-component/#setup][更多分析链接...]]
-* component render 函数在哪里执行？
 * TODO ShapeFlags 的溯源和用途？
 涉及模块： ~runtime-core~
 * 标签(组件)种类(element, component, slot, template)
