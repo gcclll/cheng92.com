@@ -310,3 +310,58 @@ props 的检测和合并操作。
 
 两个都是重点且核心的内容。
 * diff()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: diff
+:END:
+
+#+begin_src js
+function render() {
+  // 1. create element -> vnode
+
+  // 2. diff
+  // List of effects that need to be called after diffing.
+	let commitQueue = [];
+	diff(
+		parentDom,
+		// Determine the new vnode tree and store it on the DOM element on
+		// our custom `_children` property.
+		vnode, // new vnode
+		oldVNode || EMPTY_OBJ, // old vnode
+		EMPTY_OBJ,
+		parentDom.ownerSVGElement !== undefined,
+		!isHydrating && replaceNode
+			? [replaceNode]
+			: oldVNode
+			? null
+			: parentDom.firstChild
+			? slice.call(parentDom.childNodes)
+			: null,
+		commitQueue,
+		!isHydrating && replaceNode
+			? replaceNode
+			: oldVNode
+			? oldVNode._dom
+			: parentDom.firstChild,
+		isHydrating
+	);
+
+  // 3. commit
+}
+#+end_src
+
+diff 函数目的：比较 vnode 更新，渲染更新后的节点。
+
+#+begin_src js
+export function diff(
+	parentDom,
+	newVNode,
+	oldVNode,
+	globalContext,
+	isSvg,
+	excessDomChildren,
+	commitQueue,
+	oldDom,
+	isHydrating
+) { /*...*/ }
+#+end_src

@@ -1664,7 +1664,7 @@ mountElment else...
 :CUSTOM_ID: keyed-children
 :END:
 
-[[/img/vue3/runtime-core/vue-runtime-core-patch-keyed-children.jpg]]
+[[/img/vue3/runtime-core/vue-runtime-core-diff.svg]]
 
 [[https://github.com/gcclll/stb-vue-next/commit/4a6a1f2b59e938346f097ead660d68b3b2837323][feat(add): patchKeyedChildren · gcclll/stb-vue-next@4a6a1f2]]
 

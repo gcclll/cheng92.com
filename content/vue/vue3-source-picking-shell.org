@@ -22,6 +22,31 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 <script src="/js/vue/tests/common.js"></script>
 #+end_export
 
+* vue diff 全过程源码解析？
+
+[[https://www.cheng92.com/vue/vue-mind-map-runtime-core-2-render/#keyed-children][Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render - 若叶知秋]]
+
+
+简述： 两个 while + if...else if...else
+
+while1 检测 patch 头部相同节点
+
+while2 检测 patch 尾部相同节点
+
+经过两个 while 处理之后剩下的只有不规则的两组(new & old)序列。
+
+if 执行新增
+
+else if 执行删除
+
+else 依照『最长增长序列』算法进行分析，决定是删除还是新增或插入。
+
+最长增长序列：找到一组序列中路径最长的递增序列，比如：
+
+~2,3,1,4~ 最长增长序列就是 ~2,3,4~
+
+剩下的元素只可能比这个序列中的元素值小(如： ~1~)
+
 * props ? attrs ?
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]

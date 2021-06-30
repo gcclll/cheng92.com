@@ -1,0 +1,526 @@
+#+TITLE: Vue3 更新日志 01
+#+DATE: <2021-06-28 11:29:18>
+#+TAGS[]: vue, vue3
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本系列文说明：会不定期的更新本地的 vue-next 仓库，本系列文章则是针对 git pull 后
+的更新内容的分析和记录。
+#+end_quote
+
+更新内容：
+#+begin_example
+╭─simon at gcl in ~/github/vue/vue-next on master✔ 21-06-28 - 11:28:14
+╰─⠠⠵ gl
+remote: Enumerating objects: 4954, done.
+remote: Counting objects: 100% (2235/2235), done.
+remote: Total 4954 (delta 2235), reused 2235 (delta 2235), pack-reused 2719
+Receiving objects: 100% (4954/4954), 3.63 MiB | 892.00 KiB/s, done.
+Resolving deltas: 100% (3958/3958), completed with 350 local objects.
+From https://github.com/vuejs/vue-next
+   b81d279e..ef5c4152  master                           -> origin/master
+ * [new branch]        3.2                              -> origin/3.2
+ * [new branch]        fix/avoid-warn-empty-suspense    -> origin/fix/avoid-warn-empty-suspense
+ * [new branch]        fix/suspense-no-fallback-timeout -> origin/fix/suspense-no-fallback-timeout
+ * [new branch]        v2-compat                        -> origin/v2-compat
+ * [new tag]           v3.0.10                          -> v3.0.10
+ * [new tag]           v3.0.11                          -> v3.0.11
+ * [new tag]           v3.0.5                           -> v3.0.5
+ * [new tag]           v3.0.6                           -> v3.0.6
+ * [new tag]           v3.0.7                           -> v3.0.7
+ * [new tag]           v3.0.8                           -> v3.0.8
+ * [new tag]           v3.0.9                           -> v3.0.9
+ * [new tag]           v3.1.0                           -> v3.1.0
+ * [new tag]           v3.1.0-beta.1                    -> v3.1.0-beta.1
+ * [new tag]           v3.1.0-beta.2                    -> v3.1.0-beta.2
+ * [new tag]           v3.1.0-beta.3                    -> v3.1.0-beta.3
+ * [new tag]           v3.1.0-beta.4                    -> v3.1.0-beta.4
+ * [new tag]           v3.1.0-beta.5                    -> v3.1.0-beta.5
+ * [new tag]           v3.1.0-beta.6                    -> v3.1.0-beta.6
+ * [new tag]           v3.1.0-beta.7                    -> v3.1.0-beta.7
+ * [new tag]           v3.1.1                           -> v3.1.1
+ * [new tag]           v3.1.2                           -> v3.1.2
+Updating b81d279e..ef5c4152
+Fast-forward
+ .circleci/config.yml                                                                         |   53 -
+ .eslintrc.js                                                                                 |    4 +-
+ .github/contributing.md                                                                      |    1 +
+ .github/dependabot.yml                                                                       |   64 ++
+ .github/workflows/{size-check.yml => ci.yml}                                                 |   23 +-
+ .ls-lint.yml                                                                                 |    7 -
+ CHANGELOG.md                                                                                 |  481 ++++++++
+ README.md                                                                                    |   43 +-
+ jest.config.js                                                                               |    9 +-
+ package.json                                                                                 |   21 +-
+ packages/compiler-core/__tests__/__snapshots__/codegen.spec.ts.snap                          |    1 +
+ packages/compiler-core/__tests__/__snapshots__/compile.spec.ts.snap                          |   12 +-
+ packages/compiler-core/__tests__/__snapshots__/scopeId.spec.ts.snap                          |    9 -
+ packages/compiler-core/__tests__/codegen.spec.ts                                             |    8 +-
+ packages/compiler-core/__tests__/parse.spec.ts                                               |  110 +-
+ packages/compiler-core/__tests__/scopeId.spec.ts                                             |   24 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/hoistStatic.spec.ts.snap           |    8 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/transformExpressions.spec.ts.snap  |    2 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/transformText.spec.ts.snap         |   18 +
+ packages/compiler-core/__tests__/transforms/__snapshots__/vFor.spec.ts.snap                  |   16 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/vIf.spec.ts.snap                   |   14 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/vModel.spec.ts.snap                |   16 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/vOnce.spec.ts.snap                 |    2 +-
+ packages/compiler-core/__tests__/transforms/__snapshots__/vSlot.spec.ts.snap                 |   63 +-
+ packages/compiler-core/__tests__/transforms/transformElement.spec.ts                         |   92 +-
+ packages/compiler-core/__tests__/transforms/transformSlotOutlet.spec.ts                      |    9 +
+ packages/compiler-core/__tests__/transforms/transformText.spec.ts                            |   32 +-
+ packages/compiler-core/__tests__/transforms/vModel.spec.ts                                   |    7 +
+ packages/compiler-core/__tests__/transforms/vSlot.spec.ts                                    |   89 +-
+ packages/compiler-core/__tests__/utils.spec.ts                                               |   38 +-
+ packages/compiler-core/package.json                                                          |    5 +-
+ packages/compiler-core/src/ast.ts                                                            |   10 +-
+ packages/compiler-core/src/codegen.ts                                                        |   79 +-
+ packages/compiler-core/src/compat/compatConfig.ts                                            |  167 +++
+ packages/compiler-core/src/compat/transformFilter.ts                                         |  193 ++++
+ packages/compiler-core/src/compile.ts                                                        |    2 +
+ packages/compiler-core/src/errors.ts                                                         |   14 +-
+ packages/compiler-core/src/index.ts                                                          |    7 +
+ packages/compiler-core/src/options.ts                                                        |   31 +-
+ packages/compiler-core/src/parse.ts                                                          |  282 ++++-
+ packages/compiler-core/src/runtimeHelpers.ts                                                 |    2 +
+ packages/compiler-core/src/transform.ts                                                      |   68 +-
+ packages/compiler-core/src/transforms/hoistStatic.ts                                         |   11 +-
+ packages/compiler-core/src/transforms/transformElement.ts                                    |  196 +++-
+ packages/compiler-core/src/transforms/transformExpression.ts                                 |    9 +-
+ packages/compiler-core/src/transforms/transformSlotOutlet.ts                                 |   10 +
+ packages/compiler-core/src/transforms/transformText.ts                                       |   16 +-
+ packages/compiler-core/src/transforms/vBind.ts                                               |    2 +-
+ packages/compiler-core/src/transforms/vFor.ts                                                |   17 +-
+ packages/compiler-core/src/transforms/vIf.ts                                                 |   38 +-
+ packages/compiler-core/src/transforms/vModel.ts                                              |    2 +-
+ packages/compiler-core/src/transforms/vSlot.ts                                               |   59 +-
+ packages/compiler-core/src/utils.ts                                                          |   65 +-
+ packages/compiler-dom/__tests__/decoderHtmlBrowser.spec.ts                                   |   41 +
+ packages/compiler-dom/__tests__/transforms/__snapshots__/vModel.spec.ts.snap                 |   26 +-
+ packages/compiler-dom/__tests__/transforms/__snapshots__/vShow.spec.ts.snap                  |    2 +-
+ packages/compiler-dom/__tests__/transforms/__snapshots__/warnTransitionChildren.spec.ts.snap |   29 +
+ packages/compiler-dom/__tests__/transforms/stringifyStatic.spec.ts                           |   22 +
+ packages/compiler-dom/__tests__/transforms/warnTransitionChildren.spec.ts                    |   18 +
+ packages/compiler-dom/package.json                                                           |   11 +-
+ packages/compiler-dom/src/decodeHtmlBrowser.ts                                               |   14 +-
+ packages/compiler-dom/src/errors.ts                                                          |    4 +-
+ packages/compiler-dom/src/transforms/stringifyStatic.ts                                      |   25 +-
+ packages/compiler-dom/src/transforms/vOn.ts                                                  |   27 +-
+ packages/compiler-sfc/LICENSE                                                                |   21 +
+ packages/compiler-sfc/README.md                                                              |    4 -
+ packages/compiler-sfc/__tests__/__snapshots__/compileScript.spec.ts.snap                     |  311 ++++--
+ packages/compiler-sfc/__tests__/__snapshots__/cssVars.spec.ts.snap                           |   31 +-
+ packages/compiler-sfc/__tests__/__snapshots__/templateTransformAssetUrl.spec.ts.snap         |   19 +-
+ packages/compiler-sfc/__tests__/__snapshots__/templateTransformSrcset.spec.ts.snap           |   50 +-
+ packages/compiler-sfc/__tests__/compileScript.spec.ts                                        |  277 ++++-
+ packages/compiler-sfc/__tests__/compileStyle.spec.ts                                         |    6 +-
+ packages/compiler-sfc/__tests__/compileTemplate.spec.ts                                      |   16 +
+ packages/compiler-sfc/__tests__/cssVars.spec.ts                                              |   24 +
+ packages/compiler-sfc/__tests__/parse.spec.ts                                                |   27 +
+ packages/compiler-sfc/__tests__/rewriteDefault.spec.ts                                       |   81 ++
+ packages/compiler-sfc/__tests__/templateTransformAssetUrl.spec.ts                            |    6 +-
+ packages/compiler-sfc/__tests__/templateTransformSrcset.spec.ts                              |    1 +
+ packages/compiler-sfc/package.json                                                           |   25 +-
+ packages/compiler-sfc/src/compileScript.ts                                                   |  532 ++++++---
+ packages/compiler-sfc/src/compileStyle.ts                                                    |   41 +-
+ packages/compiler-sfc/src/compileTemplate.ts                                                 |   23 +-
+ packages/compiler-sfc/src/cssVars.ts                                                         |   19 +-
+ packages/compiler-sfc/src/index.ts                                                           |    7 +
+ packages/compiler-sfc/src/parse.ts                                                           |   25 +-
+ packages/compiler-sfc/src/rewriteDefault.ts                                                  |   14 +-
+ packages/compiler-sfc/src/stylePluginScoped.ts                                               |  336 +++---
+ packages/compiler-sfc/src/stylePluginTrim.ts                                                 |   24 +-
+ packages/compiler-sfc/src/templateTransformAssetUrl.ts                                       |   39 +-
+ packages/compiler-sfc/src/templateTransformSrcset.ts                                         |   35 +-
+ packages/compiler-sfc/src/warn.ts                                                            |    4 +
+ packages/compiler-ssr/LICENSE                                                                |   21 +
+ packages/compiler-ssr/__tests__/ssrComponent.spec.ts                                         |    9 +-
+ packages/compiler-ssr/__tests__/ssrElement.spec.ts                                           |   21 +
+ packages/compiler-ssr/__tests__/ssrScopeId.spec.ts                                           |    2 +-
+ packages/compiler-ssr/__tests__/ssrSlotOutlet.spec.ts                                        |   57 +
+ packages/compiler-ssr/package.json                                                           |    6 +-
+ packages/compiler-ssr/src/errors.ts                                                          |    4 +-
+ packages/compiler-ssr/src/index.ts                                                           |    1 +
+ packages/compiler-ssr/src/ssrCodegenTransform.ts                                             |    5 +-
+ packages/compiler-ssr/src/transforms/ssrInjectFallthroughAttrs.ts                            |   15 +-
+ packages/compiler-ssr/src/transforms/ssrTransformComponent.ts                                |   35 +-
+ packages/compiler-ssr/src/transforms/ssrTransformSlotOutlet.ts                               |   35 +-
+ packages/global.d.ts                                                                         |   13 +
+ packages/reactivity/__tests__/collections/shallowReadonly.spec.ts                            |  165 +++
+ packages/reactivity/__tests__/computed.spec.ts                                               |    6 +
+ packages/reactivity/__tests__/effect.spec.ts                                                 |   74 +-
+ packages/reactivity/__tests__/readonly.spec.ts                                               |   44 +-
+ packages/reactivity/__tests__/shallowReactive.spec.ts                                        |   13 +-
+ packages/reactivity/__tests__/shallowReadonly.spec.ts                                        |  201 ++++
+ packages/reactivity/package.json                                                             |    4 +-
+ packages/reactivity/src/baseHandlers.ts                                                      |   30 +-
+ packages/reactivity/src/collectionHandlers.ts                                                |   44 +-
+ packages/reactivity/src/computed.ts                                                          |   12 +-
+ packages/reactivity/src/effect.ts                                                            |   17 +-
+ packages/reactivity/src/index.ts                                                             |    3 +-
+ packages/reactivity/src/reactive.ts                                                          |   23 +-
+ packages/reactivity/src/ref.ts                                                               |    6 +-
+ packages/runtime-core/__tests__/apiAsyncComponent.spec.ts                                    |   49 +-
+ packages/runtime-core/__tests__/apiCreateApp.spec.ts                                         |    7 +-
+ packages/runtime-core/__tests__/apiExpose.spec.ts                                            |   52 +-
+ packages/runtime-core/__tests__/apiInject.spec.ts                                            |   39 +-
+ packages/runtime-core/__tests__/apiOptions.spec.ts                                           |  363 ++++++-
+ packages/runtime-core/__tests__/apiSetupHelpers.spec.ts                                      |   81 +-
+ packages/runtime-core/__tests__/apiWatch.spec.ts                                             |  129 ++-
+ packages/runtime-core/__tests__/componentEmits.spec.ts                                       |   86 +-
+ packages/runtime-core/__tests__/componentProps.spec.ts                                       |  180 ++-
+ packages/runtime-core/__tests__/{componentProxy.spec.ts => componentPublicInstance.spec.ts}  |    4 +-
+ packages/runtime-core/__tests__/componentSlots.spec.ts                                       |    4 +-
+ packages/runtime-core/__tests__/components/BaseTransition.spec.ts                            |   29 +-
+ packages/runtime-core/__tests__/components/KeepAlive.spec.ts                                 |   59 +-
+ packages/runtime-core/__tests__/components/Suspense.spec.ts                                  |  107 ++
+ packages/runtime-core/__tests__/components/Teleport.spec.ts                                  |   80 +-
+ packages/runtime-core/__tests__/directives.spec.ts                                           |   28 +
+ packages/runtime-core/__tests__/errorHandling.spec.ts                                        |   49 +-
+ packages/runtime-core/__tests__/helpers/renderSlot.spec.ts                                   |    9 +-
+ packages/runtime-core/__tests__/helpers/resolveAssets.spec.ts                                |   31 +
+ packages/runtime-core/__tests__/helpers/scopeId.spec.ts                                      |  105 --
+ packages/runtime-core/__tests__/hmr.spec.ts                                                  |   61 ++
+ packages/runtime-core/__tests__/hydration.spec.ts                                            |  146 ++-
+ packages/runtime-core/__tests__/rendererAttrsFallthrough.spec.ts                             |   28 +
+ packages/runtime-core/__tests__/rendererComponent.spec.ts                                    |   46 +
+ packages/runtime-core/__tests__/rendererOptimizedMode.spec.ts                                |  366 ++++++-
+ packages/runtime-core/__tests__/scheduler.spec.ts                                            |   66 ++
+ packages/runtime-core/__tests__/scopeId.spec.ts                                              |  308 ++++++
+ packages/runtime-core/__tests__/vnode.spec.ts                                                |   10 +-
+ packages/runtime-core/package.json                                                           |    6 +-
+ packages/runtime-core/src/apiAsyncComponent.ts                                               |   19 +-
+ packages/runtime-core/src/apiCreateApp.ts                                                    |  104 +-
+ packages/runtime-core/src/apiInject.ts                                                       |    4 +-
+ packages/runtime-core/src/apiLifecycle.ts                                                    |   16 +-
+ packages/runtime-core/src/apiSetupHelpers.ts                                                 |  231 +++-
+ packages/runtime-core/src/apiWatch.ts                                                        |   99 +-
+ packages/runtime-core/src/compat/attrsFallthrough.ts                                         |   29 +
+ packages/runtime-core/src/compat/compatConfig.ts                                             |  662 +++++++++++
+ packages/runtime-core/src/compat/component.ts                                                |   48 +
+ packages/runtime-core/src/compat/componentAsync.ts                                           |   56 +
+ packages/runtime-core/src/compat/componentFunctional.ts                                      |   63 ++
+ packages/runtime-core/src/compat/componentVModel.ts                                          |   73 ++
+ packages/runtime-core/src/compat/customDirective.ts                                          |   60 +
+ packages/runtime-core/src/compat/data.ts                                                     |   16 +
+ packages/runtime-core/src/compat/global.ts                                                   |  656 +++++++++++
+ packages/runtime-core/src/compat/globalConfig.ts                                             |   84 ++
+ packages/runtime-core/src/compat/instance.ts                                                 |  169 +++
+ packages/runtime-core/src/compat/instanceChildren.ts                                         |   28 +
+ packages/runtime-core/src/compat/instanceEventEmitter.ts                                     |  108 ++
+ packages/runtime-core/src/compat/instanceListeners.ts                                        |   19 +
+ packages/runtime-core/src/compat/props.ts                                                    |   40 +
+ packages/runtime-core/src/compat/ref.ts                                                      |   45 +
+ packages/runtime-core/src/compat/renderFn.ts                                                 |  347 ++++++
+ packages/runtime-core/src/compat/renderHelpers.ts                                            |  182 ++++
+ packages/runtime-core/src/component.ts                                                       |  222 +++-
+ packages/runtime-core/src/componentEmits.ts                                                  |   58 +-
+ packages/runtime-core/src/componentOptions.ts                                                |  775 +++++++------
+ packages/runtime-core/src/componentProps.ts                                                  |  190 +++-
+ packages/runtime-core/src/componentPublicInstance.ts                                         |  127 ++-
+ packages/runtime-core/src/componentRenderContext.ts                                          |  118 ++
+ packages/runtime-core/src/componentRenderUtils.ts                                            |   63 +-
+ packages/runtime-core/src/componentSlots.ts                                                  |   58 +-
+ packages/runtime-core/src/components/BaseTransition.ts                                       |   15 +-
+ packages/runtime-core/src/components/KeepAlive.ts                                            |   57 +-
+ packages/runtime-core/src/components/Suspense.ts                                             |  145 ++-
+ packages/runtime-core/src/components/Teleport.ts                                             |   60 +-
+ packages/runtime-core/src/devtools.ts                                                        |   29 +-
+ packages/runtime-core/src/directives.ts                                                      |   13 +-
+ packages/runtime-core/src/h.ts                                                               |   12 +
+ packages/runtime-core/src/helpers/renderSlot.ts                                              |   19 +-
+ packages/runtime-core/src/helpers/resolveAssets.ts                                           |   52 +-
+ packages/runtime-core/src/helpers/scopeId.ts                                                 |   36 -
+ packages/runtime-core/src/helpers/typeUtils.ts                                               |    3 +
+ packages/runtime-core/src/helpers/useSsrContext.ts                                           |    4 +-
+ packages/runtime-core/src/helpers/withRenderContext.ts                                       |   37 -
+ packages/runtime-core/src/hmr.ts                                                             |    4 +-
+ packages/runtime-core/src/hydration.ts                                                       |   88 +-
+ packages/runtime-core/src/index.ts                                                           |   75 +-
+ packages/runtime-core/src/profiling.ts                                                       |    9 +
+ packages/runtime-core/src/renderer.ts                                                        |  434 +++++---
+ packages/runtime-core/src/scheduler.ts                                                       |   85 +-
+ packages/runtime-core/src/vnode.ts                                                           |  115 +-
+ packages/runtime-core/src/warning.ts                                                         |    2 +-
+ packages/runtime-core/types/scriptSetupHelpers.d.ts                                          |   13 +
+ packages/runtime-dom/__tests__/createApp.spec.ts                                             |   15 +
+ packages/runtime-dom/__tests__/directives/vShow.spec.ts                                      |   65 +-
+ packages/runtime-dom/__tests__/nodeOps.spec.ts                                               |  125 +++
+ packages/runtime-dom/__tests__/patchEvents.spec.ts                                           |   26 +
+ packages/runtime-dom/__tests__/patchProps.spec.ts                                            |   24 +
+ packages/runtime-dom/package.json                                                            |    6 +-
+ packages/runtime-dom/src/components/Transition.ts                                            |  114 +-
+ packages/runtime-dom/src/components/TransitionGroup.ts                                       |   25 +-
+ packages/runtime-dom/src/directives/vModel.ts                                                |    4 +-
+ packages/runtime-dom/src/directives/vOn.ts                                                   |   66 +-
+ packages/runtime-dom/src/directives/vShow.ts                                                 |    3 +-
+ packages/runtime-dom/src/index.ts                                                            |   70 +-
+ packages/runtime-dom/src/modules/attrs.ts                                                    |   60 +-
+ packages/runtime-dom/src/modules/events.ts                                                   |   36 +-
+ packages/runtime-dom/src/modules/props.ts                                                    |   27 +-
+ packages/runtime-dom/src/modules/style.ts                                                    |    7 +
+ packages/runtime-dom/src/nodeOps.ts                                                          |   92 +-
+ packages/runtime-dom/src/patchProp.ts                                                        |   13 +-
+ packages/runtime-dom/types/jsx.d.ts                                                          |  669 ++++++------
+ packages/runtime-test/package.json                                                           |    6 +-
+ packages/server-renderer/__tests__/render.spec.ts                                            | 1071 ++++++++++++++++++
+ packages/server-renderer/__tests__/renderToStream.spec.ts                                    |  622 -----------
+ packages/server-renderer/__tests__/renderToString.spec.ts                                    |  621 -----------
+ packages/server-renderer/__tests__/ssrScopeId.spec.ts                                        |  152 ++-
+ packages/server-renderer/__tests__/ssrSuspense.spec.ts                                       |   15 +-
+ packages/server-renderer/package.json                                                        |    8 +-
+ packages/server-renderer/src/helpers/ssrRenderComponent.ts                                   |    6 +-
+ packages/server-renderer/src/helpers/ssrRenderSlot.ts                                        |   43 +-
+ packages/server-renderer/src/helpers/ssrVModelHelpers.ts                                     |    6 +-
+ packages/server-renderer/src/render.ts                                                       |  168 +--
+ packages/sfc-playground/index.html                                                           |   20 +
+ packages/sfc-playground/package.json                                                         |   28 +
+ packages/sfc-playground/public/logo.svg                                                      |    4 +
+ packages/sfc-playground/src/App.vue                                                          |   48 +
+ packages/sfc-playground/src/Header.vue                                                       |  210 ++++
+ packages/sfc-playground/src/Message.vue                                                      |   75 ++
+ packages/sfc-playground/src/SplitPane.vue                                                    |   91 ++
+ packages/sfc-playground/src/codemirror/CodeMirror.vue                                        |   83 ++
+ packages/sfc-playground/src/codemirror/codemirror.css                                        |  506 +++++++++
+ packages/sfc-playground/src/codemirror/codemirror.ts                                         |   19 +
+ packages/sfc-playground/src/download/download.ts                                             |   31 +
+ packages/sfc-playground/src/download/template/README.md                                      |   14 +
+ packages/sfc-playground/src/download/template/index.html                                     |   13 +
+ packages/sfc-playground/src/download/template/main.js                                        |    4 +
+ packages/sfc-playground/src/download/template/package.json                                   |   17 +
+ packages/sfc-playground/src/download/template/vite.config.js                                 |    7 +
+ packages/sfc-playground/src/editor/Editor.vue                                                |   40 +
+ packages/sfc-playground/src/editor/FileSelector.vue                                          |  117 ++
+ packages/sfc-playground/src/main.ts                                                          |    4 +
+ packages/sfc-playground/src/output/Output.vue                                                |   53 +
+ packages/sfc-playground/src/output/Preview.vue                                               |  202 ++++
+ packages/sfc-playground/src/output/PreviewProxy.ts                                           |   96 ++
+ packages/sfc-playground/src/output/moduleCompiler.ts                                         |  293 +++++
+ packages/sfc-playground/src/output/srcdoc.html                                               |  259 +++++
+ packages/sfc-playground/src/sfcCompiler.ts                                                   |  270 +++++
+ packages/sfc-playground/src/store.ts                                                         |  111 ++
+ packages/sfc-playground/src/utils.ts                                                         |   19 +
+ packages/sfc-playground/src/vue-dev-proxy.ts                                                 |    2 +
+ packages/sfc-playground/vite.config.ts                                                       |   45 +
+ packages/shared/LICENSE                                                                      |   21 +
+ packages/shared/__tests__/normalizeProp.spec.ts                                              |   17 +
+ packages/shared/package.json                                                                 |    2 +-
+ packages/shared/src/globalsWhitelist.ts                                                      |    2 +-
+ packages/shared/src/normalizeProp.ts                                                         |    7 +-
+ packages/size-check/package.json                                                             |    2 +-
+ packages/template-explorer/package.json                                                      |    3 +-
+ packages/template-explorer/src/options.ts                                                    |   44 +-
+ packages/vue-compat/README.md                                                                |  328 ++++++
+ packages/vue-compat/__tests__/compiler.spec.ts                                               |  148 +++
+ packages/vue-compat/__tests__/componentAsync.spec.ts                                         |   82 ++
+ packages/vue-compat/__tests__/componentFunctional.spec.ts                                    |   61 ++
+ packages/vue-compat/__tests__/componentVModel.spec.ts                                        |   85 ++
+ packages/vue-compat/__tests__/filters.spec.ts                                                |  257 +++++
+ packages/vue-compat/__tests__/global.spec.ts                                                 |  426 ++++++++
+ packages/vue-compat/__tests__/globalConfig.spec.ts                                           |   85 ++
+ packages/vue-compat/__tests__/instance.spec.ts                                               |  325 ++++++
+ packages/vue-compat/__tests__/misc.spec.ts                                                   |  227 ++++
+ packages/vue-compat/__tests__/options.spec.ts                                                |  148 +++
+ packages/vue-compat/__tests__/refInfor.spec.ts                                               |   57 +
+ packages/vue-compat/__tests__/renderFn.spec.ts                                               |  239 ++++
+ packages/vue-compat/__tests__/utils.ts                                                       |   11 +
+ packages/vue-compat/api-extractor.json                                                       |    7 +
+ packages/vue-compat/index.js                                                                 |    7 +
+ packages/vue-compat/package.json                                                             |   43 +
+ packages/vue-compat/src/createCompatVue.ts                                                   |   44 +
+ packages/vue-compat/src/dev.ts                                                               |   14 +
+ packages/vue-compat/src/esm-index.ts                                                         |    7 +
+ packages/vue-compat/src/esm-runtime.ts                                                       |    7 +
+ packages/vue-compat/src/index.ts                                                             |   97 ++
+ packages/vue-compat/src/runtime.ts                                                           |   23 +
+ packages/vue/LICENSE                                                                         |   21 +
+ packages/vue/__tests__/Transition.spec.ts                                                    |  185 +++-
+ packages/vue/__tests__/TransitionGroup.spec.ts                                               |    4 +-
+ packages/vue/__tests__/e2eUtils.ts                                                           |   15 +-
+ packages/vue/__tests__/index.spec.ts                                                         |    9 +
+ packages/vue/__tests__/runtimeCompilerOptions.spec.ts                                        |  104 ++
+ packages/vue/examples/__tests__/markdown.spec.ts                                             |    5 +-
+ packages/vue/examples/classic/markdown.html                                                  |    4 +-
+ packages/vue/examples/composition/markdown.html                                              |    3 +-
+ packages/vue/package.json                                                                    |   10 +-
+ packages/vue/src/dev.ts                                                                      |    8 +-
+ packages/vue/src/index.ts                                                                    |   38 +-
+ packages/vue/src/runtime.ts                                                                  |    4 +-
+ rollup.config.js                                                                             |   76 +-
+ scripts/build.js                                                                             |    1 +
+ scripts/release.js                                                                           |    2 +-
+ test-dts/component.test-d.ts                                                                 |   53 +-
+ test-dts/defineComponent.test-d.tsx                                                          |   94 +-
+ test-dts/functionalComponent.test-d.tsx                                                      |    4 +-
+ test-dts/index.d.ts                                                                          |   13 +-
+ test-dts/ref.test-d.ts                                                                       |   11 +-
+ test-dts/setupHelpers.test-d.ts                                                              |   57 +-
+ test-dts/tsx.test-d.tsx                                                                      |   13 +-
+ tsconfig.json                                                                                |    1 +
+ yarn.lock                                                                                    | 3311 ++++++++++++++++++++++++++------------------------------
+ 316 files changed, 21988 insertions(+), 5978 deletions(-)
+ delete mode 100644 .circleci/config.yml
+ create mode 100644 .github/dependabot.yml
+ rename .github/workflows/{size-check.yml => ci.yml} (50%)
+ delete mode 100644 .ls-lint.yml
+ create mode 100644 packages/compiler-core/src/compat/compatConfig.ts
+ create mode 100644 packages/compiler-core/src/compat/transformFilter.ts
+ create mode 100644 packages/compiler-dom/__tests__/decoderHtmlBrowser.spec.ts
+ create mode 100644 packages/compiler-dom/__tests__/transforms/__snapshots__/warnTransitionChildren.spec.ts.snap
+ create mode 100644 packages/compiler-sfc/LICENSE
+ create mode 100644 packages/compiler-ssr/LICENSE
+ create mode 100644 packages/reactivity/__tests__/collections/shallowReadonly.spec.ts
+ create mode 100644 packages/reactivity/__tests__/shallowReadonly.spec.ts
+ rename packages/runtime-core/__tests__/{componentProxy.spec.ts => componentPublicInstance.spec.ts} (97%)
+ delete mode 100644 packages/runtime-core/__tests__/helpers/scopeId.spec.ts
+ create mode 100644 packages/runtime-core/__tests__/scopeId.spec.ts
+ create mode 100644 packages/runtime-core/src/compat/attrsFallthrough.ts
+ create mode 100644 packages/runtime-core/src/compat/compatConfig.ts
+ create mode 100644 packages/runtime-core/src/compat/component.ts
+ create mode 100644 packages/runtime-core/src/compat/componentAsync.ts
+ create mode 100644 packages/runtime-core/src/compat/componentFunctional.ts
+ create mode 100644 packages/runtime-core/src/compat/componentVModel.ts
+ create mode 100644 packages/runtime-core/src/compat/customDirective.ts
+ create mode 100644 packages/runtime-core/src/compat/data.ts
+ create mode 100644 packages/runtime-core/src/compat/global.ts
+ create mode 100644 packages/runtime-core/src/compat/globalConfig.ts
+ create mode 100644 packages/runtime-core/src/compat/instance.ts
+ create mode 100644 packages/runtime-core/src/compat/instanceChildren.ts
+ create mode 100644 packages/runtime-core/src/compat/instanceEventEmitter.ts
+ create mode 100644 packages/runtime-core/src/compat/instanceListeners.ts
+ create mode 100644 packages/runtime-core/src/compat/props.ts
+ create mode 100644 packages/runtime-core/src/compat/ref.ts
+ create mode 100644 packages/runtime-core/src/compat/renderFn.ts
+ create mode 100644 packages/runtime-core/src/compat/renderHelpers.ts
+ create mode 100644 packages/runtime-core/src/componentRenderContext.ts
+ delete mode 100644 packages/runtime-core/src/helpers/scopeId.ts
+ delete mode 100644 packages/runtime-core/src/helpers/withRenderContext.ts
+ create mode 100644 packages/runtime-core/types/scriptSetupHelpers.d.ts
+ create mode 100644 packages/runtime-dom/__tests__/createApp.spec.ts
+ create mode 100644 packages/runtime-dom/__tests__/nodeOps.spec.ts
+ create mode 100644 packages/server-renderer/__tests__/render.spec.ts
+ delete mode 100644 packages/server-renderer/__tests__/renderToStream.spec.ts
+ delete mode 100644 packages/server-renderer/__tests__/renderToString.spec.ts
+ create mode 100644 packages/sfc-playground/index.html
+ create mode 100644 packages/sfc-playground/package.json
+ create mode 100644 packages/sfc-playground/public/logo.svg
+ create mode 100644 packages/sfc-playground/src/App.vue
+ create mode 100644 packages/sfc-playground/src/Header.vue
+ create mode 100644 packages/sfc-playground/src/Message.vue
+ create mode 100644 packages/sfc-playground/src/SplitPane.vue
+ create mode 100644 packages/sfc-playground/src/codemirror/CodeMirror.vue
+ create mode 100644 packages/sfc-playground/src/codemirror/codemirror.css
+ create mode 100644 packages/sfc-playground/src/codemirror/codemirror.ts
+ create mode 100644 packages/sfc-playground/src/download/download.ts
+ create mode 100644 packages/sfc-playground/src/download/template/README.md
+ create mode 100644 packages/sfc-playground/src/download/template/index.html
+ create mode 100644 packages/sfc-playground/src/download/template/main.js
+ create mode 100644 packages/sfc-playground/src/download/template/package.json
+ create mode 100644 packages/sfc-playground/src/download/template/vite.config.js
+ create mode 100644 packages/sfc-playground/src/editor/Editor.vue
+ create mode 100644 packages/sfc-playground/src/editor/FileSelector.vue
+ create mode 100644 packages/sfc-playground/src/main.ts
+ create mode 100644 packages/sfc-playground/src/output/Output.vue
+ create mode 100644 packages/sfc-playground/src/output/Preview.vue
+ create mode 100644 packages/sfc-playground/src/output/PreviewProxy.ts
+ create mode 100644 packages/sfc-playground/src/output/moduleCompiler.ts
+ create mode 100644 packages/sfc-playground/src/output/srcdoc.html
+ create mode 100644 packages/sfc-playground/src/sfcCompiler.ts
+ create mode 100644 packages/sfc-playground/src/store.ts
+ create mode 100644 packages/sfc-playground/src/utils.ts
+ create mode 100644 packages/sfc-playground/src/vue-dev-proxy.ts
+ create mode 100644 packages/sfc-playground/vite.config.ts
+ create mode 100644 packages/shared/LICENSE
+ create mode 100644 packages/shared/__tests__/normalizeProp.spec.ts
+ create mode 100644 packages/vue-compat/README.md
+ create mode 100644 packages/vue-compat/__tests__/compiler.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/componentAsync.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/componentFunctional.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/componentVModel.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/filters.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/global.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/globalConfig.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/instance.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/misc.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/options.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/refInfor.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/renderFn.spec.ts
+ create mode 100644 packages/vue-compat/__tests__/utils.ts
+ create mode 100644 packages/vue-compat/api-extractor.json
+ create mode 100644 packages/vue-compat/index.js
+ create mode 100644 packages/vue-compat/package.json
+ create mode 100644 packages/vue-compat/src/createCompatVue.ts
+ create mode 100644 packages/vue-compat/src/dev.ts
+ create mode 100644 packages/vue-compat/src/esm-index.ts
+ create mode 100644 packages/vue-compat/src/esm-runtime.ts
+ create mode 100644 packages/vue-compat/src/index.ts
+ create mode 100644 packages/vue-compat/src/runtime.ts
+ create mode 100644 packages/vue/LICENSE
+ create mode 100644 packages/vue/__tests__/runtimeCompilerOptions.spec.ts
+#+end_example
+
+很久没更新了，惨~~~~~~~~~
+
+捡点重要的来看下吧，以后还是要保持每周拉一次代码比较好！！！
+
+最初分析拉取的代码是： *3.0.4*, 现在都 *3.1.2* 了 尴尬！！!
+
+* v3.0.5
+
+[[https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md][vue-next/CHANGELOG.md at master · vuejs/vue-next]]
+
+*Note*: this release contains a type-only change that requires TypeScript 4.0+, which may cause build issues in projects still using TS 3.x.
+
+只包含一些类型的变更。
+
+*Bug Fixes*
+- compiler-core: fix missing createVNode import on nested v-for ([[https://github.com/vuejs/vue-next/commit/ad4d3915d39515a3e9ff2de691f82cb922a314b9][ad4d391]]), closes [[https://github.com/vuejs/vue-next/issues/2718][#2718]]
+- compiler-sfc: should keep template nodes with no content ([[https://github.com/vuejs/vue-next/issues/2468][#2468]]) ([[https://github.com/vuejs/vue-next/commit/5b9b37fc9b363be2989c1e9d76ab6e950cdfe2ad][5b9b37f]]), closes [[https://github.com/vuejs/vue-next/issues/2463][#2463]]
+
+  #+begin_src diff
+   -> packages/compiler-sfc/src/parse.ts
+
+   if (node.type !== NodeTypes.ELEMENT) {
+      return
+    }
+-    if (!node.children.length && !hasSrc(node)) {
++    if (!node.children.length && !hasSrc(node) && node.tag !== 'template') {
+      return
+    }
+    switch (node.tag) {
+  #+end_src
+- compiler-sfc: support transforming asset urls with full base url. (#2477) (db786b1)
+- runtime-core: component mount anchor memory leak (#2459) (3867bb4), closes #2458
+- runtime-core: skip patchBlockChildren if n1.dynamicChildren is null (#2717) (c59897c), closes #2715 #2485
+- runtime-dom: support mounting app on ShadowRoot (#2447) (b2189ba), closes #2399
+- ssr: properly handle ssr empty slot and fallback (88f6b33)
+- transition: ensure manual style manipulation in transition leave hooks work (cbaa380), closes #2720
+- transition: ensure styles from *-leave-active trigger transition (#2716) (3f8f9b6), closes #2712
+Features
+- devtools: send instance (3626ff0)
