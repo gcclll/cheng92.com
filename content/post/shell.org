@@ -63,6 +63,216 @@ test $a
 | VueCompilerCore   |
 | vue+compiler+core |
 
+* 括号((), [], {}, (()), [[]])
+
+shell 中有几种括号，经常忘记啥区别。。。
+
+~()、(())、[]、[[]]、{}~
+
+** 单小括号 ()
+
+1. 命令组(~(ls;cd xxx;ls)~)
+
+   命令组，另开 shell 命令之间分号隔开，所以括号中声明的变量不能在当前环境下使用。
+
+   #+begin_src bash
+   res=$(ls;cd ..;ls)
+   echo "$res"
+   #+end_src
+
+2. 命令替换(~$(ls;cd xxx;ls)~)，命令执行结果替换所在位置
+
+   #+begin_src bash
+   echo "result: $(pwd;cd ..;pwd)"
+   #+end_src
+
+   #+RESULTS:
+   | result:                               | /Users/simon/blog/cheng92.com/content/post |
+   | /Users/simon/blog/cheng92.com/content |                                            |
+
+3. 数组初始化(~arr=(a b c d)~)
+
+   #+begin_src bash
+   nums=(1 2 3 4)
+   echo "result: $nums"
+   #+end_src
+
+   #+RESULTS:
+   : result: 1
+
+** 双小括号 (())
+
+1. 整数扩展(~((1+1))~)
+
+   #+begin_src bash
+   echo "n=$((1+1)), 算术运算返回计算结果"
+   echo "n=$((1-1)), 算术运算返回计算结果"
+   echo "n=$((1==1)), 逻辑判断返回1/true,0/false"
+   echo "n=$((1!=1)), 逻辑判断返回1/true,0/false"
+   echo "n=$((16#5f)) 16进制计算自动转成10进制"
+   echo "n=$((8#10)) 8进制计算自动转成10进制"
+   echo "n=$((010)) 8进制计算自动转成10进制"
+   echo "n=$((2#100)) 2进制计算自动转成10进制"
+   #+end_src
+
+   #+RESULTS:
+   | n=2, | 算术运算返回计算结果       |
+   | n=0, | 算术运算返回计算结果       |
+   | n=1, | 逻辑判断返回 1/true,0/false |
+   | n=0, | 逻辑判断返回 1/true,0/false |
+   | n=95 | 16 进制计算自动转成 10 进制   |
+   | n=8  | 8 进制计算自动转成 10 进制    |
+   | n=8  | 8 进制计算自动转成 10 进制    |
+   | n=4  | 2 进制计算自动转成 10 进制    |
+
+2. 重定义变量值
+
+   #+begin_src bash
+   a=5
+   ((a++))
+   echo "a=$a"
+   #+end_src
+
+   #+RESULTS:
+   : a=6
+
+3. 算术运算比较，双括号中可以不适用 $ 前缀取变量值
+
+   #+begin_src bash
+   for ((i=0; i < 5; i++));do
+       echo "i=$i";
+   done
+
+   # 不适用双括号时
+   for i in `seq 5 8`;do
+       echo "i2=$i";
+   done
+   #+end_src
+
+   #+RESULTS:
+   | i=0  |
+   | i=1  |
+   | i=2  |
+   | i=3  |
+   | i=4  |
+   | i2=5 |
+   | i2=6 |
+   | i2=7 |
+   | i2=8 |
+
+** 中括号 [] 和 [[]]
+
+1. bash 内部命令
+2. [] 表达式
+
+   #+begin_src bash
+   if [ 1 == 2 ]; then
+       echo "1 == 2"
+   elif [ 1 > 2 ]; then
+       echo "1 > 2"
+    else
+        echo "1 != 2"
+   fi
+
+   a=10
+   if [ -z $a ]; then
+       echo "$a"
+   else
+       echo "null"
+   fi
+   #+end_src
+
+   #+RESULTS:
+   | 1  >  2 |
+   | null    |
+
+   不能使用逻辑运算符
+
+   #+begin_src bash
+   a=1
+   b=2
+   if [ a && b ]; then
+       echo "[] ok"
+    else
+        echo "[] error"
+    fi
+
+    if [[ a && b ]]; then
+       echo "[[]] ok"
+    else
+        echo "[[]] error"
+    fi
+   #+end_src
+
+   #+RESULTS:
+   | []   | error |
+   | [[]] | ok    |
+
+   双括号结果正常，单括号结果费预期。
+
+3. 字符范围？
+4. 引用数组元素
+
+   #+begin_src bash
+   a=(1 2 3)
+   echo "$((a[0]))"
+   echo "$((a[1]))"
+   echo "$((a[2]))"
+   #+end_src
+
+   #+RESULTS:
+   | 1 |
+   | 2 |
+   | 3 |
+
+
+** 大括号 {}
+
+大括号扩展
+
+#+begin_src bash
+cd /tmp/test
+ls {ex1,ex2}.sh
+#+end_src
+
+#+RESULTS:
+| ex1.sh |
+| ex2.sh |
+
+#+begin_src bash
+cd /tmp/test
+ls {ex{1..3},ex4}.sh
+#+end_src
+
+#+RESULTS:
+| ex1.sh |
+| ex2.sh |
+| ex3.sh |
+| ex4.sh |
+
+#+begin_src bash
+cd /tmp/test
+ls {ex[1-3],ex4}.sh
+#+end_src
+
+#+RESULTS:
+| ex1.sh |
+| ex2.sh |
+| ex3.sh |
+| ex4.sh |
+
+
+代码块：
+
+#+begin_src bash
+if [ 1 == 1 ]; then {
+    echo "code block ???"
+};
+fi
+#+end_src
+
+#+RESULTS:
+: code block ???
 
 * 其他
 
