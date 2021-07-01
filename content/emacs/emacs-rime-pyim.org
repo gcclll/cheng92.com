@@ -1,0 +1,110 @@
+#+TITLE: Doom Emacs 上配置Rime + Pyim
+#+DATE: <2021-07-01 15:07:35>
+#+TAGS[]: emacs, doomemacs, rime, pyim
+#+CATEGORIES[]: emacs
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+折腾，折腾。。。
+
+用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内部
+输入法。
+
+我的 doom emacs 配置： [[https://github.com/gcclll/.doom.d][gcclll/.doom.d: private doom-emacs configuration]]
+
+下面是经过一番折腾整的一个安装脚本：
+
+配置安装相关链接：
+
+[[https://github.com/eggcaker/.doom.d/blob/main/modules/private/my-chinese/config.el][.doom.d/config.el at main · eggcaker/.doom.d]]
+
+[[https://github.com/maomiui/rime][maomiui/rime: Rime 鼠须管（Squirrel）朙月拼音｜小鹤双拼｜自然码双拼配置]]
+
+[[https://github.com/rime/plum#packages][rime/plum: 東風破 /plum/: Rime configuration manager and input schema repository]]
+
+[[https://manateelazycat.github.io/emacs/2019/07/24/use-rime-in-emacs.html][在Mac版的Emacs中使用RIME输入法]]
+
+#+begin_src bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+DOOM="$HOME/.doom.d"
+DYLIB="/Library/Input Methods/Squirrel.app/Contents/Frameworks/librime.1.dylib"
+
+if [ ! -d $DOOM ]; then
+    echo "> 没有 doom-emacs 配置"
+    echo "> 执行 git clone git@github.com:gcclll/.doom.d.git ~/.emacs.d"
+    echo "> 执行 ~/.emacs.d/bin/doom sync"
+    exit -1
+fi
+
+if [[ ! -e ${DYLIB} ]]; then
+    echo "> Rime 没有安装, 准备安装 Rime 输入法 https://rime.im/download/"
+    echo "> 如果下載速度太慢，建議通過網站下載安裝：https://rime.im/download/"
+    echo "> -------- F4 呼出配置，可進行简体和繁体切换 --------"
+    brew install --cask squirrel
+    echo "> rime installed, link lib into /usr/local/lib"
+    sudo cp "${DYLIB}" /usr/local/lib
+    echo "> -------- Rime 安装完成 --------"
+    echo ""
+else
+    echo "> Rime 已经存在，无需重复安装。"
+fi
+
+echo "> -------- 开始安装 rime-install 命令 --------"
+PLUM="$DOOM/extensions/plum"
+if [ ! -d $PLUM ]; then
+    cd $DOOM
+    git submodule add --depth 1 https://github.com/rime/plum.git extensions/plum
+fi
+
+cd $PLUM
+bash rime-install :preset
+echo "> -------- rime-install 安装完成 --------"
+echo ""
+
+echo "> -------- 开始安装 Rime 五笔 --------"
+bash rime-install wubi pinyin-simp
+echo "> -------- Rime 五笔安装完成 --------"
+echo ""
+
+echo "> -------- 开始构建 librime.so --------"
+echo "> 1. installing cmake & git dependencies..."
+brew install cmake git
+
+LIB="$DOOM/extensions/librime"
+if [ ! -d $LIB ]; then
+    echo "> clone librime -> $LIB"
+    cd $DOOM
+    # [[https://rime.im/download/][下載及安裝 | RIME | 中州韻輸入法引擎]]
+    git submodule add --depth=1 https://github.com/rime/librime.git extensions/librime
+fi
+
+echo '> export RIME_PATH="$LIB"'
+export RIME_PATH="$LIB"
+
+cd $LIB
+echo "> 2. begin make -> xcode/thirdparty/boost"
+make xcode/thirdparty/boost
+
+echo '> export BOOST_ROOT="$(pwd)/thirdparty/src/boost_1_75_0"'
+export BOOST_ROOT="$(pwd)/thirdparty/src/boost_1_75_0"
+
+echo "> 3. building 3rd parth libraries..."
+git submodule update --init
+make xcode/thirdparty
+
+echo "> 4. building librime ..."
+
+make xcode
+make xcode/debug
+
+echo "> done."
+echo "> 5. running unit tests..."
+make xcode/test
+
+echo "> 6. try it ..."
+
+cd debug/bin
+echo "congmingdeRime{space}shurufa" | Debug/rime_api_console
+#+end_src

@@ -309,11 +309,21 @@ props 的检测和合并操作。
 2. work unit commit, 提交渲染任务
 
 两个都是重点且核心的内容。
+* Component
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: component
+:END:
+
+在阅读 diff 源码之前，先看下 Component 是如何实现的，里面又包含哪些内容？
+
 * diff()
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: diff
 :END:
+
+[[https://github.com/gcclll/stb-preact/commit/0ec1eaaab13828bbc82c35e39d7f355a46814065][feat: diff init · gcclll/stb-preact@0ec1eaa]]
 
 #+begin_src js
 function render() {
@@ -365,3 +375,9 @@ export function diff(
 	isHydrating
 ) { /*...*/ }
 #+end_src
+* 疑难点
+** TODO 为何用 Fragment 将 vnode 包一层？
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: q-fragment-vnode
+:END:

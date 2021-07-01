@@ -31,15 +31,16 @@
 他人配置列表：
 #+end_quote
 
-| name&link                                                        | brief |
-|------------------------------------------------------------------+-------|
-| [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][dot-doom/doom.org at master · zzamboni/dot-doom]]                  | -     |
-| [[http://pages.sachachua.com/.emacs.d/Sacha.html][Sacha Chua's Emacs configuration]]                                 | -     |
-| [[https://github.com/daedreth/UncleDavesEmacs#user-content-ido-and-why-i-started-using-helm][daedreth/UncleDavesEmacs: My personal ~/.emacs.d]]                 | -     |
-| [[https://github.com/PythonNut/quark-emacs][PythonNut/quark-emacs: An incredible wonderland of code]]          | -     |
-| [[https://www.masteringemacs.org/][Mastering Emacs]]                                                  | -     |
-| [[https://tecosaur.github.io/emacs-config/config.html][Doom Emacs Configuration]]                                         | -     |
-| [[https://github.com/KaratasFurkan/.emacs.d][GitHub - KaratasFurkan/.emacs.d: My literate Emacs configuration]] | -     |
+| name&link                                                        | brief       |
+|------------------------------------------------------------------+-------------|
+| [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][dot-doom/doom.org at master · zzamboni/dot-doom]]                  | -           |
+| [[http://pages.sachachua.com/.emacs.d/Sacha.html][Sacha Chua's Emacs configuration]]                                 | -           |
+| [[https://github.com/daedreth/UncleDavesEmacs#user-content-ido-and-why-i-started-using-helm][daedreth/UncleDavesEmacs: My personal ~/.emacs.d]]                 | -           |
+| [[https://github.com/PythonNut/quark-emacs][PythonNut/quark-emacs: An incredible wonderland of code]]          | -           |
+| [[https://www.masteringemacs.org/][Mastering Emacs]]                                                  | -           |
+| [[https://tecosaur.github.io/emacs-config/config.html][Doom Emacs Configuration]]                                         | -           |
+| [[https://github.com/KaratasFurkan/.emacs.d][GitHub - KaratasFurkan/.emacs.d: My literate Emacs configuration]] | -           |
+| [[https://github.com/eggcaker/.doom.d][eggcaker/.doom.d: My private doom-emacs configurations]]           | rime + pyim |
 
 
 * 更新日志
@@ -133,7 +134,7 @@ Uses `current-date-time-format' for the formatting the date/time."
 ;;; init.el -*- lexical-binding: t; -*-
 
 (doom! :input
-       ;;chinese
+       ;; chinese
        ;;japanese
        ;;layout            ; auie,ctsrnm is the superior home row
 
@@ -436,7 +437,7 @@ Uses `current-date-time-format' for the formatting the date/time."
  "C-c r"       #'vr/replace
  "C-c q"       #'vr/query-replace
  "C-c u"       #'crux-view-url
- "C-c y"       #'youdao-dictionary-search-at-point+
+ "C-c y"       #'youdao-dictionary-search-at-point-posframe
 
  "C-c C-f"     #'json-mode-beautify
 
@@ -452,6 +453,9 @@ Uses `current-date-time-format' for the formatting the date/time."
 (map! "M--"     #'gcl/goto-match-paren
       "M-i"     #'parrot-rotate-next-word-at-point
       "M-f"     #'scroll-up-command)
+
+(global-set-key (kbd "M-f") 'pyim-forward-word)
+(global-set-key (kbd "M-b") 'pyim-backward-word)
 #+end_src
 *** evil bindings
 
@@ -1044,10 +1048,197 @@ _p_ : Previous
 *** scrollkeeper
 
 #+begin_src  emacs-lisp
-(use-package! scrollkeeper)
-(global-set-key [remap scroll-up-command] #'scrollkeeper-contents-up)
-(global-set-key [remap scroll-down-command] #'scrollkeeper-contents-down)
+;; (use-package! scrollkeeper)
+;; (global-set-key [remap scroll-up-command] #'scrollkeeper-contents-up)
+;; (global-set-key [remap scroll-down-command] #'scrollkeeper-contents-down)
 #+end_src
+*** pyim
+
+配置来源：[[https://github.com/eggcaker/.doom.d/blob/main/modules/private/my-chinese/config.el][.doom.d/config.el at main · eggcaker/.doom.d]]
+
+#+begin_src emacs-lisp
+(defvar +my-ext-dir (expand-file-name "~/.doom.d/extensions"))
+(setq-default pyim-english-input-switch-functions
+              '(pyim-probe-dynamic-english
+                pyim-probe-isearch-mode
+                pyim-probe-program-mode
+                pyim-probe-org-structure-template))
+(setq-default pyim-punctuation-half-width-functions
+              '(pyim-probe-punctuation-line-beginning
+                pyim-probe-punctuation-after-punctuation))
+
+(use-package! pyim
+  :demand t
+  :defer 1
+  :diminish pyim-isearch-mode
+  :init
+  (setq default-input-method "pyim"
+        pyim-title "ㄓ"
+        pyim-default-scheme 'rime
+        pyim-page-length 7
+        pyim-page-tooltip 'posframe) ;;'popup) ;;proframe)
+
+  :config
+  (setq-default pyim-english-input-switch-functions
+                '(pyim-probe-dynamic-english
+                  pyim-probe-evil-normal-mode
+                  pyim-probe-program-mode
+                  pyim-probe-org-structure-template))
+
+  (setq-default pyim-punctuation-half-width-functions
+                '(pyim-probe-punctuation-line-beginning
+                  pyim-probe-punctuation-after-punctuation)))
+
+(defvar liberime-is-loaded nil)
+
+(use-package! liberime
+  :when (featurep! +rime)
+  :load-path (lambda()(expand-file-name "liberime" +my-ext-dir))
+  :defer 1
+  :unless liberime-is-loaded
+  :custom
+  (rime_share_data_dir "/Library/Input Methods/Squirrel.app/Contents/SharedSupport/")
+  (rime_user_data_dir (expand-file-name "rime" +my-ext-dir))
+  :init
+  (module-load (expand-file-name "liberime.so" +my-ext-dir))
+  :config
+  (setq liberime-is-loaded t)
+  (liberime-start rime_share_data_dir rime_user_data_dir)
+  (liberime-select-schema  "wubi_pinyin")) ;;"wubi_pinyin"))  luna_pinyin_simp"))
+
+;; 中英文之间添加空格
+(use-package! pangu-spacing
+  :hook (text-mode . pangu-spacing-mode)
+  :config
+  ;; Always insert `real' space in org-mode.
+  (setq-hook! 'org-mode-hook pangu-spacing-real-insert-separtor t))
+
+(use-package! fcitx
+  :after evil
+  :config
+  (when (executable-find "fcitx-remote")
+    (fcitx-evil-turn-on)))
+
+(use-package! ace-pinyin
+  :after avy
+  :init (setq ace-pinyin-use-avy t)
+  :config (ace-pinyin-global-mode t))
+
+;;; Hacks
+
+(defun +chinese*org-html-paragraph (paragraph contents info)
+  "Join consecutive Chinese lines into a single long line without unwanted space
+when exporting org-mode to html."
+  (let* ((fix-regexp "[[:multibyte:]]")
+         (origin-contents contents)
+         (fixed-contents
+          (replace-regexp-in-string
+           (concat "\\(" fix-regexp "\\) *\n *\\(" fix-regexp "\\)")
+           "\\1\\2"
+           origin-contents)))
+    (list paragraph fixed-contents info)))
+;; (advice-add #'org-html-paragraph :filter-args #'+chinese*org-html-paragraph)
+#+end_src
+
+
+#+begin_src emacs-lisp
+;; (use-package! liberime
+;;   :when (featurep! +rime)
+;;   :load
+;;   :config
+;;   (
+;;    (liberime-start "/Library/Input Methods/Squirrel.app/Contents/SharedSupport"
+;;                    (file-truename "~/.emacs.d/.local/straight/repos/pyim"))
+;;    (liberime-try-select-schema "luna_pinyin_simp")
+;;     ))
+;; https://github.com/tumashu/pyim-greatdict/blob/master/pyim-greatdict.pyim.gz
+;; (use-package! pyim-greatdict
+;;   :config
+;;   (pyim-greatdict-enable))
+;; (use-package! pyim-wbdict
+;;   :config
+;;   ;; (pyim-wbdict-v86-enable) ;86版五笔用户使用这个命令
+;;   (pyim-wbdict-v98-enable) ;98版五笔用户使用这个命令
+;; ;; (pyim-wbdict-v98-morphe-enable) ;98版五笔（单字）用户使用这个命令，该词库为超大字符集，部分生僻字形可能需要安装支持EXT-B的字体（如HanaMinB等）才能正确显示
+;;   )
+;; (use-package! pyim
+;;   :init
+;;   (setq pyim-title "R")
+;;   :config
+;;   ;; (use-package pyim-basedict
+;;   ;;   :config
+;;   ;;   (pyim-basedict-enable))
+;;   ;; (use-package pyim-wbdict
+;;   ;;   :config
+;;   ;;   (pyim-wbdict-v98-enable))
+
+;;   (global-set-key (kbd "M-j") 'pyim-convert-string-at-point)
+;;   (define-key minibuffer-local-map (kbd "C-<return>") 'pyim-cregexp-convert-at-point)
+;;   (setq pyim-dcache-auto-update nil)
+;;   (setq default-input-method "pyim")
+;;   ;; 我使用全拼
+;;   ;; (setq pyim-default-scheme 'quanpin)
+;;   (setq pyim-default-scheme 'rime-quanpin)
+;;   (if (posframe-workable-p)
+;;     (setq pyim-page-tooltip 'posframe)
+;;     (setq pyim-page-tooltip 'popup))
+;;   (setq pyim-enable-shortcode nil)
+;;   ;; (setq pyim-page-tooltip 'child-frame)
+;;   ;; (setq pyim-page-tooltip 'popup)
+;;   (setq pyim-dicts '(
+;;                      ;; (:name "wubi"
+;;                      ;;  :file (concat doom-private-dir "extras/pyim-wbdict/pyim-wbdict-v98.pyim" )
+;;                      ;;  :coding utf-8-unix
+;;                      ;;  )
+;;                      (:name "tsinghua"
+;;                       :file (concat doom-private-dir "/extras/pyim-tsinghua-dict/pyim-tsinghua-dict.pyim" )
+;;                       :coding utf-8-unix
+;;                       :dict-type pinyin-dict)
+;;                      (:name "greatdict"
+;;                       :file (concat doom-private-dir "extras/pyim-greatdict/pyim-greatdict.pyim")
+;;                       :coding utf-8-unix
+;;                       :dict-type pinyin-dict
+;;                       )
+
+;;                      ))
+
+;;   ;; (setq ivy-re-builders-alist
+;;   ;;       '((t . pyim-cregexp-ivy)))
+;;   ;; 开启代码搜索中文功能（比如拼音，五笔码等）
+;;   (pyim-isearch-mode 1)
+;;   ;; 显示5个候选词。
+;;   (setq pyim-page-length 5)
+;;   ;;
+;;   ;; 设置 pyim 探针设置，这是 pyim 高级功能设置，可以实现 *无痛* 中英文切换 :-)
+  ;; 我自己使用的中英文动态切换规则是：
+  ;; 1. 光标只有在注释里面时，才可以输入中文。
+  ;; 2. 光标前是汉字字符时，才能输入中文。
+  ;; 3. 使用 M-j 快捷键，强制将光标前的拼音字符串转换为中文。
+  ;; (setq-default pyim-english-input-switch-functions
+  ;;       	'(pyim-probe-dynamic-english
+  ;;       	  pyim-probe-isearch-mode
+  ;;       	  pyim-probe-program-mode
+  ;;           pyim-probe-evil-normal-mode
+  ;;       	  pyim-probe-org-structure-template))
+
+  ;; (setq-default pyim-punctuation-half-width-functions
+  ;;       	'(pyim-probe-punctuation-line-beginning
+  ;;       	  pyim-probe-punctuation-after-punctuation)))
+#+end_src
+
+[[https://gist.github.com/merrickluo/553f39c131d0eb717cd59f72c9d4b60d][Use pyim + liberime in doom-emacs]]
+
+[[https://github.com/merrickluo/liberime][merrickluo/liberime: A emacs dynamic module provide librime bindings for emacs]]
+
+[[https://github.com/tumashu/pyim][tumashu/pyim: 一个 emacs 中文输入法，支持全拼，双拼，五笔，仓颉和Rime，pyim 是 GNU elpa 包。]]
+
+[[https://github.com/DogLooksGood/emacs-rime/blob/master/INSTALLATION.org][emacs-rime/INSTALLATION.org at master · DogLooksGood/emacs-rime]]
+
+[[https://rime.im/download/][下載及安裝 | RIME | 中州韻輸入法引擎]]
+
+[[https://manateelazycat.github.io/emacs/2019/07/24/use-rime-in-emacs.html][在Mac版的Emacs中使用RIME输入法]]
+
+词库(80M)： [[https://github.com/tumashu/pyim-greatdict][tumashu/pyim-greatdict: A chinese-pyim dict, which include three million words!]]
 ** 开发配置
 *** WEB 开发
 
@@ -1132,7 +1323,6 @@ This file shouldn't be byte compiled.
 (package! osx-lib)
 (package! crux)
 (package! string-inflection)
-(package! pangu-spacing)
 (package! cnfonts)
 (package! valign)
 
@@ -1169,11 +1359,30 @@ This file shouldn't be byte compiled.
 (package! lsp-java)
 (package! dap-mode)
 
-(package! ox-rst
-  :recipe (:host github :repo "msnoigrs/ox-rst"))
-(package! scrollkeeper
-  :recipe (:host github :repo "alphapapa/scrollkeeper.el"))
+;; (package! ox-rst
+;;   :recipe (:host github :repo "msnoigrs/ox-rst"))
+;; (package! scrollkeeper
+;;   :recipe (:host github :repo "alphapapa/scrollkeeper.el"))
 ;; (package! gif-screencast)
+
+;; pyim
+;; (package! liberime
+;;   :recipe (:host github :repo "merrickluo/liberime"
+;;            :files ("CMakeLists.txt" "Makefile" "src" "*.el")))
+;; (package! pyim-greatdict
+;;   :recipe (:host github :repo "tumashu/pyim-greatdict"))
+;; (package! pyim-wbdict
+;;   :recipe (:host github :repo "tumashu/pyim-wbdict"
+;;            :files ("*.el")))
+;; (package! pyim)
+;; (when (featurep! +rime)
+;;   (package! liberime-config :ignore t))
+
+(package! pyim)
+(package! fcitx)
+(package! ace-pinyin)
+(package! pangu-spacing)
+(package! posframe :recipe (:host github :repo "tumashu/posframe"))
 #+end_src
 * 问题
 1. lsp 不能识别 webpack/vite 别名？
@@ -1202,3 +1411,6 @@ This file shouldn't be byte compiled.
    #+end_src
 
    在 ~tsconfig.json~ 中增加一项配置 ~paths~ 告诉 lsp 别名含义。
+* rime
+
+[[https://github.com/maomiui/rime][maomiui/rime: Rime 鼠须管（Squirrel）朙月拼音｜小鹤双拼｜自然码双拼配置]]
