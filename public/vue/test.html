@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html class="no-js" lang="">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>vue-next testing</title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Place favicon.ico in the root directory -->
+  </head>
+  <body>
+    <!--[if lt IE 8]>
+      <p class="browserupgrade">
+        You are using an <strong>outdated</strong> browser. Please
+        <a href="http://browsehappy.com/">upgrade your browser</a> to improve
+        your experience.
+      </p>
+    <![endif]-->
+
+    <script src="./vue.js"></script>
+    <script type="text/javascript">
+      var option = {
+        hoistStatic: true,
+      };
+      var tpl = `<input v-model="model" />`;
+      tpl = "<textarea>some<div>text</div>and<!--comment--></textarea>";
+    </script>
+
+    <script>
+      const { compile, baseCompile: bc } = Vue;
+      // const result = compile(tpl, {});
+      const baseResult = bc(tpl, option);
+      // console.log(`> compile result`);
+      // console.log(result);
+      console.log(`> baseCompile result`);
+      console.log(baseResult.code);
+    </script>
+    <script src="http://127.0.0.1:8080/packages/compiler-core/dist/compiler-core.global.js"></script>
+    <script src="http://127.0.0.1:8080/packages/compiler-dom/dist/compiler-dom.global.js"></script>
+
+    <script type="text/javascript">
+      const { compile: compile2, decodeHtml } = VueCompilerDOM;
+      const res2 = compile2(tpl, option);
+      console.log(res2.code);
+      console.log(res2.code === baseResult.code, " result is same, bingo...");
+      let rawText =
+        // "a &#x20ac b &nbsp; c &#021B0 d &#02937 e &FilledVerySmallSquare";
+        "&FilledVerySmallSquare";
+      const res = decodeHtml(rawText);
+      console.log(res);
+    </script>
+  </body>
+</html>

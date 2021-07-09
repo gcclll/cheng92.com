@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Linux 知识大全 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="👴 Commands(命令) fasd fasd [options] [query ...] [f|a|s|d|z] [opions] [query ...] options: -s list paths with scores -l list paths without scores -i interactive mode -e &amp;lt;cmd&amp;gt; set command" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/post/linux-doc/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Linux 知识大全" />
+<meta property="og:description" content="👴 Commands(命令) fasd fasd [options] [query ...] [f|a|s|d|z] [opions] [query ...] options: -s list paths with scores -l list paths without scores -i interactive mode -e &lt;cmd&gt; set command" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/post/linux-doc/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2020-12-18T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2020-12-18T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Linux 知识大全">
+<meta itemprop="description" content="👴 Commands(命令) fasd fasd [options] [query ...] [f|a|s|d|z] [opions] [query ...] options: -s list paths with scores -l list paths without scores -i interactive mode -e &lt;cmd&gt; set command"><meta itemprop="datePublished" content="2020-12-18T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2020-12-18T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="909">
+<meta itemprop="keywords" content="linux," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Linux 知识大全"/>
+<meta name="twitter:description" content="👴 Commands(命令) fasd fasd [options] [query ...] [f|a|s|d|z] [opions] [query ...] options: -s list paths with scores -l list paths without scores -i interactive mode -e &lt;cmd&gt; set command"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Linux 知识大全</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-12-18 </span>
+        <div class="post-category">
+            <a href="/categories/linux/"> linux </a>
+            </div>
+          <span class="more-meta"> 约 909 字 </span>
+          <span class="more-meta"> 预计阅读 2 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#headline-1">👴  Commands(命令)</a>
+<ul>
+<li><a href="#headline-2">fasd</a>
+</li>
+<li><a href="#headline-3">grep, egrep, fgrep</a>
+</li>
+<li><a href="#headline-4">ripgrep 搜索命令</a>
+</li>
+<li><a href="#headline-5">diff</a>
+</li>
+<li><a href="#headline-6">tree 命令使用</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-7">crontab 定时任务</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+👴  Commands(命令)
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+fasd
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<pre class="example">
+fasd [options] [query ...]
+[f|a|s|d|z] [opions] [query ...]
+  options:
+    -s         list paths with scores
+    -l         list paths without scores
+    -i         interactive mode
+    -e &lt;cmd&gt;   set command to execute on the result file
+    -b &lt;name&gt;  only use &lt;name&gt; backend
+    -B &lt;name&gt;  add additional backend &lt;name&gt;
+    -a         match files and directories
+    -d         match directories only
+    -f         match files only
+    -r         match by rank only
+    -t         match by recent access only
+    -R         reverse listing order
+    -h         show a brief help message
+    -[0-9]     select the nth entry
+
+fasd [-A|-D] [paths ...]
+    -A    add paths
+    -D    delete paths
+</pre>
+<div class="src src-shell">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell"><span class="nb">cd</span> ~/ccc/tmp</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+grep, egrep, fgrep
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+<a href="https://man7.org/linux/man-pages/man1/grep.1.html">grep(1) - Linux manual page</a></p>
+<p>
+grep [OPTION…] PATTERNS [FILE…]
+grep [OPTION…] -e PATTERNS … [FILE…]
+grep [OPTION…] -f PATTERN_FILE … [FILE…]</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+ripgrep 搜索命令
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+https://github.com/BurntSushi/ripgrep#installation</p>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+diff
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>简介</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-i</td>
+<td>忽略文件内容大小写</td>
+</tr>
+<tr>
+<td>-E</td>
+<td>忽略 tab 符号变化</td>
+</tr>
+<tr>
+<td>-b</td>
+<td>忽略空格变化</td>
+</tr>
+<tr>
+<td>-w</td>
+<td>忽略所有空格</td>
+</tr>
+<tr>
+<td>-B</td>
+<td>忽略所有空行</td>
+</tr>
+<tr>
+<td>-I RE</td>
+<td>忽略匹配的行</td>
+</tr>
+<tr>
+<td>-a –text</td>
+<td>将所有文件当做文本处理</td>
+</tr>
+<tr>
+<td>-c -C NUM</td>
+<td>输出拷贝的内容的指定行，默认：3</td>
+</tr>
+<tr>
+<td>-u -U NUM</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-p –show-c-function</td>
+<td>显示 C 函数变更</td>
+</tr>
+<tr>
+<td>-F RE</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-q –brief</td>
+<td>仅文件不同是输出</td>
+</tr>
+<tr>
+<td>-e –ed</td>
+<td>-</td>
+</tr>
+<tr>
+<td>–normal</td>
+<td>输出正常 diff</td>
+</tr>
+<tr>
+<td>-n –rcs</td>
+<td>输出RCS格式不同</td>
+</tr>
+<tr>
+<td>-y –side-by-side</td>
+<td>输出成两列</td>
+</tr>
+<tr>
+<td>-W NUM</td>
+<td>-</td>
+</tr>
+<tr>
+<td>–left-column</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-D NAME</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-l –paginate</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-t –expand-tabs</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-T –initial-tab</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-r –recursive</td>
+<td>递归比较</td>
+</tr>
+<tr>
+<td>-N –new-file</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-x PAT</td>
+<td>排除匹配文件比较</td>
+</tr>
+<tr>
+<td>-X FILE</td>
+<td>-</td>
+</tr>
+<tr>
+<td>-S FILE –starting-file=FILE</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+tree 命令使用
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+install: <code>brew install truee</code></p>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-a</code></td>
+<td>递归列出所有，默认使用</td>
+</tr>
+<tr>
+<td><code>-d</code></td>
+<td>仅列出目录</td>
+</tr>
+<tr>
+<td><code>-l</code></td>
+<td>TODO</td>
+</tr>
+<tr>
+<td><code>-f</code></td>
+<td>全路径(相对)显示</td>
+</tr>
+<tr>
+<td><code>-x</code></td>
+<td>TODO</td>
+</tr>
+<tr>
+<td><code>-L</code></td>
+<td>指定列出的层级</td>
+</tr>
+<tr>
+<td><code>-R</code></td>
+<td>重新执行命令，当目录层级达到上限时</td>
+</tr>
+<tr>
+<td><code>-P pattern</code></td>
+<td>列出与指定 <code>pattern</code> 匹配的结果</td>
+</tr>
+<tr>
+<td><code>-I pattern</code></td>
+<td>与 <code>-P</code> 相反，匹配的不列出来</td>
+</tr>
+<tr>
+<td><code>--ignore-case</code></td>
+<td><code>-P</code>, <code>-I</code> 忽略大小写</td>
+</tr>
+<tr>
+<td><code>-o filename</code></td>
+<td>结果输出到指定文件</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td>文件选项</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-q</code></td>
+<td>将不可打印字符输出成 <code>?</code></td>
+</tr>
+<tr>
+<td><code>-N</code></td>
+<td>将不可打印字符输出成 <code>is</code></td>
+</tr>
+<tr>
+<td><code>-Q</code></td>
+<td>文件名双引号括起来</td>
+</tr>
+<tr>
+<td><code>-p</code></td>
+<td>输出文件权限</td>
+</tr>
+<tr>
+<td><code>-u</code></td>
+<td>输出文件 owner 或 UID</td>
+</tr>
+<tr>
+<td><code>-g</code></td>
+<td>输出文件用户组或 GID</td>
+</tr>
+<tr>
+<td><code>-s</code></td>
+<td>输出每个文件的字节大小</td>
+</tr>
+<tr>
+<td><code>-h</code></td>
+<td>以可读形式输出每个文件字节大小</td>
+</tr>
+<tr>
+<td><code>--si</code></td>
+<td>和 <code>-h</code> 类似，不过是以 <code>SI</code> 单位</td>
+</tr>
+<tr>
+<td><code>-D</code></td>
+<td>输出上次修改的时间</td>
+</tr>
+<tr>
+<td><code>-F</code></td>
+<td>目录最后显示 <code>/</code></td>
+</tr>
+<tr>
+<td><code>--inodes</code></td>
+<td>输出文件 inode 数字</td>
+</tr>
+<tr>
+<td><code>--device</code></td>
+<td>输出每个文件所属的设备ID</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td>排序选项</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-v</code></td>
+<td>根据 version</td>
+</tr>
+<tr>
+<td><code>-t</code></td>
+<td>根据上次修改时间</td>
+</tr>
+<tr>
+<td><code>-c</code></td>
+<td>根据上次状态变更时间</td>
+</tr>
+<tr>
+<td><code>-U</code></td>
+<td>取消排序</td>
+</tr>
+<tr>
+<td><code>-r</code></td>
+<td>逆序</td>
+</tr>
+<tr>
+<td><code>--dirsfirst</code></td>
+<td>目录显示在文件之前</td>
+</tr>
+<tr>
+<td><code>--sort X</code></td>
+<td>name, version, size, mtime, ctime</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td>图形化选项</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-i</code></td>
+<td>不缩进</td>
+</tr>
+<tr>
+<td><code>-A</code></td>
+<td>ANSI lines</td>
+</tr>
+<tr>
+<td><code>-S</code></td>
+<td>示例： <code>��� package.json</code></td>
+</tr>
+<tr>
+<td><code>-n</code></td>
+<td>关闭色彩</td>
+</tr>
+<tr>
+<td><code>-C</code></td>
+<td>颜色显示</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td>XML/HTML/JSON 选项</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-X</code></td>
+<td>XML 格式输出</td>
+</tr>
+<tr>
+<td><code>-J</code></td>
+<td>JSON 格式输出</td>
+</tr>
+<tr>
+<td><code>-H baseHREF</code></td>
+<td>HTML 格式输出</td>
+</tr>
+<tr>
+<td><code>-T string</code></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--nolinks</code></td>
+<td>-</td>
+</tr>
+</tbody>
+<tbody>
+<tr>
+<td>输入选项</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--fromfile</code></td>
+<td>从文件读取</td>
+</tr>
+</tbody>
+</table>
+<p>
+<strong>-I,-P</strong> 使用的时候多个规则： <code>-I &#39;dist|__tests__&#39;</code> 会同时忽略 dist 和 <span style="text-decoration: underline;"><span style="text-decoration: underline;">tests</span></span>
+  目录或文件。</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+crontab 定时任务
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<p>
+<a href="http://codingpub.github.io/2016/10/27/OS-X-%E6%B7%BB%E5%8A%A0%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1/">OS X 添加定时任务 | Coding Pub</a></p>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-12-18
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/linux/">linux</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/post/issues/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">开发过程中遇到的各种疑难杂症</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/shell/">
+            <span class="next-text nav-default">Shell 编程</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

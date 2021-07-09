@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Doom Emacs 上配置Rime &#43; Pyim - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="折腾，折腾。。。 用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/emacs/emacs-rime-pyim/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Doom Emacs 上配置Rime &#43; Pyim" />
+<meta property="og:description" content="折腾，折腾。。。 用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/emacs/emacs-rime-pyim/" /><meta property="article:section" content="emacs" />
+<meta property="article:published_time" content="2021-07-01T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-07-01T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Doom Emacs 上配置Rime &#43; Pyim">
+<meta itemprop="description" content="折腾，折腾。。。 用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内"><meta itemprop="datePublished" content="2021-07-01T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-07-01T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="775">
+<meta itemprop="keywords" content="emacs,,doomemacs,,rime,,pyim," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Doom Emacs 上配置Rime &#43; Pyim"/>
+<meta name="twitter:description" content="折腾，折腾。。。 用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Doom Emacs 上配置Rime &#43; Pyim</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-07-01 </span>
+        <div class="post-category">
+            <a href="/categories/emacs/"> emacs </a>
+            </div>
+          <span class="more-meta"> 约 775 字 </span>
+          <span class="more-meta"> 预计阅读 2 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>
+折腾，折腾。。。</p>
+<p>
+用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内部
+输入法。</p>
+<p>
+我的 doom emacs 配置： <a href="https://github.com/gcclll/.doom.d">gcclll/.doom.d: private doom-emacs configuration</a></p>
+<p>
+下面是经过一番折腾整的一个安装脚本：</p>
+<p>
+配置安装相关链接：</p>
+<p>
+<a href="https://github.com/eggcaker/.doom.d/blob/main/modules/private/my-chinese/config.el">.doom.d/config.el at main · eggcaker/.doom.d</a></p>
+<p>
+<a href="https://github.com/maomiui/rime">maomiui/rime: Rime 鼠须管（Squirrel）朙月拼音｜小鹤双拼｜自然码双拼配置</a></p>
+<p>
+<a href="https://github.com/rime/plum#packages">rime/plum: 東風破 <em>plum</em>: Rime configuration manager and input schema repository</a></p>
+<p>
+<a href="https://manateelazycat.github.io/emacs/2019/07/24/use-rime-in-emacs.html">在Mac版的Emacs中使用RIME输入法</a></p>
+<div class="src src-bash">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span><span class="lnt">82
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-bash" data-lang="bash"><span class="cp">#!/usr/bin/env bash
+</span><span class="cp"></span><span class="nb">set</span> -euo pipefail
+
+<span class="nv">DOOM</span><span class="o">=</span><span class="s2">&#34;</span><span class="nv">$HOME</span><span class="s2">/.doom.d&#34;</span>
+<span class="nv">DYLIB</span><span class="o">=</span><span class="s2">&#34;/Library/Input Methods/Squirrel.app/Contents/Frameworks/librime.1.dylib&#34;</span>
+
+<span class="k">if</span> <span class="o">[</span> ! -d <span class="nv">$DOOM</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; 没有 doom-emacs 配置&#34;</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; 执行 git clone git@github.com:gcclll/.doom.d.git ~/.emacs.d&#34;</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; 执行 ~/.emacs.d/bin/doom sync&#34;</span>
+    <span class="nb">exit</span> -1
+<span class="k">fi</span>
+
+<span class="k">if</span> <span class="o">[[</span> ! -e <span class="si">${</span><span class="nv">DYLIB</span><span class="si">}</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; Rime 没有安装, 准备安装 Rime 输入法 https://rime.im/download/&#34;</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; 如果下載速度太慢，建議通過網站下載安裝：https://rime.im/download/&#34;</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; -------- F4 呼出配置，可進行简体和繁体切换 --------&#34;</span>
+    brew install --cask squirrel
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; rime installed, link lib into /usr/local/lib&#34;</span>
+    sudo cp <span class="s2">&#34;</span><span class="si">${</span><span class="nv">DYLIB</span><span class="si">}</span><span class="s2">&#34;</span> /usr/local/lib
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; -------- Rime 安装完成 --------&#34;</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&#34;</span>
+<span class="k">else</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; Rime 已经存在，无需重复安装。&#34;</span>
+<span class="k">fi</span>
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; -------- 开始安装 rime-install 命令 --------&#34;</span>
+<span class="nv">PLUM</span><span class="o">=</span><span class="s2">&#34;</span><span class="nv">$DOOM</span><span class="s2">/extensions/plum&#34;</span>
+<span class="k">if</span> <span class="o">[</span> ! -d <span class="nv">$PLUM</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+    <span class="nb">cd</span> <span class="nv">$DOOM</span>
+    git submodule add --depth <span class="m">1</span> https://github.com/rime/plum.git extensions/plum
+<span class="k">fi</span>
+
+<span class="nb">cd</span> <span class="nv">$PLUM</span>
+bash rime-install :preset
+<span class="nb">echo</span> <span class="s2">&#34;&gt; -------- rime-install 安装完成 --------&#34;</span>
+<span class="nb">echo</span> <span class="s2">&#34;&#34;</span>
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; -------- 开始安装 Rime 五笔 --------&#34;</span>
+bash rime-install wubi pinyin-simp
+<span class="nb">echo</span> <span class="s2">&#34;&gt; -------- Rime 五笔安装完成 --------&#34;</span>
+<span class="nb">echo</span> <span class="s2">&#34;&#34;</span>
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; -------- 开始构建 librime.so --------&#34;</span>
+<span class="nb">echo</span> <span class="s2">&#34;&gt; 1. installing cmake &amp; git dependencies...&#34;</span>
+brew install cmake git
+
+<span class="nv">LIB</span><span class="o">=</span><span class="s2">&#34;</span><span class="nv">$DOOM</span><span class="s2">/extensions/librime&#34;</span>
+<span class="k">if</span> <span class="o">[</span> ! -d <span class="nv">$LIB</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+    <span class="nb">echo</span> <span class="s2">&#34;&gt; clone librime -&gt; </span><span class="nv">$LIB</span><span class="s2">&#34;</span>
+    <span class="nb">cd</span> <span class="nv">$DOOM</span>
+    <span class="c1"># [[https://rime.im/download/][下載及安裝 | RIME | 中州韻輸入法引擎]]</span>
+    git submodule add --depth<span class="o">=</span><span class="m">1</span> https://github.com/rime/librime.git extensions/librime
+<span class="k">fi</span>
+
+<span class="nb">echo</span> <span class="s1">&#39;&gt; export RIME_PATH=&#34;$LIB&#34;&#39;</span>
+<span class="nb">export</span> <span class="nv">RIME_PATH</span><span class="o">=</span><span class="s2">&#34;</span><span class="nv">$LIB</span><span class="s2">&#34;</span>
+
+<span class="nb">cd</span> <span class="nv">$LIB</span>
+<span class="nb">echo</span> <span class="s2">&#34;&gt; 2. begin make -&gt; xcode/thirdparty/boost&#34;</span>
+make xcode/thirdparty/boost
+
+<span class="nb">echo</span> <span class="s1">&#39;&gt; export BOOST_ROOT=&#34;$(pwd)/thirdparty/src/boost_1_75_0&#34;&#39;</span>
+<span class="nb">export</span> <span class="nv">BOOST_ROOT</span><span class="o">=</span><span class="s2">&#34;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/thirdparty/src/boost_1_75_0&#34;</span>
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; 3. building 3rd parth libraries...&#34;</span>
+git submodule update --init
+make xcode/thirdparty
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; 4. building librime ...&#34;</span>
+
+make xcode
+make xcode/debug
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; done.&#34;</span>
+<span class="nb">echo</span> <span class="s2">&#34;&gt; 5. running unit tests...&#34;</span>
+make xcode/test
+
+<span class="nb">echo</span> <span class="s2">&#34;&gt; 6. try it ...&#34;</span>
+
+<span class="nb">cd</span> debug/bin
+<span class="nb">echo</span> <span class="s2">&#34;congmingdeRime{space}shurufa&#34;</span> <span class="p">|</span> Debug/rime_api_console</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+其他：</p>
+<p>
+<a href="https://github.com/maomiui/rime">maomiui/rime: Rime 鼠须管（Squirrel）朙月拼音｜小鹤双拼｜自然码双拼配置</a></p>
+<p>
+安装生字字体： <a href="https://github.com/maomiui/rime/tree/master/%E8%8A%B1%E5%9B%AD%E6%98%8E%E6%9C%9D%E5%AD%97%E4%BD%93">rime/花园明朝字体 at master · maomiui/rime</a></p>
+<p>
+因为中文脚本问题，所以 fork 了一份出来，目录都改成了英文名。</p>
+<p>
+<a href="https://github.com/gcclll/rime">gcclll/rime: Rime 鼠须管（Squirrel）朙月拼音｜小鹤双拼｜自然码双拼配置</a></p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-07-01
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/emacs/">emacs,</a>
+          <a href="/tags/doomemacs/">doomemacs,</a>
+          <a href="/tags/rime/">rime,</a>
+          <a href="/tags/pyim/">pyim</a>
+          </div>
+      <nav class="post-nav">
+        
+        <a class="next" href="/emacs/emacs-org-mode/">
+            <span class="next-text nav-default">My Emacs Org-Mode Document</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

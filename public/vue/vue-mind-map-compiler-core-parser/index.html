@@ -1,0 +1,2386 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的学习及尝试应用于机顶" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-mind-map-compiler-core-parser/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的学习及尝试应用于机顶" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-mind-map-compiler-core-parser/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2020-11-24T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2020-11-24T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的学习及尝试应用于机顶"><meta itemprop="datePublished" content="2020-11-24T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2020-11-24T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="6240">
+<meta itemprop="keywords" content="vue,,vue3,,compiler-core,,parser,,compiler," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的学习及尝试应用于机顶"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-11-24 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 6240 字 </span>
+          <span class="more-meta"> 预计阅读 13 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#headline-1">脑图</a>
+</li>
+<li><a href="#headline-2">compiler-core parser 初始化</a>
+</li>
+<li><a href="#headline-3">870343c add parseChildren function</a>
+</li>
+<li><a href="#headline-4">4c6009d add pure text parser(parseText, parseTextData)</a>
+</li>
+<li><a href="#headline-5">d7dbc28 add comment parser(parseComment)</a>
+</li>
+<li><a href="#headline-6">7d5f9c4 add bogus comment parser(parseBogusComment)</a>
+</li>
+<li><a href="#headline-7">cef8485 add more error element situations</a>
+</li>
+<li><a href="#headline-8">b8cb825 add interpolation parser</a>
+</li>
+<li><a href="#headline-9">397da38 add element parser</a>
+</li>
+<li><a href="#headline-10">3b96a74 add tag parser</a>
+</li>
+<li><a href="#headline-11">bf28a36 add tag parser of tag type</a>
+</li>
+<li><a href="#headline-12">73fd01f add attribute name and value parser</a>
+</li>
+<li><a href="#headline-13">e32401e add combine whitespace nodes</a>
+</li>
+<li><a href="#headline-14">用例测试</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<p>
+<kbd>
+<strong><a href="https://github.com/gcclll/stb-vue-next">stb-vue-next</a> 完全拷贝于 <a href="https://github.com/vuejs/vue-next">vue-next</a> ，主要目的学习及尝试应用于机顶盒环境。</strong>
+</kbd></p>
+<p>
+<kbd> <strong>本文依据 commit 进程进行记录，只要跟着下面的进程走，你将能完整实
+现 vue ast parser 哦 💃🏼💃🏼💃🏼</strong> </kbd></p>
+<blockquote>
+<p>声明：该篇为 ts 源码(<em>commit</em>)版本，之前做过一遍完整的 js 版本，更详细，也可参考</p>
+<p>
+<a href="https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/">Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts - 若叶知秋</a></p>
+</blockquote>
+<script src="/js/vue/compiler-core.global.js"></script>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+脑图
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+<img src="/img/vue3/compiler-core/compiler-core-parser.svg" alt="/img/vue3/compiler-core/compiler-core-parser.svg" title="/img/vue3/compiler-core/compiler-core-parser.svg" /></p>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+compiler-core parser 初始化
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<p>
+<a href="/vue/vue3-source-code-compiler-core-parse_ts/">Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts</a></p>
+<ul>
+<li class="checked">
+<p><a href="https://github.com/gcclll/stb-vue-next/commit/c0a03af10f286181f0618313bb319f1725708969">c0a03af</a> add baseParse declaration</p>
+<p>
+   <a href="https://github.com/gcclll/stb-vue-next/commit/c0a03af10f286181f0618313bb319f1725708969">feat(add): baseParse declaration · gcclll/stb-vue-next@c0a03af</a></p>
+<p>
+  添加 <code>baseParse()</code> 函数声明：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">baseParse</span><span class="p">(</span><span class="nx">content</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">options</span>: <span class="kt">ParserOptions</span><span class="p">)</span><span class="o">:</span> <span class="nx">RootNode</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">{}</span> <span class="kr">as</span> <span class="nx">RootNode</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li class="checked">
+<p><a href="https://github.com/gcclll/stb-vue-next/commit/cb2d452526ee77706e1bf27f22a6ff33c94e268c">cb2d452</a> init baseParse function</p>
+<p>
+  <a href="https://github.com/gcclll/stb-vue-next/commit/cb2d452526ee77706e1bf27f22a6ff33c94e268c">feat: baseParse function · gcclll/stb-vue-next@cb2d452</a></p>
+<p>
+  增加 <code>baseParse</code> 函数实现，和涉及到的一些函数和类型声明。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">baseParse</span><span class="p">(</span><span class="nx">content</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">options</span>: <span class="kt">ParserOptions</span><span class="p">)</span><span class="o">:</span> <span class="nx">RootNode</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">context</span> <span class="o">=</span> <span class="nx">createParserContext</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+    <span class="kr">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">createRoot</span><span class="p">(</span>
+        <span class="nx">parseChildren</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">TextModes</span><span class="p">.</span><span class="nx">DATA</span><span class="p">,</span> <span class="p">[]),</span>
+        <span class="nx">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">)</span>
+    <span class="p">)</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
+<a href="https://github.com/gcclll/stb-vue-next/commit/870343cf5165be6cb7e24c413b128eee2e4f8c9a">870343c</a> add parseChildren function
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/870343cf5165be6cb7e24c413b128eee2e4f8c9a">feat(init): parseChildren function · gcclll/stb-vue-next@870343c</a></p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+<a href="https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816">4c6009d</a> add pure text parser(parseText, parseTextData)
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/4c6009d881110919d4be817c08e3e2f81feaf816">feat(add): parseText, parseTextData · gcclll/stb-vue-next@4c6009d</a></p>
+<p>
+fix lint errors: <a href="https://github.com/gcclll/stb-vue-next/commit/005c2612e37f2724d063fab4c239414a01fd8d14">005c261</a></p>
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/005c2612e37f2724d063fab4c239414a01fd8d14">fix: lint errors · gcclll/stb-vue-next@005c261</a></p>
+<p>
+新增了三个函数：</p>
+<ol>
+<li>
+<p><code>pushNode(nodes: TemplateChildNode[], node: TemplateChildNode): void</code></p>
+<p>
+遍历 while 解析后的 ast ，合并相邻的文本节点。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kd">function</span> <span class="nx">pushNode</span><span class="p">(</span><span class="nx">nodes</span>: <span class="kt">TemplateChildNode</span><span class="p">[],</span> <span class="nx">node</span>: <span class="kt">TemplateChildNode</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+     <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">)</span> <span class="p">{</span>
+         <span class="c1">// 合并两个相邻的文本内容
+</span><span class="c1"></span>
+         <span class="kr">const</span> <span class="nx">prev</span> <span class="o">=</span> <span class="nx">last</span><span class="p">(</span><span class="nx">nodes</span><span class="p">)</span>
+         <span class="c1">// Merge if both this and the previous node are text and those are
+</span><span class="c1"></span>         <span class="c1">// consecutive. This happens for cases like &#34;a &lt; b&#34;.
+</span><span class="c1"></span>         <span class="k">if</span> <span class="p">(</span>
+         <span class="nx">prev</span> <span class="o">&amp;&amp;</span>
+         <span class="nx">prev</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span> <span class="o">&amp;&amp;</span>
+         <span class="nx">prev</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">end</span><span class="p">.</span><span class="nx">offset</span> <span class="o">===</span> <span class="nx">node</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">start</span><span class="p">.</span><span class="nx">offset</span>
+         <span class="p">)</span> <span class="p">{</span>
+         <span class="nx">prev</span><span class="p">.</span><span class="nx">content</span> <span class="o">+=</span> <span class="nx">node</span><span class="p">.</span><span class="nx">content</span>
+         <span class="nx">prev</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">end</span> <span class="o">=</span> <span class="nx">node</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">end</span>
+         <span class="nx">prev</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">source</span> <span class="o">+=</span> <span class="nx">node</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">source</span>
+         <span class="k">return</span>
+         <span class="p">}</span>
+     <span class="p">}</span>
+
+     <span class="nx">nodes</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">node</span><span class="p">)</span>
+ <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p><code>parseText(context: ParserContext, mode: TextModes): TextNode</code></p>
+<p>
+解析文本节点，文本节点结束标识： <code>&lt;</code> 和 <code>{{</code> ，分别代表标签和插值开始符号。</p>
+<p>
+如： <code>some text&lt;div&gt;....</code>, <code>some text{{ ... }}</code></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kd">function</span> <span class="nx">parseText</span><span class="p">(</span><span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span> <span class="nx">mode</span>: <span class="kt">TextModes</span><span class="p">)</span><span class="o">:</span> <span class="nx">TextNode</span> <span class="p">{</span>
+     <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+     <span class="kr">const</span> <span class="nx">endTokens</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&lt;&#39;</span><span class="p">,</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">delimiters</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+     <span class="k">if</span> <span class="p">(</span><span class="nx">mode</span> <span class="o">===</span> <span class="nx">TextModes</span><span class="p">.</span><span class="nx">CDATA</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">endTokens</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="s1">&#39;]]&gt;&#39;</span><span class="p">)</span>
+     <span class="p">}</span>
+
+     <span class="kd">let</span> <span class="nx">endIndex</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">length</span>
+     <span class="c1">// 找到遇到的第一个结束符 }}, &lt;
+</span><span class="c1"></span>     <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">endTokens</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+         <span class="kr">const</span> <span class="nx">index</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">endTokens</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+         <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">!==</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">endIndex</span> <span class="o">&gt;</span> <span class="nx">index</span><span class="p">)</span> <span class="p">{</span>
+         <span class="nx">endIndex</span> <span class="o">=</span> <span class="nx">index</span>
+         <span class="p">}</span>
+     <span class="p">}</span>
+
+     <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="nx">endIndex</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+     <span class="kr">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+     <span class="kr">const</span> <span class="nx">content</span> <span class="o">=</span> <span class="nx">parseTextData</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">endIndex</span><span class="p">,</span> <span class="nx">mode</span><span class="p">)</span>
+
+     <span class="k">return</span> <span class="p">{</span>
+         <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">TEXT</span><span class="p">,</span>
+         <span class="nx">content</span><span class="p">,</span>
+         <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">)</span>
+     <span class="p">}</span>
+ <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p><code>function parseTextData(context: ParserContext, length: number, mode: TextModes): string</code></p>
+<p>
+处理 HTML 一些特殊符号，比如： <code>a &gt; b</code> =&gt; <code>a &amp;lt; b</code></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kr">const</span> <span class="nx">decodeRE</span> <span class="o">=</span> <span class="sr">/&amp;(gt|lt|amp|apos|quot);/g</span>
+ <span class="kr">const</span> <span class="nx">decodeMap</span>: <span class="kt">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+     <span class="nx">gt</span><span class="o">:</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">,</span>
+     <span class="nx">lt</span><span class="o">:</span> <span class="s1">&#39;&lt;&#39;</span><span class="p">,</span>
+     <span class="nx">amp</span><span class="o">:</span> <span class="s1">&#39;&amp;&#39;</span><span class="p">,</span>
+     <span class="nx">apos</span><span class="o">:</span> <span class="s2">&#34;&#39;&#34;</span><span class="p">,</span>
+     <span class="nx">quot</span><span class="o">:</span> <span class="s1">&#39;&#34;&#39;</span>
+ <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+<p>
+测试：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kd">let</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`some text`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 普通文本 &#34;some text&#34;`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 带 html 语义符号的文本 &#34;a &amp;lt; b&#34;`</span><span class="p">)</span>
+<span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`a &amp;lt; b`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS: 如结果显示 <code>&amp;lt;</code>, <code>&amp;gt;</code> 等符号会被转成语义化符号。</p>
+<pre class="example">
+&gt;&gt;&gt; 普通文本 &#34;some text&#34;
+{
+  type: 0,
+  children: [ { type: 2, content: &#39;some text&#39;, loc: [Object] } ],
+}
+&gt;&gt;&gt; 带 html 语义符号的文本 &#34;a &amp;lt; b&#34;
+{
+  type: 0,
+  children: [ { type: 2, content: &#39;a &lt; b&#39;, loc: [Object] } ],
+}
+undefined
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+<a href="https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c">d7dbc28</a> add comment parser(parseComment)
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/d7dbc28809d8ecb37502a1280c1f699b97d3bc4c">feat(add): comment parser · gcclll/stb-vue-next@d7dbc28</a></p>
+<p>
+修改 <code>parseChildren()</code>:</p>
+<p>
+<code>else if s[0] === &#39;&lt;&#39;</code> 作为开始，可能是标签、html 注释等等。</p>
+<p>
+<img src="http://qiniu.ii6g.com/img/20201124181448.png" alt="http://qiniu.ii6g.com/img/20201124181448.png" title="http://qiniu.ii6g.com/img/20201124181448.png" /></p>
+<p>
+代码：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">parseComment</span><span class="p">(</span><span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">)</span><span class="o">:</span> <span class="nx">CommentNode</span> <span class="p">{</span>
+  <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="nx">startsWith</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="s1">&#39;&lt;!--&#39;</span><span class="p">))</span>
+
+  <span class="kr">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+  <span class="kd">let</span> <span class="nx">content</span>: <span class="kt">string</span>
+
+  <span class="kr">const</span> <span class="nx">match</span> <span class="o">=</span> <span class="sr">/--(\!)?&gt;/</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">match</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 非法注释
+</span><span class="c1"></span>    <span class="nx">content</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span>
+    <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">EOF_IN_COMMENT</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">match</span><span class="p">.</span><span class="nx">index</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 不满足 &lt;!-- --&gt;
+</span><span class="c1"></span>      <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">ABRUPT_CLOSING_OF_EMPTY_COMMENT</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span>
+      <span class="c1">// 非法结束 &lt;!-- --!&gt;
+</span><span class="c1"></span>      <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">INCORRECTLY_CLOSED_COMMENT</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// 注释内容
+</span><span class="c1"></span>    <span class="nx">content</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="nx">match</span><span class="p">.</span><span class="nx">index</span><span class="p">)</span>
+
+    <span class="c1">// 嵌套注释
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">s</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">match</span><span class="p">.</span><span class="nx">index</span><span class="p">)</span>
+    <span class="kd">let</span> <span class="nx">prevIndex</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="nx">nestedIndex</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="p">((</span><span class="nx">nestedIndex</span> <span class="o">=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;&lt;!--&#39;</span><span class="p">,</span> <span class="nx">prevIndex</span><span class="p">))</span> <span class="o">!==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">nestedIndex</span> <span class="o">-</span> <span class="nx">prevIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">nestedIndex</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">&lt;</span> <span class="nx">s</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">NESTED_COMMENT</span><span class="p">)</span>
+      <span class="p">}</span>
+      <span class="nx">prevIndex</span> <span class="o">=</span> <span class="nx">nestedIndex</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="p">}</span>
+
+    <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">match</span><span class="p">.</span><span class="nx">index</span> <span class="o">+</span> <span class="nx">match</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">length</span> <span class="o">-</span> <span class="nx">prevIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="p">{</span>
+    <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">COMMENT</span><span class="p">,</span>
+    <span class="nx">content</span><span class="p">,</span>
+    <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p>通过 <code>/--(\!)?&gt;/</code> 匹配注释的结束</p>
+</li>
+<li>
+<p>如果无法匹配到，说明是非法注释，如： <code>&lt;!-- xxx -&gt;</code></p>
+</li>
+<li>
+<p>匹配到之后的非法情况(<code>match.index &lt;= 3</code>)： <code>&lt;!--&gt;</code> 或 <code>&lt;!---&gt;</code></p>
+</li>
+<li>
+<p>捕获组(<code>(\!)</code>)也匹配到了，非法结束： <code>&lt;!-- --!&gt;</code></p>
+</li>
+<li>
+<p>嵌套注释也视为非法</p>
+</li>
+</ol>
+<p>测试：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">catchError</span> <span class="o">=</span> <span class="nx">fn</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="k">try</span> <span class="p">{</span> <span class="nx">fn</span><span class="p">()</span> <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">)</span> <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">let</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;!-- xx --&gt;`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 非法注释：&#34;&lt;!-- xxx -&gt;&#34;`</span><span class="p">)</span>
+<span class="nx">catchError</span><span class="p">(</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;!-- xxx -&gt;`</span><span class="p">))</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 非法注释：&#34;&lt;!---&gt;&#34;`</span><span class="p">)</span>
+<span class="nx">catchError</span><span class="p">(</span>  <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;!---&gt;`</span><span class="p">))</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 非法注释：&#34;&lt;!-- xx --!&gt;&#34;`</span><span class="p">)</span>
+<span class="nx">catchError</span><span class="p">(</span>  <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;!-- xx --!&gt;`</span><span class="p">))</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 嵌套注释：&#34;&lt;!-- &lt;!-- --&gt;&#34;`</span><span class="p">)</span>
+<span class="nx">catchError</span><span class="p">(</span>  <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;!-- &lt;!-- --&gt;`</span><span class="p">))</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;&gt;&gt;&gt; 有效注释&#39;</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS:</p>
+<pre class="example">
+&gt;&gt;&gt; 非法注释：&#34;&lt;!-- xxx -&gt;&#34;
+Unexpected EOF in comment.
+&gt;&gt;&gt; 非法注释：&#34;&lt;!---&gt;&#34;
+Illegal comment.
+&gt;&gt;&gt; 非法注释：&#34;&lt;!-- xx --!&gt;&#34;
+Incorrectly closed comment.
+&gt;&gt;&gt; 嵌套注释：&#34;&lt;!-- &lt;!-- --&gt;&#34;
+Unexpected &#39;&lt;!--&#39; in comment.
+&gt;&gt;&gt; 有效注释
+{
+  type: 0,
+  children: [ { type: 3, content: &#39; xx &#39;, loc: [Object] } ],
+  // ...
+}
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+<a href="https://github.com/gcclll/stb-vue-next/commit/7d5f9c4910979b2439d2bc5deed4572afd56080d">7d5f9c4</a> add bogus comment parser(parseBogusComment)
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/7d5f9c4910979b2439d2bc5deed4572afd56080d">feat(add): bogus comment parser · gcclll/stb-vue-next@7d5f9c4</a></p>
+<p>
+匹配正则： <code>/^&lt;(?:[\!\?]|\/[^a-z&gt;])/i</code></p>
+<p>
+<img src="http://qiniu.ii6g.com/img/20201124185249.png" alt="http://qiniu.ii6g.com/img/20201124185249.png" title="http://qiniu.ii6g.com/img/20201124185249.png" /></p>
+<ol>
+<li>
+<p><code>&lt;!DOCTYPE</code> 注释</p>
+</li>
+<li>
+<p><code>&lt;![[CDATA&gt;</code> 类型</p>
+</li>
+</ol>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">parseBogusComment</span><span class="p">(</span><span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">)</span><span class="o">:</span> <span class="nx">CommentNode</span> <span class="o">|</span> <span class="kc">undefined</span> <span class="p">{</span>
+  <span class="c1">// &lt;?... or &lt;!... or &lt;/.... 形式注释 ???
+</span><span class="c1"></span>  <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="sr">/^&lt;(?:[\!\?]|\/[^a-z&gt;])/i</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">))</span>
+
+  <span class="kr">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">contentStart</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">===</span> <span class="s1">&#39;?&#39;</span> <span class="o">?</span> <span class="nx">1</span> : <span class="kt">2</span>
+  <span class="kd">let</span> <span class="nx">content</span>: <span class="kt">string</span>
+
+  <span class="c1">// 结束
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">closeIndex</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;&gt;&#39;</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">closeIndex</span> <span class="o">===</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">content</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="nx">contentStart</span><span class="p">)</span>
+    <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">content</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="nx">contentStart</span><span class="p">,</span> <span class="nx">closeIndex</span><span class="p">)</span>
+    <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">closeIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="p">{</span>
+    <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">COMMENT</span><span class="p">,</span>
+    <span class="nx">content</span><span class="p">,</span>
+    <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+测试：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">catchError</span> <span class="o">=</span> <span class="nx">fn</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">res</span>
+  <span class="k">try</span> <span class="p">{</span> <span class="nx">res</span> <span class="o">=</span> <span class="nx">fn</span><span class="p">()</span> <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">)</span> <span class="p">}</span>
+  <span class="nx">res</span> <span class="o">&amp;&amp;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// html 中使用 &lt;![CDATA[ 注释
+</span><span class="c1"></span><span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;![CDATA[ xxx ]]`</span><span class="p">))</span>
+<span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;!DOCTYPE xxx &gt;`</span><span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS:</p>
+<pre class="example">
+CDATA section is allowed only in XML context.
+{
+  type: 0,
+  children: [ { type: 3, content: &#39;DOCTYPE xxx &#39;, loc: [Object] } ],
+}
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+<a href="https://github.com/gcclll/stb-vue-next/commit/cef8485fcd883f19d3ac3591b0e0d9610161a626">cef8485</a> add more error element situations
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/cef8485fcd883f19d3ac3591b0e0d9610161a626">feat(add): more error element situations · gcclll/stb-vue-next@cef8485</a></p>
+<p>
+更多错误标签情况，以 <code>&lt;/</code> 开头的情况处理。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">catchError</span> <span class="o">=</span> <span class="nx">fn</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">res</span>
+  <span class="k">try</span> <span class="p">{</span> <span class="nx">res</span> <span class="o">=</span> <span class="nx">fn</span><span class="p">()</span> <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">)</span> <span class="p">}</span>
+  <span class="nx">res</span> <span class="o">&amp;&amp;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;/`</span><span class="p">))</span>
+<span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;/&gt;`</span><span class="p">))</span>
+<span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;/xx&gt;`</span><span class="p">))</span>
+<span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;?`</span><span class="p">))</span>
+<span class="nx">catchError</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;*`</span><span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS:</p>
+<pre class="example">
+Unexpected EOF in tag.
+End tag name was expected.
+Invalid end tag.
+&#39;&lt;?&#39; is allowed only in XML context.
+Illegal tag name. Use &#39;&amp;lt;&#39; to print &#39;&lt;&#39;.
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+<a href="https://github.com/gcclll/stb-vue-next/commit/b8cb8251ba739655a1ddd781f2d4724c7ec4c981">b8cb825</a> add interpolation parser
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/b8cb8251ba739655a1ddd781f2d4724c7ec4c981">feat(add): interpolation parser · gcclll/stb-vue-next@b8cb825</a></p>
+<p>
+插值解析。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">parseInterpolation</span><span class="p">(</span>
+  <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
+  <span class="nx">mode</span>: <span class="kt">TextModes</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">InterpolationNode</span> <span class="o">|</span> <span class="kc">undefined</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="p">[</span><span class="nx">open</span><span class="p">,</span> <span class="nx">close</span><span class="p">]</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">delimiters</span>
+  <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="nx">startsWith</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="nx">open</span><span class="p">))</span>
+
+  <span class="kr">const</span> <span class="nx">closeIndex</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">close</span><span class="p">,</span> <span class="nx">open</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">closeIndex</span> <span class="o">===</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">X_MISSING_INTERPOLATION_END</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">undefined</span>
+  <span class="p">}</span>
+
+  <span class="kr">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+  <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">open</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">innerStart</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">innerEnd</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+  <span class="c1">// 插值内容长度
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">rawContentLength</span> <span class="o">=</span> <span class="nx">closeIndex</span> <span class="o">-</span> <span class="nx">open</span><span class="p">.</span><span class="nx">length</span>
+  <span class="kr">const</span> <span class="nx">rawContent</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">rawContentLength</span><span class="p">)</span>
+  <span class="c1">// html 语义化符号替换
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">preTrimContent</span> <span class="o">=</span> <span class="nx">parseTextData</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">rawContentLength</span><span class="p">,</span> <span class="nx">mode</span><span class="p">)</span>
+  <span class="c1">// 去掉前后空格
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">content</span> <span class="o">=</span> <span class="nx">preTrimContent</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+  <span class="c1">// 去掉空格后的内容所在的索引位置
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">startOffset</span> <span class="o">=</span> <span class="nx">preTrimContent</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">content</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">startOffset</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">advancePositionWithMutation</span><span class="p">(</span><span class="nx">innerStart</span><span class="p">,</span> <span class="nx">rawContent</span><span class="p">,</span> <span class="nx">startOffset</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="kr">const</span> <span class="nx">endOffset</span> <span class="o">=</span>
+    <span class="nx">rawContentLength</span> <span class="o">-</span> <span class="p">(</span><span class="nx">preTrimContent</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="nx">content</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="nx">startOffset</span><span class="p">)</span>
+  <span class="nx">advancePositionWithMutation</span><span class="p">(</span><span class="nx">innerEnd</span><span class="p">,</span> <span class="nx">rawContent</span><span class="p">,</span> <span class="nx">endOffset</span><span class="p">)</span>
+  <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">close</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="p">{</span>
+    <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">INTERPOLATION</span><span class="p">,</span>
+    <span class="nx">content</span><span class="o">:</span> <span class="p">{</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">SIMPLE_EXPRESSION</span><span class="p">,</span>
+      <span class="nx">isStatic</span>: <span class="kt">false</span><span class="p">,</span>
+      <span class="nx">isConstant</span>: <span class="kt">false</span><span class="p">,</span>
+      <span class="nx">content</span><span class="p">,</span>
+      <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">innerStart</span><span class="p">,</span> <span class="nx">innerEnd</span><span class="p">)</span>
+    <span class="p">},</span>
+    <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+执行操作：</p>
+<ol>
+<li>
+<p>根据 <code>{{</code>, <code>}}</code> 取出插值起始索引</p>
+</li>
+<li>
+<p>截取插值内容，替换 html 语义字符，且去掉前后空格</p>
+</li>
+<li>
+<p>组装插值结构</p>
+</li>
+</ol>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`{{ foo.value }}`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 插值节点`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS:</p>
+<pre class="example">
+{
+  type: 0,
+  children: [ { type: 5, content: [Object], loc: [Object] } ],
+}
+&gt;&gt;&gt; 插值节点
+{
+  type: 5,
+  content: {
+    type: 4,
+    isStatic: false,
+    isConstant: false,
+    content: &#39;foo.value&#39;,
+    loc: { start: [Object], end: [Object], source: &#39;foo.value&#39; }
+  },
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 16, line: 1, offset: 15 },
+    source: &#39;{{ foo.value }}&#39;
+  }
+}
+undefined
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+<a href="https://github.com/gcclll/stb-vue-next/commit/397da3875a944757bdc50b5ce7b53d725bae8687">397da38</a> add element parser
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/397da3875a944757bdc50b5ce7b53d725bae8687">feat(add): parse element function · gcclll/stb-vue-next@397da38</a></p>
+<p>
+解析元素标签的入口函数，实际详细解析在 <code>parseTag()</code> 函数中，所以这里需要结合
+<code>parseTag</code> 的实现才能测试。</p>
+<p>
+代码：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript">
+<span class="kd">function</span> <span class="nx">parseElement</span><span class="p">(</span>
+  <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
+  <span class="nx">ancestors</span>: <span class="kt">ElementNode</span><span class="p">[]</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span> <span class="p">{</span>
+  <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="sr">/^&lt;[a-z]/i</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">))</span>
+
+  <span class="kr">const</span> <span class="nx">wasInPre</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">inPre</span>
+  <span class="kr">const</span> <span class="nx">wasInVPre</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">inVPre</span>
+  <span class="kr">const</span> <span class="nx">parent</span> <span class="o">=</span> <span class="nx">last</span><span class="p">(</span><span class="nx">ancestors</span><span class="p">)</span>
+  <span class="c1">// 解析出开始标签
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">element</span> <span class="o">=</span> <span class="p">{}</span> <span class="kr">as</span> <span class="kt">any</span> <span class="c1">// parseTag(context, TagType.Start, parent)
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">isPreBoundray</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">inPre</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">wasInPre</span>
+  <span class="kr">const</span> <span class="nx">isVPreBoundray</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">inVPre</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">wasInVPre</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">element</span><span class="p">.</span><span class="nx">isSelfClosing</span> <span class="o">||</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">isVoidTag</span><span class="p">(</span><span class="nx">elment</span><span class="p">.</span><span class="nx">tag</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">element</span>
+  <span class="p">}</span>
+
+  <span class="nx">ancestors</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">element</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">mode</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">getTextMode</span><span class="p">(</span><span class="nx">element</span><span class="p">,</span> <span class="nx">parent</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">children</span> <span class="o">=</span> <span class="nx">parseChildren</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">mode</span><span class="p">,</span> <span class="nx">ancestors</span><span class="p">)</span>
+  <span class="c1">// 要将孩子节点解析完成的 parent element pop 掉，待处理下一个 parent 的 children
+</span><span class="c1"></span>  <span class="nx">ancestors</span><span class="p">.</span><span class="nx">pop</span><span class="p">()</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">startsWithEndTagOpen</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="nx">element</span><span class="p">.</span><span class="nx">tag</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// 结束标签
+</span><span class="c1"></span>    <span class="c1">// parseTag(context, TagType.End, parent)
+</span><span class="c1"></span>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">X_MISSING_END_TAG</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">element</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">start</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">length</span> <span class="o">===</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="nx">element</span><span class="p">.</span><span class="nx">tag</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">()</span> <span class="o">===</span> <span class="s1">&#39;script&#39;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">first</span> <span class="o">=</span> <span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">first</span> <span class="o">&amp;&amp;</span> <span class="nx">startsWith</span><span class="p">(</span><span class="nx">first</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="s1">&#39;&lt;!--&#39;</span><span class="p">))</span> <span class="p">{</span>
+        <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT</span><span class="p">)</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="nx">element</span><span class="p">.</span><span class="nx">loc</span> <span class="o">=</span> <span class="nx">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">element</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">start</span><span class="p">)</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isPreBoundray</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">context</span><span class="p">.</span><span class="nx">inPre</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isVPreBoundray</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">context</span><span class="p">.</span><span class="nx">inVPre</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="nx">element</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+源码分析：</p>
+<ol>
+<li>
+<p>通过调用 <code>parseTag()</code> 解析出标签元素结构</p>
+</li>
+<li>
+<p>判断是不是自闭合标签(<code>&lt;div/&gt;</code>)，或者外部定义的空标签(不需要结束标签的，如： <code>&lt;my-tag&gt;</code>
+，为合法标签)</p>
+</li>
+<li>
+<p>调用 <code>parseChildren()</code> 递归解析该节点下子孙节点</p>
+</li>
+<li>
+<p>结束标签解析</p>
+</li>
+<li>
+<p><code>&lt;pre&gt;</code> 和 <code>v-pre</code> 检测</p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+<a href="https://github.com/gcclll/stb-vue-next/commit/3b96a7452634d4b09f965243b99d56566db3f0c2">3b96a74</a> add tag parser
+</h2>
+<div id="outline-text-headline-10" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/3b96a7452634d4b09f965243b99d56566db3f0c2">feat(add): tag parser · gcclll/stb-vue-next@3b96a74</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript">
+
+<span class="kd">function</span> <span class="nx">parseTag</span><span class="p">(</span>
+  <span class="nx">context</span>: <span class="kt">ParserContext</span><span class="p">,</span>
+  <span class="kr">type</span><span class="o">:</span> <span class="nx">TagType</span><span class="p">,</span>
+  <span class="nx">parent</span>: <span class="kt">ElementNode</span> <span class="o">|</span> <span class="kc">undefined</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">ElementNode</span> <span class="p">{</span>
+  <span class="c1">// 匹配 &lt;div&gt; 或 &lt;/div&gt;
+</span><span class="c1"></span>  <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span> <span class="nx">assert</span><span class="p">(</span><span class="sr">/^&lt;\/?[a-z]/i</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">))</span>
+  <span class="nx">__TEST__</span> <span class="o">&amp;&amp;</span>
+    <span class="nx">assert</span><span class="p">(</span>
+      <span class="kr">type</span> <span class="o">===</span> <span class="p">(</span><span class="nx">startsWith</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="s1">&#39;&lt;/&#39;</span><span class="p">)</span> <span class="o">?</span> <span class="nx">TagType.End</span> : <span class="kt">TagType.Start</span><span class="p">)</span>
+    <span class="p">)</span>
+
+  <span class="c1">// 开始标签
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">start</span> <span class="o">=</span> <span class="nx">getCursor</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">match</span> <span class="o">=</span> <span class="sr">/^&lt;\/?([a-z][^\t\r\n\f /&gt;]*)/i</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">)</span><span class="o">!</span>
+  <span class="kr">const</span> <span class="nx">tag</span> <span class="o">=</span> <span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+  <span class="kr">const</span> <span class="nx">ns</span> <span class="o">=</span> <span class="nx">context</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">getNamespace</span><span class="p">(</span><span class="nx">tag</span><span class="p">,</span> <span class="nx">parent</span><span class="p">)</span>
+
+  <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">match</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">length</span><span class="p">)</span>
+  <span class="nx">advanceSpaces</span><span class="p">(</span><span class="nx">context</span><span class="p">)</span>
+
+  <span class="c1">// 保存当前状态，待会需要回过头来解析属性
+</span><span class="c1"></span>  <span class="c1">// const cursor = getCursor(context)
+</span><span class="c1"></span>  <span class="c1">// const currentSource = context.source
+</span><span class="c1"></span>
+  <span class="c1">// 解析属性
+</span><span class="c1"></span>  <span class="kd">let</span> <span class="nx">props</span> <span class="o">=</span> <span class="p">[]</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">[]</span> <span class="c1">// TODO parseAttributes(context, type)
+</span><span class="c1"></span>
+  <span class="c1">// TODO &lt;pre&gt; 标签
+</span><span class="c1"></span>
+  <span class="c1">// TODO v-pre 指令
+</span><span class="c1"></span>
+  <span class="c1">// 结束标签
+</span><span class="c1"></span>  <span class="kd">let</span> <span class="nx">isSelfClosing</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">.</span><span class="nx">length</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">EOF_IN_TAG</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="c1">// &lt;div ... /&gt;
+</span><span class="c1"></span>    <span class="nx">isSelfClosing</span> <span class="o">=</span> <span class="nx">startsWith</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">source</span><span class="p">,</span> <span class="s1">&#39;/&gt;&#39;</span><span class="p">)</span>
+    <span class="c1">// 到这里不应该是 End 标签
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">TagType</span><span class="p">.</span><span class="nx">End</span> <span class="o">&amp;&amp;</span> <span class="nx">isSelfClosing</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">emitError</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">END_TAG_WITH_TRAILING_SOLIDUS</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="nx">advanceBy</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">isSelfClosing</span> <span class="o">?</span> <span class="nx">2</span> : <span class="kt">1</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="kd">let</span> <span class="nx">tagType</span> <span class="o">=</span> <span class="nx">ElementTypes</span><span class="p">.</span><span class="nx">ELEMENT</span>
+
+  <span class="c1">// TODO 标签类型解析
+</span><span class="c1"></span>  <span class="k">return</span> <span class="p">{</span>
+    <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">ELEMENT</span><span class="p">,</span>
+    <span class="nx">ns</span><span class="p">,</span>
+    <span class="nx">tag</span><span class="p">,</span>
+    <span class="nx">tagType</span><span class="p">,</span>
+    <span class="nx">props</span><span class="p">,</span>
+    <span class="nx">isSelfClosing</span><span class="p">,</span>
+    <span class="nx">children</span><span class="o">:</span> <span class="p">[],</span>
+    <span class="nx">loc</span>: <span class="kt">getSelection</span><span class="p">(</span><span class="nx">context</span><span class="p">,</span> <span class="nx">start</span><span class="p">),</span>
+    <span class="nx">codegenNode</span>: <span class="kt">undefined</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p>开始标签匹配正则： <code>/^&lt;\/?([a-z][^\t\r\n\f /&gt;]*)/i</code></p>
+<p>
+<img src="http://qiniu.ii6g.com/img/20201124230909.png" alt="http://qiniu.ii6g.com/img/20201124230909.png" title="http://qiniu.ii6g.com/img/20201124230909.png" /></p>
+</li>
+<li>
+<p><code>&lt;pre&gt;</code> 标签处理</p>
+</li>
+<li>
+<p><code>v-pre</code> 指令处理</p>
+</li>
+<li>
+<p>自闭合标签处理</p>
+</li>
+<li>
+<p>组装元素结构 <code>NodeTypes.ELEMENT</code></p>
+</li>
+</ol>
+<p>
+测试：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kd">let</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;div&gt;&lt;/div&gt;`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 普通标签`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;img/&gt;`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 自闭合标签`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 自定义空标签 &lt;mydiv&gt;`</span><span class="p">)</span>
+<span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;mydiv&gt;`</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nx">isVoidTag</span><span class="o">:</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="sb">`mydiv`</span>
+<span class="p">})</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS: 省略部分输出</p>
+<pre class="example">
+&gt;&gt;&gt; 普通标签
+{
+  type: 1,
+  ns: 0,
+  tag: &#39;div&#39;,
+  tagType: 0,
+  props: [],
+  isSelfClosing: false,
+  children: [],
+}
+&gt;&gt;&gt; 自闭合标签
+{
+  type: 1,
+  ns: 0,
+  tag: &#39;img&#39;,
+  tagType: 0,
+  props: [],
+  isSelfClosing: true,
+  children: [],
+}
+&gt;&gt;&gt; 自定义空标签 &lt;mydiv&gt;
+{
+  type: 1,
+  ns: 0,
+  tag: &#39;mydiv&#39;,
+  tagType: 0,
+  props: [],
+  isSelfClosing: false,
+  children: [],
+}
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+<a href="https://github.com/gcclll/stb-vue-next/commit/bf28a36b0f7f59c186b6108e5cab118a039903e0">bf28a36</a> add tag parser of tag type
+</h2>
+<div id="outline-text-headline-11" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/bf28a36b0f7f59c186b6108e5cab118a039903e0">feat(add): parse tag for tag type · gcclll/stb-vue-next@bf28a36</a></p>
+<p>
+解析出标签的标签名(<code>component</code> ? <code>template</code> ? <code>slot</code> ? …)。</p>
+<ol>
+<li>
+<p><code>if (options.isNativeTag &amp;&amp; !hasVIs)</code></p>
+<p>
+<code>!options.isNativeTag(tag)</code> 如果不是原生标签，则视为 <code>COMPONENT</code></p>
+</li>
+<li>
+<p>第二种为 <code>COMPONENT</code> 情况</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span>
+   <span class="nx">hasVIs</span> <span class="o">||</span>
+   <span class="nx">isCoreComponent</span><span class="p">(</span><span class="nx">tag</span><span class="p">)</span> <span class="o">||</span>
+   <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">isBuiltInComponent</span> <span class="o">&amp;&amp;</span> <span class="nx">options</span><span class="p">.</span><span class="nx">isBuiltInComponent</span><span class="p">(</span><span class="nx">tag</span><span class="p">))</span> <span class="o">||</span>
+   <span class="sr">/^[A-Z].test(tag)/</span> <span class="o">||</span>
+   <span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;component&#39;</span>
+ <span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ul>
+<li>
+<p>有 <code>v-is</code> 指令</p>
+</li>
+<li>
+<p><code>isCoreComponent()</code> vue 内置标签(<code>Teleport</code>, <code>Suspense</code>, <code>KeepAlive</code>,
+ <code>BaseTransition</code>)</p>
+</li>
+<li>
+<p>选项中自定义的</p>
+</li>
+<li>
+<p>标签名首字母大写的也视为 <code>component</code></p>
+</li>
+<li>
+<p>标签名直接是 <code>component</code> 的</p>
+</li>
+</ul>
+</li>
+<li>
+<p><code>if (tag === &#39;slot&#39;)</code> 插槽标签</p>
+</li>
+<li>
+<p><code>&lt;template&gt;</code> 标签，且带有指令</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="nx">tag</span> <span class="o">===</span> <span class="s1">&#39;template&#39;</span> <span class="o">&amp;&amp;</span>
+   <span class="nx">props</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="nx">p</span> <span class="o">=&gt;</span> <span class="p">{</span>
+     <span class="k">return</span> <span class="p">(</span>
+       <span class="nx">p</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">NodeTypes</span><span class="p">.</span><span class="nx">DIRECTIVE</span> <span class="o">&amp;&amp;</span> <span class="nx">isSpecialTemplateDirective</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">)</span>
+     <span class="p">)</span>
+   <span class="p">})</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+特殊的模板指令：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kr">const</span> <span class="nx">isSpecialTemplateDirective</span> <span class="o">=</span> <span class="cm">/*#__PURE__*/</span> <span class="nx">makeMap</span><span class="p">(</span>
+     <span class="sb">`if,else,else-if,for,slot`</span>
+ <span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+<p>这个由于需要用到属性，所以需要结合 <code>parseAttributes</code> 实现才能进行测试。</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-2">
+<h2 id="headline-12">
+73fd01f add attribute name and value parser
+</h2>
+<div id="outline-text-headline-12" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/73fd01f98a4ba9b2eba4fa8861f4eed91f93dad7">feat(add): attribute name and value parser · gcclll/stb-vue-next@73fd01f</a></p>
+<p>
+这里新增了三个函数(代码较多，需要查看源码直接点击上面 commit 链接)</p>
+<ol>
+<li>
+<p><code>parseAttributes(context, type)</code> 属性解析入口，通过 while 循环解析出所有属性</p>
+</li>
+<li>
+<p><code>parseAttribute(context, nameSet)</code> 解析单个属性，属性名用 nameSet 集合存储避
+免重复</p>
+</li>
+<li>
+<p><code>parseAttributeValue(context)</code> 解析属性值</p>
+</li>
+</ol>
+<p>测试：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`&lt;div class=&#34;app&#34; :staticPropName=&#34;bar&#34; @press.enter=&#34;pressKey&#34; :[dynamicPropName]=&#34;foo&#34;&gt;&lt;/div&gt;`</span><span class="p">)</span>
+<span class="kr">const</span> <span class="nx">ele</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ele</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 静态属性：class`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">props</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 动态属性静态属性名：staticPropName`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">props</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 带修饰符的属性：press.enter`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">props</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; 动态属性名：dynamicPropName`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ele</span><span class="p">.</span><span class="nx">props</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
++RESULTS: 元素结构</p>
+<pre class="example">
+{
+  type: 1,
+  ns: 0,
+  tag: &#39;div&#39;,
+  tagType: 1,
+  props: [...], // 如下
+  isSelfClosing: false,
+  children: [],
+}
+</pre>
+<p>
++RESULTS: 属性列表， 省略 loc 位置数据</p>
+<pre class="example">
+&gt;&gt;&gt; 静态属性：class
+{
+  type: 6,
+  name: &#39;class&#39;,
+  value: {
+    type: 2,
+    content: &#39;app&#39;,
+  }
+}
+&gt;&gt;&gt; 动态属性静态属性名：staticPropName
+{
+  type: 7,
+  name: &#39;bind&#39;,
+  exp: {
+    type: 4,
+    content: &#39;bar&#39;,
+    isStatic: false,
+    isConstant: false,
+  },
+  arg: {
+    type: 4,
+    content: &#39;staticPropName&#39;,
+    isStatic: true,
+    isConstant: true,
+  },
+  modifiers: [],
+}
+&gt;&gt;&gt; 带修饰符的属性：press.enter
+{
+  type: 7,
+  name: &#39;on&#39;,
+  exp: {
+    type: 4,
+    content: &#39;pressKey&#39;,
+    isStatic: false,
+    isConstant: false,
+  },
+  arg: {
+    type: 4,
+    content: &#39;press&#39;,
+    isStatic: true,
+    isConstant: true,
+  },
+  modifiers: [ &#39;enter&#39; ],
+}
+&gt;&gt;&gt; 动态属性名：dynamicPropName
+{
+  type: 7,
+  name: &#39;bind&#39;,
+  exp: {
+    type: 4,
+    content: &#39;foo&#39;,
+    isStatic: false,
+    isConstant: false,
+  },
+  arg: {
+    type: 4,
+    content: &#39;dynamicPropName&#39;,
+    isStatic: false,
+    isConstant: false,
+  },
+  modifiers: [],
+}
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+e32401e add combine whitespace nodes
+</h2>
+<div id="outline-text-headline-13" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/e32401ec78bcad14bd68ade90f556e650635e10a">feat(add): combine whitespace node · gcclll/stb-vue-next@e32401e</a></p>
+<p>
+合并删除空行或空字符串节点。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">baseParse</span><span class="p">(</span><span class="sb">`
+</span><span class="sb">&lt;div&gt;
+</span><span class="sb">some text
+</span><span class="sb">other text
+</span><span class="sb">&lt;/div&gt;`</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">ast</span><span class="p">.</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<strong>+RESULTS</strong>: 正确结果</p>
+<pre class="example">
+{
+  type: 2,
+  content: &#39; some text other text &#39;,
+  loc: {
+    start: { column: 6, line: 2, offset: 6 },
+    end: { column: 1, line: 5, offset: 28 },
+    source: &#39;\nsome text\nother text\n&#39;
+  }
+}
+</pre>
+<p>
+<strong>+RESULTS</strong>: &#39;sometextothertext&#39; 空格都被删了？
+<a href="https://github.com/gcclll/stb-vue-next/commit/bb315097139965f5542715fdd37125827db19c02">fix: all whitespce removed · gcclll/stb-vue-next@bb31509</a></p>
+<pre class="example">
+{
+  type: 1,
+  ns: 0,
+  tag: &#39;div&#39;,
+  tagType: 1,
+  props: [],
+  isSelfClosing: false,
+  children: [ { type: 2, content: &#39;sometextothertext&#39;, loc: [Object] } ],
+  loc: {
+    start: { column: 1, line: 2, offset: 1 },
+    end: { column: 7, line: 5, offset: 34 },
+    source: &#39;&lt;div&gt;\nsome text\nother text\n&lt;/div&gt;&#39;
+  },
+  codegenNode: undefined
+}
+undefined
+</pre>
+<p>
+<strong>+RESULTS</strong>: <code>children = []</code> ? <a href="https://github.com/gcclll/stb-vue-next/commit/66936f350e2d4e771341835b3c81054a42e83fad">fix: no children · gcclll/stb-vue-next@66936f3</a></p>
+<pre class="example">
+{
+  type: 1,
+  ns: 0,
+  tag: &#39;div&#39;,
+  tagType: 1,
+  props: [],
+  isSelfClosing: false,
+  children: [],
+  loc: {
+    start: { column: 1, line: 2, offset: 1 },
+    end: { column: 7, line: 5, offset: 34 },
+    source: &#39;&lt;div&gt;\nsome text\nother text\n&lt;/div&gt;&#39;
+  },
+  codegenNode: undefined
+}
+undefined
+</pre>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+用例测试
+</h2>
+<div id="outline-text-headline-14" class="outline-text-2">
+<p>
+<code>&lt;f12&gt;</code> 打开控制台有惊喜哦╰(<strong>°▽°</strong>)╯ 👀👀👀👀👀👀👀👀。</p>
+<p>
+下面章节所有测试都是根据官方测试用例进行的：<a href="https://github.com/gcclll/stb-vue-next/blob/main/packages/compiler-core/__tests__/parse.spec.ts">parse.spec.ts</a></p>
+<script>
+try {
+let i = 0, j = 0
+const { baseParse } = VueCompilerCore
+const l1 = x => console.log(`%c >>> ${++i} ${x}`, 'background: #222; color: #bada55')
+const l2 = x => console.log(`%c > ${i}.${j++} ${x}`, 'background: #222; color: #bada55')
+const log = (args) => console.log.apply(console, args)
+const parse = (content, option = {}) => log(baseParse(content, {
+  onError: (e) => console.warn(e.message),
+  ...option
+}).children)
+
+l1('Text, 文本测试')
+l2(`无效的结束标签("some text</div>")。`)
+parse(`some text</div>`)
+
+l2(`插值解析("some {{ foo + bar }} text")`)
+parse(`some {{ foo + bar }} text`)
+
+l2(`表达式包含 < 或 > 符号的差值("some {{ a<b && c>d }} text")`)
+log(['插值内的内容都会以 {{ 开始 }} 结束直接截取作为 content，所以这里面的 < 或 > 都是合法的存在'])
+parse(`some {{ a<b && c>d }} text`)
+
+l2(`标签 + 插值混合("some <span>{{ foo < bar + foo }} text</span>")`)
+parse(`some <span>{{ foo < bar + foo }} text</span>`)
+
+l2(`单个 < 符号不会分割节点("a < b")`)
+parse(`a < b`)
+
+l2(`单个 {{ 符号不会分割节点("a {{ b")`)
+parse(`a {{ b`)
+
+j = 0
+l1('Interpolation, 插值测试')
+l2(`simple interpolation("{{message}}")`)
+parse(`{{message}}`)
+
+l2(`{{ a<b }}`)
+parse(`{{ a <  b }}`)
+
+l2(`{{ a<b }}{{ c>d }}`)
+parse(`{{ a<b }}{{ c>d }}`)
+
+l2(`插值内部允许存在一些符合法标签('<div>{{ "</div>" }}</div>')`)
+parse(`<div>{{ "</div>" }}</div>`)
+
+l2(`可以自定义插值分隔符，如："{" 和 "}"`)
+parse(`<p>{msg}</p>`, {
+    delimiters: ['{', '}']
+})
+
+j = 0
+l1(`Comment, 注释`)
+l2(`空注释("<!---->")`)
+parse(`<!---->`)
+
+l2(`简单注释("<!--abc-->")`)
+parse(`<!--abc-->`)
+
+l2(`两个注释("<!--abc--><!--def-->")`)
+parse(`<!--abc--><!--def-->`)
+
+l2(`生成模式下 <pre> 中的注释应该被删除("<pre><p/><!-- foo --><p/></pre>")`)
+parse(`<pre><p/><!-- foo --><p/></pre>`)
+
+j = 0
+l1(`Element, 普通标签`)
+l2(`simple div("<div>hello</div>")`)
+parse(`<div>hello</div>`)
+
+l2(`empty div("<div></div>")`)
+parse(`<div></div>`)
+
+l2(`自闭合标签("<div/>after")`)
+parse(`<div/>after`)
+
+l2(`空标签("<img>after")`)
+parse(`<img>after`, {
+    isVoidTag: tag => tag === 'img'
+})
+
+l2(`带指令的 <template>("<template v-if="ok"></template>")`)
+parse(`<template v-if="ok"></template>`)
+
+l2(`不带指令的 <template>("<template></template>")`)
+parse(`<template></template>`)
+
+l2(`原生标签("<div></div><comp></comp><Comp></Comp>")`)
+parse(`<div></div><comp></comp><Comp></Comp>`, {
+  isNativeTag: tag => tag === 'div'
+})
+
+l2(`v-is with "isNativeTag"("<div></div><div v-is="'foo'"></div><Comp></Comp>")`)
+parse(`<div></div><div v-is="'foo'"></div><Comp></Comp>`, {
+  isNativeTag: tag => tag === 'div'
+})
+
+l2(`v-is without "isNativeTag"("<div></div><div v-is="'foo'"></div><Comp></Comp>")`)
+parse(`<div></div><div v-is="'foo'"></div><Comp></Comp>`)
+
+l2(`自定义元素("<div></div><comp></comp>")`)
+log([`自定义元素的类型为 0,ELEMENT`])
+parse(`<div></div><comp></comp>`, {
+  isNativeTag: tag => tag === 'div',
+  isCustomElement: tag => tag === 'comp'
+})
+
+l2(`内置组件("<div></div><comp></comp>")`)
+parse(`<div></div><comp></comp>`, {
+  isBuiltInComponent: tag => (tag === 'comp' ? Symbol() : void 0)
+})
+
+l2(`插槽元素("<slot></slot><Comp></Comp>")`)
+parse(`<slot></slot><Comp></Comp>`)
+
+l2(`没有值的属性("<div id></div>")`)
+parse(`<div id></div>`)
+
+l2(`空值属性，双引号("<div id=""></div>")`)
+parse(`<div id=""></div>`)
+
+l2(`空值属性，单引号("<div id=''></div>")`)
+parse(`<div id=''></div>`)
+
+l2(`有值属性，双引号("<div id=">\'"></div>")`)
+parse(`<div id=">\'"></div>`)
+
+l2(`有值属性，单引号("<div id='>\"'></div>")`)
+parse(`<div id='>\"'></div>`)
+
+l2(`有值属性，没有引号("<div id=a/></div>")`)
+log([`没有引号的情况，属性值会解析到 ">" 符号结束`])
+parse(`<div id=a/></div>`)
+
+l2(`多个属性("<div id=a class="c" inert style=\'\'></div>")`)
+parse(`<div id=a class="c" inert style=\'\'></div>`)
+
+l2(`无值指令("<div v-if/>")`)
+parse(`<div v-if/>`)
+
+l2(`有值指令("<div v-if="a"/>")`)
+log([`有值指令，值会解析到属性表达式上 prop.exp = {...}`])
+parse(`<div v-if="a"/>`)
+
+l2(`有参数指令("<div v-on:click/>")`)
+log([`参数会被解析到 prop.arg 上，isStatic = isConstant = true`])
+parse(`<div v-on:click/>`)
+
+l2(`有动态参数指令("<div v-on:[event]/>")`)
+log([`参数会被解析到 prop.arg 上， isStatic = isConstant = false`])
+parse(`<div v-on:[event]/>`)
+
+l2(`带修饰符的指令("<div v-on.enter/>")`)
+log([`修饰符会被解析到 prop.modifiers = [ 'enter' ] 中`])
+parse(`<div v-on.enter/>`)
+
+l2(`两个修饰符的指令("<div v-on.enter.exact/>")`)
+log([`修饰符会被解析到 prop.modifiers = [ 'enter', 'exact' ] 中`])
+parse(`<div v-on.enter.exact/>`)
+
+l2(`带参数和修饰符的指令("<div v-on:click.enter.exact/>")`)
+parse(`<div v-on:click.enter.exact/>`)
+
+l2(`带动态参数和修饰符的指令("<div v-on:[a.b].camel/>")`)
+parse(`<div v-on:[a.b].camel/>`)
+
+l2(`v-bind 缩写 ":"("<div :a=b />")`)
+parse(`<div :a=b />`)
+
+l2(`v-bind 缩写，带修饰符("<div :a.sync=b />")`)
+parse(`<div :a.sync=b />`)
+
+l2(`v-on 缩写("<div @a=b />")`)
+parse(`<div @a=b />`)
+
+l2(`v-on 缩写，带修饰符("<div @a.enter=b />")`)
+parse(`<div @a.enter=b />`)
+
+l2(`v-slot 缩写("<Comp #a="{ b }" />")`)
+parse(`<Comp #a="{ b }" />`)
+
+l2(`v-slot 包含点语法的("<Comp v-slot:foo.bar="{ a }" />")`)
+parse(`<Comp v-slot:foo.bar="{ a }" />`)
+
+l2(`v-pre 指令`)
+log([
+  `<div v-pre :id="foo"><Comp/>{{ bar }}</div>\n` +
+  `<div :id="foo"><Comp/>{{ bar }}</div>`
+])
+parse(
+  `<div v-pre :id="foo"><Comp/>{{ bar }}</div>\n` +
+  `<div :id="foo"><Comp/>{{ bar }}</div>`
+)
+
+l2(`结束标签大小写不敏感("<div>hello</DIV>after")`)
+parse(`<div>hello</DIV>after`)
+
+j = 0
+l1(`其他情况`)
+l2(`自闭合标签("<div :class="{ some: condition }" />")`)
+parse(`<div :class="{ some: condition }" />`)
+
+l2(`多个自闭合标签`)
+log([
+  `<div :class="{ some: condition }" />\n` +
+  `<p v-bind:style="{ color: 'red' }"/>`
+])
+parse(
+  `<div :class="{ some: condition }" />\n` +
+  `<p v-bind:style="{ color: 'red' }"/>`
+)
+
+l2(`复合类型标签组合`)
+log([
+`<div :class="{ some: condition }">\n` +
+`  <p v-bind:style="{ color: 'red' }"/>\n` +
+`  <!-- a comment with <html> inside it -->\n` +
+`</div>`
+])
+parse(
+ `<div :class="{ some: condition }">\n` +
+ `  <p v-bind:style="{ color: 'red' }"/>\n` +
+ `  <!-- a comment with <html> inside it -->\n` +
+ `</div>`
+)
+
+l2(`无效的复合类型标签组合("<div>\n<span>\n</div>\n</span>")`)
+parse(`<div>\n<span>\n</div>\n</span>`)
+
+l2(`正确的位置信息`)
+log([
+`
+foo
+ is {{ bar }} but {{ baz }}`
+])
+
+parse(`
+foo
+ is {{ bar }} but {{ baz }}`
+)
+
+j = 0
+l1("HTML Entities 解码")
+l2(`使用默认映射关系("&gt;&lt;&amp;&apos;&quot;&foo;")`)
+parse(`&gt;&lt;&amp;&apos;&quot;&foo;`)
+
+l2(`使用自定义映射关系("&amp;&cups;")`)
+parse(`&amp;&cups;`, {
+  decodeEntities: text => text.replace('&cups;', '\u222A\uFE00')
+})
+
+j = 0
+l1("空格管理")
+l2(`在标签内的空格应该删除("<div>   <span/>    </div>")`)
+parse(`<div>   <span/>    </div>`)
+
+l2(`标签之间的空格和换行符应该删除("<div/> \n <div/> \n <div/>")`)
+parse(`<div/> \n <div/> \n <div/>`)
+
+l2(`与注释相邻的空格应该删除("<div/> \n <!--foo--> <div/>")`)
+parse(`<div/> \n <!--foo--> <div/>`)
+
+l2(`注释与元素之间的空格应该删除("<div/> \n <!--foo--> \n <div/>")`)
+parse(`<div/> \n <!--foo--> \n <div/>`)
+
+l2(`插值之间的注释不应该删除("{{ foo }} \n {{ bar }}")`)
+parse(`{{ foo }} \n {{ bar }}`)
+
+l2(`元素之间的空格不应该删除("<div/> <div/> <div/>")`)
+parse(`<div/> <div/> <div/>`)
+
+l2(`文本之间的空格应该合并成一个("   foo  \n    bar     baz     ")`)
+parse('   foo  \n    bar     baz     ')
+
+l2(`<pre> 标签中的首行空格应该删除("<pre>\n  foo  bar  </pre>")`)
+parse(`<pre>\n  foo  bar  </pre>`)
+
+l2(`<pre> 在子元素后面的换行符不该删除("<pre><span></span>\n  foo  bar  </pre>")`)
+parse(`<pre><span></span>\n  foo  bar  </pre>`)
+
+j = 0
+const err = ( content, info ) => (l2(info ? `${info} ("${content}")` : content), parse(content))
+l1(`Errors, 错误`)
+err(`<template><!--></template>`)
+err(`<template><!---></template>`)
+err(`<template><!----></template>`)
+err(`<template><![CDATA[cdata]]></template>`)
+err(`<template><svg><![CDATA[cdata]]></svg></template>`, "不能在 HTML 中使用 CDATA")
+err(`<template><div id="" id=""></div></template>`, "重复属性")
+err(`<template><div></div id=""></template>`, "结束标签上不能有属性")
+err(`<template><div></div/></template>`, "结束标签最后多了个斜杠'/'")
+err(`<template><`, "非法结束 1")
+err(`<template></`, '非法结束 2')
+err(`<template><svg><![CDATA[cdata`, "CDATA 非法结束 1")
+err(`<template><svg><![CDATA[`, "CDATA 非法结束 2")
+err(`<template><!--comment`, "非法注释 1")
+err(`<template><!--`, "非法注释 2")
+err(`<template><!`, "非法注释 3")
+err(`<template><!-`, "非法注释 4")
+err(`<template><!abc`, "非法注释 5")
+err(`<script><!--console.log('hello')`, "<script> 标签中不能使用 html 注释")
+err(`<script>console.log('hello')`, "<script> 缺少结束标签")
+err(`<template><div`, "非法标签 1")
+err(`<template><div `, "非法标签 2")
+err(`<template><div id`, "非法标签 3")
+err(`<template><div id `, "非法标签 4")
+err(`<template><div id =`, "非法标签 5")
+err(`<template><div id='abc`, "非法标签 6")
+err(`<template><div id="abc`, "非法标签 7")
+err(`<template><div id='abc'`, "非法标签 8")
+err(`<template><div id="abc"`, "非法标签 9")
+err(`<template><div id=abc`, "非法标签 10")
+err(`<template><div id='abc'/`, "非法标签 11")
+err(`<template><div id="abc"/`, "非法标签 12")
+err(`<template><div id=abc /`, "非法标签 13")
+err(`<div></div`, "非法标签 14")
+err(`<template><!--comment--!></template>`, "错误注释结束")
+err(`<template><!></template>`, "错误注释开始 1")
+err(`<template><!-></template>`, "错误注释开始 2")
+err(`<template><!ELEMENT br EMPTY></template>`, "错误注释开始 3")
+err(`<!DOCTYPE html>`, "忽略 doctype")
+err(`<template>a < b</template>`, "标签名第一个字符非法 1")
+err(`<template><�></template>`, "标签名第一个字符非法 2")
+err(`<template>a </ b</template>`, "标签名第一个字符非法 3")
+err(`<template></�></template>`, "标签名第一个字符非法 4")
+err(`<template>{{a < b}}</template>`, "插值里面 < 可以单独使用")
+err(`<template><div id=></div></template>`, "无效的属性名 1")
+err(`<template><div id= ></div></template>`, "无效的属性名 2")
+err(`<template><div id= /></div></template>`, "无效的属性名 3")
+err(`<template></></template>`, "缺少结束标签")
+err(`<template><div id="foo"class="bar"></div></template>`, "属性之间必须要有空格")
+err(`<template><div id="foo"\r\nclass="bar"></div></template>`, "但是可以有 \r\n 换行符")
+err(`<template><!--a<!--b--></template>`, "嵌套注释 1")
+err(`<template><!--a<!--b<!--c--></template>`, "嵌套注释 2")
+err(`<template><!--a<!--b<!----></template>`, "嵌套注释 3")
+err(`<template><!--a<!--></template>`, "非法注释")
+err(`<template><!--a<!--`, "非法注释结束")
+err(`<template><div a\"bc=''></div></template>`, "属性名中包含非法字符(\") 1")
+err(`<template><div a'bc=''></div></template>`, "属性名中包含非法字符(') 2")
+err(`<template><div a<bc=''></div></template>`, "属性名中包含非法字符(<)")
+err(`<template><div foo=bar"></div></template>`, "没引号属性中的非法字符(\")")
+err(`<template><div foo=bar'></div></template>`, "没引号属性中的非法字符(\')")
+err(`<template><div foo=bar<div></div></template>`, "没引号属性中的非法字符(<)")
+err(`<template><div foo=bar=baz></div></template>`, "没引号属性中的非法字符(=)")
+err(`<template><div foo=bar\`></div></template>`, "没引号属性中的非法字符(`)")
+err(`<template><div =foo=bar></div></template>`, "属性名中的非法字符(=)")
+err(`<template><?xml?></template>`)
+err(`<template><div a/b></div></template>`)
+err(`<template></div></template>`, "无效结束标签")
+err(`<template></div></div></template>`, "无效结束标签")
+err(`<template>{{'</div>'}}</template>`, "插值中有效")
+err(`<textarea></div></textarea>`, "多行文本中有效")
+err(`<svg><![CDATA[</div>]]></svg>`, "svg CDATA 中有效")
+err(`<svg><!--</div>--></svg>`, "注释中有效")
+err(`<template><div></template>`, "没有结束标签")
+err(`<template><div>`, "没有结束标签")
+err(`{{ foo`, "非法插值")
+err(`{{`, "非法插值")
+err(`{{}}`, "空插值")
+err(`<div v-foo:[sef fsef] />`, "无效指令参数")
+
+} catch (e) {
+    console.log(e.message)
+    console.log('您的浏览器可能不支持 es6+ 新语法，请使用 chrome 浏览。')
+}
+
+
+</script>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span>
+  <span class="nx">baseParse</span>
+<span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PWD</span> <span class="o">+</span> <span class="s1">&#39;/../../static/js/vue/compiler-core.global.js&#39;</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="mi">_</span> <span class="o">=</span> <span class="nx">x</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`&gt;&gt;&gt; </span><span class="si">${</span><span class="nx">x</span><span class="si">}</span><span class="sb">`</span><span class="p">)</span>
+<span class="kr">const</span> <span class="mi">__</span> <span class="o">=</span> <span class="nx">x</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+<span class="kr">const</span> <span class="nx">parse</span> <span class="o">=</span> <span class="nx">content</span> <span class="p">=&gt;</span> <span class="nx">baseParse</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nx">onError</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="mi">__</span><span class="p">(</span><span class="nx">parse</span><span class="p">(</span><span class="sb">`some text`</span><span class="p">).</span><span class="nx">children</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+更多测试内容和输出(由于篇幅问题)请查看 <code>&lt;F12&gt;</code> 打开控制台查看。
++RESULTS:</p>
+<pre class="example">
+{
+  type: 2,
+  content: &#39;some text&#39;,
+  loc: {
+    start: { column: 1, line: 1, offset: 0 },
+    end: { column: 10, line: 1, offset: 9 },
+    source: &#39;some text&#39;
+  }
+}
+undefined
+</pre>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-11-24
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue/">vue,</a>
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/compiler-core/">compiler-core,</a>
+          <a href="/tags/parser/">parser,</a>
+          <a href="/tags/compiler/">compiler</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-mind-map-compiler-core-transform-generate/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 源码头脑风暴之 3 ☞compiler-core - transform &#43; codegen</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-mind-map-reactivity/">
+            <span class="next-text nav-default">Vue3 源码头脑风暴之 1 ☞reactivity</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

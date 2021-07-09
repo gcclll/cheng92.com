@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 功能拆解④ 组件 props &amp; attrs - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-teardown-4-props-attrs/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 功能拆解④ 组件 props &amp; attrs" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-teardown-4-props-attrs/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-05-10T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-05-10T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 功能拆解④ 组件 props &amp; attrs">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题"><meta itemprop="datePublished" content="2021-05-10T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-05-10T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="1672">
+<meta itemprop="keywords" content="vue3,,vue-next,,component,,props,,attrs," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 功能拆解④ 组件 props &amp; attrs"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 功能拆解④ 组件 props &amp; attrs</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-05-10 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 1672 字 </span>
+          <span class="more-meta"> 预计阅读 4 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<blockquote>
+<p>本文从源码角度讲解了，组件的属性归类问题，当给一个组件传递个属性时，在该组件内部
+它属于props 还是 attrs 。</p>
+</blockquote>
+<p>
+这两个属性在组件上是如何区分的？</p>
+<p>
+当父组件给子组件传递属性的时候，最终都划分到那个对象上了？</p>
+<p>
+先上实例，点击按钮可查看对应结果分析(<a href="/js/vue/tests/7jAWzTeF1O.js">/js/vue/tests/7jAWzTeF1O.js</a>):</p>
+
+<div id="x7jAWzTeF1O"></div>
+<hr/>
+<script src="/js/vue/tests/7jAWzTeF1O.js"></script>
+<p>
+首先，在 compiler 阶段所有属性都会被编译到 vnode.props 上，在 runtime-core patch
+阶段才会区分 props 和 attrs，那这些属性又是如何做的区分，当开发的时候给子组件传
+递的属性最终都放到哪个里面了？</p>
+<p>
+这里面就得好好掰扯掰扯了！！！</p>
+<p>
+根据之前的源码分析，组件 patch 流程: processComponent -&gt; mountComponent 或
+updateComponent 这里我们以组件首次渲染进入 mountComponent 为例。</p>
+<p>
+mountComopnent 简化之后其实就两个部分：</p>
+<ol>
+<li>
+<p>setupComponent() 初始化 props, slots 执行 setup 等待</p>
+</li>
+<li>
+<p>setupRenderEffect() 给当前组件实例注册 instance.update 组件更新时调用的
+effect 函数。</p>
+</li>
+</ol>
+<p>
+所以这里先忽略第 <strong>2</strong> 点，只讲讲 mount 阶段 <code>setupComopnent()</code> 中属性初始化处理
+(<code>setupComponent: initProps()</code>)。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">setupComponent</span><span class="p">(</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span><span class="p">,</span>
+  <span class="nx">isSSR</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="nx">isInSSRComponentSetup</span> <span class="o">=</span> <span class="nx">isSSR</span>
+
+  <span class="kr">const</span> <span class="p">{</span> <span class="nx">props</span><span class="p">,</span> <span class="nx">children</span><span class="p">,</span> <span class="nx">shapeFlag</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">vnode</span>
+  <span class="c1">// 这里区分有无状态组件，无状态组件就是函数组件，对象组件是有状态组件
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">isStateful</span> <span class="o">=</span> <span class="nx">shapeFlag</span> <span class="o">&amp;</span> <span class="nx">ShapeFlags</span><span class="p">.</span><span class="nx">STATEFUL_COMPONENT</span>
+  <span class="c1">// 这里是重点， isSSR 是服务端渲染的问题这里暂不讨论
+</span><span class="c1"></span>  <span class="nx">initProps</span><span class="p">(</span><span class="nx">instance</span><span class="p">,</span> <span class="nx">props</span><span class="p">,</span> <span class="nx">isStateful</span><span class="p">,</span> <span class="nx">isSSR</span><span class="p">)</span>
+  <span class="nx">initSlots</span><span class="p">(</span><span class="nx">instance</span><span class="p">,</span> <span class="nx">children</span><span class="p">)</span>
+
+  <span class="kr">const</span> <span class="nx">setupResult</span> <span class="o">=</span> <span class="nx">isStateful</span>
+    <span class="o">?</span> <span class="nx">setupStatefulComponent</span><span class="p">(</span><span class="nx">instance</span><span class="p">,</span> <span class="nx">isSSR</span><span class="p">)</span>
+    <span class="o">:</span> <span class="kc">undefined</span>
+  <span class="nx">isInSSRComponentSetup</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="k">return</span> <span class="nx">setupResult</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+props 初始化操作：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript">
+<span class="kr">export</span> <span class="kd">function</span> <span class="nx">initProps</span><span class="p">(</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span><span class="p">,</span>
+  <span class="nx">rawProps</span>: <span class="kt">Data</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">isStateful</span>: <span class="kt">number</span><span class="p">,</span> <span class="c1">// result of bitwise flag comparison
+</span><span class="c1"></span>  <span class="nx">isSSR</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">props</span>: <span class="kt">Data</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="kr">const</span> <span class="nx">attrs</span>: <span class="kt">Data</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="nx">def</span><span class="p">(</span><span class="nx">attrs</span><span class="p">,</span> <span class="nx">InternalObjectKey</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+  <span class="nx">setFullProps</span><span class="p">(</span><span class="nx">instance</span><span class="p">,</span> <span class="nx">rawProps</span><span class="p">,</span> <span class="nx">props</span><span class="p">,</span> <span class="nx">attrs</span><span class="p">)</span>
+  <span class="c1">// validation
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">validateProps</span><span class="p">(</span><span class="nx">props</span><span class="p">,</span> <span class="nx">instance</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isStateful</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// stateful
+</span><span class="c1"></span>    <span class="nx">instance</span><span class="p">.</span><span class="nx">props</span> <span class="o">=</span> <span class="nx">isSSR</span> <span class="o">?</span> <span class="nx">props</span> : <span class="kt">shallowReactive</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">instance</span><span class="p">.</span><span class="kr">type</span><span class="p">.</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// functional w/ optional props, props === attrs
+</span><span class="c1"></span>      <span class="nx">instance</span><span class="p">.</span><span class="nx">props</span> <span class="o">=</span> <span class="nx">attrs</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="c1">// functional w/ declared props
+</span><span class="c1"></span>      <span class="nx">instance</span><span class="p">.</span><span class="nx">props</span> <span class="o">=</span> <span class="nx">props</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="nx">instance</span><span class="p">.</span><span class="nx">attrs</span> <span class="o">=</span> <span class="nx">attrs</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<code>def(attrs, InternalObjectKey, 1)</code></p>
+<p>
+   增加: <code>attrs.__vInterval = true</code> 属性</p>
+<p>
+函数最后的 isStateful 判断是检测函数组件或对象组件的，如果是函数组件，一般没有
+props 属性，除非手动给函数增加一个 props ，不过一般不这么用，如果有 props 建议还
+是用对象组件，所以这里等于说函数的 props 即 attrs， attrs 即 props。</p>
+<p>
+<code>setFullProps(instance, rawProps, props, attrs)</code> 这个是重点部分，因为在这里开始
+区分 props 和 attrs。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">setFullProps</span><span class="p">(</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span><span class="p">,</span>
+  <span class="nx">rawProps</span>: <span class="kt">Data</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">props</span>: <span class="kt">Data</span><span class="p">,</span>
+  <span class="nx">attrs</span>: <span class="kt">Data</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="p">[</span><span class="nx">options</span><span class="p">,</span> <span class="nx">needCastKeys</span><span class="p">]</span> <span class="o">=</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">propsOptions</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">rawProps</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">rawProps</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="nx">rawProps</span><span class="p">[</span><span class="nx">key</span><span class="p">];</span>
+      <span class="c1">// key, ref are reserved and never passed down
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="nx">isReservedProp</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">continue</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="c1">// prop option names are camelized during normalization, so to support
+</span><span class="c1"></span>      <span class="c1">// kebab -&gt; camel conversion here we need to camelize the key.
+</span><span class="c1"></span>      <span class="kd">let</span> <span class="nx">camelKey</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">options</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">options</span><span class="p">,</span> <span class="p">(</span><span class="nx">camelKey</span> <span class="o">=</span> <span class="nx">camelize</span><span class="p">(</span><span class="nx">key</span><span class="p">))))</span> <span class="p">{</span>
+        <span class="nx">props</span><span class="p">[</span><span class="nx">camelKey</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">isEmitListener</span><span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">emitsOptions</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// Any non-declared (either as a prop or an emitted event) props are put
+</span><span class="c1"></span>        <span class="c1">// into a separate `attrs` object for spreading. Make sure to preserve
+</span><span class="c1"></span>        <span class="c1">// original key casing
+</span><span class="c1"></span>        <span class="nx">attrs</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">needCastKeys</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">rawCurrentProps</span> <span class="o">=</span> <span class="nx">toRaw</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">needCastKeys</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">key</span> <span class="o">=</span> <span class="nx">needCastKeys</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+      <span class="nx">props</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">resolvePropValue</span><span class="p">(</span>
+        <span class="nx">options</span><span class="o">!</span><span class="p">,</span>
+        <span class="nx">rawCurrentProps</span><span class="p">,</span>
+        <span class="nx">key</span><span class="p">,</span>
+        <span class="nx">rawCurrentProps</span><span class="p">[</span><span class="nx">key</span><span class="p">],</span>
+        <span class="nx">instance</span>
+      <span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+两段处理代码</p>
+<ol>
+<li>
+<p>rawProps 处理，来自 compiler 阶段编译后的 vnode.props</p>
+<ul>
+<li>
+<p>key, ref 保留属性，即不会往下传递的属性，等于是作用于该元素自身的</p>
+</li>
+<li>
+<p>其次，options -&gt; instanceOptions 中存在的 key 的属性属于 <strong>props</strong></p>
+</li>
+<li>
+<p>最后，非 emits 选项中的属性属于 <strong>attrs</strong></p>
+</li>
+</ul>
+</li>
+<li>
+<p>needCastKeys 一些需要初始化值的属性的 key，比如： Boolean 类型值需要初始化成
+<code>false</code> 。</p>
+</li>
+</ol>
+<p>
+这里涉及 options 里的属性 <code>instance.propsOptions</code> 这个在初始化组件实例的时候顺带
+初始化了</p>
+<p>
+<code>propsOptions: normalizePropsOptions(type, appContext)</code></p>
+<p>
+这个值是个数组： <code>[normalized, needCastKeys]</code></p>
+<p>
+<strong>normalized</strong> 是检测类型定义之后的 props，比如：</p>
+<p>
+<code>{foo: [Boolean, String]}</code> =&gt; <code>normalized.foo = {type: [Boolean, String]}</code></p>
+<p>
+表示 foo 可以是布尔类型或者字符串类型。</p>
+<p>
+<code>{foo: Function}</code> =&gt; <code>normalized.foo = { type: Function}</code></p>
+<p>
+<strong>needCastKeys</strong> 表示是需要对属性值进行处理或者叫初始化的keys，比如： <code>{ foo:
+Boolean, bar: { default: 1 } }</code> 那么 foo 的值要在 <code>setFullProps()</code> 里面转成
+<code>false</code> 值，以及 <code>bar=1</code> ，所以最后这个 props 实际等于 <code>{foo: false,
+bar: 1}</code> 转换规则在 <code>setFullProps() -&gt; resolvePropValue()</code> 中完成。</p>
+<p>
+规则如下：</p>
+<ol>
+<li>
+<p><code>{foo: { default: function() {/*...*/} }}</code></p>
+<p>
+类型不是 Function 但是 default 值是个函数，则需要执行这个函数得到该属性最终的
+默认值 <code>{foo: default(props) }</code> 传给这个函数是整个 props 对象。</p>
+</li>
+<li>
+<p><code>{foo: { default: function() {/*...*/}, type: Function }}</code>
+类型是函数，表示这个属性本身就是函数，不需要做什么处理，直接将这个函数当做默
+认值处理 <code>{foo: default}</code></p>
+</li>
+<li>
+<p><code>{foo: {default: 100}}</code> 等价于 <code>{foo: 100}</code> default 是普通类型的具体值的处理</p>
+</li>
+<li>
+<p><code>BooleanFlags.shouldCast</code> 表示类型定义中有 <code>Boolean</code> 类型</p>
+<p>
+<code>BooleanFlags.shouldCastTrue</code> 时可能情况 <code>{foo: [Boolean, String]}</code>, <code>{foo:
+[Boolean]}</code> 要么只有 <code>Boolean</code> 要么 <code>Boolean</code> 在 <code>String</code> 前面，表示优先级更
+高。</p>
+<p>
+几种情况：</p>
+<ul>
+<li>
+<p><code>&lt;Child/&gt;</code>, <code>{foo: Boolean}</code>, 结果: <code>{foo: false}</code></p>
+</li>
+<li>
+<p><code>&lt;Child/ foo=true&gt;</code>, <code>{foo: Boolean}</code>, 结果： <code>{foo: true}</code></p>
+</li>
+<li>
+<p><code>&lt;Child foo=&#34;&#34;/&gt;</code>, <code>{foo: [Boolean, String]}</code>, 结果: <code>{foo: true}</code></p>
+<p>
+这种情况比较特殊，vue 的处理是当两种类型都存在，且 Boolean 在 String 前面的
+时候，会将值为 <code>&#34;&#34;</code> 的空串，转成 <code>true</code> ，作为 foo 的默认值。</p>
+</li>
+</ul>
+</li>
+</ol>
+<p>
+最后的结果会在 <code>comp.__props = [normalized, needCastKeys]</code> 保存一份。</p>
+<p>
+<code>normalizePropsOptions()</code> 函数就不展开分析了，这里我们只需要知道 needCastKeys 是
+做什么的。</p>
+<blockquote>
+<p>所以：</p>
+<p>
+<strong>props</strong>: option api props 里面的存在的 key 归结为 props</p>
+<p>
+<strong>attrs</strong>: 其他情况，除了 emits 中存在的 key 之外都归结为 attrs</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>实例</th>
+<th>defined?</th>
+<th>props, 默认值</th>
+<th>attrs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;Child name=&#34;child&#34;/&gt;</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>&lt;Child name=&#34;child&#34;/&gt;</code></td>
+<td>yes</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>&lt;Child name=&#39;&#39; /&gt;</code></td>
+<td>yes, <code>Boolean</code></td>
+<td>yes, <code>false</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>&lt;Child name=&#39;&#39; /&gt;</code></td>
+<td>yes, <code>[Boolean,String]</code></td>
+<td>yes, <code>true</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>&lt;Child name=&#34;child&#34; /&gt;</code></td>
+<td>yes, <code>[String]</code>, <code>default: fn</code></td>
+<td>yes, <code>fn()</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>&lt;Child onClick=&#34;fn&#34;/&gt;</code></td>
+<td>no</td>
+<td>yes</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-05-10
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vue-next/">vue-next,</a>
+          <a href="/tags/component/">component,</a>
+          <a href="/tags/props/">props,</a>
+          <a href="/tags/attrs/">attrs</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-teardown-5-directives/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 功能拆解⑤ directives 指令系统</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-teardown-3-update-flow/">
+            <span class="next-text nav-default">Vue3 功能拆解③ 组件更新机制</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

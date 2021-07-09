@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 开发生态链(vuex, vue-router, ...) - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 该文记录着实际开发过程中使用到的 vue3 及其生态" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-project-ecosystem/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 开发生态链(vuex, vue-router, ...)" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 该文记录着实际开发过程中使用到的 vue3 及其生态" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-project-ecosystem/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-04-21T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-04-21T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 开发生态链(vuex, vue-router, ...)">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 该文记录着实际开发过程中使用到的 vue3 及其生态"><meta itemprop="datePublished" content="2021-04-21T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-04-21T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="1553">
+<meta itemprop="keywords" content="vue,,vue3,,vue-router,,vuex,,i18n," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 开发生态链(vuex, vue-router, ...)"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 该文记录着实际开发过程中使用到的 vue3 及其生态"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 开发生态链(vuex, vue-router, ...)</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-04-21 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 1553 字 </span>
+          <span class="more-meta"> 预计阅读 4 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#link">相关项目</a>
+</li>
+<li><a href="#vue-next-tsx">vue3 + tsx</a>
+</li>
+<li><a href="#vue-next">vue-next</a>
+<ul>
+<li><a href="#tpl-ref">template ref 使用</a>
+</li>
+</ul>
+</li>
+<li><a href="#vue-router-next">vue-router-next</a>
+</li>
+<li><a href="#vuex">vuex</a>
+<ul>
+<li><a href="#vuex-usage">使用</a>
+</li>
+<li><a href="#vuex-persist">数据持久化</a>
+</li>
+<li><a href="#headline-9">疑难杂症</a>
+<ul>
+<li><a href="#headline-10">state: get mountedRoutes 没有触发？</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#i18n">vue-i18n-next</a>
+</li>
+<li><a href="#element-plus">element-plus</a>
+<ul>
+<li><a href="#el-upload">el-upload</a>
+</li>
+<li><a href="#headline-14">el-table index 全部为 0 问题</a>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<blockquote>
+<p>该文记录着实际开发过程中使用到的 vue3 及其生态中相关的框架或库遇到的各种问题，和
+其他收集。</p>
+</blockquote>
+<div id="outline-container-link" class="outline-2">
+<h2 id="link">
+相关项目
+</h2>
+<div id="outline-text-link" class="outline-text-2">
+<p>
+<a href="https://github.com/xiaoxian521/vue-pure-admin">xiaoxian521/vue-pure-admin: ✨ 🚀Vue3.0+TypeScript+Vite2.0+Element-Plus编写的一
+套后台管理系统</a></p>
+</div>
+</div>
+<div id="outline-container-vue-next-tsx" class="outline-2">
+<h2 id="vue-next-tsx">
+vue3 + tsx
+</h2>
+<div id="outline-text-vue-next-tsx" class="outline-text-2">
+<p>
+<a href="https://zhoubangfu.com/a/a208cbd1">vue3+tsx环境创建及使用跳坑项-之间的个人博客</a></p>
+<p>
+插件： <code>@vitejs/plugin-vue-jsx</code></p>
+<p>
+<a href="https://github.com/vuejs/jsx-next">vuejs/jsx-next: JSX for Vue 3</a></p>
+</div>
+</div>
+<div id="outline-container-vue-next" class="outline-2">
+<h2 id="vue-next">
+vue-next
+</h2>
+<div id="outline-text-vue-next" class="outline-text-2">
+<div id="outline-container-tpl-ref" class="outline-3">
+<h3 id="tpl-ref">
+template ref 使用
+</h3>
+<div id="outline-text-tpl-ref" class="outline-text-3">
+<p>
+<a href="/vue/vue-mind-map-runtime-core-3-component/#ref">runtime-core ref 属性解析&amp;分析</a></p>
+<p>
+模板： attrs 形式使用 ref 将会绑定 elForm 。</p>
+<div class="src src-html">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-html" data-lang="html"><span class="p">&lt;</span><span class="nt">templet</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">el-form</span> <span class="na">ref</span><span class="o">=</span><span class="s">&#34;elForm&#34;</span><span class="p">/&gt;</span>
+<span class="p">&lt;/</span><span class="nt">templet</span><span class="p">&gt;</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+setup:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="nx">defineComponent</span><span class="p">({</span>
+  <span class="nx">setup</span><span class="p">(</span><span class="nx">props</span><span class="p">,</span> <span class="nx">ctx</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 声明 element ref 变量
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">elForm</span> <span class="o">=</span> <span class="nx">ref</span><span class="p">(</span><span class="kc">null</span><span class="p">)</span>
+
+    <span class="c1">// 使用
+</span><span class="c1"></span>    <span class="nx">onMounted</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="nx">elForm</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">validate</span><span class="p">(</span><span class="cm">/* bala bala... */</span><span class="p">)</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="p">{</span> <span class="nx">elForm</span> <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">})</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+注意点：</p>
+<ol>
+<li>
+<p><code>ref=&#34;elForm&#34;</code> 不能使用 <code>v-bind:ref</code> 只能是 <code>attrs</code></p>
+</li>
+<li>
+<p>使用时 <code>elForm.value</code> 因为它是个 <code>Ref</code> 类型</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-vue-router-next" class="outline-2">
+<h2 id="vue-router-next">
+vue-router-next
+</h2>
+<div id="outline-text-vue-router-next" class="outline-text-2">
+<p>
+<a href="https://github.com/vuejs/vue-router-next">vuejs/vue-router-next: The Vue 3 official router</a></p>
+</div>
+</div>
+<div id="outline-container-vuex" class="outline-2">
+<h2 id="vuex">
+vuex
+</h2>
+<div id="outline-text-vuex" class="outline-text-2">
+<p>
+<a href="https://github.com/vuejs/vuex/tree/4.0">vuejs/vuex at 4.0</a></p>
+<p>
+<a href="https://next.vuex.vuejs.org/installation.html#npm">Installation | Vuex</a></p>
+<div id="outline-container-vuex-usage" class="outline-3">
+<h3 id="vuex-usage">
+使用
+</h3>
+<div id="outline-text-vuex-usage" class="outline-text-3">
+<p>
+creation:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">import</span> <span class="p">{</span> <span class="nx">createStore</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;vuex&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="nx">permission</span> <span class="kr">from</span> <span class="s2">&#34;./modules/permission&#34;</span><span class="p">;</span>
+
+<span class="kr">const</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">createStore</span><span class="p">({</span>
+  <span class="kr">module</span><span class="nx">s</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">permission</span><span class="p">,</span>
+  <span class="p">},</span>
+<span class="p">});</span>
+
+<span class="kr">export</span> <span class="k">default</span> <span class="nx">store</span><span class="p">;</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+模块： 权限菜单 (permission)</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// &#39;./modules/permission&#39;
+</span><span class="c1">// State
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">state</span>: <span class="kt">PermissionState</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">asyncMenus</span><span class="o">:</span> <span class="p">[]</span> <span class="kr">as</span> <span class="nx">MenuItem</span><span class="p">[],</span>
+  <span class="nx">minorRoutes</span><span class="o">:</span> <span class="p">[]</span> <span class="kr">as</span> <span class="nx">RouteConfigRecord</span><span class="p">[],</span>
+  <span class="kr">get</span> <span class="nx">mountedRoutes</span><span class="p">()</span><span class="o">:</span> <span class="nx">RouteConfigRecord</span><span class="p">[]</span> <span class="p">{</span>
+    <span class="c1">// TODO 根据当前用户从服务器获取权限菜单，跟新到 asyncMenus 中
+</span><span class="c1"></span>    <span class="c1">// 根据过滤后的结果进行渲染
+</span><span class="c1"></span>    <span class="k">return</span> <span class="nx">toBeMounted</span><span class="p">;</span>
+  <span class="p">},</span>
+<span class="p">};</span>
+
+<span class="c1">// mutation 不可直接调用的，必须通过 commit(SET_MENUS) 来调用
+</span><span class="c1">// 更新状态
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">mutations</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="p">[</span><span class="nx">SET_MENUS</span><span class="p">](</span><span class="nx">state</span>: <span class="kt">PermissionState</span><span class="p">,</span> <span class="nx">menus</span>: <span class="kt">MenuItem</span><span class="p">[])</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+    <span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span> <span class="o">=</span> <span class="nx">menus</span><span class="p">;</span>
+  <span class="p">},</span>
+
+  <span class="p">[</span><span class="nx">SET_MINOR_ROUTES</span><span class="p">](</span><span class="nx">state</span>: <span class="kt">PermissionState</span><span class="p">,</span> <span class="nx">routes</span>: <span class="kt">RouteConfigRecord</span><span class="p">[])</span> <span class="p">{</span>
+    <span class="nx">state</span><span class="p">.</span><span class="nx">minorRoutes</span> <span class="o">=</span> <span class="nx">routes</span><span class="p">;</span>
+  <span class="p">},</span>
+<span class="p">};</span>
+
+<span class="c1">// action 组件中可通过 store.dispatch(&#39;permission/getMenus&#39;) 来触发
+</span><span class="c1">// 对应的 action, 注意这里如果是模块化需要加上 &#39;permission/&#39;
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">actions</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="kr">async</span> <span class="nx">getMenus</span><span class="p">({</span> <span class="nx">commit</span> <span class="p">}</span><span class="o">:</span> <span class="nx">ActionContext</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kr">const</span> <span class="nx">res</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">getMenuList</span><span class="p">();</span>
+    <span class="nx">commit</span><span class="p">(</span><span class="nx">SET_MENUS</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">;</span>
+  <span class="p">},</span>
+<span class="p">};</span>
+
+<span class="c1">// 最后将结果导出，形成一个 store 模块 permission
+</span><span class="c1"></span><span class="kr">export</span> <span class="k">default</span> <span class="p">{</span>
+  <span class="nx">state</span><span class="p">,</span>
+  <span class="nx">mutations</span><span class="p">,</span>
+  <span class="nx">actions</span><span class="p">,</span>
+  <span class="nx">namespaced</span>: <span class="kt">true</span><span class="p">,</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-vuex-persist" class="outline-3">
+<h3 id="vuex-persist">
+数据持久化
+</h3>
+<div id="outline-text-vuex-persist" class="outline-text-3">
+<p>
+<a href="/vue/vue-vuex-persist/">vuex-persist 数据持久化，源码简析</a></p>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-3">
+<h3 id="headline-9">
+疑难杂症
+</h3>
+<div id="outline-text-headline-9" class="outline-text-3">
+<div id="outline-container-headline-10" class="outline-4">
+<h4 id="headline-10">
+state: get mountedRoutes 没有触发？
+</h4>
+<div id="outline-text-headline-10" class="outline-text-4">
+<p>
+问题缘由:</p>
+<ol>
+<li>
+<p>getMenus 从服务端请求权控菜单</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">actions</span>: <span class="kt">ActionTree</span><span class="p">&lt;</span><span class="nt">PermissionState</span><span class="err">,</span> <span class="na">RootState</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="kr">async</span> <span class="nx">getMenus</span><span class="p">({</span> <span class="nx">commit</span><span class="p">,</span> <span class="nx">state</span> <span class="p">}</span><span class="o">:</span> <span class="nx">ActionContext</span><span class="p">&lt;</span><span class="nt">PermissionState</span><span class="err">,</span> <span class="na">RootState</span><span class="p">&gt;)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kr">const</span> <span class="nx">res</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">getMenuList</span><span class="p">();</span>
+    <span class="nx">commit</span><span class="p">(</span><span class="nx">SET_MENUS</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">mountedRoutes</span><span class="p">,</span> <span class="s2">&#34;xxx&#34;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">;</span>
+  <span class="p">},</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>state: get mountedRoutes()</p>
+<p>
+然后，希望在之后取 mountedRoutes 的时候能从 asyncMenus 中过滤出特定权限的路由，
+但是貌似这个 getter 怎么都没执行，因为里面的 console.log 并没有打印出来。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="kr">get</span> <span class="nx">mountedRoutes</span><span class="p">()</span><span class="o">:</span> <span class="nx">RouteConfigRecord</span><span class="p">[]</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">,</span> <span class="nx">asyncRoutes</span><span class="p">,</span> <span class="s2">&#34;0000&#34;</span><span class="p">);</span>
+    <span class="kr">const</span> <span class="nx">toBeMounted</span> <span class="o">=</span> <span class="nx">filterRoutesByMenu</span><span class="p">(</span><span class="nx">asyncRoutes</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">);</span>
+
+    <span class="nx">toBeMounted</span><span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">r</span>: <span class="kt">RouteConfigRecord</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">children</span> <span class="o">&amp;&amp;</span> <span class="nx">r</span><span class="p">.</span><span class="nx">children</span><span class="p">.</span><span class="nx">length</span> <span class="o">&amp;&amp;</span> <span class="nx">r</span><span class="p">.</span><span class="nx">meta</span><span class="o">!</span><span class="p">.</span><span class="nx">showInMenu</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="nx">menuRoutes</span> <span class="o">=</span> <span class="nx">r</span><span class="p">.</span><span class="nx">children</span><span class="p">.</span><span class="nx">filter</span><span class="p">((</span><span class="nx">child</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">child</span><span class="p">.</span><span class="nx">meta</span><span class="o">!</span><span class="p">.</span><span class="nx">showInMenu</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">menuRoutes</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">r</span><span class="p">.</span><span class="nx">redirect</span> <span class="o">=</span> <span class="nx">menuRoutes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">path</span><span class="p">;</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">});</span>
+    <span class="k">return</span> <span class="nx">toBeMounted</span><span class="p">;</span>
+  <span class="p">},</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+<blockquote>
+<p>❗ 在 vue3 中响应式通过 Proxy + Reflect 来实现的，去 get mountedRoutes 最后执行的是
+<code>Reflect.get(state, &#39;mountedRoutes&#39;, ...)</code> 这底层估计不会去访问 getter 访问器，
+才导致不生效。</p>
+</blockquote>
+<p>
+解决方案(折中方案)：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">state</span>: <span class="kt">PermissionState</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">asyncMenus</span><span class="o">:</span> <span class="p">[]</span> <span class="kr">as</span> <span class="nx">MenuItem</span><span class="p">[],</span>
+  <span class="nx">minorRoutes</span><span class="o">:</span> <span class="p">[]</span> <span class="kr">as</span> <span class="nx">RouteConfigRecord</span><span class="p">[],</span>
+  <span class="c1">// ADD1 不使用 getter
+</span><span class="c1"></span>  <span class="nx">mountedRoutes</span><span class="o">:</span> <span class="p">[]</span> <span class="kr">as</span> <span class="nx">RouteConfigRecord</span><span class="p">[]</span>
+<span class="p">}</span>
+
+<span class="kr">const</span> <span class="nx">mutations</span>: <span class="kt">MutationTree</span><span class="p">&lt;</span><span class="nt">PermissionState</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="c1">// ADD2 增加一个 mutation 去更新路由列表
+</span><span class="c1"></span>  <span class="p">[</span><span class="nx">SET_MOUNTED_ROUTES</span><span class="p">](</span><span class="nx">state</span>: <span class="kt">PermissionState</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">menus</span>: <span class="kt">MenuItem</span><span class="p">[]</span> <span class="o">=</span> <span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span>
+    <span class="kr">const</span> <span class="nx">toBeMounted</span> <span class="o">=</span> <span class="nx">filterRoutesByMenu</span><span class="p">(</span><span class="nx">asyncRoutes</span><span class="p">,</span> <span class="nx">menus</span><span class="p">)</span>
+    <span class="nx">toBeMounted</span><span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">r</span>: <span class="kt">RouteConfigRecord</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">children</span><span class="o">?</span><span class="p">.</span><span class="nx">length</span> <span class="o">&amp;&amp;</span> <span class="nx">r</span><span class="p">.</span><span class="nx">meta</span><span class="o">?</span><span class="p">.</span><span class="nx">showInMenu</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="nx">menuRoutes</span> <span class="o">=</span> <span class="nx">r</span><span class="p">.</span><span class="nx">children</span><span class="p">.</span><span class="nx">filter</span><span class="p">((</span><span class="nx">child</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">child</span><span class="p">.</span><span class="nx">meta</span><span class="o">!</span><span class="p">.</span><span class="nx">showInMenu</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">menuRoutes</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">r</span><span class="p">.</span><span class="nx">redirect</span> <span class="o">=</span> <span class="nx">menuRoutes</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">path</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">})</span>
+    <span class="nx">state</span><span class="p">.</span><span class="nx">mountedRoutes</span> <span class="o">=</span> <span class="nx">toBeMounted</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kr">const</span> <span class="nx">actions</span>: <span class="kt">ActionTree</span><span class="p">&lt;</span><span class="nt">PermissionState</span><span class="err">,</span> <span class="na">RootState</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="kr">async</span> <span class="nx">getMenus</span><span class="p">({</span> <span class="nx">commit</span><span class="p">,</span> <span class="nx">state</span> <span class="p">}</span><span class="o">:</span> <span class="nx">ActionContext</span><span class="p">&lt;</span><span class="nt">PermissionState</span><span class="err">,</span> <span class="na">RootState</span><span class="p">&gt;)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">asyncMenus</span>
+    <span class="p">}</span>
+
+    <span class="kr">const</span> <span class="nx">res</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">getMenuList</span><span class="p">()</span>
+    <span class="nx">commit</span><span class="p">(</span><span class="nx">SET_MENUS</span><span class="p">,</span> <span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">)</span>
+    <span class="c1">// ADD3 这里当更新菜单的时候同步过滤出有效路由
+</span><span class="c1"></span>    <span class="nx">commit</span><span class="p">(</span><span class="nx">SET_MOUNTED_ROUTES</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">res</span><span class="p">.</span><span class="nx">data</span>
+  <span class="p">},</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+结果：</p>
+<div class="src src-console">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">[[Target]]: Object
+asyncMenus: (4) [{…}, {…}, {…}, {…}]
+minorRoutes: []
+mountedRoutes: (4) [{…}, {…}, {…}, {…}]</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-i18n" class="outline-2">
+<h2 id="i18n">
+vue-i18n-next
+</h2>
+<div id="outline-text-i18n" class="outline-text-2">
+<p>
+<a href="https://github.com/intlify/vue-i18n-next">intlify/vue-i18n-next: Vue I18n for Vue 3</a></p>
+<p>
+Docs: <a href="https://vue-i18n.intlify.dev/installation.html">Installation | Vue I18n</a></p>
+<p>
+Usage： <a href="https://lokalise.com/blog/vue-i18n/?utm_source=google&amp;utm_medium=cpc&amp;utm_campaign=GENERIC_i18n-vuejs&amp;gclid=CjwKCAjwmv-DBhAMEiwA7xYrd7ANX_aqFQTLUvwubzttdV17rEvpRlq8m8GZjCjk6kqQ1bGFg_kdhBoCaKwQAvD_BwE">Vue i18n: Building a multi-lingual app - Lokalise Blog</a></p>
+<ol>
+<li>
+<p>vue-i18n esm-bundler 警告</p>
+<blockquote>
+<p>You are running the esm-bundler build of vue-i18n. It is recommended to configure your bundler to explicitly replace feature flag globals with boolean literals to get proper tree-shaking in the final bundle.</p>
+</blockquote>
+<p>
+<a href="https://github.com/xiaoxian521/vue-pure-admin/commit/f2db3acee2629ec26bc531a5b0b4be9eaec14dab">fix：解决vue-i18n在开发环境下的告警 · xiaoxian521/vue-pure-admin@f2db3ac</a></p>
+<div class="src src-diff">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-diff" data-lang="diff">alias: {
+  &#34;@&#34;: path.resolve(__dirname, &#34;./src&#34;),
+<span class="gi">+  &#34;vue-i18n&#34;: &#34;vue-i18n/dist/vue-i18n.cjs.js&#34;,
+</span><span class="gi"></span>};
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-element-plus" class="outline-2">
+<h2 id="element-plus">
+element-plus
+</h2>
+<div id="outline-text-element-plus" class="outline-text-2">
+<div id="outline-container-el-upload" class="outline-3">
+<h3 id="el-upload">
+el-upload
+</h3>
+<div id="outline-text-el-upload" class="outline-text-3">
+<p>
+使用(不自动上传)：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">GlUpload</span><span class="p">(</span><span class="nx">props</span><span class="p">,</span> <span class="p">{</span> <span class="nx">slots</span> <span class="p">})</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="nx">h</span><span class="p">(</span>
+    <span class="nx">E</span><span class="p">.</span><span class="nx">ElUpload</span><span class="p">,</span>
+    <span class="mi">_</span><span class="p">.</span><span class="nx">extend</span><span class="p">(</span>
+      <span class="p">{</span>
+        <span class="kr">class</span><span class="o">:</span> <span class="s2">&#34;upload&#34;</span><span class="p">,</span>
+        <span class="nx">action</span><span class="o">:</span> <span class="s2">&#34;#&#34;</span><span class="p">,</span>
+        <span class="s2">&#34;list-type&#34;</span><span class="o">:</span> <span class="s2">&#34;picture-card&#34;</span><span class="p">,</span>
+        <span class="s2">&#34;auto-upload&#34;</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span>
+        <span class="nx">onChange</span><span class="p">(</span><span class="nx">file</span><span class="p">,</span> <span class="nx">fileList</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">file</span><span class="p">,</span> <span class="nx">fileList</span><span class="p">,</span> <span class="s2">&#34;xx&#34;</span><span class="p">);</span>
+        <span class="p">},</span>
+      <span class="p">},</span>
+      <span class="nx">props</span>
+    <span class="p">),</span>
+    <span class="p">{</span>
+      <span class="k">default</span><span class="o">:</span> <span class="p">()</span> <span class="p">=&gt;</span>
+        <span class="nx">h</span><span class="p">(</span><span class="s2">&#34;i&#34;</span><span class="p">,</span> <span class="p">{</span>
+          <span class="kr">class</span><span class="o">:</span> <span class="s2">&#34;el-icon-plus&#34;</span><span class="p">,</span>
+        <span class="p">}),</span>
+      <span class="p">...</span><span class="nx">slots</span><span class="p">,</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<div class="warn-block">
+<p><p><strong>TIP</strong></p></p>
+<p>
+不使用自动上传功能的时候，如果要向服务器发送数据，需要自己将数据变成表单
+(<code>FormData</code>)数据，有点绕。</p>
+</div>
+<p>
+这里有个插件可以使用，将 json 转成 FormData: <a href="https://github.com/hyperatom/json-form-data">hyperatom/json-form-data: A library to convert javascript objects into form data.</a></p>
+<p>
+看了下源码(140l) 实现原理中就是深度遍历 json 数据，需要注意的是对象类型的转换。</p>
+<div class="src src-text">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-text" data-lang="text">如：{a:{b:1},{c:{d:2}}}
+-&gt; a[b]: 1
+-&gt; a[c][d]:2
+
+如： {a: [1,2,3,4]}
+-&gt; a[0]:1
+-&gt; a[1]:2
+-&gt; a[2]:3
+-&gt; a[3]:4</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+实例：</p>
+<pre class="example">
+pageId: 17
+name: test5
+status: 1
+isDefault: 0
+startTime: 2021-11-10 10:10
+endTime: 2021-11-11 10:10
+isPermanent: 0
+targetType: 1
+templateType: epg21
+target[0]: 1001
+target[1]: 1002
+target[2]: 1003
+target[3]: 1004
+target[4]: 1005
+target[5]: 1006
+target[6]: 1007
+target[7]: 1010
+target[8]: 121
+target[9]: 188
+target[10]: 2001
+target[11]: 2308
+target[12]: 666
+target[13]: 833
+target[14]: 8513
+hasBgPic: 1
+hasBgMedia: 0
+hasLogo: 0
+hasSmallPic: 0
+hasPicList: 1
+hasWifi: 0
+hasWeather: 0
+hasWelcomeText: 1
+welcomeText: []
+IsPermanent: 0
+</pre>
+<p>
+即需要进行扁平化处理，将所有的嵌套转成路径方式 <code>a[b][c][d][e]:1</code> 等于是：</p>
+<p>
+<code>{ a: { b: { c: { d: { e:1 } } } } }</code></p>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+el-table index 全部为 0 问题
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+<a href="https://github.com/element-plus/element-plus/issues/2143">[bug report] El table column type = &#34;index&#34; error after using row key attribute in El table · Issue #2143 · element-plus/element-plus</a></p>
+</div>
+</div>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-04-21
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue/">vue,</a>
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vue-router/">vue-router,</a>
+          <a href="/tags/vuex/">vuex,</a>
+          <a href="/tags/i18n/">i18n</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-vuex-persist/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue Vuex Persist Store(数据持久化) - 简化版</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-mind-map-server-renderer/">
+            <span class="next-text nav-default">Vue3 源码头脑风暴之 9 ☞ server-renderer</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+.el-table__row.flag {
+  padding: 2px 5px;
+}
+
+.el-table__row.DONE {
+  background-color: lightgray;
+}
+
+.el-table__row.DOING {
+  background-color: green;
+  color: white;
+}
+
+.el-table__row.PENDING {
+  background-color: red;
+  color: white;
+}
+.el-table__row.WAITING {
+  background-color: yellow;
+}
+
+.post .post-content .table-wrapper > table {
+  margin: 0;
+}
+
+.post .post-content a > .el-link--inner {
+  color: black;
+}

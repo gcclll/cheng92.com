@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Preact 源码学习（一） - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="建议学习 preact 之前，先看 Build Your Own React - 若叶知秋 或 Build your own React 项目初始化 preact src 下最基础的目录结构" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/react/preact-zero/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Preact 源码学习（一）" />
+<meta property="og:description" content="建议学习 preact 之前，先看 Build Your Own React - 若叶知秋 或 Build your own React 项目初始化 preact src 下最基础的目录结构" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/react/preact-zero/" /><meta property="article:section" content="react" />
+<meta property="article:published_time" content="2021-06-20T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-06-20T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Preact 源码学习（一）">
+<meta itemprop="description" content="建议学习 preact 之前，先看 Build Your Own React - 若叶知秋 或 Build your own React 项目初始化 preact src 下最基础的目录结构"><meta itemprop="datePublished" content="2021-06-20T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-06-20T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="1636">
+<meta itemprop="keywords" content="preact,,react," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Preact 源码学习（一）"/>
+<meta name="twitter:description" content="建议学习 preact 之前，先看 Build Your Own React - 若叶知秋 或 Build your own React 项目初始化 preact src 下最基础的目录结构"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Preact 源码学习（一）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-06-20 </span>
+        <div class="post-category">
+            <a href="/categories/react/"> react, </a>
+            <a href="/categories/preact/"> preact </a>
+            </div>
+          <span class="more-meta"> 约 1636 字 </span>
+          <span class="more-meta"> 预计阅读 4 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#initialization">项目初始化</a>
+</li>
+<li><a href="#usage">基本使用</a>
+</li>
+<li><a href="#h-createElement">h/createElement 函数</a>
+</li>
+<li><a href="#headline-4">render()</a>
+</li>
+<li><a href="#component">Component</a>
+</li>
+<li><a href="#diff">diff()</a>
+</li>
+<li><a href="#headline-7">疑难点</a>
+<ul>
+<li><a href="#q-fragment-vnode">为何用 Fragment 将 vnode 包一层？</a>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<blockquote>
+<p>建议学习 preact 之前，先看 <a href="https://www.cheng92.com/react/react-zero/">Build Your Own React - 若叶知秋</a> 或 <a href="https://pomb.us/build-your-own-react/">Build your own React</a></p>
+</blockquote>
+<div id="outline-container-initialization" class="outline-2">
+<h2 id="initialization">
+项目初始化
+</h2>
+<div id="outline-text-initialization" class="outline-text-2">
+<p>
+preact src 下最基础的目录结构</p>
+<pre class="example">
+  /Users/simon/github/react/stb-preact/src:
+  total used in directory 80K available 4.3 GiB
+  drwxr-xr-x  4 simon staff  128 Jun 20 17:32 diff
+  -rw-r--r--  1 simon staff   56 Jun 20 17:29 clone-element.js
+  -rw-r--r--  1 simon staff   45 Jun 20 17:29 component.js
+  -rw-r--r--  1 simon staff   58 Jun 20 17:30 create-context.js
+  -rw-r--r--  1 simon staff  373 Jun 20 17:28 create-element.js
+  -rw-r--r--  1 simon staff 8.2K Jun 20 17:21 index.d.ts
+  -rw-r--r--  1 simon staff  391 Jun 20 17:28 index.js
+  -rw-r--r--  1 simon staff 4.9K Jun 20 17:32 internal.d.ts
+  -rw-r--r--  1 simon staff  31K Jun 20 17:21 jsx.d.ts
+  -rw-r--r--  1 simon staff  587 Jun 20 17:32 options.js
+  -rw-r--r--  1 simon staff  103 Jun 20 17:27 render.js
+</pre>
+<p>
+重点代码：</p>
+<ol>
+<li>
+<p>diff 节点比较算法核心代码</p>
+</li>
+<li>
+<p>component.js <code>Component</code> 组件类</p>
+</li>
+<li>
+<p>render.js <code>render</code> 函数</p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-usage" class="outline-2">
+<h2 id="usage">
+基本使用
+</h2>
+<div id="outline-text-usage" class="outline-text-2">
+<p>
+官方的栗子：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">import</span> <span class="p">{</span> <span class="nx">h</span><span class="p">,</span> <span class="nx">render</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;preact&#39;</span><span class="p">;</span>
+<span class="c1">// Tells babel to use h for JSX. It&#39;s better to configure this globally.
+</span><span class="c1">// See https://babeljs.io/docs/en/babel-plugin-transform-react-jsx#usage
+</span><span class="c1">// In tsconfig you can specify this with the jsxFactory
+</span><span class="c1"></span><span class="cm">/** @jsx h */</span>
+
+<span class="c1">// create our tree and append it to document.body:
+</span><span class="c1"></span><span class="nx">render</span><span class="p">(</span><span class="o">&lt;</span><span class="nx">main</span><span class="o">&gt;&lt;</span><span class="nx">h1</span><span class="o">&gt;</span><span class="nx">Hello</span><span class="o">&lt;</span><span class="err">/h1&gt;&lt;/main&gt;, document.body);</span>
+
+<span class="c1">// update the tree in-place:
+</span><span class="c1"></span><span class="nx">render</span><span class="p">(</span><span class="o">&lt;</span><span class="nx">main</span><span class="o">&gt;&lt;</span><span class="nx">h1</span><span class="o">&gt;</span><span class="nx">Hello</span> <span class="nx">World</span><span class="o">!&lt;</span><span class="err">/h1&gt;&lt;/main&gt;, document.body);</span>
+<span class="c1">// ^ this second invocation of render(...) will use a single DOM call to update the text of the &lt;h1&gt;
+</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+函数组件：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">import</span> <span class="p">{</span>  <span class="nx">render</span><span class="p">,</span> <span class="nx">h</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;preact&#39;</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">useState</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;preact/hooks&#39;</span>
+
+<span class="cm">/** @jsx h*/</span>
+<span class="kr">const</span> <span class="nx">App</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="p">[</span><span class="nx">input</span><span class="p">,</span> <span class="nx">setInput</span><span class="p">]</span> <span class="o">=</span> <span class="nx">useState</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+  <span class="k">return</span> <span class="p">(</span>
+    <span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="nx">some</span> <span class="nx">thing</span><span class="p">....</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+      <span class="o">&lt;</span><span class="nx">input</span> <span class="nx">value</span><span class="o">=</span><span class="p">{</span><span class="nx">input</span><span class="p">}</span> <span class="nx">onChange</span><span class="o">=</span><span class="p">{</span><span class="nx">e</span> <span class="p">=&gt;</span> <span class="nx">setInput</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">target</span><span class="p">.</span><span class="nx">value</span><span class="p">)}</span><span class="o">/&gt;</span>
+    <span class="o">&lt;</span><span class="err">/div&gt;</span>
+  <span class="p">)</span>
+<span class="p">}</span>
+
+<span class="nx">render</span><span class="p">(</span><span class="o">&lt;</span><span class="nx">App</span><span class="o">/&gt;</span><span class="p">,</span> <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+所以，首先需要实现的是 <code>h/createElement</code> 和 <code>render</code>, 前者构造 VNode 树，后者利
+用 VNode tree 实施渲染，加入 DOM 。</p>
+</div>
+</div>
+<div id="outline-container-h-createElement" class="outline-2">
+<h2 id="h-createElement">
+h/createElement 函数
+</h2>
+<div id="outline-text-h-createElement" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-preact/commit/efb88ce9ae3ef142d46389bcb12edf686b9f9f35">feat: h -&gt; createElement · gcclll/stb-preact@efb88ce</a></p>
+<p>
+<span style="text-decoration: underline;">src/create-element.js</span> 内容：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>参数</th>
+<th>brief</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>createElement</code></td>
+<td>type, props, children</td>
+<td>h 函数，构造 VNode</td>
+</tr>
+<tr>
+<td><code>createVNode</code></td>
+<td>type,props,key,ref,original</td>
+<td>createElement调用</td>
+</tr>
+<tr>
+<td><code>createRef</code></td>
+<td>-</td>
+<td><code>{current: null}</code></td>
+</tr>
+<tr>
+<td><code>Fragment</code></td>
+<td>props</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>isValidElement</code></td>
+<td>vnode</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p>
+<code>createElement(type, props, children)</code>:</p>
+<ol>
+<li>
+<p>props 处理，过滤出 <code>key,ref</code> 属性，这两个非元素原生属性</p>
+</li>
+<li>
+<p>检测 children 合并成数组，当作改节点的子节点</p>
+</li>
+<li>
+<p>如果 type 是个函数，考虑是否有初始化默认的 props</p>
+</li>
+<li>
+<p>最后调用 createVNode 构造虚拟节点</p>
+</li>
+</ol>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">createElement</span><span class="p">(</span><span class="nx">type</span><span class="p">,</span> <span class="nx">props</span><span class="p">,</span> <span class="nx">children</span><span class="p">)</span> <span class="p">{</span>
+	<span class="kd">let</span> <span class="nx">normalizedProps</span> <span class="o">=</span> <span class="p">{},</span>
+		<span class="nx">key</span><span class="p">,</span>
+		<span class="nx">ref</span><span class="p">,</span>
+		<span class="nx">i</span><span class="p">;</span>
+
+	<span class="k">for</span> <span class="p">(</span><span class="nx">i</span> <span class="k">in</span> <span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">==</span> <span class="s1">&#39;key&#39;</span><span class="p">)</span> <span class="nx">key</span> <span class="o">=</span> <span class="nx">props</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+		<span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">==</span> <span class="s1">&#39;ref&#39;</span><span class="p">)</span> <span class="nx">ref</span> <span class="o">=</span> <span class="nx">props</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+		<span class="k">else</span> <span class="nx">normalizedProps</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">=</span> <span class="nx">props</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+	<span class="p">}</span>
+
+	<span class="c1">// 有 children 事的处理,
+</span><span class="c1"></span>	<span class="c1">// h(&#39;div&#39;, { ref: &#39;xxx&#39; }, children[])
+</span><span class="c1"></span>	<span class="c1">// h(&#39;div&#39;, { ref: &#39;xxx&#39; }, child1, child2, child3, ...)
+</span><span class="c1"></span>	<span class="k">if</span> <span class="p">(</span><span class="nx">arguments</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nx">normalizedProps</span><span class="p">.</span><span class="nx">children</span> <span class="o">=</span>
+			<span class="nx">arguments</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">3</span> <span class="o">?</span> <span class="nx">slice</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">arguments</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">:</span> <span class="nx">children</span><span class="p">;</span>
+	<span class="p">}</span>
+
+	<span class="c1">// 函数组件？
+</span><span class="c1"></span>	<span class="c1">// If a Component VNode, check for and apply defaultProps
+</span><span class="c1"></span>	<span class="c1">// Note: type may be undefined in development, must never error here.
+</span><span class="c1"></span>	<span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">type</span> <span class="o">===</span> <span class="s1">&#39;function&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">type</span><span class="p">.</span><span class="nx">defaultProps</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">for</span> <span class="p">(</span><span class="nx">i</span> <span class="k">in</span> <span class="nx">type</span><span class="p">.</span><span class="nx">defaultProps</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">if</span> <span class="p">(</span><span class="nx">normalizedProps</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+				<span class="nx">normalizedProps</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">=</span> <span class="nx">type</span><span class="p">.</span><span class="nx">defaultProps</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="nx">createVNode</span><span class="p">(</span><span class="nx">type</span><span class="p">,</span> <span class="nx">normalizedProps</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">ref</span><span class="p">,</span> <span class="kc">null</span><span class="p">);</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<code>createVNode(type, props, key, ref, original)</code>:</p>
+<p>
+单纯初始化虚拟节点的结构。</p>
+<ol>
+<li>
+<p><code>_nextDom</code> 用来链接下一个被渲染的节点</p>
+<p>
+这跟 react 的 fiber 貌似有点关联，不知道这里有没用到 fiber. 根据 <a href="/react/react-zero/#fibers">fiber 结构原
+理</a>，查找下一个执行单元的优先级是： first child -&gt; sibling -&gt; parent sibling</p>
+</li>
+<li>
+<p>constructor 这里赋值为 <code>undefined</code> 目的是为了识别 VNode(<em>vue 的 __v_isVNode ???</em>) ?</p>
+</li>
+</ol>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">// 构造虚拟节点
+</span><span class="c1"></span><span class="kr">export</span> <span class="kd">function</span> <span class="nx">createVNode</span><span class="p">(</span><span class="nx">type</span><span class="p">,</span> <span class="nx">props</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">ref</span><span class="p">,</span> <span class="nx">original</span><span class="p">)</span> <span class="p">{</span>
+	<span class="kr">const</span> <span class="nx">vnode</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="nx">type</span><span class="p">,</span>
+		<span class="nx">props</span><span class="p">,</span>
+		<span class="nx">key</span><span class="p">,</span>
+		<span class="nx">ref</span><span class="p">,</span>
+		<span class="mi">_</span><span class="nx">children</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+		<span class="mi">_</span><span class="nx">parent</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+		<span class="mi">_</span><span class="nx">depth</span><span class="o">:</span> <span class="mi">0</span><span class="p">,</span>
+		<span class="mi">_</span><span class="nx">dom</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+		<span class="c1">// 必须初始化成 `undefined`, 最终回被设置成 dom.nextSibling 的值
+</span><span class="c1"></span>		<span class="c1">// react fiber 结构查找优先级： first child -&gt; sibling -&gt; parent sibling
+</span><span class="c1"></span>		<span class="mi">_</span><span class="nx">nextDom</span><span class="o">:</span> <span class="kc">undefined</span><span class="p">,</span>
+		<span class="mi">_</span><span class="nx">component</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+		<span class="mi">_</span><span class="nx">hydrating</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+		<span class="nx">constructor</span><span class="o">:</span> <span class="kc">undefined</span><span class="p">,</span> <span class="c1">// 用来检测是不是有效的元素？
+</span><span class="c1"></span>		<span class="mi">_</span><span class="nx">original</span><span class="o">:</span> <span class="nx">original</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">?</span> <span class="o">++</span><span class="nx">vnodeId</span> <span class="o">:</span> <span class="nx">original</span>
+	<span class="p">};</span>
+
+	<span class="c1">// ？？？ 可以加工处理？？？
+</span><span class="c1"></span>	<span class="k">if</span> <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">vnode</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="nx">options</span><span class="p">.</span><span class="nx">vnode</span><span class="p">(</span><span class="nx">vnode</span><span class="p">);</span>
+
+	<span class="k">return</span> <span class="nx">vnode</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+最后有个 <code>if (options.vnode != null) options.vnode(vnode);</code> 判断，这个不知道是不
+是提供给开发者对 vnode 进行加工处理的能力？</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">react</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">HOME</span> <span class="o">+</span> <span class="s1">&#39;/github/react/stb-preact/dist/preact.js&#39;</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">react</span><span class="p">);</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+{
+  render: [Function (anonymous)],
+  hydrate: [Function (anonymous)],
+  createElement: [Function: u],
+  h: [Function: u],
+  Fragment: [Function (anonymous)],
+  createRef: [Function (anonymous)],
+  isValidElement: [Function: o],
+  Component: [Function (anonymous)],
+  cloneElement: [Function (anonymous)],
+  createContext: [Function (anonymous)],
+  toChildArray: [Function (anonymous)],
+  options: { __e: [Function: __e] }
+}
+undefined
+</pre>
+<p>
+虚拟节点：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="p">{</span> <span class="nx">h</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">HOME</span> <span class="o">+</span> <span class="s1">&#39;/github/react/stb-preact/dist/preact.js&#39;</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;&gt;&gt;&gt; h(&#39;div&#39;, { key: 1 })&#34;</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">h</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="nx">key</span><span class="o">:</span> <span class="mi">1</span> <span class="p">}));</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+&gt;&gt;&gt; h(&#39;div&#39;, { key: 1 })
+{
+  type: &#39;div&#39;,
+  props: {},
+  key: 1,
+  ref: undefined,
+  __k: null,
+  __: null,
+  __b: 0,
+  __e: null,
+  __d: undefined,
+  __c: null,
+  __h: null,
+  constructor: undefined,
+  __v: 1
+}
+undefined
+</pre>
+<p>
+上面输出结果，被别名化了，这跟 preact 用的打包方式有关系，对应关系在
+<code>mangle.json</code> 中。</p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>__k</td>
+<td>_children</td>
+</tr>
+<tr>
+<td>__</td>
+<td>_list</td>
+</tr>
+<tr>
+<td>__b</td>
+<td>_depth</td>
+</tr>
+<tr>
+<td>__e</td>
+<td>_force</td>
+</tr>
+<tr>
+<td>__d</td>
+<td>_nextDom</td>
+</tr>
+<tr>
+<td>__c</td>
+<td>_cleanup</td>
+</tr>
+<tr>
+<td>__h</td>
+<td>_pendingEffects</td>
+</tr>
+<tr>
+<td>__v</td>
+<td>_original</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+render()
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+<code>render(vnode, parentDom, replaceNode)</code></p>
+<p>
+<a href="https://github.com/gcclll/stb-preact/commit/dcd5b4114b3bad4c6b463902c4b28f5957e69f19">feat: render · gcclll/stb-preact@dcd5b41</a></p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span> <span class="nx">parentDom</span><span class="p">,</span> <span class="nx">replaceNode</span><span class="p">)</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="mi">_</span><span class="nx">root</span><span class="p">)</span> <span class="nx">options</span><span class="p">.</span><span class="mi">_</span><span class="nx">root</span><span class="p">(</span><span class="nx">vnode</span><span class="p">,</span> <span class="nx">parentDom</span><span class="p">);</span>
+
+	<span class="kd">let</span> <span class="nx">isHydrating</span> <span class="o">=</span> <span class="k">typeof</span> <span class="nx">replaceNode</span> <span class="o">===</span> <span class="s1">&#39;function&#39;</span><span class="p">;</span>
+
+	<span class="c1">// 为了支持在同一个 DOM node 上多次调用 `render()`, 那么就需要有个
+</span><span class="c1"></span>	<span class="c1">// 引用能之前上一次渲染的树结构。默认没有该属性，同时也代表是该树第一次
+</span><span class="c1"></span>	<span class="c1">// 加载
+</span><span class="c1"></span>	<span class="kd">let</span> <span class="nx">oldVNode</span> <span class="o">=</span> <span class="nx">isHydrating</span>
+		<span class="o">?</span> <span class="kc">null</span>
+		<span class="o">:</span> <span class="p">(</span><span class="nx">replaceNode</span> <span class="o">&amp;&amp;</span> <span class="nx">replaceNode</span><span class="p">.</span><span class="mi">_</span><span class="nx">children</span><span class="p">)</span> <span class="o">||</span> <span class="nx">parentDom</span><span class="p">.</span><span class="mi">_</span><span class="nx">children</span><span class="p">;</span>
+
+	<span class="c1">// 让父节点持有子节点引用
+</span><span class="c1"></span>	<span class="nx">vnode</span> <span class="o">=</span> <span class="p">(</span>
+		<span class="p">(</span><span class="o">!</span><span class="nx">isHydrating</span> <span class="o">&amp;&amp;</span> <span class="nx">replaceNode</span><span class="p">)</span> <span class="o">||</span>
+		<span class="nx">parentDom</span>
+	<span class="p">).</span><span class="mi">_</span><span class="nx">children</span> <span class="o">=</span> <span class="nx">createElement</span><span class="p">(</span><span class="nx">Fragment</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="p">[</span><span class="nx">vnode</span><span class="p">]);</span>
+
+	<span class="c1">// 1. diff()
+</span><span class="c1"></span>
+	<span class="c1">// 2. commitRoot(commitQueue, vnode)
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+Fragment 实现：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">Fragment</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">props</span><span class="p">.</span><span class="nx">children</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+很奇怪吗？</p>
+<p>
+<code>createElement(Fragment, null, [vnode])</code> 等价于</p>
+<p>
+<code>createElement(props.children, null, [vnode])</code></p>
+<p>
+Fragment 是个函数，而 createElement 对 type 的判断为函数时的处理是对  default
+props 的检测和合并操作。</p>
+<p>
+根据 <a href="react/react-zero/#function-component">函数组件处理</a> 可知这个处理会在 commit 阶段完成，先不管这个。</p>
+<p>
+继续往下，将涉及到两个核心内容：</p>
+<ol>
+<li>
+<p>diff, 进行对比更新 VNode</p>
+</li>
+<li>
+<p>work unit commit, 提交渲染任务</p>
+</li>
+</ol>
+<p>两个都是重点且核心的内容。</p>
+</div>
+</div>
+<div id="outline-container-component" class="outline-2">
+<h2 id="component">
+Component
+</h2>
+<div id="outline-text-component" class="outline-text-2">
+<p>
+在阅读 diff 源码之前，先看下 Component 是如何实现的，里面又包含哪些内容？</p>
+</div>
+</div>
+<div id="outline-container-diff" class="outline-2">
+<h2 id="diff">
+diff()
+</h2>
+<div id="outline-text-diff" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-preact/commit/0ec1eaaab13828bbc82c35e39d7f355a46814065">feat: diff init · gcclll/stb-preact@0ec1eaa</a></p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+  <span class="c1">// 1. create element -&gt; vnode
+</span><span class="c1"></span>
+  <span class="c1">// 2. diff
+</span><span class="c1"></span>  <span class="c1">// List of effects that need to be called after diffing.
+</span><span class="c1"></span>	<span class="kd">let</span> <span class="nx">commitQueue</span> <span class="o">=</span> <span class="p">[];</span>
+	<span class="nx">diff</span><span class="p">(</span>
+		<span class="nx">parentDom</span><span class="p">,</span>
+		<span class="c1">// Determine the new vnode tree and store it on the DOM element on
+</span><span class="c1"></span>		<span class="c1">// our custom `_children` property.
+</span><span class="c1"></span>		<span class="nx">vnode</span><span class="p">,</span> <span class="c1">// new vnode
+</span><span class="c1"></span>		<span class="nx">oldVNode</span> <span class="o">||</span> <span class="nx">EMPTY_OBJ</span><span class="p">,</span> <span class="c1">// old vnode
+</span><span class="c1"></span>		<span class="nx">EMPTY_OBJ</span><span class="p">,</span>
+		<span class="nx">parentDom</span><span class="p">.</span><span class="nx">ownerSVGElement</span> <span class="o">!==</span> <span class="kc">undefined</span><span class="p">,</span>
+		<span class="o">!</span><span class="nx">isHydrating</span> <span class="o">&amp;&amp;</span> <span class="nx">replaceNode</span>
+			<span class="o">?</span> <span class="p">[</span><span class="nx">replaceNode</span><span class="p">]</span>
+			<span class="o">:</span> <span class="nx">oldVNode</span>
+			<span class="o">?</span> <span class="kc">null</span>
+			<span class="o">:</span> <span class="nx">parentDom</span><span class="p">.</span><span class="nx">firstChild</span>
+			<span class="o">?</span> <span class="nx">slice</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">parentDom</span><span class="p">.</span><span class="nx">childNodes</span><span class="p">)</span>
+			<span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+		<span class="nx">commitQueue</span><span class="p">,</span>
+		<span class="o">!</span><span class="nx">isHydrating</span> <span class="o">&amp;&amp;</span> <span class="nx">replaceNode</span>
+			<span class="o">?</span> <span class="nx">replaceNode</span>
+			<span class="o">:</span> <span class="nx">oldVNode</span>
+			<span class="o">?</span> <span class="nx">oldVNode</span><span class="p">.</span><span class="mi">_</span><span class="nx">dom</span>
+			<span class="o">:</span> <span class="nx">parentDom</span><span class="p">.</span><span class="nx">firstChild</span><span class="p">,</span>
+		<span class="nx">isHydrating</span>
+	<span class="p">);</span>
+
+  <span class="c1">// 3. commit
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+diff 函数目的：比较 vnode 更新，渲染更新后的节点。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">diff</span><span class="p">(</span>
+	<span class="nx">parentDom</span><span class="p">,</span>
+	<span class="nx">newVNode</span><span class="p">,</span>
+	<span class="nx">oldVNode</span><span class="p">,</span>
+	<span class="nx">globalContext</span><span class="p">,</span>
+	<span class="nx">isSvg</span><span class="p">,</span>
+	<span class="nx">excessDomChildren</span><span class="p">,</span>
+	<span class="nx">commitQueue</span><span class="p">,</span>
+	<span class="nx">oldDom</span><span class="p">,</span>
+	<span class="nx">isHydrating</span>
+<span class="p">)</span> <span class="p">{</span> <span class="cm">/*...*/</span> <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+疑难点
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<div id="outline-container-q-fragment-vnode" class="outline-3">
+<h3 id="q-fragment-vnode">
+<span class="todo">TODO</span>
+为何用 Fragment 将 vnode 包一层？
+</h3>
+</div>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-06-20
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/preact/">preact,</a>
+          <a href="/tags/react/">react</a>
+          </div>
+      <nav class="post-nav">
+        
+        <a class="next" href="/react/react-zero/">
+            <span class="next-text nav-default">Build Your Own React</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

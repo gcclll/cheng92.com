@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>JavaScript Equality Comparison, 等号运算符 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); ==, === 运算符详解。 ECMAScript® 2022" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/web/apis/js-api-equality-comparison/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="JavaScript Equality Comparison, 等号运算符" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); ==, === 运算符详解。 ECMAScript® 2022" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/web/apis/js-api-equality-comparison/" /><meta property="article:section" content="web" />
+<meta property="article:published_time" content="2021-05-11T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-05-11T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="JavaScript Equality Comparison, 等号运算符">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); ==, === 运算符详解。 ECMAScript® 2022"><meta itemprop="datePublished" content="2021-05-11T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-05-11T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="2235">
+<meta itemprop="keywords" content="javascript," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="JavaScript Equality Comparison, 等号运算符"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); ==, === 运算符详解。 ECMAScript® 2022"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+  <div class="post-content">
+    
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+<blockquote>
+<p><code>==</code>, <code>===</code> 运算符详解。</p>
+<p>
+<a href="https://tc39.es/ecma262/#sec-abstract-equality-comparison">ECMAScript® 2022 Language Specification - Equality Comparison</a></p>
+</blockquote>
+<p>
+一般推荐使用相等比较的时候使用 <code>===</code> 是为了避免类型强转带来未知问题，但有时候后
+端返回的数据结构如果不规范就经常会出现恒等不合理情况，这篇文章会从 ECMA 标准的实
+现步骤，通过伪码形式来实现和展示相等和恒等的原理。</p>
+<blockquote>
+<p>在开始之前，要做一些准备工作。。。</p>
+</blockquote>
+<p>
+严格相等 <code>===</code> ：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// TODO
+</span><span class="c1"></span>  <span class="k">return</span> <span class="nx">x</span> <span class="o">===</span> <span class="nx">y</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+将字符串转成 <code>BigInt</code> 类型:</p>
+<blockquote>
+<p>标准里的描述：
+7.1.14 StringToBigInt ( argument )
+Apply the algorithm in 7.1.4.1 with the following changes:</p>
+<p>
+Replace the StrUnsignedDecimalLiteral production with DecimalDigits to not allow Infinity, decimal points, or exponents.
+If the MV is NaN, return NaN, otherwise return the BigInt which exactly corresponds to the MV, rather than rounding to a Number.</p>
+</blockquote>
+<p>实现： 通过测试，只要字符串里包含非数字的符号就会报错，这里提前拦截模拟报错，实
+ 际最后还是通过 <code>BigInt()</code> 来进行转换，而对于非字符串类型最终会转成字符串之后再
+ 处理。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">StringToBigInt</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">v</span> <span class="o">!==</span> <span class="s2">&#34;string&#34;</span><span class="p">)</span> <span class="nx">v</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span> <span class="o">+</span> <span class="nx">v</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nb">isNaN</span><span class="p">(</span><span class="nx">v</span><span class="p">))</span> <span class="k">return</span> <span class="kc">NaN</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="sr">/[^\d]/g</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">v</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// 包含非数字的都不合法报错
+</span><span class="c1"></span>    <span class="k">throw</span> <span class="k">new</span> <span class="nx">SyntaxError</span><span class="p">(</span><span class="sb">`不能将 </span><span class="si">${</span><span class="nx">v</span><span class="si">}</span><span class="sb"> 转成 BigInt。`</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">MyBigInt</span><span class="p">(</span><span class="nx">v</span><span class="p">);</span> <span class="c1">// 这里直接使用 BigInt
+</span><span class="c1"></span><span class="p">}</span>
+
+<span class="kd">function</span> <span class="nx">MyBigInt</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">this</span> <span class="k">instanceof</span> <span class="nx">MyBigInt</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nx">TypeError</span><span class="p">(</span><span class="s2">&#34; 不支持 new 操作。&#34;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="kd">let</span> <span class="nx">prim</span> <span class="o">=</span> <span class="nx">toPrimitive</span><span class="p">(</span><span class="nx">v</span><span class="p">,</span> <span class="s2">&#34;number&#34;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">prim</span> <span class="o">===</span> <span class="s1">&#39;number&#39;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">NumberToBigInt</span><span class="p">(</span><span class="nx">prim</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">BigInt</span><span class="p">(</span><span class="nx">v</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kd">function</span> <span class="nx">NumberToBigInt</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="nx">BigInt</span><span class="p">(</span><span class="nx">v</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="kd">function</span> <span class="nx">toPrimitive</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="o">+</span><span class="nx">v</span>
+<span class="p">}</span>
+<span class="c1">// 测试：
+</span><span class="c1"></span><span class="kd">let</span> <span class="nx">val</span> <span class="o">=</span> <span class="nx">StringToBigInt</span><span class="p">(</span><span class="s2">&#34;100&#34;</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">val</span><span class="p">);</span>
+<span class="k">try</span> <span class="p">{</span>
+  <span class="nx">val</span> <span class="o">=</span> <span class="nx">StringToBigInt</span><span class="p">(</span><span class="s1">&#39;100.00&#39;</span><span class="p">)</span>
+<span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">)</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+100n
+不能将 100.00 转成 BigInt。
+undefined
+</pre>
+<p>
+toPrimitive 将对象转成原始类型，标准的实现有点复杂，主要原理还是实现类型的 <code>Symbol.toPrimitive</code></p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">//  简化版：将 x 转成原始类型
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">toPrimitive</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">ref</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">isRef</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span> <span class="k">return</span> <span class="nx">x</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">ref</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="s2">&#34;&#34;</span> <span class="o">+</span> <span class="nx">x</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isNum</span><span class="p">(</span><span class="nx">ref</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">+</span><span class="nx">x</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isBigInt</span><span class="p">(</span><span class="nx">ref</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">isNum</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nx">TypeError</span><span class="p">(</span><span class="s2">&#34;BigInt 不能转成 number&#34;</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="s2">&#34;&#34;</span> <span class="o">+</span> <span class="nx">x</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isSymbol</span><span class="p">(</span><span class="nx">ref</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">Symbol</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="c1">// Symbol.toPrimitive
+</span><span class="c1">// 实现如： obj = { [Symbol.toPrimitive](hint) { ... } }
+</span><span class="c1">// 这里涉及到各种对象类型转成原始类型的，涉及内容太多这里就不展开去实现了
+</span><span class="c1"></span><span class="kd">function</span> <span class="mi">_</span><span class="nx">ToPrimitive</span><span class="p">(</span><span class="nx">input</span><span class="p">,</span> <span class="nx">preferredType</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">hint</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isRef</span><span class="p">(</span><span class="nx">input</span><span class="p">))</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">exoticToPrim</span> <span class="o">=</span> <span class="nx">GetMethod</span><span class="p">(</span><span class="nx">input</span><span class="p">,</span> <span class="s2">&#34;@@toPrimitive&#34;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">exoticToPrim</span> <span class="o">!==</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">preferredType</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">hint</span> <span class="o">=</span> <span class="s2">&#34;default&#34;</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">preferredType</span> <span class="o">===</span> <span class="s2">&#34;string&#34;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">hint</span> <span class="o">=</span> <span class="s2">&#34;string&#34;</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">hint</span> <span class="o">=</span> <span class="s2">&#34;number&#34;</span><span class="p">;</span>
+      <span class="p">}</span>
+
+      <span class="kd">let</span> <span class="nx">result</span> <span class="o">=</span> <span class="nx">exoticToPrim</span><span class="p">(</span><span class="nx">input</span><span class="p">,</span> <span class="nx">hint</span><span class="p">);</span>
+      <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">result</span> <span class="o">!==</span> <span class="s2">&#34;object&#34;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">result</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">throw</span> <span class="nx">TypeError</span><span class="p">(</span><span class="s2">&#34;类型不能转成原始类型&#34;</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">preferredType</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">preferredType</span> <span class="o">=</span> <span class="s2">&#34;number&#34;</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">OrdinaryToPrimitive</span><span class="p">(</span><span class="nx">input</span><span class="p">,</span> <span class="nx">preferredType</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">input</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+比如：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">obj</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="p">[</span><span class="nx">Symbol</span><span class="p">.</span><span class="nx">toPrimitive</span><span class="p">](</span><span class="nx">hint</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">hint</span> <span class="o">===</span> <span class="s2">&#34;number&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="mi">100</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">hint</span> <span class="o">===</span> <span class="s2">&#34;string&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="s2">&#34;foo&#34;</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">null</span><span class="p">;</span>
+  <span class="p">},</span>
+<span class="p">};</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nb">Number</span><span class="p">(</span><span class="nx">obj</span><span class="p">));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="o">+</span><span class="nx">obj</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nb">String</span><span class="p">(</span><span class="nx">obj</span><span class="p">));</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+100
+100
+foo
+undefined
+</pre>
+<p>
+转成数字：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">// 转成数字
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">v</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kc">NaN</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">v</span> <span class="o">===</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">+</span><span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">v</span> <span class="o">===</span> <span class="kc">true</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">v</span> <span class="o">===</span> <span class="kc">false</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">+</span><span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">v</span> <span class="o">===</span> <span class="s2">&#34;number&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">v</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">v</span> <span class="o">===</span> <span class="s2">&#34;string&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">v</span><span class="p">;</span> <span class="c1">// TODO
+</span><span class="c1"></span>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nb">Array</span><span class="p">.</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">v</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">Number</span><span class="p">(</span><span class="nx">v</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">v</span> <span class="o">===</span> <span class="s2">&#34;symbol&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nx">TypeError</span><span class="p">(</span><span class="s2">&#34;Symbol 不能转成 number.&#34;</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">v</span> <span class="o">===</span> <span class="s2">&#34;bigint&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="nb">Number</span><span class="p">(</span><span class="nx">v</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">v</span> <span class="o">===</span> <span class="s2">&#34;object&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">Number</span><span class="p">(</span><span class="nx">v</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">v</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">function</span> <span class="nx">tryCatch</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">val</span><span class="p">;</span>
+  <span class="k">try</span> <span class="p">{</span>
+    <span class="nx">val</span> <span class="o">=</span> <span class="nx">fn</span><span class="p">();</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">val</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 测试
+</span><span class="c1"></span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;null: &#34;</span> <span class="o">+</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="kc">null</span><span class="p">));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;unefined: &#34;</span> <span class="o">+</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="kc">undefined</span><span class="p">));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;{}: &#34;</span> <span class="o">+</span> <span class="nx">ToNumber</span><span class="p">({}));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;[]: &#34;</span> <span class="o">+</span> <span class="nx">ToNumber</span><span class="p">([]));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;Symbol(&#39;xx&#39;): &#34;</span> <span class="o">+</span> <span class="nx">tryCatch</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="nx">Symbol</span><span class="p">(</span><span class="s2">&#34;xx&#34;</span><span class="p">))));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;BigInt(100): &#34;</span> <span class="o">+</span> <span class="nx">tryCatch</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="nx">BigInt</span><span class="p">(</span><span class="mi">100</span><span class="p">))));</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+转换规则：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th class="align-right">结果</th>
+<th>-</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>null</td>
+<td class="align-right">0</td>
+<td></td>
+</tr>
+<tr>
+<td>undefined</td>
+<td class="align-right">NaN</td>
+<td>先转成 <code>&#34;undefined&#34;</code></td>
+</tr>
+<tr>
+<td>[]</td>
+<td class="align-right">0</td>
+<td>先 <code>String([])</code> -&gt; <code>&#39;&#39;</code></td>
+</tr>
+<tr>
+<td>{}</td>
+<td class="align-right">NaN</td>
+<td>先 <code>String({})</code> -&gt; <code>[object Object]</code></td>
+</tr>
+<tr>
+<td>&#34;xx&#34;</td>
+<td class="align-right">NaN</td>
+<td>-</td>
+</tr>
+<tr>
+<td>100n</td>
+<td class="align-right">100</td>
+<td>BigInt 可以转成 Number</td>
+</tr>
+<tr>
+<td>Symbol</td>
+<td class="align-right">TypeError</td>
+<td>不能转</td>
+</tr>
+</tbody>
+</table>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">// 非严格相等， == 的实现
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// 类型一样就直接返回 x === y 的结果
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">Type</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">===</span> <span class="nx">Type</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 1. 即 null == undefined =&gt; true
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">((</span><span class="nx">x</span> <span class="o">===</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="nx">y</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="o">||</span> <span class="p">(</span><span class="nx">x</span> <span class="o">===</span> <span class="kc">undefined</span> <span class="o">&amp;&amp;</span> <span class="nx">y</span> <span class="o">===</span> <span class="kc">null</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 2. 内部属性无法直接获取，这里到时候使用对象普通属性模拟
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isObject</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="s2">&#34;[[IsHTMLDDA]]&#34;</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">y</span> <span class="o">===</span> <span class="kc">null</span> <span class="o">||</span> <span class="nx">y</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isObject</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">y</span><span class="p">,</span> <span class="s2">&#34;[[IsHTMLDDA]]&#34;</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">x</span> <span class="o">===</span> <span class="kc">null</span> <span class="o">||</span> <span class="nx">x</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 3. 如果其中有一个是字符串，将字符串转成数字之后进行比较
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isNum</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">isString</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="nx">y</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">isNum</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">ToNumber</span><span class="p">(</span><span class="nx">x</span><span class="p">),</span> <span class="nx">y</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 4. BigInt 类型和字符串比较，将字符串转成 BigInt 类型
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isBigInt</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">isString</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">n</span> <span class="o">=</span> <span class="nx">StringToBigInt</span><span class="p">(</span><span class="nx">y</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">isNaN</span><span class="p">(</span><span class="nx">n</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">n</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">isBigInt</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">y</span><span class="p">,</span> <span class="nx">x</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 5. 如果是布尔类型转成数字再进行比较
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isBool</span><span class="p">(</span><span class="nx">x</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">ToNumber</span><span class="p">(</span><span class="nx">x</span><span class="p">),</span> <span class="nx">y</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isBool</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">ToNumber</span><span class="p">(</span><span class="nx">y</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 6. 如果其中有一个是引用类型，将其转成原始类型再比较
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isRef</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">||</span> <span class="nx">isNum</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">||</span> <span class="nx">isBigInt</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">||</span> <span class="nx">isSymbol</span><span class="p">(</span><span class="nx">x</span><span class="p">)))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">ToPrimitive</span><span class="p">(</span><span class="nx">y</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isRef</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">||</span> <span class="nx">isNum</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">||</span> <span class="nx">isBigInt</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">||</span> <span class="nx">isSymbol</span><span class="p">(</span><span class="nx">y</span><span class="p">)))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">ToPrimitive</span><span class="p">(</span><span class="nx">x</span><span class="p">),</span> <span class="nx">y</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 7. BigInt 和 Number 类型
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isBigInt</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">isNum</span><span class="p">(</span><span class="nx">y</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">isNaN</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">||</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="o">+</span><span class="kc">Infinity</span><span class="p">)</span> <span class="o">||</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">x</span> <span class="o">===</span> <span class="o">-</span><span class="kc">Infinity</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">isNaN</span><span class="p">(</span><span class="nx">y</span><span class="p">)</span> <span class="o">||</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">y</span><span class="p">,</span> <span class="o">+</span><span class="kc">Infinity</span><span class="p">)</span> <span class="o">||</span> <span class="nx">strictEqual</span><span class="p">(</span><span class="nx">y</span> <span class="o">===</span> <span class="o">-</span><span class="kc">Infinity</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="nx">equal</span><span class="p">(</span><span class="nx">R</span><span class="p">(</span><span class="nx">x</span><span class="p">),</span> <span class="nx">R</span><span class="p">(</span><span class="nx">y</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+这里主要有 8 种情况(<code>equal(x, y)</code>):</p>
+<ol>
+<li>
+<p>如果 x, y 类型一样，直接返回 <code>x === y</code> 结果，不需要进行类型转换</p>
+</li>
+<li>
+<p>如果 <code>null == undefined</code> 或 <code>undefined == null</code> 进行比较，直接返回 <code>true</code></p>
+</li>
+<li>
+<p>如果 x 是对象且有 <code>[[IsHTMLDDA]]</code> 内部属性，且 y 是 null 或 undefined 直接返
+回 <code>true</code>, 反之亦然。</p>
+</li>
+<li>
+<p>如果 x number, y string 则将其中字符串转成 number 再进行 <code>x === y</code> 比较，反之
+亦然。</p>
+</li>
+<li>
+<p>如果 x BigInt, y string 则将其中字符串转成 BigInt 再进行 <code>x === y</code> 比较，反之
+亦然。</p>
+</li>
+<li>
+<p>如果 x boolean 将 x 转成 number 再 <code>equal(number(x), y)</code> 重新比较，反之亦然。</p>
+</li>
+<li>
+<p>如果 x 是引用类型(即 <code>typeof x === &#39;object&#39;</code>)，而 y 是普通类型(String,
+Number, BigInt, Symbol)，那么将 x 转成原始类型再比较，即
+<code>equal(toPrimitive(x), y)</code>, 反之亦然</p>
+</li>
+<li>
+<p>如果 x BigInt, y number 又区分几种情况</p>
+<ul>
+<li>
+<p>如果 x: <code>NaN</code> 返回 NaN</p>
+</li>
+<li>
+<p>如果 x: <code>+Infinity</code> 返回 false</p>
+</li>
+<li>
+<p>如果 x: <code>-Infinity</code> 返回 false</p>
+</li>
+<li>
+<p>否则返回 <code>equal(R(x), R(y))</code> <a href="https://tc39.es/ecma262/#%E2%84%9D">R 不太清楚啥意思？</a></p>
+</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p>测试：可以通过表格下面的输入框输入左右值点击提交会更新表格，有两个结果，一个是
+<code>equal(x,y)</code> 是该文根据 ECMA 标准实现的相等比较， <code>x==y</code> 是直接使用 <code>==</code> 符号得
+到的结果为了形成对比，最后一列信息是每一行的数据在执行 <code>equal(x,y)</code> 过程中标识了
+哪个值进行了类型转换(<a href="/js/tests/web/equal.js">/js/tests/web/equal.js</a>), 表格采用 Vue + ElementPlus 生成，
+源码文件： <a href="/js/tests/X6j10iPkmj.js">/js/tests/X6j10iPkmj.js</a>。</p>
+</blockquote>
+<div id="X6j10iPkmj"></div>
+<script src="/js/tests/web/equal.js"></script>
+<script src="/js/tests/X6j10iPkmj.js"></script>
+<p>
+最终总结(类型比较)：</p>
+<table>
+<thead>
+<tr>
+<th>类型1</th>
+<th>类型2</th>
+<th>需要强转类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>number</td>
+<td>string</td>
+<td>string -&gt; number</td>
+</tr>
+<tr>
+<td>null</td>
+<td>undefined</td>
+<td>直接返回 true</td>
+</tr>
+<tr>
+<td>bigint</td>
+<td>string</td>
+<td>string -&gt; bigint</td>
+</tr>
+<tr>
+<td>boolean</td>
+<td>number</td>
+<td>boolean -&gt; number, false-0, true-1</td>
+</tr>
+<tr>
+<td>object</td>
+<td>普通类型</td>
+<td>object -&gt; 普通类型</td>
+</tr>
+</tbody>
+</table>
+<p>
+根据上表的类型转换，可以轻松判断出一些诡异的现象，比如：</p>
+<p>
+<code>0 == [0]</code> : <code>[0]</code> 先转字符串即 <code>&#34;0&#34;</code> 然后再转成数字 <code>0</code> 结果: <code>true</code></p>
+<p>
+<code>10 == [&#34;10&#34;]</code> =&gt; [&#34;10&#34;] =&gt; &#34;10&#34; =&gt; 10</p>
+<p>
+<code>false == 0</code>, <code>true == 1</code> 结果都是 true 都是因为 boolean 转成了 0 或 1</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+<span class="todo">TODO</span>
+IsHTMLDDA 问题
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+<a href="https://github.com/tc39/proposal-optional-chaining/issues/108">How does this interact with [[IsHTMLDDA]​] · Issue #108 · tc39/proposal-optional-chaining</a></p>
+</div>
+</div>
+
+  </div>
+</article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

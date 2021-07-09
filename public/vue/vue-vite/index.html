@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 -&gt; Vite 脚手架 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="vue 资源: vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js SSR 框架： Ream - A Vue 3 framework for building amazing apps import.meta 类型声明： 1 2 3 4 5" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-vite/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 -&gt; Vite 脚手架" />
+<meta property="og:description" content="vue 资源: vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js SSR 框架： Ream - A Vue 3 framework for building amazing apps import.meta 类型声明： 1 2 3 4 5" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-vite/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-02-25T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-02-25T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 -&gt; Vite 脚手架">
+<meta itemprop="description" content="vue 资源: vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js SSR 框架： Ream - A Vue 3 framework for building amazing apps import.meta 类型声明： 1 2 3 4 5"><meta itemprop="datePublished" content="2021-02-25T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-02-25T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="372">
+<meta itemprop="keywords" content="vue3,,vite," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 -&gt; Vite 脚手架"/>
+<meta name="twitter:description" content="vue 资源: vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js SSR 框架： Ream - A Vue 3 framework for building amazing apps import.meta 类型声明： 1 2 3 4 5"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 -&gt; Vite 脚手架</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-02-25 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 372 字 </span>
+          <span class="more-meta"> 预计阅读 1 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#headline-1">import.meta</a>
+</li>
+<li><a href="#headline-2">问题列表</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<blockquote>
+<p>vue 资源: <a href="https://github.com/vuejs/awesome-vue#frameworks">vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js</a></p>
+<p>
+SSR 框架： <a href="https://ream.dev/">Ream - A Vue 3 framework for building amazing apps</a></p>
+</blockquote>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+import.meta
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+类型声明：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">interface</span> <span class="nx">ImportMeta</span> <span class="p">{</span>
+  <span class="nx">url</span>: <span class="kt">string</span>
+
+  <span class="kr">readonly</span> <span class="nx">hot</span><span class="o">?:</span> <span class="p">{</span>
+    <span class="kr">readonly</span> <span class="nx">data</span>: <span class="kt">any</span>
+
+    <span class="nx">accept</span><span class="p">()</span><span class="o">:</span> <span class="k">void</span>
+    <span class="nx">accept</span><span class="p">(</span><span class="nx">cb</span><span class="o">:</span> <span class="p">(</span><span class="nx">mod</span>: <span class="kt">any</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span>
+    <span class="nx">accept</span><span class="p">(</span><span class="nx">dep</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">cb</span><span class="o">:</span> <span class="p">(</span><span class="nx">mod</span>: <span class="kt">any</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span>
+    <span class="nx">accept</span><span class="p">(</span><span class="nx">deps</span>: <span class="kt">readonly</span> <span class="kt">string</span><span class="p">[],</span> <span class="nx">cb</span><span class="o">:</span> <span class="p">(</span><span class="nx">mods</span>: <span class="kt">any</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span>
+
+    <span class="cm">/**
+</span><span class="cm">     * @deprecated
+</span><span class="cm">     */</span>
+    <span class="nx">acceptDeps</span><span class="p">()</span><span class="o">:</span> <span class="kt">never</span>
+
+    <span class="nx">dispose</span><span class="p">(</span><span class="nx">cb</span><span class="o">:</span> <span class="p">(</span><span class="nx">data</span>: <span class="kt">any</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span>
+    <span class="nx">decline</span><span class="p">()</span><span class="o">:</span> <span class="k">void</span>
+    <span class="nx">invalidate</span><span class="p">()</span><span class="o">:</span> <span class="k">void</span>
+
+    <span class="nx">on</span><span class="p">(</span><span class="nx">event</span>: <span class="kt">string</span><span class="p">,</span> <span class="nx">cb</span><span class="o">:</span> <span class="p">(...</span><span class="nx">args</span>: <span class="kt">any</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span>
+  <span class="p">}</span>
+
+  <span class="kr">readonly</span> <span class="nx">env</span>: <span class="kt">ImportMetaEnv</span>
+
+  <span class="nx">glob</span><span class="p">(</span>
+    <span class="nx">pattern</span>: <span class="kt">string</span>
+  <span class="p">)</span><span class="o">:</span> <span class="nx">Record</span><span class="o">&lt;</span>
+    <span class="kt">string</span><span class="p">,</span>
+    <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">Promise</span><span class="o">&lt;</span><span class="p">{</span>
+      <span class="p">[</span><span class="nx">key</span>: <span class="kt">string</span><span class="p">]</span><span class="o">:</span> <span class="kt">any</span>
+    <span class="p">}</span><span class="o">&gt;</span>
+  <span class="o">&gt;</span>
+
+  <span class="nx">globEager</span><span class="p">(</span>
+    <span class="nx">pattern</span>: <span class="kt">string</span>
+  <span class="p">)</span><span class="o">:</span> <span class="nx">Record</span><span class="o">&lt;</span>
+    <span class="kt">string</span><span class="p">,</span>
+    <span class="p">{</span>
+      <span class="p">[</span><span class="nx">key</span>: <span class="kt">string</span><span class="p">]</span><span class="o">:</span> <span class="kt">any</span>
+    <span class="p">}</span>
+  <span class="o">&gt;</span>
+<span class="p">}</span>
+<span class="kr">interface</span> <span class="nx">ImportMetaEnv</span> <span class="p">{</span>
+  <span class="p">[</span><span class="nx">key</span>: <span class="kt">string</span><span class="p">]</span><span class="o">:</span> <span class="kt">string</span> <span class="o">|</span> <span class="kr">boolean</span> <span class="o">|</span> <span class="kc">undefined</span>
+  <span class="nx">BASE_URL</span>: <span class="kt">string</span>
+  <span class="nx">MODE</span>: <span class="kt">string</span>
+  <span class="nx">DEV</span>: <span class="kt">boolean</span>
+  <span class="nx">PROD</span>: <span class="kt">boolean</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+实际项目输出结果：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">// import.meta
+</span><span class="c1"></span><span class="kr">import</span><span class="p">.</span><span class="nx">meta</span><span class="p">.</span><span class="nx">env</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">url</span><span class="o">:</span> <span class="s2">&#34;https://localhost:3000/src/main.ts&#34;</span><span class="p">,</span>
+  <span class="nx">env</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">BASE_URL</span><span class="o">:</span> <span class="s2">&#34;/&#34;</span><span class="p">,</span>
+    <span class="nx">MODE</span><span class="o">:</span> <span class="s2">&#34;development&#34;</span><span class="p">,</span>
+    <span class="nx">DEV</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+    <span class="nx">PROD</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span>
+    <span class="nx">SSR</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span>
+  <span class="p">},</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+问题列表
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<ol>
+<li>
+<p>vite create-app 之后启动项目，在 import 的时候总提示文件不存在？</p>
+<blockquote>
+<ol>
+<li>
+<p>修改 vite.config.js 增加配置项 optimizeDeps -&gt; exclude -&gt; [&#39;jsuites&#39;]:</p>
+</li>
+</ol>
+</blockquote>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">import</span> <span class="p">{</span> <span class="nx">defineConfig</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;vite&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="nx">vue</span> <span class="kr">from</span> <span class="s2">&#34;@vitejs/plugin-vue&#34;</span><span class="p">;</span>
+
+<span class="c1">// https://vitejs.dev/config/
+</span><span class="c1"></span><span class="kr">export</span> <span class="k">default</span> <span class="nx">defineConfig</span><span class="p">({</span>
+  <span class="nx">plugins</span><span class="o">:</span> <span class="p">[</span><span class="nx">vue</span><span class="p">()],</span>
+  <span class="nx">optimizeDeps</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">exclude</span><span class="o">:</span> <span class="p">[</span><span class="s2">&#34;jsuites&#34;</span><span class="p">],</span>
+  <span class="p">},</span>
+<span class="p">});</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>可用的 vue3 ui 库？</p>
+<p>
+<a href="https://dev.to/beccabycott/vue-3-ui-component-library-for-2021-4nfa">Vue 3 UI component library for 2021 - DEV Community</a></p>
+<p>
+<a href="https://github.com/element-plus/element-plus">ElementUI</a> ✅ &gt; <a href="https://github.com/ionic-team/ionic-framework">Ionic 移动端</a> ✅ &gt; <a href="https://github.com/primefaces/primevue">Primevue</a> ✅ &gt; <a href="https://github.com/vuetifyjs/vuetify">Vuetify</a> ❌ &gt; <a href="https://github.com/quasarframework/quasar">Quasar</a> ❌</p>
+</li>
+<li>
+<p><code>import bgImg from &#39;../assets/bg.jpg&#39;</code> 总是报错？</p>
+<pre class="example">
+9:21:21 PM [vite] Internal server error: Failed to resolve import &#34;/@/assets/login_bg.jpg&#34;. Does the file exist?
+</pre>
+<p>
+见 <a href="#plugin-import-analysis">plugin-import-analysis</a> 分析。</p>
+</li>
+</ol>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-02-25
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vite/">vite</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-my-plan/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 周边源码学习计划表</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-mind-map-runtime-core-2-render/">
+            <span class="next-text nav-default">Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

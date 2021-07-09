@@ -1,0 +1,174 @@
+#+TITLE: My MacOS
+#+DATE: <2021-07-01 20:12:38>
+#+TAGS[]: macos
+#+CATEGORIES[]: macos
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_example
+😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀
+MacOS 系统相关的东西
+😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀
+#+end_example
+
+#+begin_export html
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+insertCssLink("/js/vue/css/awesome.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/awesome/common.js"></script>
+#+end_export
+
+* Nix
+
+install:
+
+[[https://nixos.org/][NixOS - NixOS Linux]]
+
+[[https://zhuanlan.zhihu.com/p/88886592][Nix on macOS, Made Easy - 知乎]]
+
+[[https://wickedchicken.github.io/post/macos-nix-setup/][MacOS Nix Setup (an alternative to Homebrew)]]
+
+~$ curl -L https://nixos.org/nix/install | sh~
+
+新系统不能安装问题，无权限创建 ~/nix~
+
+~$ sh <(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume~
+
+#+begin_example
+Creating volume and mountpoint /nix.
+
+     ------------------------------------------------------------------
+    | This installer will create a volume for the nix store and        |
+    | configure it to mount at /nix.  Follow these steps to uninstall. |
+     ------------------------------------------------------------------
+
+  1. Remove the entry from fstab using 'sudo vifs'
+  2. Destroy the data volume using 'diskutil apfs deleteVolume'
+  3. Remove the 'nix' line from /etc/synthetic.conf or the file
+
+  ...
+
+Installation finished!  To ensure that the necessary environment
+variables are set, either log in again, or type
+
+  . /Users/simon/.nix-profile/etc/profile.d/nix.sh
+
+in your shell.
+#+end_example
+
+完成之后：
+
+#+begin_example
+# simon @ gcl in ~ [20:18:32]
+$ nix
+Usage: nix <COMMAND> <FLAGS>... <ARGS>...
+
+Common flags:
+      --debug                  enable debug output
+      --help                   show usage information
+      --help-config            show configuration options
+      --no-net                 disable substituters and consider all previously downloaded files up-to-date
+      --option <NAME> <VALUE>  set a Nix configuration option (overriding nix.conf)
+  -L, --print-build-logs       print full build logs on stderr
+      --quiet                  decrease verbosity level
+  -v, --verbose                increase verbosity level
+      --version                show version information
+
+In addition, most configuration settings can be overriden using '--<name> <value>'.
+Boolean settings can be overriden using '--<name>' or '--no-<name>'. See 'nix
+--help-config' for a list of configuration settings.
+
+Available commands:
+  add-to-store     add a path to the Nix store
+  build            build a derivation or fetch a store path
+  cat-nar          print the contents of a file inside a NAR file
+  cat-store        print the contents of a store file on stdout
+  copy             copy paths between Nix stores
+  copy-sigs        copy path signatures from substituters (like binary caches)
+  doctor           check your system for potential problems
+  dump-path        dump a store path to stdout (in NAR format)
+  edit             open the Nix expression of a Nix package in $EDITOR
+  eval             evaluate a Nix expression
+  hash-file        print cryptographic hash of a regular file
+  hash-path        print cryptographic hash of the NAR serialisation of a path
+  log              show the build log of the specified packages or paths, if available
+  ls-nar           show information about the contents of a NAR file
+  ls-store         show information about a store path
+  optimise-store   replace identical files in the store by hard links
+  path-info        query information about store paths
+  ping-store       test whether a store can be opened
+  repl             start an interactive environment for evaluating Nix expressions
+  run              run a shell in which the specified packages are available
+  search           query available packages
+  show-config      show the Nix configuration
+  show-derivation  show the contents of a store derivation
+  sign-paths       sign the specified paths
+  to-base16        convert a hash to base-16 representation
+  to-base32        convert a hash to base-32 representation
+  to-base64        convert a hash to base-64 representation
+  to-sri           convert a hash to SRI representation
+  upgrade-nix      upgrade Nix to the latest stable version
+  verify           verify the integrity of store paths
+  why-depends      show why a package has another package in its closure
+
+Note: this program is EXPERIMENTAL and subject to change.
+#+end_example
+
+安装 nix-darwin:
+
+#+begin_src bash
+nix-build https://github.com/LnL7/nix-darwin/archive/master.tar.gz -A installer
+./result/bin/darwin-installer
+#+end_src
+
+配置： ~/Users/simon/.nixpkgs/darwin-configuration.nix~
+
+#+begin_example
+{ config, pkgs, ... }:
+
+{
+  # List packages installed in system profile. To search by name, run: $ nix-env -qaP | grep wget
+  environment.systemPackages =
+    [ pkgs.vim
+    ];
+
+  # Use a custom configuration.nix location. $ darwin-rebuild switch -I
+  # darwin-config=$HOME/.config/nixpkgs/darwin/configuration.nix environment.darwinConfig =
+  # "$HOME/.config/nixpkgs/darwin/configuration.nix";
+
+  # Auto upgrade nix package and the daemon service. services.nix-daemon.enable = true;
+  # nix.package = pkgs.nix;
+
+  # Create /etc/bashrc that loads the nix-darwin environment.
+  programs.zsh.enable = true; # default shell on catalina
+  # programs.fish.enable = true;
+
+  # Used for backwards compatibility, please read the changelog before changing. $ darwin-rebuild
+  # changelog
+  system.stateVersion = 4;
+}
+#+end_example
+
+配置文件每次修改之后要执行 ~darwin-rebuild switch~ 生效。
+
+更新包: ~nix-channel --update~
+* awesome tools
+
+https://github.com/jaywcjlove/awesome-mac/blob/master/README-zh.md
+
+example:
+#+begin_src html
+<div id="test"></div>
+<script src="/path/to/test.js"></script>
+#+end_src
+
+** 窗口管理
+
+#+begin_export html
+<div id="mac-window"></div>
+<script src="/js/vue/awesome/mac-window.js"></script>
+#+end_export

@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue Vuex Persist Store(数据持久化) - 简化版 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="官方仓库： championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled) VuexPersistence 原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-vuex-persist/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue Vuex Persist Store(数据持久化) - 简化版" />
+<meta property="og:description" content="官方仓库： championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled) VuexPersistence 原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-vuex-persist/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-04-25T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-04-25T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue Vuex Persist Store(数据持久化) - 简化版">
+<meta itemprop="description" content="官方仓库： championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled) VuexPersistence 原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的"><meta itemprop="datePublished" content="2021-04-25T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-04-25T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="1189">
+<meta itemprop="keywords" content="vue,,vuex,,store,,persist," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue Vuex Persist Store(数据持久化) - 简化版"/>
+<meta name="twitter:description" content="官方仓库： championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled) VuexPersistence 原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue Vuex Persist Store(数据持久化) - 简化版</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-04-25 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 1189 字 </span>
+          <span class="more-meta"> 预计阅读 3 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#constructor">VuexPersistence</a>
+<ul>
+<li><a href="#headline-2">存储源</a>
+</li>
+<li><a href="#headline-3">[save|restore]State</a>
+</li>
+<li><a href="#headline-4">plugin(store)</a>
+</li>
+<li><a href="#headline-5">subscriber(store)</a>
+</li>
+<li><a href="#headline-6">modules</a>
+</li>
+</ul>
+</li>
+<li><a href="#queue">queue 队列</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<blockquote>
+<p>官方仓库： <a href="https://github.com/championswimmer/vuex-persist">championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled)</a></p>
+</blockquote>
+<script src="/js/deepmerge.js"></script>
+<div id="outline-container-constructor" class="outline-2">
+<h2 id="constructor">
+VuexPersistence
+</h2>
+<div id="outline-text-constructor" class="outline-text-2">
+<blockquote>
+<p>原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的时候执
+行去更新 persist store。</p>
+</blockquote>
+<p>
+构造函数:</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">VuexPersistence</span><span class="p">(</span><span class="nx">options</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// ...
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+存储源
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+初始化，并且决定用哪种方式存储数据，主要有三种方式：</p>
+<ol>
+<li>
+<p>用户定义存到哪里 options.storage</p>
+</li>
+<li>
+<p>H5 的 storage api localStorage 本地存储</p>
+</li>
+<li>
+<p>MockStorage 库内部的一个封装，内存存储方案</p>
+</li>
+</ol>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">VuexPersistence</span><span class="p">(</span><span class="nx">options</span> <span class="o">=</span> <span class="p">{})</span> <span class="p">{</span>
+  <span class="c1">// 创建一个队列管理器实例
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="mi">_</span><span class="nx">mutex</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">SimplePromiseQueue</span><span class="p">()</span>
+
+  <span class="k">this</span><span class="p">.</span><span class="nx">key</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">key</span> <span class="o">??</span> <span class="s1">&#39;vuex&#39;</span>
+
+  <span class="k">this</span><span class="p">.</span><span class="nx">subscribed</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="k">this</span><span class="p">.</span><span class="nx">mergeOption</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">mergeOption</span> <span class="o">||</span> <span class="s1">&#39;replaceArrays&#39;</span>
+
+
+  <span class="kd">let</span> <span class="nx">localStorateLitmus</span> <span class="o">=</span> <span class="kc">true</span>
+  <span class="c1">// 支不支持 H5 storage api
+</span><span class="c1"></span>  <span class="k">try</span> <span class="p">{</span>
+    <span class="nb">window</span><span class="p">.</span><span class="nx">localStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">localStorageLitmus</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 几种 storage 存储机制
+</span><span class="c1"></span>  <span class="c1">// 1. 用户定义的
+</span><span class="c1"></span>  <span class="c1">// 2. H5 storage api localStorage
+</span><span class="c1"></span>  <span class="c1">// 3. mock storage 内存里的一个全局变量
+</span><span class="c1"></span>  <span class="c1">// 4. 都不是应该报错
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">options</span><span class="p">.</span><span class="nx">storage</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">storage</span> <span class="o">=</span> <span class="nx">options</span><span class="p">.</span><span class="nx">storage</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+[save|restore]State
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+这两个函数直接操作 store 存储源。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">// 清空数据
+</span><span class="c1"></span><span class="k">this</span><span class="p">.</span><span class="nx">restoreState</span> <span class="o">=</span> <span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">storage</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="nx">storage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="nx">key</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">value</span> <span class="o">===</span> <span class="s2">&#34;string&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">value</span> <span class="o">||</span> <span class="s2">&#34;{}&#34;</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">value</span> <span class="o">||</span> <span class="p">{};</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="k">this</span><span class="p">.</span><span class="nx">saveState</span> <span class="o">=</span> <span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">state</span><span class="p">,</span> <span class="nx">storage</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="nx">storage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">state</span><span class="p">));</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+plugin(store)
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+给 vuex 使用的一个函数</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">vuexLocal</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">VuexPersistence</span><span class="p">({</span>
+  <span class="nx">storage</span><span class="o">:</span> <span class="nb">window</span><span class="p">.</span><span class="nx">localStorage</span><span class="p">,</span>
+  <span class="nx">modules</span><span class="o">:</span> <span class="p">[</span><span class="s2">&#34;permission&#34;</span><span class="p">,</span> <span class="s2">&#34;film&#34;</span><span class="p">,</span> <span class="s2">&#34;settings&#34;</span><span class="p">],</span>
+<span class="p">});</span>
+
+<span class="nx">createStore</span><span class="p">({</span>
+  <span class="c1">// ...
+</span><span class="c1"></span>  <span class="nx">plugins</span><span class="o">:</span> <span class="p">[</span><span class="nx">vuexLocal</span><span class="p">.</span><span class="nx">plugin</span><span class="p">],</span>
+<span class="p">});</span>
+
+<span class="c1">// vuex Store: constructor &gt; 安装插件
+</span><span class="c1">// apply plugins
+</span><span class="c1"></span><span class="nx">plugins</span><span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">plugin</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="nx">plugin</span><span class="p">(</span><span class="k">this</span><span class="p">));</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+实现:</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">//  vuex 安装接口
+</span><span class="c1"></span><span class="k">this</span><span class="p">.</span><span class="nx">plugin</span> <span class="o">=</span> <span class="p">(</span><span class="nx">store</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">savedState</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">restoreState</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">storage</span><span class="p">);</span>
+
+  <span class="c1">// TODO strict mode
+</span><span class="c1"></span>  <span class="nx">store</span><span class="p">.</span><span class="nx">replaceState</span><span class="p">(</span><span class="nx">merge</span><span class="p">(</span><span class="nx">store</span><span class="p">.</span><span class="nx">state</span><span class="p">,</span> <span class="nx">savedState</span> <span class="o">||</span> <span class="p">{}));</span>
+
+  <span class="k">this</span><span class="p">.</span><span class="nx">subscriber</span><span class="p">(</span><span class="nx">store</span><span class="p">)((</span><span class="nx">mutation</span><span class="p">,</span> <span class="nx">state</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">mutation</span><span class="p">))</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">saveState</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">reducer</span><span class="p">(</span><span class="nx">state</span><span class="p">),</span> <span class="k">this</span><span class="p">.</span><span class="nx">storage</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">});</span>
+
+  <span class="k">this</span><span class="p">.</span><span class="nx">subscribed</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// vuex replaceState，直接理解为替换 state 就行了
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">replaceState</span><span class="p">(</span><span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">withCommit</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">state</span><span class="p">.</span><span class="nx">data</span> <span class="o">=</span> <span class="nx">state</span><span class="p">;</span>
+  <span class="p">});</span>
+<span class="p">}</span>
+
+<span class="c1">// 订阅啥？
+</span><span class="c1"></span><span class="k">this</span><span class="p">.</span><span class="nx">subscriber</span><span class="p">(</span><span class="nx">store</span><span class="p">)((</span><span class="nx">mutation</span><span class="o">:</span> <span class="nx">MutationPayload</span><span class="p">,</span> <span class="nx">state</span><span class="o">:</span> <span class="nx">S</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">mutation</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">saveState</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">reducer</span><span class="p">(</span><span class="nx">state</span><span class="p">),</span> <span class="k">this</span><span class="p">.</span><span class="nx">storage</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">});</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+subscriber(store)
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">subscriber</span> <span class="o">=</span> <span class="p">(</span><span class="nx">store</span>: <span class="kt">Store</span><span class="p">&lt;</span><span class="nt">S</span><span class="p">&gt;)</span> <span class="o">=&gt;</span> <span class="p">(</span>
+  <span class="nx">handler</span><span class="o">:</span> <span class="p">(</span><span class="nx">mutation</span>: <span class="kt">MutationPayload</span><span class="p">,</span> <span class="nx">state</span>: <span class="kt">S</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="kt">any</span>
+<span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">store</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">(</span><span class="nx">handler</span><span class="p">);</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+vuex subscribe:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">subscribe</span><span class="p">(</span><span class="nx">fn</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="nx">genericSubscribe</span><span class="p">(</span><span class="nx">fn</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">_subscribers</span><span class="p">,</span> <span class="nx">options</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kd">function</span> <span class="nx">genericSubscribe</span><span class="p">(</span><span class="nx">fn</span><span class="p">,</span> <span class="nx">subs</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">subs</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">options</span> <span class="o">&amp;&amp;</span> <span class="nx">options</span><span class="p">.</span><span class="nx">prepend</span> <span class="o">?</span> <span class="nx">subs</span><span class="p">.</span><span class="nx">unshift</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="o">:</span> <span class="nx">subs</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">i</span> <span class="o">=</span> <span class="nx">subs</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">subs</span><span class="p">.</span><span class="nx">splice</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">};</span>
+<span class="p">}</span>
+
+<span class="c1">// commit
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">commit</span><span class="p">(</span><span class="nx">_type</span><span class="p">,</span> <span class="nx">_payload</span><span class="p">,</span> <span class="nx">_options</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// ... 省略 commit mutation 操作
+</span><span class="c1"></span>
+  <span class="c1">// 注意看这里，说明每次 commit mutation 操作
+</span><span class="c1"></span>  <span class="c1">// 更新 state 的时候都会执行
+</span><span class="c1"></span>  <span class="k">this</span><span class="p">.</span><span class="nx">_subscribers</span>
+    <span class="p">.</span><span class="nx">slice</span><span class="p">()</span> <span class="c1">// shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
+</span><span class="c1"></span>    <span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">sub</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">sub</span><span class="p">(</span><span class="nx">mutation</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">));</span>
+
+  <span class="c1">// ... warn
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+有了上面的 vuex 源码部分，再来看这 vuex-persist 的 subscribe 干了啥</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="c1">// 订阅啥？
+</span><span class="c1"></span><span class="k">this</span><span class="p">.</span><span class="nx">subscriber</span><span class="p">(</span><span class="nx">store</span><span class="p">)((</span><span class="nx">mutation</span><span class="o">:</span> <span class="nx">MutationPayload</span><span class="p">,</span> <span class="nx">state</span><span class="o">:</span> <span class="nx">S</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">mutation</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">saveState</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">reducer</span><span class="p">(</span><span class="nx">state</span><span class="p">),</span> <span class="k">this</span><span class="p">.</span><span class="nx">storage</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">});</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+这里等于是给 vuex this._subscribers 注入了一个函数，这个函数会在每次 vuex commit
+mutation 的时候去执行来更新 store 里面的 state。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="k">this</span><span class="p">.</span><span class="nx">saveState</span> <span class="o">=</span> <span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">state</span><span class="p">,</span> <span class="nx">storage</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="nx">storage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">state</span><span class="p">));</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+modules
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+支持多模块 - 对应了 vuex 的 modules。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">this</span><span class="p">.</span><span class="nx">reducer</span> <span class="o">=</span>
+  <span class="nx">options</span><span class="p">.</span><span class="nx">reducer</span> <span class="o">!=</span> <span class="kc">null</span>
+    <span class="o">?</span> <span class="nx">options.reducer</span>
+    : <span class="kt">options.modules</span> <span class="o">==</span> <span class="kc">null</span>
+    <span class="o">?</span> <span class="p">(</span><span class="nx">state</span>: <span class="kt">S</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">state</span>
+    <span class="o">:</span> <span class="p">(</span><span class="nx">state</span>: <span class="kt">any</span><span class="p">)</span> <span class="o">=&gt;</span>
+        <span class="p">(</span><span class="nx">options</span><span class="o">!</span><span class="p">.</span><span class="kr">module</span><span class="nx">s</span> <span class="kr">as</span> <span class="kt">string</span><span class="p">[]).</span><span class="nx">reduce</span><span class="p">(</span>
+          <span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">merge</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="p">{</span> <span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="o">:</span> <span class="nx">state</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">},</span> <span class="k">this</span><span class="p">.</span><span class="nx">mergeOption</span><span class="p">),</span>
+          <span class="p">{</span>
+            <span class="cm">/* start empty accumulator*/</span>
+          <span class="p">}</span>
+        <span class="p">);</span>
+
+<span class="c1">// 使用：当 commit mutation 状态更新，根据是不是有 modules
+</span><span class="c1">// 调用 recuder 决定如何存储，比如： modules [a, b]
+</span><span class="c1">// 存储的时候 localStorage = { a: xxx, b: xxx }
+</span><span class="c1">// 如果没有 modules ，默认用的是 key : &#39;vuex&#39;
+</span><span class="c1">// 所以 localStorage = { vuex: xxx }
+</span><span class="c1"></span><span class="k">this</span><span class="p">.</span><span class="nx">subscriber</span><span class="p">(</span><span class="nx">store</span><span class="p">)((</span><span class="nx">mutation</span>: <span class="kt">MutationPayload</span><span class="p">,</span> <span class="nx">state</span>: <span class="kt">S</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">mutation</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">_mutex</span><span class="p">.</span><span class="nx">enqueue</span><span class="p">(</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">saveState</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">reducer</span><span class="p">(</span><span class="nx">state</span><span class="p">),</span> <span class="k">this</span><span class="p">.</span><span class="nx">storage</span><span class="p">)</span> <span class="kr">as</span> <span class="nx">Promise</span><span class="o">&lt;</span>
+        <span class="k">void</span>
+      <span class="o">&gt;</span>
+    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">});</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-queue" class="outline-2">
+<h2 id="queue">
+queue 队列
+</h2>
+<div id="outline-text-queue" class="outline-text-2">
+<p>
+一个简单的队列刷新类：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">SimplePromiseQueue</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">queue</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">flushing</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="p">}</span>
+
+<span class="kr">const</span> <span class="nx">SPQ</span> <span class="o">=</span> <span class="nx">SimplePromiseQueue</span>
+<span class="kr">const</span> <span class="nx">SPGP</span> <span class="o">=</span> <span class="nx">SimplePromiseQueue</span><span class="p">.</span><span class="nx">prototype</span>
+
+<span class="c1">// 入列，如果没有任务正在执行，立即 flush
+</span><span class="c1"></span><span class="nx">SPGP</span><span class="p">.</span><span class="nx">enqueue</span> <span class="o">=</span> <span class="kd">function</span> <span class="nx">enqueue</span><span class="p">(</span><span class="nx">promise</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">promise</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">flushing</span><span class="p">)</span> <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">flushQueue</span><span class="p">()</span>
+  <span class="k">return</span> <span class="nb">Promise</span><span class="p">.</span><span class="nx">resolve</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="nx">SPGP</span><span class="p">.</span><span class="nx">flushQueue</span> <span class="o">=</span> <span class="kd">function</span> <span class="nx">flushQueue</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">flushing</span> <span class="o">=</span> <span class="kc">true</span>
+
+  <span class="kr">const</span> <span class="nx">chain</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">nextTask</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">queue</span><span class="p">.</span><span class="nx">shift</span><span class="p">()</span> <span class="c1">// 先进先出
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">nextTask</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 递归，flush 所有任务
+</span><span class="c1"></span>      <span class="k">return</span> <span class="nx">nextTask</span><span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">chain</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">this</span><span class="p">.</span><span class="mi">_</span><span class="nx">flushing</span> <span class="o">=</span> <span class="kc">false</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nb">Promise</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">chain</span><span class="p">())</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+任务入列的时候，会检测队列是不是正在刷新，如果是只执行入列操作，这里返回一个
+<code>Promise.resolve()</code> 方便后面任务的依次进行。</p>
+<p>
+<code>flushQueue()</code> 将出列行为封装成一个函数，来达到所有任务按入列顺序执行。</p>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-04-25
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue/">vue,</a>
+          <a href="/tags/vuex/">vuex,</a>
+          <a href="/tags/store/">store,</a>
+          <a href="/tags/persist/">persist</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-teardown-3-update-flow/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 功能拆解③ 组件更新机制</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-project-ecosystem/">
+            <span class="next-text nav-default">Vue3 开发生态链(vuex, vue-router, ...)</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 源码头脑风暴之 8 ☞ runtime-dom - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 运行时" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-mind-map-runtime-dom/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 源码头脑风暴之 8 ☞ runtime-dom" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 运行时" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-mind-map-runtime-dom/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-04-14T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-04-14T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 源码头脑风暴之 8 ☞ runtime-dom">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 运行时"><meta itemprop="datePublished" content="2021-04-14T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-04-14T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="5455">
+<meta itemprop="keywords" content="vue,,vue3,,runtime-dom,,patch," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 源码头脑风暴之 8 ☞ runtime-dom"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 运行时"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 源码头脑风暴之 8 ☞ runtime-dom</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-04-14 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 5455 字 </span>
+          <span class="more-meta"> 预计阅读 11 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#patch-props">patch props</a>
+<ul>
+<li><a href="#prop-class">class</a>
+</li>
+<li><a href="#prop-style">style</a>
+</li>
+<li><a href="#prop-on-xxx">onXxx</a>
+</li>
+<li><a href="#prop-dom">props</a>
+</li>
+<li><a href="#prop-true-false">true/false-value</a>
+</li>
+</ul>
+</li>
+<li><a href="#node-ops">nodeOps</a>
+</li>
+<li><a href="#transition">Transition&amp;Group</a>
+</li>
+<li><a href="#v-on">v-on 事件</a>
+</li>
+<li><a href="#v-show">v-show 处理</a>
+</li>
+<li><a href="#v-model">v-model 处理</a>
+</li>
+<li><a href="#use-css-vars">useCssVars</a>
+</li>
+<li><a href="#use-css-module">useCssModule</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script src="/js/vue/runtime-dom.global.js"></script>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<p>
+<kbd>
+<strong><a href="https://github.com/gcclll/stb-vue-next">stb-vue-next</a> 完全拷贝于 <a href="https://github.com/vuejs/vue-next">vue-next</a> ，主要目的用于学习。</strong>
+</kbd></p>
+<blockquote>
+<p>运行时的 DOM 操作。</p>
+</blockquote>
+<div id="outline-container-patch-props" class="outline-2">
+<h2 id="patch-props">
+patch props
+</h2>
+<div id="outline-text-patch-props" class="outline-text-2">
+<div id="outline-container-prop-class" class="outline-3">
+<h3 id="prop-class">
+class
+</h3>
+<div id="outline-text-prop-class" class="outline-text-3">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">patchProp</span>: <span class="kt">DOMRendererOptions</span><span class="p">[</span><span class="s1">&#39;patchProp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="nx">el</span><span class="p">,</span>
+  <span class="nx">key</span><span class="p">,</span>
+  <span class="nx">prevValue</span><span class="p">,</span>
+  <span class="nx">nextValue</span><span class="p">,</span>
+  <span class="nx">isSVG</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span>
+  <span class="nx">prevChildren</span><span class="p">,</span>
+  <span class="nx">parentComponent</span><span class="p">,</span>
+  <span class="nx">parentSuspense</span><span class="p">,</span>
+  <span class="nx">unmountChildren</span>
+<span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">switch</span> <span class="p">(</span><span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 特殊属性
+</span><span class="c1"></span>    <span class="k">case</span> <span class="s1">&#39;class&#39;</span><span class="o">:</span>
+      <span class="nx">patchClass</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">nextValue</span><span class="p">,</span> <span class="nx">isSVG</span><span class="p">)</span>
+      <span class="k">break</span>
+    <span class="k">case</span> <span class="s1">&#39;style&#39;</span><span class="o">:</span>
+      <span class="k">break</span>
+    <span class="k">default</span><span class="o">:</span>
+      <span class="k">break</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+class patch 操作:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">patchClass</span><span class="p">(</span><span class="nx">el</span>: <span class="kt">Element</span><span class="p">,</span> <span class="nx">value</span>: <span class="kt">string</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">isSVG</span>: <span class="kt">boolean</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">value</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isSVG</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">el</span><span class="p">.</span><span class="nx">setAttribute</span><span class="p">(</span><span class="s2">&#34;class&#34;</span><span class="p">,</span> <span class="nx">value</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">transitionClasses</span> <span class="o">=</span> <span class="p">(</span><span class="nx">el</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">)</span> <span class="cm">/* TODO ElementWithTransition */</span><span class="p">.</span><span class="nx">_vtc</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transitionClasses</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 合并类名
+</span><span class="c1"></span>      <span class="nx">value</span> <span class="o">=</span> <span class="p">(</span><span class="nx">value</span>
+        <span class="o">?</span> <span class="p">[</span><span class="nx">value</span><span class="p">,</span> <span class="p">...</span><span class="nx">transitionClasses</span><span class="p">]</span>
+        <span class="o">:</span> <span class="p">[...</span><span class="nx">transitionClasses</span><span class="p">]</span>
+      <span class="p">).</span><span class="nx">join</span><span class="p">(</span><span class="s2">&#34;&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="nx">el</span><span class="p">.</span><span class="nx">className</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<script class="x6c22Ir">
+(function() {
+const { render, h, patchProp } = VueRuntimeDOM
+const el = document.createElement('div')
+patchProp(el, 'class', null, 'foo')
+console.log(el.className, el.outerHTML, '\nafter')
+patchProp(el, 'class', null, null)
+console.log(el.className, el.outerHTML)
+}())
+</script>
+<script>
+insertPreCode('x6c22Ir')
+</script>
+<p>
+输出结果：</p>
+<pre class="example">
+foo &lt;div class=&#34;foo&#34;&gt;&lt;/div&gt;
+after
+&lt;div class=&#34;&#34;&gt;&lt;/div&gt;
+</pre>
+</div>
+</div>
+<div id="outline-container-prop-style" class="outline-3">
+<h3 id="prop-style">
+style
+</h3>
+<div id="outline-text-prop-style" class="outline-text-3">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/50468d8a453494336238c8b3fcef03cc754ae0e2">feat(add): runtime-dom, patch props style · gcclll/stb-vue-next@50468d8</a></p>
+<p>
+源码:</p>
+<ol>
+<li>
+<p>删除操作(next 为空的时候)</p>
+</li>
+<li>
+<p>如果是字符串直接替换 cssText</p>
+</li>
+<li>
+<p>如果是对象，将遍历所有属性重新设值，新有旧没有执行删除</p>
+<p>
+比如：</p>
+<p>
+<code>old = { color: &#39;red&#39;, &#39;font-size&#39;: &#39;32px&#39; }</code></p>
+<p>
+<code>next = { color: &#39;blue&#39; }</code></p>
+<p>
+那么最终字体颜色会变成 <code>blue</code> ，字体大小被重置为默认大小。</p>
+</li>
+</ol>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">patchStyle</span><span class="p">(</span><span class="nx">el</span>: <span class="kt">Element</span><span class="p">,</span> <span class="nx">prev</span>: <span class="kt">Style</span><span class="p">,</span> <span class="nx">next</span>: <span class="kt">Style</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">style</span> <span class="o">=</span> <span class="p">(</span><span class="nx">el</span> <span class="kr">as</span> <span class="nx">HTMLElement</span><span class="p">).</span><span class="nx">style</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 删除操作
+</span><span class="c1"></span>    <span class="nx">el</span><span class="p">.</span><span class="nx">removeAttribute</span><span class="p">(</span><span class="s1">&#39;style&#39;</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">next</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// 更新操作，全替换操作
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">prev</span> <span class="o">!==</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">style</span><span class="p">.</span><span class="nx">cssText</span> <span class="o">=</span> <span class="nx">next</span>
+    <span class="p">}</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="c1">// 如果是对象，根据对象内的属性逐个进行更新
+</span><span class="c1"></span>    <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 更新单个值
+</span><span class="c1"></span>      <span class="nx">setStyle</span><span class="p">(</span><span class="nx">style</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">next</span><span class="p">[</span><span class="nx">key</span><span class="p">])</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">prev</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">isString</span><span class="p">(</span><span class="nx">prev</span><span class="p">))</span> <span class="p">{</span>
+      <span class="c1">// 删除老的不在 next 中的值
+</span><span class="c1"></span>      <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">prev</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">next</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">setStyle</span><span class="p">(</span><span class="nx">style</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+setStyle 代码：</p>
+<ol>
+<li>
+<p>支持对同一个属性设置不同的值，等于是取最后的那个值</p>
+<p>
+如： <code>color:red</code> 设值 <code>[&#39;blue&#39;, &#39;black&#39;, &#39;red&#39;]</code> 最后还是 <code>red</code></p>
+</li>
+<li>
+<p>支持 <code>--webkit-xxx</code> 前缀设置</p>
+</li>
+<li>
+<p>自动添加 <code>webkit, moz, ms</code> 前缀</p>
+</li>
+</ol>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">setStyle</span><span class="p">(</span>
+  <span class="nx">style</span>: <span class="kt">CSSStyleDeclaration</span><span class="p">,</span>
+  <span class="nx">name</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">val</span>: <span class="kt">string</span> <span class="o">|</span> <span class="kt">string</span><span class="p">[]</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">val</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// 同一个属性设置多个值？取最后一个有效值
+</span><span class="c1"></span>    <span class="nx">val</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">v</span> <span class="o">=&gt;</span> <span class="nx">setStyle</span><span class="p">(</span><span class="nx">style</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">v</span><span class="p">))</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="c1">// 多浏览器的兼容处理，如： --webkit-...
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">name</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s1">&#39;--&#39;</span><span class="p">))</span> <span class="p">{</span>
+      <span class="c1">// custom property definition
+</span><span class="c1"></span>      <span class="nx">style</span><span class="p">.</span><span class="nx">setProperty</span><span class="p">(</span><span class="nx">name</span><span class="p">,</span> <span class="nx">val</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="c1">// 自动添加前缀
+</span><span class="c1"></span>      <span class="kr">const</span> <span class="nx">prefixed</span> <span class="o">=</span> <span class="nx">autoPrefix</span><span class="p">(</span><span class="nx">style</span><span class="p">,</span> <span class="nx">name</span><span class="p">)</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">importantRE</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">val</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// 优先级最高的处理
+</span><span class="c1"></span>        <span class="c1">// !important
+</span><span class="c1"></span>        <span class="nx">style</span><span class="p">.</span><span class="nx">setProperty</span><span class="p">(</span>
+          <span class="nx">hyphenate</span><span class="p">(</span><span class="nx">prefixed</span><span class="p">),</span>
+          <span class="nx">val</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">importantRE</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+          <span class="s1">&#39;important&#39;</span>
+        <span class="p">)</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">style</span><span class="p">[</span><span class="nx">prefixed</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">]</span> <span class="o">=</span> <span class="nx">val</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+添加前缀(<code>WebKit, Mox, ms</code>)：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">prefixes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Webkit&#39;</span><span class="p">,</span> <span class="s1">&#39;Moz&#39;</span><span class="p">,</span> <span class="s1">&#39;ms&#39;</span><span class="p">]</span>
+<span class="kr">const</span> <span class="nx">prefixCache</span>: <span class="kt">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1">// 自动添加前缀处理
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">autoPrefix</span><span class="p">(</span><span class="nx">style</span>: <span class="kt">CSSStyleDeclaration</span><span class="p">,</span> <span class="nx">rawName</span>: <span class="kt">string</span><span class="p">)</span><span class="o">:</span> <span class="kt">string</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">cached</span> <span class="o">=</span> <span class="nx">prefixCache</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">cached</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">cached</span>
+  <span class="p">}</span>
+  <span class="kd">let</span> <span class="nx">name</span> <span class="o">=</span> <span class="nx">camelize</span><span class="p">(</span><span class="nx">rawName</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">name</span> <span class="o">!==</span> <span class="s1">&#39;filter&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">name</span> <span class="k">in</span> <span class="nx">style</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nx">prefixCache</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="nx">name</span><span class="p">)</span>
+  <span class="p">}</span>
+  <span class="nx">name</span> <span class="o">=</span> <span class="nx">capitalize</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">prefixes</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">prefixed</span> <span class="o">=</span> <span class="nx">prefixes</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">+</span> <span class="nx">name</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">prefixed</span> <span class="k">in</span> <span class="nx">style</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="p">(</span><span class="nx">prefixCache</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="nx">prefixed</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">rawName</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+测试代码和结果：</p>
+<div class="xY4tcXk"></div>
+<script class="xY4tcXk" src="/js/vue/tests/xY4tcXk.js"></script>
+<a href="/js/vue/tests/xY4tcXk.js" target="_blank">点击查看测试源码</a>
+</div>
+</div>
+<div id="outline-container-prop-on-xxx" class="outline-3">
+<h3 id="prop-on-xxx">
+onXxx
+</h3>
+<div id="outline-text-prop-on-xxx" class="outline-text-3">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/3402f03680c4579d526a5618f951d637dd933880">feat(add): runtime-dom event prop · gcclll/stb-vue-next@3402f03</a></p>
+<p>
+源码：</p>
+<ol>
+<li>
+<p>prevValue 已经绑定到 el 上的一个事件句柄</p>
+</li>
+<li>
+<p>nextValue 新的事件句柄，如果两者同时存在是会进行替换</p>
+</li>
+<li>
+<p>rawName 事件名称，如： <strong>onClick</strong></p>
+</li>
+</ol>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">patchEvent</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">Element</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="nx">_vei?</span>: <span class="kt">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">Invoker</span> <span class="err">|</span> <span class="na">undefined</span><span class="p">&gt;</span> <span class="p">},</span>
+  <span class="nx">rawName</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">prevValue</span>: <span class="kt">EventValue</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">nextValue</span>: <span class="kt">EventValue</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span> <span class="o">|</span> <span class="kc">null</span> <span class="o">=</span> <span class="kc">null</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// vue event invokers
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">invokers</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">||</span> <span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">=</span> <span class="p">{})</span>
+  <span class="kr">const</span> <span class="nx">existingInvoker</span> <span class="o">=</span> <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span> <span class="o">&amp;&amp;</span> <span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// patch
+</span><span class="c1"></span>    <span class="nx">existingInvoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">nextValue</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="p">[</span><span class="nx">name</span><span class="p">,</span> <span class="nx">options</span><span class="p">]</span> <span class="o">=</span> <span class="nx">parseName</span><span class="p">(</span><span class="nx">rawName</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// add 添加事件
+</span><span class="c1"></span>      <span class="kr">const</span> <span class="nx">invoker</span> <span class="o">=</span> <span class="p">(</span><span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="nx">createInvoker</span><span class="p">(</span><span class="nx">nextValue</span><span class="p">,</span> <span class="nx">instance</span><span class="p">))</span>
+      <span class="nx">addEventListener</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">invoker</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// remove 删除事件
+</span><span class="c1"></span>      <span class="nx">removeEventListener</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">existingInvoker</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+      <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="kc">undefined</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+上面主要有几个步骤:</p>
+<ol>
+<li>
+<p>如果已经存在的事件句柄直接更新 <code>exisitingInvoker.value</code> 的值</p>
+</li>
+<li>
+<p>解析事件名称主要是解析出 <code>Once|Passive|Capture</code> 三个事件修饰符</p>
+<p>
+如：</p>
+<p>
+<code>onClick</code> =&gt; <code>[&#39;click&#39;, {}]</code></p>
+<p>
+<code>onClickOnce</code> =&gt; <code>[&#39;click&#39;, {once: true}]</code></p>
+<p>
+<code>onClickOnceCapture</code> =&gt; <code>[&#39;click&#39;, {once: true, capture: true}]</code></p>
+</li>
+<li>
+<p>添加事件 <code>patchProp(el, &#39;onClick&#39;, null, fn)</code></p>
+</li>
+<li>
+<p>删除事件 <code>patchProp(el, &#39;onClick&#39;, oldFn|null, null)</code></p>
+<p>
+当 newFn 传空值时，等于是删除该元素上绑定的 &#39;onclick&#39; 事件句柄。</p>
+</li>
+</ol>
+<p>
+事件名解析:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// 解析事件名 onClick -&gt; [&#39;click&#39;]
+</span><span class="c1">// onClickOnce -&gt; [&#39;click&#39;, { once: true }]
+</span><span class="c1">// onClickOncePassive -&gt; [&#39;click&#39;, { once: true, passive: true }]
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">parseName</span><span class="p">(</span><span class="nx">name</span>: <span class="kt">string</span><span class="p">)</span><span class="o">:</span> <span class="p">[</span><span class="kt">string</span><span class="p">,</span> <span class="nx">EventListenerOptions</span> <span class="o">|</span> <span class="kc">undefined</span><span class="p">]</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">options</span>: <span class="kt">EventListenerOptions</span> <span class="o">|</span> <span class="kc">undefined</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">optionsModifierRE</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">name</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nx">options</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="kd">let</span> <span class="nx">m</span>
+    <span class="k">while</span> <span class="p">((</span><span class="nx">m</span> <span class="o">=</span> <span class="nx">name</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">optionsModifierRE</span><span class="p">)))</span> <span class="p">{</span>
+      <span class="nx">name</span> <span class="o">=</span> <span class="nx">name</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">name</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="nx">m</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">length</span><span class="p">)</span>
+      <span class="p">;(</span><span class="nx">options</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">)[</span><span class="nx">m</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">toLowerCase</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">true</span>
+      <span class="nx">options</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">).</span><span class="nx">toLowerCase</span><span class="p">(),</span> <span class="nx">options</span><span class="p">]</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+invoker: 这个封装的重点在于当绑定事件的时候，记录绑定时的时间戳，然后在执行的时
+候去比较“当前触发的事件的事件戳(e.timeStamp)” 和 “事件句柄绑定时的时间戳”，只要
+前者比后者大就说明可以执行事件句柄了(<span style="text-decoration: underline;">说实话，这里并没有很懂！！！</span>)。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">createInvoker</span><span class="p">(</span>
+  <span class="nx">initialValue</span>: <span class="kt">EventValue</span><span class="p">,</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span> <span class="o">|</span> <span class="kc">null</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">invoker</span>: <span class="kt">Invoker</span> <span class="o">=</span> <span class="p">(</span><span class="nx">e</span>: <span class="kt">Event</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="c1">// 异步边缘情况：内部点击事件触发 patch ，事件
+</span><span class="c1"></span>    <span class="c1">// 句柄在 patch 阶段绑定在 outer element 上，
+</span><span class="c1"></span>    <span class="c1">// 然后会被再次触发，这种情况的发生原因是浏览器在事件
+</span><span class="c1"></span>    <span class="c1">// 冒泡期间触发了微任务时钟(microtask ticks)
+</span><span class="c1"></span>    <span class="c1">// 解决方案：保存事件句柄被绑定瞬间的时间戳(timestamp)
+</span><span class="c1"></span>    <span class="c1">// 然后事件句柄只有在“已保存的时间戳之后触发的事件”上去执行
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">timeStamp</span> <span class="o">=</span> <span class="nx">e</span><span class="p">.</span><span class="nx">timeStamp</span> <span class="o">||</span> <span class="nx">_getNow</span><span class="p">()</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">timeStamp</span> <span class="o">&gt;=</span> <span class="nx">invoker</span><span class="p">.</span><span class="nx">attached</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">callWithAsyncErrorHandling</span><span class="p">(</span>
+        <span class="nx">patchStopImmediatePropagation</span><span class="p">(</span><span class="nx">e</span><span class="p">,</span> <span class="nx">invoker</span><span class="p">.</span><span class="nx">value</span><span class="p">),</span>
+        <span class="nx">instance</span><span class="p">,</span>
+        <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">NATIVE_EVENT_HANDLER</span><span class="p">,</span>
+        <span class="p">[</span><span class="nx">e</span><span class="p">]</span>
+      <span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="nx">invoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">initialValue</span>
+  <span class="nx">invoker</span><span class="p">.</span><span class="nx">attached</span> <span class="o">=</span> <span class="nx">getNow</span><span class="p">()</span>
+  <span class="k">return</span> <span class="nx">invoker</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+另外事件句柄执行又是进行了一次封装的(<code>patchStopImmediatePropagation()</code>)，那这个
+函数是做什么用的呢？</p>
+<p>
+我们都知道一个元素是可以在一个事件名下绑定多个事件句柄的，当这个事件触发的时候会
+自动执行所有绑定的事件句柄。</p>
+<blockquote>
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/Event/stopImmediatePropagation">Event.stopImmediatePropagation() - Web APIs | MDN</a></p>
+<p>
+Event.stopImmediatePropagation()
+The stopImmediatePropagation() method of the Event interface prevents other listeners of the same event from being called.</p>
+<p>
+这段意思是说 stopImmediatePropagation() 会阻止其他 listeners 继续执行。</p>
+<p>
+If several listeners are attached to the same element for the same event type, they are called in the order in which they were added. If stopImmediatePropagation() is invoked during one such call, no remaining listeners will be called.
+如果有多个 listeners 绑定到同一元素的同一事件类型上，他们会按照添加的顺序依次被
+执行。如果 stopImmediatePropagation() 在任意一个 listener 执行期间被调用，那么剩
+余的 listeners 就不会再被调用，也就是说在任意一个 listener 内可以控制后续的
+listeners 是否会被执行。</p>
+</blockquote>
+<p>
+再来看 <code>patchStopImmediatePropagation()</code> 源码：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">patchStopImmediatePropagation</span><span class="p">(</span>
+  <span class="nx">e</span>: <span class="kt">Event</span><span class="p">,</span>
+  <span class="nx">value</span>: <span class="kt">EventValue</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">EventValue</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">originalStop</span> <span class="o">=</span> <span class="nx">e</span><span class="p">.</span><span class="nx">stopImmediatePropagation</span><span class="p">;</span>
+    <span class="c1">// 这里对事件的 stopImmediatePropagation 进行了二次封装
+</span><span class="c1"></span>    <span class="nx">e</span><span class="p">.</span><span class="nx">stopImmediatePropagation</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="nx">originalStop</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">e</span><span class="p">);</span>
+      <span class="c1">// 加入了一个标识
+</span><span class="c1"></span>      <span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_stopped</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+    <span class="p">};</span>
+
+    <span class="c1">// 这里又对所有的 listeners 进行了二次封装
+</span><span class="c1"></span>    <span class="c1">// 即如果 _stopped 是假值的情况下才调用 listener
+</span><span class="c1"></span>    <span class="c1">// 意思就是结合 stopImmediatePropagation 这里做了手动管理
+</span><span class="c1"></span>    <span class="k">return</span> <span class="nx">value</span><span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">fn</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">e</span>: <span class="kt">Event</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_stopped</span> <span class="o">&amp;&amp;</span> <span class="nx">fn</span><span class="p">(</span><span class="nx">e</span><span class="p">));</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">value</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<blockquote>
+<p>❓ 初想会不会觉得多此一举 ❓</p>
+</blockquote>
+<p>
+那么我们将关键的代码放一起来看看：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// patchEvent
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">invokers</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">||</span> <span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">=</span> <span class="p">{});</span>
+<span class="kr">const</span> <span class="nx">existingInvoker</span> <span class="o">=</span> <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">];</span>
+<span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span> <span class="o">&amp;&amp;</span> <span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// patch
+</span><span class="c1"></span>  <span class="nx">existingInvoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">nextValue</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// createInvoker -&gt; invoker
+</span><span class="c1"></span><span class="k">if</span> <span class="p">(</span><span class="nx">timeStamp</span> <span class="o">&gt;=</span> <span class="nx">invoker</span><span class="p">.</span><span class="nx">attached</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">callWithAsyncErrorHandling</span><span class="p">(</span>
+    <span class="nx">patchStopImmediatePropagation</span><span class="p">(</span><span class="nx">e</span><span class="p">,</span> <span class="nx">invoker</span><span class="p">.</span><span class="nx">value</span><span class="p">),</span>
+    <span class="nx">instance</span><span class="p">,</span>
+    <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">NATIVE_EVENT_HANDLER</span><span class="p">,</span>
+    <span class="p">[</span><span class="nx">e</span><span class="p">]</span>
+  <span class="p">);</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+一个元素上不同 name 的事件都会保存到 DOM 元素的 el._vei上面，也就是说下次注册事
+件的时候会直接从这里取出 invoker，直接更新invoker.value 而不是重新创建了一个函数
+来接受这个事件句柄</p>
+<p>
+比如：</p>
+<p>
+<strong>普通使用情况:</strong></p>
+<p>
+<code>el.addEventListener(&#39;click&#39;, fn1)</code></p>
+<p>
+<code>el.addEventListener(&#39;click&#39;, fn2)</code></p>
+<p>
+那么在 el 上会有两个句柄 fn1, fn2</p>
+<p>
+<strong>使用patchEvent:</strong></p>
+<p>
+<code>patchEvent(el, &#39;click&#39;, null, fn1)</code></p>
+<p>
+<code>patchEvent(el, &#39;click&#39;, null,fn2)</code></p>
+<p>
+这里实际上并没有添加两个句柄 fn1, fn2 而是等于 fn1 = fn2 覆盖了此时 fn1 其实
+已经不存在了，并且此时绑定在 el 上的 click 事件的句柄就永远是第一次注册 fn1 时创
+建的那个 invoker (除非执行 <code>patchEvent(el, &#39;click&#39;, null, null)</code> 删除了这个
+invoker)</p>
+<p>
+那如何实现一个元素一个事件绑定多个句柄呢？</p>
+<p>
+这样: <code>patchEvent(el, &#39;click&#39;, null, [fn1, fn2])</code></p>
+<p>
+因为在 vue 中绑定的事件句柄最后都会被解析到一个数组中。</p>
+<p>
+正如上面分析的结果，也就是说 <code>patchEvent()</code> 永远只会在 el 上对于同名事件注册一个
+句柄 invoker，那么 <code>event.stopImmediatePropagation()</code> 在这里实际没有什么作用，它
+实际并不能控制 <code>invoker.value</code> 中真正的事件句柄执行。</p>
+<p>
+所以就有了 <code>patchStopImmediatePropagation()</code> 函数的封装，来变相实现
+<code>stopImmediatePropagation</code> 对真正事件句柄的控制。</p>
+<p>
+测试：</p>
+<div class="xTDpGGF"></div>
+<script class="xTDpGGF" src="/js/vue/tests/xTDpGGF.js"></script>
+<a href="/js/vue/tests/xTDpGGF.js" target="_blank">点击查看测试源码</a>
+</div>
+</div>
+<div id="outline-container-prop-dom" class="outline-3">
+<h3 id="prop-dom">
+props
+</h3>
+<div id="outline-text-prop-dom" class="outline-text-3">
+<p>
+一个函数处理几种情况，主要处理的是DOM元素上的一些内置属性</p>
+<ol>
+<li>
+<p><code>innerHTML</code> 或 <code>textContent</code></p>
+<p>
+直接复制操作， <code>el[key] = value || &#39;&#39;</code> , 如果有 children 全部卸载掉。</p>
+</li>
+<li>
+<p><code>key=value</code> 且标签非 <code>PROGRESS</code></p>
+<p>
+ <code>el._value = value</code> 保存原始值，这种针对有 <code>value</code> 的元素，比如： <code>&lt;input/&gt;</code></p>
+</li>
+<li>
+<p>空值处理或真值处理(如： <code>&lt;select multiple&gt;</code>)</p>
+<p>
+boolean 处理成 <code>true</code>, string 处理成 <code>&#39;&#39;</code>, number 处理成 <code>0</code> 。</p>
+</li>
+</ol>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// functions. The user is responsible for using them with only trusted content.
+</span><span class="c1"></span><span class="kr">export</span> <span class="kd">function</span> <span class="nx">patchDOMProp</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">any</span><span class="p">,</span>
+  <span class="nx">key</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">value</span>: <span class="kt">any</span><span class="p">,</span>
+  <span class="c1">// the following args are passed only due to potential innerHTML/textContent
+</span><span class="c1"></span>  <span class="c1">// overriding existing VNodes, in which case the old tree must be properly
+</span><span class="c1"></span>  <span class="c1">// unmounted.
+</span><span class="c1"></span>  <span class="nx">prevChildren</span>: <span class="kt">any</span><span class="p">,</span>
+  <span class="nx">parentComponent</span>: <span class="kt">any</span><span class="p">,</span>
+  <span class="nx">parentSuspense</span>: <span class="kt">any</span><span class="p">,</span>
+  <span class="nx">unmountChildren</span>: <span class="kt">any</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="o">===</span> <span class="s2">&#34;innerHTML&#34;</span> <span class="o">||</span> <span class="nx">key</span> <span class="o">===</span> <span class="s2">&#34;textContent&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">prevChildren</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">unmountChildren</span><span class="p">(</span><span class="nx">prevChildren</span><span class="p">,</span> <span class="nx">parentComponent</span><span class="p">,</span> <span class="nx">parentSuspense</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">?</span> <span class="s2">&#34;&#34;</span> <span class="o">:</span> <span class="nx">value</span><span class="p">;</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="o">===</span> <span class="s2">&#34;value&#34;</span> <span class="o">&amp;&amp;</span> <span class="nx">el</span><span class="p">.</span><span class="nx">tagName</span> <span class="o">!==</span> <span class="s2">&#34;PROGRESS&#34;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// store value as _value as well since
+</span><span class="c1"></span>    <span class="c1">// non-string values will be stringified.
+</span><span class="c1"></span>    <span class="nx">el</span><span class="p">.</span><span class="nx">_value</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="nx">newValue</span> <span class="o">=</span> <span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">?</span> <span class="s2">&#34;&#34;</span> <span class="o">:</span> <span class="nx">value</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">value</span> <span class="o">!==</span> <span class="nx">newValue</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">newValue</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 空值处理
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">===</span> <span class="s2">&#34;&#34;</span> <span class="o">||</span> <span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="kr">type</span> <span class="o">=</span> <span class="k">typeof</span> <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">===</span> <span class="s2">&#34;&#34;</span> <span class="o">&amp;&amp;</span> <span class="kr">type</span> <span class="o">===</span> <span class="s2">&#34;boolean&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 比如： &lt;select multiple&gt; 编译成： { multiple: &#39;&#39; }
+</span><span class="c1"></span>      <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="kr">type</span> <span class="o">===</span> <span class="s2">&#34;string&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 如： &lt;div :id=&#34;null&#34;&gt;
+</span><span class="c1"></span>      <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span><span class="p">;</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">removeAttribute</span><span class="p">(</span><span class="nx">key</span><span class="p">);</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="kr">type</span> <span class="o">===</span> <span class="s2">&#34;number&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 如： &lt;img :width=&#34;null&#34;&gt;
+</span><span class="c1"></span>      <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">removeAttribute</span><span class="p">(</span><span class="nx">key</span><span class="p">);</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// some properties perform value validation and throw
+</span><span class="c1"></span>  <span class="k">try</span> <span class="p">{</span>
+    <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">warn</span><span class="p">(</span>
+        <span class="sb">`Failed setting prop &#34;</span><span class="si">${</span><span class="nx">key</span><span class="si">}</span><span class="sb">&#34; on &lt;</span><span class="si">${</span><span class="nx">el</span><span class="p">.</span><span class="nx">tagName</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">()</span><span class="si">}</span><span class="sb">&gt;: `</span> <span class="o">+</span>
+          <span class="sb">`value </span><span class="si">${</span><span class="nx">value</span><span class="si">}</span><span class="sb"> is invalid.`</span><span class="p">,</span>
+        <span class="nx">e</span>
+      <span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+测试：</p>
+<div class="xpgH6cz"></div>
+<script class="xpgH6cz" src="/js/vue/tests/xpgH6cz.js"></script>
+<a href="/js/vue/tests/xpgH6cz.js" target="_blank">点击查看测试源码</a>
+</div>
+</div>
+<div id="outline-container-prop-true-false" class="outline-3">
+<h3 id="prop-true-false">
+true/false-value
+</h3>
+<div id="outline-text-prop-true-false" class="outline-text-3">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/580b0f380568bca491010bc17611cc52c873ec33">feat(add): runtime-dom patch v-model · gcclll/stb-vue-next@580b0f3</a></p>
+<p>
+true-value &amp; false-value 属性在 <a href="/vue/vue-mind-map-compiler-ssr/#input-checkbox">compiler-ssr</a> 中有详细分析，主要用于 SSR 下的
+<code>&lt;input type=&#34;checkbox&#34;&gt;</code> 的时候。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// patchProp.ts
+</span><span class="c1">// special case for &lt;input v-model type=&#34;checkbox&#34;&gt; with
+</span><span class="c1">// :true-value &amp; :false-value
+</span><span class="c1">// store value as dom properties since non-string values will be
+</span><span class="c1">// stringified.
+</span><span class="c1"></span><span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="o">===</span> <span class="s2">&#34;true-value&#34;</span><span class="p">)</span> <span class="p">{</span>
+  <span class="p">(</span><span class="nx">el</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_trueValue</span> <span class="o">=</span> <span class="nx">nextValue</span><span class="p">;</span>
+<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="o">===</span> <span class="s2">&#34;false-value&#34;</span><span class="p">)</span> <span class="p">{</span>
+  <span class="p">(</span><span class="nx">el</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_falseValue</span> <span class="o">=</span> <span class="nx">nextValue</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="nx">patchAttr</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">nextValue</span><span class="p">,</span> <span class="nx">isSVG</span><span class="p">);</span>
+
+<span class="c1">// modules/attrs.ts
+</span><span class="c1"></span><span class="kr">export</span> <span class="kr">const</span> <span class="nx">xlinkNS</span> <span class="o">=</span> <span class="s2">&#34;http://www.w3.org/1999/xlink&#34;</span><span class="p">;</span>
+
+<span class="kr">export</span> <span class="kd">function</span> <span class="nx">patchAttr</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">Element</span><span class="p">,</span>
+  <span class="nx">key</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">value</span>: <span class="kt">any</span><span class="p">,</span>
+  <span class="nx">isSVG</span>: <span class="kt">boolean</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isSVG</span> <span class="o">&amp;&amp;</span> <span class="nx">key</span><span class="p">.</span><span class="nx">startsWith</span><span class="p">(</span><span class="s2">&#34;xlink:&#34;</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">removeAttributeNS</span><span class="p">(</span><span class="nx">xlinkNS</span><span class="p">,</span> <span class="nx">key</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nx">key</span><span class="p">.</span><span class="nx">length</span><span class="p">));</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">setAttributeNS</span><span class="p">(</span><span class="nx">xlinkNS</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">value</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="c1">// note we are only checking boolean attributes that don&#39;t have a
+</span><span class="c1"></span>    <span class="c1">// corresponding dom prop of the same name here.
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">isBoolean</span> <span class="o">=</span> <span class="nx">isSpecialBooleanAttr</span><span class="p">(</span><span class="nx">key</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="p">(</span><span class="nx">isBoolean</span> <span class="o">&amp;&amp;</span> <span class="nx">value</span> <span class="o">===</span> <span class="kc">false</span><span class="p">))</span> <span class="p">{</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">removeAttribute</span><span class="p">(</span><span class="nx">key</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">el</span><span class="p">.</span><span class="nx">setAttribute</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">isBoolean</span> <span class="o">?</span> <span class="s2">&#34;&#34;</span> <span class="o">:</span> <span class="nx">value</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// shared/src/domAttrConfig.ts
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">specialBooleanAttrs</span> <span class="o">=</span> <span class="sb">`itemscope,allowfullscreen,formnovalidate,ismap,nomodule,novalidate,readonly`</span><span class="p">;</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">isSpecialBooleanAttr</span> <span class="o">=</span> <span class="cm">/*#__PURE__*/</span> <span class="nx">makeMap</span><span class="p">(</span><span class="nx">specialBooleanAttrs</span><span class="p">);</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+测试：</p>
+<div class="x4mBB2I"></div>
+<script class="x4mBB2I" src="/js/vue/tests/x4mBB2I.js"></script>
+<a href="/js/vue/tests/x4mBB2I.js" target="_blank">点击查看测试源码</a>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-node-ops" class="outline-2">
+<h2 id="node-ops">
+nodeOps
+</h2>
+<div id="outline-text-node-ops" class="outline-text-2">
+<p>
+DOM 操作接口。</p>
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/88b8bda74f09f86cdea22094f7c18889e6a3860e">feat(add): nodeOps · gcclll/stb-vue-next@88b8bda</a></p>
+<table>
+<thead>
+<tr>
+<th>接口名</th>
+<th>描述</th>
+<th>原生接口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>insert(child, parent, anchor)</code></td>
+<td>在 anchor 前面插入 child</td>
+<td><code>parent.insertBefore(child, anchor)</code></td>
+</tr>
+<tr>
+<td><code>remove(child)</code></td>
+<td>删除某个子元素</td>
+<td><code>child.parentNode.removeChild(child)</code></td>
+</tr>
+<tr>
+<td><code>createElement(tag, isSVG, is)</code></td>
+<td>创建元素(svg或普通元素)</td>
+<td><code>document.createElement</code></td>
+</tr>
+<tr>
+<td><code>createText(text)</code></td>
+<td>创建文本节点</td>
+<td><code>document.createTextNode(text)</code></td>
+</tr>
+<tr>
+<td><code>createComment(text)</code></td>
+<td>创建注释节点</td>
+<td><code>document.createComment(text)</code></td>
+</tr>
+<tr>
+<td><code>setText(node, text)</code></td>
+<td>设置节点文本内容</td>
+<td><code>node.nodeValue = text</code></td>
+</tr>
+<tr>
+<td><code>setElementText(el, text)</code></td>
+<td>设置 textContent</td>
+<td><code>el.textContent</code></td>
+</tr>
+<tr>
+<td><code>parentNode(node)</code></td>
+<td>取父元素</td>
+<td><code>node.parentNode</code></td>
+</tr>
+<tr>
+<td><code>nextSibling(node)</code></td>
+<td>取后面的兄弟节点</td>
+<td><code>node.nextSibling</code></td>
+</tr>
+<tr>
+<td><code>querySelector(selector)</code></td>
+<td>选择器查询</td>
+<td><code>document.querySelector(selector)</code></td>
+</tr>
+<tr>
+<td><code>setScopeId(el, id)</code></td>
+<td>给元素增加 id 属性</td>
+<td><code>el.setAttribute(id, &#39;&#39;)</code></td>
+</tr>
+<tr>
+<td><code>cloneNode(el)</code></td>
+<td>深度克隆元素</td>
+<td><code>el.cloneNode(true)</code></td>
+</tr>
+<tr>
+<td><code>insertStaticContent(content, parent, anchor, isSVG)</code></td>
+<td>插入静态内容？</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p>
+这个文件中就是一些对原生DOM增删改查接口的封装。</p>
+</div>
+</div>
+<div id="outline-container-transition" class="outline-2">
+<h2 id="transition">
+<span class="todo">TODO</span>
+Transition&amp;Group
+</h2>
+<div id="outline-text-transition" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/444b0bbaf2ce053beed9fad8a8f7283ddcb952fb">feat(add): Transition&amp;Group · gcclll/stb-vue-next@444b0bb</a></p>
+</div>
+</div>
+<div id="outline-container-v-on" class="outline-2">
+<h2 id="v-on">
+v-on 事件
+</h2>
+<div id="outline-text-v-on" class="outline-text-2">
+<p>
+这里面主要处理的是一些修饰符处理。</p>
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/9280816a48d59cbab1be623466ca71243dcded67">feat(add): v-on event · gcclll/stb-vue-next@9280816</a></p>
+<p>
+系统修饰符(几个系统按键)：</p>
+<p>
+<code>const systemModifiers = [&#39;ctrl&#39;, &#39;shift&#39;, &#39;alt&#39;, &#39;meta&#39;]</code></p>
+<p>
+支持的事件类型(键盘、鼠标、触控)：</p>
+<p>
+<code>type KeyedEvent = KeyboardEvent | MouseEvent | TouchEvent</code></p>
+<p>
+修饰符对应在事件上的一些操作，因为修饰符最终的值体现是 boolean 值，因此这些布尔
+值需要对应在具体的事件上，就需要找到事件上的对方方法去处理，比如 <code>@click.stop</code>
+解析后的修饰符 <code>{stop: true}</code> 对应事件上的 <code>e.stopPropagation()</code> 调用，阻止事件
+网上冒泡：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">modifierGuards</span>: <span class="kt">Record</span><span class="o">&lt;</span>
+  <span class="kt">string</span><span class="p">,</span>
+  <span class="p">(</span><span class="nx">e</span>: <span class="kt">Event</span><span class="p">,</span> <span class="nx">modifiers</span>: <span class="kt">string</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="k">void</span> <span class="o">|</span> <span class="kr">boolean</span>
+<span class="o">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">stop</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">e</span><span class="p">.</span><span class="nx">stopPropagation</span><span class="p">(),</span>
+  <span class="nx">prevent</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">e</span><span class="p">.</span><span class="nx">preventDefault</span><span class="p">(),</span>
+  <span class="nx">self</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">e</span><span class="p">.</span><span class="nx">target</span> <span class="o">!==</span> <span class="nx">e</span><span class="p">.</span><span class="nx">currentTarget</span><span class="p">,</span>
+  <span class="nx">ctrl</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">KeyedEvent</span><span class="p">).</span><span class="nx">ctrlKey</span><span class="p">,</span>
+  <span class="nx">shift</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">KeyedEvent</span><span class="p">).</span><span class="nx">shiftKey</span><span class="p">,</span>
+  <span class="nx">alt</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">KeyedEvent</span><span class="p">).</span><span class="nx">altKey</span><span class="p">,</span>
+  <span class="nx">meta</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">KeyedEvent</span><span class="p">).</span><span class="nx">metaKey</span><span class="p">,</span>
+  <span class="nx">left</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="s2">&#34;button&#34;</span> <span class="k">in</span> <span class="nx">e</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">MouseEvent</span><span class="p">).</span><span class="nx">button</span> <span class="o">!==</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="nx">middle</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="s2">&#34;button&#34;</span> <span class="k">in</span> <span class="nx">e</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">MouseEvent</span><span class="p">).</span><span class="nx">button</span> <span class="o">!==</span> <span class="mi">1</span><span class="p">,</span>
+  <span class="nx">right</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="s2">&#34;button&#34;</span> <span class="k">in</span> <span class="nx">e</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="nx">MouseEvent</span><span class="p">).</span><span class="nx">button</span> <span class="o">!==</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="nx">exact</span><span class="o">:</span> <span class="p">(</span><span class="nx">e</span><span class="p">,</span> <span class="nx">modifiers</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nx">systemModifiers</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span>
+      <span class="p">(</span><span class="nx">m</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">)[</span><span class="sb">`</span><span class="si">${</span><span class="nx">m</span><span class="si">}</span><span class="sb">Key`</span><span class="p">]</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">modifiers</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="nx">m</span><span class="p">)</span>
+    <span class="p">),</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+最后根据修饰符守卫，将事件函数进一步封装，在执行这个函数之前执行修饰符对应的事件
+处理：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="cm">/**
+</span><span class="cm"> * @private
+</span><span class="cm"> */</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">withModifiers</span> <span class="o">=</span> <span class="p">(</span><span class="nx">fn</span>: <span class="kt">Function</span><span class="p">,</span> <span class="nx">modifiers</span>: <span class="kt">string</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="p">(</span><span class="nx">event</span>: <span class="kt">Event</span><span class="p">,</span> <span class="p">...</span><span class="nx">args</span>: <span class="kt">unknown</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">modifiers</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">guard</span> <span class="o">=</span> <span class="nx">modifierGuards</span><span class="p">[</span><span class="nx">modifiers</span><span class="p">[</span><span class="nx">i</span><span class="p">]]</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">guard</span> <span class="o">&amp;&amp;</span> <span class="nx">guard</span><span class="p">(</span><span class="nx">event</span><span class="p">,</span> <span class="nx">modifiers</span><span class="p">))</span> <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">fn</span><span class="p">(</span><span class="nx">event</span><span class="p">,</span> <span class="p">...</span><span class="nx">args</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+vue2.x 上的一些兼容按键：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// Kept for 2.x compat.
+</span><span class="c1">// Note: IE11 compat for `spacebar` and `del` is removed for now.
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">keyNames</span>: <span class="kt">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span> <span class="err">|</span> <span class="na">string</span><span class="err">[]</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">esc</span><span class="o">:</span> <span class="s1">&#39;escape&#39;</span><span class="p">,</span>
+  <span class="nx">space</span><span class="o">:</span> <span class="s1">&#39; &#39;</span><span class="p">,</span>
+  <span class="nx">up</span><span class="o">:</span> <span class="s1">&#39;arrow-up&#39;</span><span class="p">,</span>
+  <span class="nx">left</span><span class="o">:</span> <span class="s1">&#39;arrow-left&#39;</span><span class="p">,</span>
+  <span class="nx">right</span><span class="o">:</span> <span class="s1">&#39;arrow-right&#39;</span><span class="p">,</span>
+  <span class="nx">down</span><span class="o">:</span> <span class="s1">&#39;arrow-down&#39;</span><span class="p">,</span>
+  <span class="k">delete</span><span class="o">:</span> <span class="s1">&#39;backspace&#39;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+以及对应的封装函数:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="cm">/**
+</span><span class="cm"> * @private
+</span><span class="cm"> */</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">withKeys</span> <span class="o">=</span> <span class="p">(</span><span class="nx">fn</span>: <span class="kt">Function</span><span class="p">,</span> <span class="nx">modifiers</span>: <span class="kt">string</span><span class="p">[])</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="p">(</span><span class="nx">event</span>: <span class="kt">KeyboardEvent</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="s1">&#39;key&#39;</span> <span class="k">in</span> <span class="nx">event</span><span class="p">))</span> <span class="k">return</span>
+    <span class="kr">const</span> <span class="nx">eventKey</span> <span class="o">=</span> <span class="nx">hyphenate</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">key</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span>
+      <span class="c1">// None of the provided key modifiers match the current event key
+</span><span class="c1"></span>      <span class="o">!</span><span class="nx">modifiers</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="nx">k</span> <span class="o">=&gt;</span> <span class="nx">k</span> <span class="o">===</span> <span class="nx">eventKey</span> <span class="o">||</span> <span class="nx">keyNames</span><span class="p">[</span><span class="nx">k</span><span class="p">]</span> <span class="o">===</span> <span class="nx">eventKey</span><span class="p">)</span>
+    <span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">fn</span><span class="p">(</span><span class="nx">event</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-v-show" class="outline-2">
+<h2 id="v-show">
+v-show 处理
+</h2>
+<div id="outline-text-v-show" class="outline-text-2">
+<p>
+这里处理也很简单，一个是检测有没 <code>&lt;transition&gt;</code> 没有直接使用原生的 <code>display</code> 属
+性。</p>
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/be2fd2987338c129fb7ea1e696fee9be79a56c2b">feat(add): v-show · gcclll/stb-vue-next@be2fd29</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// 生命周期处理
+</span><span class="c1"></span><span class="kr">export</span> <span class="kr">const</span> <span class="nx">vShow</span>: <span class="kt">ObjectDirective</span><span class="p">&lt;</span><span class="nt">VShowElement</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">beforeMount</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="p">{</span> <span class="nx">value</span> <span class="p">},</span> <span class="p">{</span> <span class="nx">transition</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="c1">// 在加载之前检测检测是不是有 transition 动画
+</span><span class="c1"></span>    <span class="nx">el</span><span class="p">.</span><span class="nx">_vod</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span> <span class="o">===</span> <span class="s1">&#39;none&#39;</span> <span class="o">?</span> <span class="s1">&#39;&#39;</span> <span class="o">:</span> <span class="nx">el</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transition</span> <span class="o">&amp;&amp;</span> <span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">transition</span><span class="p">.</span><span class="nx">beforeEnter</span><span class="p">(</span><span class="nx">el</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">setDisplay</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+
+  <span class="nx">mounted</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="p">{</span> <span class="nx">value</span> <span class="p">},</span> <span class="p">{</span> <span class="nx">transition</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transition</span> <span class="o">&amp;&amp;</span> <span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">transition</span><span class="p">.</span><span class="nx">enter</span><span class="p">(</span><span class="nx">el</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="nx">updated</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="p">{</span> <span class="nx">value</span><span class="p">,</span> <span class="nx">oldValue</span> <span class="p">},</span> <span class="p">{</span> <span class="nx">transition</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">transition</span> <span class="o">&amp;&amp;</span> <span class="nx">value</span> <span class="o">!==</span> <span class="nx">oldValue</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">transition</span><span class="p">.</span><span class="nx">beforeEnter</span><span class="p">(</span><span class="nx">el</span><span class="p">)</span>
+        <span class="nx">setDisplay</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+        <span class="nx">transition</span><span class="p">.</span><span class="nx">enter</span><span class="p">(</span><span class="nx">el</span><span class="p">)</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">transition</span><span class="p">.</span><span class="nx">leave</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+          <span class="nx">setDisplay</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
+        <span class="p">})</span>
+      <span class="p">}</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">setDisplay</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="nx">beforeUnmount</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="p">{</span> <span class="nx">value</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="nx">setDisplay</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">if</span> <span class="p">(</span><span class="nx">__NODE_JS__</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">vShow</span><span class="p">.</span><span class="nx">getSSRProps</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">value</span> <span class="p">})</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="p">{</span> <span class="nx">style</span><span class="o">:</span> <span class="p">{</span> <span class="nx">display</span><span class="o">:</span> <span class="s1">&#39;none&#39;</span> <span class="p">}</span> <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+实现隐藏和显示:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// 因为可能是 block 或者 inline-block 所以用 _vod 来记录
+</span><span class="c1">// 隐藏之前的 display 值，方便后面复原
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">setDisplay</span><span class="p">(</span><span class="nx">el</span>: <span class="kt">VShowElement</span><span class="p">,</span> <span class="nx">value</span>: <span class="kt">unknown</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+  <span class="nx">el</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span> <span class="o">=</span> <span class="nx">value</span> <span class="o">?</span> <span class="nx">el</span><span class="p">.</span><span class="nx">_vod</span> <span class="o">:</span> <span class="s2">&#34;none&#34;</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-v-model" class="outline-2">
+<h2 id="v-model">
+v-model 处理
+</h2>
+<div id="outline-text-v-model" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/559705556174507701f9f6597a83915ff80e5e01">feat(add): v-model · gcclll/stb-vue-next@5597055</a></p>
+<p>
+四种类型 + 动态类型：</p>
+<ol>
+<li>
+<p><strong>vModelText</strong>, <code>&lt;input type=&#34;text&#34; /&gt;</code>, 文本输入框</p>
+<p>
+<code>created()</code>, 监听事件 change(lazy?) 或 input</p>
+<p>
+<code>mounted()</code>, 修改 el.value 值，让结果体现出来</p>
+<p>
+<code>beforeUpdate()</code>, 在更新之前对值进行处理，比如： trim 修饰符去掉前后空格</p>
+</li>
+<li>
+<p><strong>vModelCheckbox</strong>, <code>&lt;input type=&#34;checkbox&#34; checked/&gt;</code>, 复选框</p>
+<p>
+<code>created()</code>, 监听 change 事件，初始元素值</p>
+<p>
+<code>mounted()</code>, <code>setChecked</code>, 更新值， value 可以是数组，集合，单个值</p>
+<p>
+<code>beforeUpdate()</code>, <code>setChecked</code>, 同上</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">setChecked</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">HTMLInputElement</span><span class="p">,</span>
+  <span class="p">{</span> <span class="nx">value</span><span class="p">,</span> <span class="nx">oldValue</span> <span class="p">}</span><span class="o">:</span> <span class="nx">DirectiveBinding</span><span class="p">,</span>
+  <span class="nx">vnode</span>: <span class="kt">VNode</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// store the v-model value on the element so it can be accessed by the
+</span><span class="c1"></span>  <span class="c1">// change listener.
+</span><span class="c1"></span>  <span class="p">(</span><span class="nx">el</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_modelValue</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nx">el</span><span class="p">.</span><span class="nx">checked</span> <span class="o">=</span> <span class="nx">looseIndexOf</span><span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">props</span><span class="o">!</span><span class="p">.</span><span class="nx">value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isSet</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nx">el</span><span class="p">.</span><span class="nx">checked</span> <span class="o">=</span> <span class="nx">value</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">props</span><span class="o">!</span><span class="p">.</span><span class="nx">value</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">value</span> <span class="o">!==</span> <span class="nx">oldValue</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">el</span><span class="p">.</span><span class="nx">checked</span> <span class="o">=</span> <span class="nx">looseEqual</span><span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">getCheckboxValue</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="kc">true</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+注意这里，在 compiler 阶段， checkbox 可以通过 true-value 和 false-value 来绑
+定两个属性，一个是选中时绑定的变量，一个是未选中时绑定的变量</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// retrieve raw value for true-value and false-value set via :true-value or :false-value bindings
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">getCheckboxValue</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">HTMLInputElement</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="nx">_trueValue?</span>: <span class="kt">any</span><span class="p">;</span> <span class="nx">_falseValue?</span>: <span class="kt">any</span> <span class="p">},</span>
+  <span class="nx">checked</span>: <span class="kt">boolean</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">key</span> <span class="o">=</span> <span class="nx">checked</span> <span class="o">?</span> <span class="s2">&#34;_trueValue&#34;</span> <span class="o">:</span> <span class="s2">&#34;_falseValue&#34;</span><span class="p">;</span>
+  <span class="k">return</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">el</span> <span class="o">?</span> <span class="nx">el</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">:</span> <span class="nx">checked</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p><strong>vModelRadio</strong>, <code>&lt;input type=&#34;radio&#34;&gt;</code>, 单选框</p>
+<p>
+<code>created()</code>, 监听 change</p>
+<p>
+<code>beforeUpdate()</code>, 用比较后的 boolean 值更新 el.checked 值</p>
+</li>
+<li>
+<p><strong>vModelSelect</strong>, <code>&lt;select&gt;&lt;option :value=&#34;value&#34;/&gt;&lt;/select&gt;</code></p>
+<p>
+<code>created()</code>, 监听 change 事件，遍历 el.options(<code>&lt;option/&gt;</code>)，得到所有
+<code>&lt;option selected&gt;</code> 组件的 selected 属性值，将值赋给实际的 option DOM 元素，
+这里会检测 <code>el.multiple</code> 来区分是可以多选还是单选，单选只取第一个值。</p>
+<p>
+<code>mounted()</code>, <code>setSelected()</code></p>
+<p>
+<code>beforeUpdate()</code>, 更新之前更新 <code>el._assign</code></p>
+<p>
+<code>updated()</code>, 实际更新 DOM option selected 值。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">setSelected</span><span class="p">(</span><span class="nx">el</span>: <span class="kt">HTMLSelectElement</span><span class="p">,</span> <span class="nx">value</span>: <span class="kt">any</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">isMultiple</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">multiple</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">l</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">options</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">l</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">option</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">options</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+    <span class="kr">const</span> <span class="nx">optionValue</span> <span class="o">=</span> <span class="nx">getValue</span><span class="p">(</span><span class="nx">option</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">isMultiple</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+        <span class="nx">option</span><span class="p">.</span><span class="nx">selected</span> <span class="o">=</span> <span class="nx">looseIndexOf</span><span class="p">(</span><span class="nx">value</span><span class="p">,</span> <span class="nx">optionValue</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">option</span><span class="p">.</span><span class="nx">selected</span> <span class="o">=</span> <span class="nx">value</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">optionValue</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">looseEqual</span><span class="p">(</span><span class="nx">getValue</span><span class="p">(</span><span class="nx">option</span><span class="p">),</span> <span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+        <span class="nx">el</span><span class="p">.</span><span class="nx">selectedIndex</span> <span class="o">=</span> <span class="nx">i</span><span class="p">;</span>
+        <span class="k">return</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">isMultiple</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">el</span><span class="p">.</span><span class="nx">selectedIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p><strong>vModelDynamic</strong>, 标签名是动态的，只有运行期间才能决定是什么标签</p>
+<p>
+有： <code>&lt;select&gt;</code>, <code>&lt;textarea&gt;</code>, <code>&lt;input type=&#34;checkbox&#34;&gt;</code>, <code>&lt;input
+type=&#34;radio&#34;&gt;</code> 最后默认为 <code>&lt;input type=&#34;text&#34;&gt;</code></p>
+<p>
+最后根据具体情况去使用 1~4 中对应类型指令。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kr">export</span> <span class="kr">const</span> <span class="nx">vModelDynamic</span>: <span class="kt">ObjectDirective</span><span class="o">&lt;</span>
+   <span class="nx">HTMLInputElement</span> <span class="o">|</span> <span class="nx">HTMLSelectElement</span> <span class="o">|</span> <span class="nx">HTMLTextAreaElement</span>
+ <span class="o">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+   <span class="nx">created</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">)</span> <span class="p">{</span>
+     <span class="nx">callModelHook</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="s2">&#34;created&#34;</span><span class="p">);</span>
+   <span class="p">},</span>
+   <span class="nx">mounted</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">)</span> <span class="p">{</span>
+     <span class="nx">callModelHook</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="s2">&#34;mounted&#34;</span><span class="p">);</span>
+   <span class="p">},</span>
+   <span class="nx">beforeUpdate</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="nx">prevVNode</span><span class="p">)</span> <span class="p">{</span>
+     <span class="nx">callModelHook</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="nx">prevVNode</span><span class="p">,</span> <span class="s2">&#34;beforeUpdate&#34;</span><span class="p">);</span>
+   <span class="p">},</span>
+   <span class="nx">updated</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="nx">prevVNode</span><span class="p">)</span> <span class="p">{</span>
+     <span class="nx">callModelHook</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="nx">prevVNode</span><span class="p">,</span> <span class="s2">&#34;updated&#34;</span><span class="p">);</span>
+   <span class="p">},</span>
+ <span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+动态决定类型：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">callModelHook</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">HTMLInputElement</span> <span class="o">|</span> <span class="nx">HTMLSelectElement</span> <span class="o">|</span> <span class="nx">HTMLTextAreaElement</span><span class="p">,</span>
+  <span class="nx">binding</span>: <span class="kt">DirectiveBinding</span><span class="p">,</span>
+  <span class="nx">vnode</span>: <span class="kt">VNode</span><span class="p">,</span>
+  <span class="nx">prevVNode</span>: <span class="kt">VNode</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">hook</span>: <span class="kt">keyof</span> <span class="nx">ObjectDirective</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">modelToUse</span>: <span class="kt">ObjectDirective</span><span class="p">;</span>
+  <span class="k">switch</span> <span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">tagName</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">case</span> <span class="s2">&#34;SELECT&#34;</span><span class="o">:</span>
+      <span class="nx">modelToUse</span> <span class="o">=</span> <span class="nx">vModelSelect</span><span class="p">;</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="k">case</span> <span class="s2">&#34;TEXTAREA&#34;</span><span class="o">:</span>
+      <span class="nx">modelToUse</span> <span class="o">=</span> <span class="nx">vModelText</span><span class="p">;</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="k">default</span><span class="o">:</span>
+      <span class="k">switch</span> <span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">props</span> <span class="o">&amp;&amp;</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">props</span><span class="p">.</span><span class="kr">type</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="s2">&#34;checkbox&#34;</span><span class="o">:</span>
+          <span class="nx">modelToUse</span> <span class="o">=</span> <span class="nx">vModelCheckbox</span><span class="p">;</span>
+          <span class="k">break</span><span class="p">;</span>
+        <span class="k">case</span> <span class="s2">&#34;radio&#34;</span><span class="o">:</span>
+          <span class="nx">modelToUse</span> <span class="o">=</span> <span class="nx">vModelRadio</span><span class="p">;</span>
+          <span class="k">break</span><span class="p">;</span>
+        <span class="k">default</span><span class="o">:</span>
+          <span class="nx">modelToUse</span> <span class="o">=</span> <span class="nx">vModelText</span><span class="p">;</span>
+      <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="kr">const</span> <span class="nx">fn</span> <span class="o">=</span> <span class="nx">modelToUse</span><span class="p">[</span><span class="nx">hook</span><span class="p">]</span> <span class="kr">as</span> <span class="nx">DirectiveHook</span><span class="p">;</span>
+  <span class="nx">fn</span> <span class="o">&amp;&amp;</span> <span class="nx">fn</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">binding</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="nx">prevVNode</span><span class="p">);</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-use-css-vars" class="outline-2">
+<h2 id="use-css-vars">
+useCssVars
+</h2>
+<div id="outline-text-use-css-vars" class="outline-text-2">
+<p>
+vue SFC 文件中的 <code>&lt;style&gt;</code> 中的 <code>v-bind(varName)</code> 处理。</p>
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/06b2291b777557530300db3337648a7ae71065c8">feat(add): use css vars · gcclll/stb-vue-next@06b2291</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="cm">/**
+</span><span class="cm"> * Runtime helper for SFC&#39;s CSS variable injection feature.
+</span><span class="cm"> * vue 文件中的样式，CSS变量注入特性， color: v-bind(fontColor)
+</span><span class="cm"> * @private
+</span><span class="cm"> */</span>
+<span class="kr">export</span> <span class="kd">function</span> <span class="nx">useCssVars</span><span class="p">(</span><span class="nx">getter</span><span class="o">:</span> <span class="p">(</span><span class="nx">ctx</span>: <span class="kt">any</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span><span class="p">&gt;)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">__BROWSER__</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">__TEST__</span><span class="p">)</span> <span class="k">return</span>
+  <span class="kr">const</span> <span class="nx">instance</span> <span class="o">=</span> <span class="nx">getCurrentInstance</span><span class="p">()</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">instance</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span>
+      <span class="nx">warn</span><span class="p">(</span><span class="sb">`useCssVars is called without current active component instance.`</span><span class="p">)</span>
+    <span class="k">return</span>
+  <span class="p">}</span>
+
+  <span class="kr">const</span> <span class="nx">setVars</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span>
+    <span class="nx">setVarsOnVNode</span><span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">subTree</span><span class="p">,</span> <span class="nx">getter</span><span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">proxy</span><span class="o">!</span><span class="p">))</span>
+  <span class="nx">onMounted</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">watchEffect</span><span class="p">(</span><span class="nx">setVars</span><span class="p">,</span> <span class="p">{</span> <span class="nx">flush</span><span class="o">:</span> <span class="s1">&#39;post&#39;</span> <span class="p">}))</span>
+  <span class="nx">onUpdated</span><span class="p">(</span><span class="nx">setVars</span><span class="p">)</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+给 vnode.el.style 设置自定义属性：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">setVarsOnVNode</span><span class="p">(</span><span class="nx">vnode</span>: <span class="kt">VNode</span><span class="p">,</span> <span class="nx">vars</span>: <span class="kt">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span><span class="p">&gt;)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">__FEATURE_SUSPENSE__</span> <span class="o">&amp;&amp;</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">shapeFlag</span> <span class="o">&amp;</span> <span class="nx">ShapeFlags</span><span class="p">.</span><span class="nx">SUSPENSE</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">suspense</span> <span class="o">=</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">suspense</span><span class="o">!</span>
+    <span class="nx">vnode</span> <span class="o">=</span> <span class="nx">suspense</span><span class="p">.</span><span class="nx">activeBranch</span><span class="o">!</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">suspense</span><span class="p">.</span><span class="nx">pendingBranch</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">suspense</span><span class="p">.</span><span class="nx">isHydrating</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 在 runtime-dom 中分析过  effects 会等到
+</span><span class="c1"></span>      <span class="c1">// 异步请求完成之后并且是在 parent.effects 没有任务的情况下才会
+</span><span class="c1"></span>      <span class="c1">// 执行，这里将 CSS 的处理加入到组件 effect 队列等待所以
+</span><span class="c1"></span>      <span class="c1">// 异步结束再处理样式
+</span><span class="c1"></span>      <span class="nx">suspense</span><span class="p">.</span><span class="nx">effects</span><span class="p">.</span><span class="nx">push</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">setVarsOnVNode</span><span class="p">(</span><span class="nx">suspense</span><span class="p">.</span><span class="nx">activeBranch</span><span class="o">!</span><span class="p">,</span> <span class="nx">vars</span><span class="p">)</span>
+      <span class="p">})</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// drill down HOCs until it&#39;s a non-component vnode
+</span><span class="c1"></span>  <span class="c1">// 找到最内层的非组件的子树节点
+</span><span class="c1"></span>  <span class="k">while</span> <span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">component</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">vnode</span> <span class="o">=</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">component</span><span class="p">.</span><span class="nx">subTree</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">shapeFlag</span> <span class="o">&amp;</span> <span class="nx">ShapeFlags</span><span class="p">.</span><span class="nx">ELEMENT</span> <span class="o">&amp;&amp;</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">el</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">style</span> <span class="o">=</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">el</span><span class="p">.</span><span class="nx">style</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">vars</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">style</span><span class="p">.</span><span class="nx">setProperty</span><span class="p">(</span><span class="sb">`--</span><span class="si">${</span><span class="nx">key</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span> <span class="nx">vars</span><span class="p">[</span><span class="nx">key</span><span class="p">])</span>
+    <span class="p">}</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">Fragment</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 如果是个占位 fragment 直接给 children 设置
+</span><span class="c1"></span>    <span class="p">;(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">children</span> <span class="kr">as</span> <span class="nx">VNode</span><span class="p">[]).</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">c</span> <span class="o">=&gt;</span> <span class="nx">setVarsOnVNode</span><span class="p">(</span><span class="nx">c</span><span class="p">,</span> <span class="nx">vars</span><span class="p">))</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-use-css-module" class="outline-2">
+<h2 id="use-css-module">
+useCssModule
+</h2>
+<div id="outline-text-use-css-module" class="outline-text-2">
+<p>
+<a href="https://github.com/gcclll/stb-vue-next/commit/2d47ce036d875aec687d3cf3c3c1e7c54825ad78">feat(add): use css module · gcclll/stb-vue-next@2d47ce0</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">useCssModule</span><span class="p">(</span><span class="nx">name</span> <span class="o">=</span> <span class="s2">&#34;$style&#34;</span><span class="p">)</span><span class="o">:</span> <span class="nx">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span><span class="p">&gt;</span> <span class="p">{</span>
+  <span class="cm">/* istanbul ignore else */</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">__GLOBAL__</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">instance</span> <span class="o">=</span> <span class="nx">getCurrentInstance</span><span class="p">()</span><span class="o">!</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">instance</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span> <span class="nx">warn</span><span class="p">(</span><span class="sb">`useCssModule must be called inside setup()`</span><span class="p">);</span>
+      <span class="k">return</span> <span class="nx">EMPTY_OBJ</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kr">const</span> <span class="kr">module</span><span class="nx">s</span> <span class="o">=</span> <span class="nx">instance</span><span class="p">.</span><span class="kr">type</span><span class="p">.</span><span class="nx">__cssModules</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="kr">module</span><span class="nx">s</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span> <span class="nx">warn</span><span class="p">(</span><span class="sb">`Current instance does not have CSS modules injected.`</span><span class="p">);</span>
+      <span class="k">return</span> <span class="nx">EMPTY_OBJ</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kr">const</span> <span class="nx">mod</span> <span class="o">=</span> <span class="kr">module</span><span class="nx">s</span><span class="p">[</span><span class="nx">name</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">mod</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span>
+        <span class="nx">warn</span><span class="p">(</span><span class="sb">`Current instance does not have CSS module named &#34;</span><span class="si">${</span><span class="nx">name</span><span class="si">}</span><span class="sb">&#34;.`</span><span class="p">);</span>
+      <span class="k">return</span> <span class="nx">EMPTY_OBJ</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">mod</span> <span class="kr">as</span> <span class="nx">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">string</span><span class="p">&gt;;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">warn</span><span class="p">(</span><span class="sb">`useCssModule() is not supported in the global build.`</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">EMPTY_OBJ</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-04-14
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue/">vue,</a>
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/runtime-dom/">runtime-dom,</a>
+          <a href="/tags/patch/">patch</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-core-code-link/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 自问自答系列❓❓❓</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-teardown-1-patch-flags/">
+            <span class="next-text nav-default">Vue3 功能拆解① PatchFlags</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

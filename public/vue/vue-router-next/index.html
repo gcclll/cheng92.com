@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>vue-router-next for vue3 源码分析(附.脑图) - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 慎入😢 vue-router-next 源码分析流程图，此文重点在图，附带一" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-router-next/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="vue-router-next for vue3 源码分析(附.脑图)" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 慎入😢 vue-router-next 源码分析流程图，此文重点在图，附带一" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-router-next/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-03-05T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-03-05T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="vue-router-next for vue3 源码分析(附.脑图)">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 慎入😢 vue-router-next 源码分析流程图，此文重点在图，附带一"><meta itemprop="datePublished" content="2021-03-05T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-03-05T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="4172">
+<meta itemprop="keywords" content="vue,,vue3,,vue-router-next," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="vue-router-next for vue3 源码分析(附.脑图)"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 慎入😢 vue-router-next 源码分析流程图，此文重点在图，附带一"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">vue-router-next for vue3 源码分析(附.脑图)</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-03-05 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 4172 字 </span>
+          <span class="more-meta"> 预计阅读 9 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#vue-router">vue-router-next</a>
+</li>
+<li><a href="#flow">守卫函数完整执行流程</a>
+</li>
+<li><a href="#h5-history">HTML5 history api</a>
+</li>
+<li><a href="#web-history">createWebHistory</a>
+<ul>
+<li><a href="#use-h5-history">useHistoryStateNavigation(base: string)</a>
+<ul>
+<li><a href="#headline-6">createCurrentLocation(base: string,location: Location)</a>
+</li>
+<li><a href="#headline-7">changeLocation(to,state,replace)</a>
+</li>
+<li><a href="#headline-8">replace(to, data?)</a>
+</li>
+<li><a href="#headline-9">push(to, data?)</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-10">useHistoryListeners()</a>
+<ul>
+<li><a href="#headline-11">popStateHandler({ state })</a>
+</li>
+<li><a href="#headline-12">pauseListeners()</a>
+</li>
+<li><a href="#headline-13">listen(callback)</a>
+</li>
+<li><a href="#headline-14">beforeUnloadListener()</a>
+</li>
+<li><a href="#headline-15">destroy() 注销事件</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#web-hash">createWebHashHistory</a>
+</li>
+<li><a href="#mem-his">createMemoryHistory</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<blockquote>
+<p><strong>慎入😢</strong></p>
+<p>
+vue-router-next 源码分析流程图，此文重点在图，附带一些总结性的文字分
+析内容(图一般比较大，只保证自己能看懂系列~~~~)，学习过程中一些零碎的笔记。</p>
+</blockquote>
+<div id="outline-container-vue-router" class="outline-2">
+<h2 id="vue-router">
+vue-router-next
+</h2>
+<div id="outline-text-vue-router" class="outline-text-2">
+<p>
+脑图：
+<img src="/img/vue3/vue-router/vue-router-next-start.svg" alt="/img/vue3/vue-router/vue-router-next-start.svg" title="/img/vue3/vue-router/vue-router-next-start.svg" /></p>
+<p>
+简要分析：</p>
+<p>
+vue-router 实现从使用上来说有三个部分：</p>
+<ol>
+<li>
+<p>路由注册初始化，以 <code>VueRouter.createRoute({history, routes})</code> 为执行入口</p>
+<ul>
+<li>
+<p>创建匹配器 matcher 路由的一些匹配、添加、查找啊什么的操作都是有这个 matcher 来实现的</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kr">interface</span> <span class="nx">RouterMatcher</span> <span class="p">{</span>
+  <span class="nx">addRoute</span><span class="o">:</span> <span class="p">(</span><span class="nx">record</span>: <span class="kt">RouteRecordRaw</span><span class="p">,</span> <span class="nx">parent?</span>: <span class="kt">RouteRecordMatcher</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">;</span>
+  <span class="nx">removeRoute</span><span class="o">:</span> <span class="p">{</span>
+    <span class="p">(</span><span class="nx">matcher</span>: <span class="kt">RouteRecordMatcher</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span><span class="p">;</span>
+    <span class="p">(</span><span class="nx">name</span>: <span class="kt">RouteRecordName</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span><span class="p">;</span>
+  <span class="p">};</span>
+  <span class="nx">getRoutes</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">RouteRecordMatcher</span><span class="p">[];</span>
+  <span class="nx">getRecordMatcher</span><span class="o">:</span> <span class="p">(</span><span class="nx">name</span>: <span class="kt">RouteRecordName</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">RouteRecordMatcher</span> <span class="o">|</span> <span class="kc">undefined</span><span class="p">;</span>
+
+  <span class="nx">resolve</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+ 而上面的接口操作的无非就是两个路由仓库：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// 这个无论有没有名字的路由记录都会被存储到这个数组中
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">matchers</span>: <span class="kt">RouteRecordMatcher</span><span class="p">[]</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="c1">// 这个存储的是带 name 字段的路由 &lt;name, record&gt; 结构
+</span><span class="c1">// 方便直接可以通过 map.get(name) 就可以去到路由记录，减少数组查找消耗
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">matcherMap</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Map</span><span class="p">&lt;</span><span class="nt">RouteRecordName</span><span class="err">,</span> <span class="na">RouteRecordMatcher</span><span class="p">&gt;();</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>初始化路由守卫存储器，其实就是个包含 <code>{list,add,result}</code> 的一个对象</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="c1">// 进入之前的的回调列表
+</span><span class="c1"></span> <span class="kr">const</span> <span class="nx">beforeGuards</span> <span class="o">=</span> <span class="nx">useCallbacks</span><span class="p">&lt;</span><span class="nt">NavigationGuardWithThis</span><span class="err">&lt;</span><span class="na">undefined</span><span class="p">&gt;</span><span class="o">&gt;</span><span class="p">();</span>
+ <span class="c1">// 解析路由之前的回调列表
+</span><span class="c1"></span> <span class="kr">const</span> <span class="nx">beforeResolveGuards</span> <span class="o">=</span> <span class="nx">useCallbacks</span><span class="p">&lt;</span><span class="nt">NavigationGuardWithThis</span><span class="err">&lt;</span><span class="na">undefined</span><span class="p">&gt;</span><span class="o">&gt;</span><span class="p">();</span>
+ <span class="c1">// 进入之后的回调列表
+</span><span class="c1"></span> <span class="kr">const</span> <span class="nx">afterGuards</span> <span class="o">=</span> <span class="nx">useCallbacks</span><span class="p">&lt;</span><span class="nt">NavigationHookAfter</span><span class="p">&gt;();</span>
+
+ <span class="kr">export</span> <span class="kd">function</span> <span class="nx">useCallbacks</span><span class="p">&lt;</span><span class="nt">T</span><span class="p">&gt;()</span> <span class="p">{</span>
+   <span class="kd">let</span> <span class="nx">handlers</span>: <span class="kt">T</span><span class="p">[]</span> <span class="o">=</span> <span class="p">[];</span>
+   <span class="kd">function</span> <span class="nx">add</span><span class="p">(</span><span class="nx">handler</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="k">void</span> <span class="p">{}</span>
+   <span class="kd">function</span> <span class="nx">reset() {</span>
+     <span class="nx">handlers</span> <span class="o">=</span> <span class="p">[];</span>
+   <span class="p">}</span>
+   <span class="k">return</span> <span class="p">{</span>
+     <span class="nx">add</span><span class="p">,</span>
+     <span class="nx">list</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">handlers</span><span class="p">,</span>
+     <span class="nx">reset</span><span class="p">,</span>
+   <span class="p">};</span>
+ <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p><strong>currentRoute</strong> 重要变量，是个 shallow ref 响应式类型的值，与
+ <code>&lt;router-view/&gt;</code> 当前显示的路由息息相关，或者说就是它，因为 <code>RouterView</code>
+ 组件中有间接的监听这个值。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="c1">// RouterView.ts
+</span><span class="c1"></span> <span class="c1">// 就是这里的 matchedRouteRef
+</span><span class="c1"></span> <span class="nx">watch</span><span class="p">(</span>
+   <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">[</span><span class="nx">viewRef</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">matchedRouteRef</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">props</span><span class="p">.</span><span class="nx">name</span><span class="p">]</span> <span class="kr">as</span> <span class="kr">const</span><span class="p">,</span>
+   <span class="p">([</span><span class="nx">instance</span><span class="p">,</span> <span class="nx">to</span><span class="p">,</span> <span class="nx">name</span><span class="p">],</span> <span class="p">[</span><span class="nx">oldInstance</span><span class="p">,</span> <span class="kr">from</span><span class="p">,</span> <span class="nx">oldName</span><span class="p">])</span> <span class="o">=&gt;</span> <span class="p">{</span>
+     <span class="c1">// ...
+</span><span class="c1"></span>   <span class="p">}</span>
+ <span class="p">);</span>
+
+ <span class="c1">// RouterView.ts &gt; 为什么说是间接呢？看下面  matchedRouteRef 的由来
+</span><span class="c1"></span> <span class="kr">const</span> <span class="nx">injectedRoute</span> <span class="o">=</span> <span class="nx">inject</span><span class="p">(</span><span class="nx">routerViewLocationKey</span><span class="p">)</span><span class="o">!</span><span class="p">;</span>
+ <span class="kr">const</span> <span class="nx">routeToDisplay</span> <span class="o">=</span> <span class="nx">computed</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">props</span><span class="p">.</span><span class="nx">route</span> <span class="o">||</span> <span class="nx">injectedRoute</span><span class="p">.</span><span class="nx">value</span><span class="p">);</span>
+ <span class="kr">const</span> <span class="nx">depth</span> <span class="o">=</span> <span class="nx">inject</span><span class="p">(</span><span class="nx">viewDepthKey</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+ <span class="kr">const</span> <span class="nx">matchedRouteRef</span> <span class="o">=</span> <span class="nx">computed</span><span class="p">&lt;</span><span class="nt">RouteLocationMatched</span> <span class="err">|</span> <span class="na">undefined</span><span class="p">&gt;(</span>
+   <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">routeToDisplay</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">matched</span><span class="p">[</span><span class="nx">depth</span><span class="p">]</span>
+ <span class="p">);</span>
+
+ <span class="c1">// router.ts &gt; routerViewLocationKey ???  不记得了吗? router.install... 啊
+</span><span class="c1"></span> <span class="nx">app</span><span class="p">.</span><span class="nx">provide</span><span class="p">(</span><span class="nx">routerKey</span><span class="p">,</span> <span class="nx">router</span><span class="p">);</span>
+ <span class="nx">app</span><span class="p">.</span><span class="nx">provide</span><span class="p">(</span><span class="nx">routeLocationKey</span><span class="p">,</span> <span class="nx">reactive</span><span class="p">(</span><span class="nx">reactiveRoute</span><span class="p">));</span>
+ <span class="nx">app</span><span class="p">.</span><span class="nx">provide</span><span class="p">(</span><span class="nx">routerViewLocationKey</span><span class="p">,</span> <span class="nx">currentRoute</span><span class="p">);</span>
+
+ <span class="c1">// 看到没，关联上了吧!!!
+</span><span class="c1"></span> <span class="c1">// app.provide -&gt; currentRoute -&gt;
+</span><span class="c1"></span> <span class="c1">// injectedRoute -&gt; routeToDisplay -&gt;
+</span><span class="c1"></span> <span class="c1">// routeToDisplay.value.matched[depth]
+</span><span class="c1"></span>
+ <span class="cm">/*
+</span><span class="cm">  并且注意看 ~RouterView~ 组件中 setup最后返回的值是个函数，这个函数中有对
+</span><span class="cm">  routeToDisplay, matchedRouteRef进行引用也就是在执行的时候会触发 track 操
+</span><span class="cm">  作将它收集到这写值的依赖列表中，只要这些值发生变更就会 trigger这个 setup
+</span><span class="cm">  执行，来更新 ~&lt;router-view/&gt;~
+</span><span class="cm"> ,*/</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>初始化 router 实例</p>
+<p>
+ 包含一些 api :</p>
+<p>
+ 路由的增删改查主要来源 matcher： <code>{addRoute, currentRoute, removeRoute, hasRoute, getRoutes, resolv}</code></p>
+<p>
+ 路由的跳转行为： <code>{push, replace, go, back: () =&gt; go(-1), forward: () =&gt;
+ go(1)}</code>, 这里的 push, replace 函数最终调用的都是 <code>finalizeNavigation()</code> 而
+ 这里面主要有两个关键地方，一是 <code>routerHistory.push/replace</code>, 二是更新了
+ <code>currentRoute.value</code> 而正是这个更新会触发 <code>&lt;router-view/&gt;</code> 组件的更新。go 是直接使用了 <code>routerHistory.go(delta)</code> 接口</p>
+<blockquote>
+<p>可以看到，不管是 push/replace 还是 go 最后都是使用了 history 的 api 。</p>
+</blockquote>
+<p>
+ 路由插件的安装函数 <code>install(app/* vue app */)</code>, 这里需要注意它做了几件事情：</p>
+<table>
+<tbody>
+<tr>
+<td>注册 <code>RouterLink</code>, <code>RouterView</code> 两个 vue 组件</td>
+</tr>
+<tr>
+<td>定义了全局属性 <code>$route</code> 指向 <code>currentRoute</code></td>
+</tr>
+<tr>
+<td>provide routerKey -&gt; router 当前 router 实例</td>
+</tr>
+<tr>
+<td>provide routeLocationKey -&gt; reactiveRoute location 相关信息</td>
+</tr>
+<tr>
+<td>provide routerViewLocationKey -&gt; currentRoute 当前路由记录</td>
+</tr>
+<tr>
+<td>重写 vue 组件的 unmount 函数，执行路由的清理工作，比如：移除事件监听，重置路由属性等</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+</li>
+<li>
+<p><code>&lt;router-view/&gt;</code> 组件的实现原理，通过 <code>&lt;router-link to/&gt;</code> 或
+<code>router.push/replace/go</code> api 触发路由跳转动作实现</p>
+</li>
+<li>
+<p>history 的实现原理(结合 Ref + history hash/H5api)，这个对用户是不可见的</p>
+</li>
+</ol>
+<p>
+vue-router 简要图：</p>
+<p>
+<img src="/img/vue3/vue-router/vue-router-next.svg" alt="/img/vue3/vue-router/vue-router-next.svg" title="/img/vue3/vue-router/vue-router-next.svg" /></p>
+</div>
+</div>
+<div id="outline-container-flow" class="outline-2">
+<h2 id="flow">
+<span class="todo">TODO</span>
+守卫函数完整执行流程
+</h2>
+<div id="outline-text-flow" class="outline-text-2">
+<p>
+<img src="/img/vue3/vue-router/vue-router-next-parse-flow.svg" alt="/img/vue3/vue-router/vue-router-next-parse-flow.svg" title="/img/vue3/vue-router/vue-router-next-parse-flow.svg" /></p>
+</div>
+</div>
+<div id="outline-container-h5-history" class="outline-2">
+<h2 id="h5-history">
+HTML5 history api
+</h2>
+<div id="outline-text-h5-history" class="outline-text-2">
+<table>
+<thead>
+<tr>
+<th>api</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pushState(state, title, url)</code></td>
+<td>向历史记录中增加一条记录</td>
+</tr>
+<tr>
+<td><code>replaceState(state, title, url)</code></td>
+<td>替换当前记录，不新增记录</td>
+</tr>
+<tr>
+<td><code>back()</code></td>
+<td>返回上一条记录，等价于 <code>go(-1)</code></td>
+</tr>
+<tr>
+<td><code>go(n)</code></td>
+<td>跳转到第 n 条记录</td>
+</tr>
+<tr>
+<td><code>forward()</code></td>
+<td>等价于 <code>go(1)</code></td>
+</tr>
+<tr>
+<td><code>onpopstate</code></td>
+<td>事件，当且执行 <code>history.back()</code> 或 <code>history.forward()</code> 或 <code>history.go(n)</code> 的时候触发</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td>记录当前页面的状态信息，在执行 pushState 或 replaceState 之前为 null ，之后为第一个传入的参数，可以在 <code>onpopstate</code> 回调中通过 <code>event.state</code> 取到该信息</td>
+</tr>
+</tbody>
+</table>
+<h1> changeLocation() 测试。。。，</h1>
+<b>点击下面的按钮，注意观察 location 变化和 history.length 长度变化！</b>
+<div class="c9OCH7YQX9g">
+<button class="pushq">push ?q=1</button>
+<button class="pushp">push ?p=2</button>
+<button class="replace">replace ?r=3</button>
+<button class="clear">clear</button>
+<button class="forward">forward</button>
+<button class="go">随机跳转</button>
+<button class="back">back</button>
+<div class="debug"></div>
+</div>
+<script src="/js/vue/router/c9OCH7YQX9g.js"></script>
+<hr>
+<blockquote>
+<p>针对 <code>onpopstate</code> 只有在执行实际跳转动作的时候才会触发，什么是实际跳转动作？</p>
+<p>
+比如：浏览器的后台前进按钮，或者直接手动调用 <code>history.back()</code>, <code>history.go(n)</code>,
+<code>history.forward()</code> 方法触发。</p>
+</blockquote>
+<p>
+<span style="text-decoration: underline;">然后 vue-router 中是如何使用 history 实现路由功能的？</span></p>
+</div>
+</div>
+<div id="outline-container-web-history" class="outline-2">
+<h2 id="web-history">
+createWebHistory
+</h2>
+<div id="outline-text-web-history" class="outline-text-2">
+<p>
+H5 的 history api 封装，返回的结构： <code>RouterHistory</code> 包含以下成员</p>
+<table>
+<thead>
+<tr>
+<th>成员名</th>
+<th>描述</th>
+<th>-</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base</code></td>
+<td>站基地址，会添加到每个 url 前面</td>
+<td>如： a.com/sub 那么 base 是 /sub</td>
+</tr>
+<tr>
+<td><code>loation</code></td>
+<td>当前 history location</td>
+<td>非原生的 location, 封装之后的： <code>{value: location}</code></td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td>当前的 history state</td>
+<td>非原生 history state ，初始值是这个，但后续的值需要函数手动管理</td>
+</tr>
+<tr>
+<td><code>push(to,data?)</code></td>
+<td>对应 pushState 操作</td>
+<td>不会触发 popstate</td>
+</tr>
+<tr>
+<td><code>replace(to,data?)</code></td>
+<td>对应 replaceState 操作</td>
+<td>不会触发 popstate</td>
+</tr>
+<tr>
+<td><code>go(delta, triggerListeners?)</code></td>
+<td>调用 <code>history.go(delta)</code></td>
+<td>会触发 popstate 事件</td>
+</tr>
+<tr>
+<td><code>listen(callback)</code></td>
+<td>用户调用添加的监听函数</td>
+<td>popstate 触发期间执行</td>
+</tr>
+<tr>
+<td><code>createHref(location)</code></td>
+<td>构建 href 地址</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>destory()</code></td>
+<td>注销 listen() 注册的事件</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Router 中的 <code>back()</code> 和 <code>forward()</code> 分别是调用这里的 <code>go(-1)</code> 和 <code>go(1)</code> 实现。</p>
+</blockquote>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">createWebHistory</span><span class="p">(</span><span class="nx">base?</span>: <span class="kt">string</span><span class="p">)</span><span class="o">:</span> <span class="nx">RouterHistory</span> <span class="p">{</span>
+  <span class="nx">base</span> <span class="o">=</span> <span class="nx">normalizeBase</span><span class="p">(</span><span class="nx">base</span><span class="p">)</span>
+
+  <span class="kr">const</span> <span class="nx">historyNavigation</span> <span class="o">=</span> <span class="nx">useHistoryStateNavigation</span><span class="p">(</span><span class="nx">base</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">historyListeners</span> <span class="o">=</span> <span class="nx">useHistoryListeners</span><span class="p">(</span>
+    <span class="nx">base</span><span class="p">,</span>
+    <span class="nx">historyNavigation</span><span class="p">.</span><span class="nx">state</span><span class="p">,</span>
+    <span class="nx">historyNavigation</span><span class="p">.</span><span class="nx">location</span><span class="p">,</span>
+    <span class="nx">historyNavigation</span><span class="p">.</span><span class="nx">replace</span>
+  <span class="p">)</span>
+  <span class="kd">function</span> <span class="nx">go</span><span class="p">(</span><span class="nx">delta</span>: <span class="kt">number</span><span class="p">,</span> <span class="nx">triggerListeners</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">triggerListeners</span><span class="p">)</span> <span class="nx">historyListeners</span><span class="p">.</span><span class="nx">pauseListeners</span><span class="p">()</span>
+    <span class="nx">history</span><span class="p">.</span><span class="nx">go</span><span class="p">(</span><span class="nx">delta</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="kr">const</span> <span class="nx">routerHistory</span>: <span class="kt">RouterHistory</span> <span class="o">=</span> <span class="nx">assign</span><span class="p">(</span>
+    <span class="p">{</span>
+      <span class="c1">// it&#39;s overridden right after
+</span><span class="c1"></span>      <span class="nx">location</span><span class="o">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+      <span class="nx">base</span><span class="p">,</span>
+      <span class="nx">go</span><span class="p">,</span>
+      <span class="nx">createHref</span>: <span class="kt">createHref.bind</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">base</span><span class="p">),</span>
+    <span class="p">},</span>
+
+    <span class="nx">historyNavigation</span><span class="p">,</span>
+    <span class="nx">historyListeners</span>
+  <span class="p">)</span>
+
+  <span class="nb">Object</span><span class="p">.</span><span class="nx">defineProperty</span><span class="p">(</span><span class="nx">routerHistory</span><span class="p">,</span> <span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="p">{</span>
+    <span class="kr">get</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">historyNavigation</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span>
+  <span class="p">})</span>
+
+  <span class="nb">Object</span><span class="p">.</span><span class="nx">defineProperty</span><span class="p">(</span><span class="nx">routerHistory</span><span class="p">,</span> <span class="s1">&#39;state&#39;</span><span class="p">,</span> <span class="p">{</span>
+    <span class="kr">get</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">historyNavigation</span><span class="p">.</span><span class="nx">state</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span>
+  <span class="p">})</span>
+
+  <span class="k">return</span> <span class="nx">routerHistory</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p><code>base = normalizeBase(base)</code></p>
+<p>
+解析网站基路径</p>
+<p>
+<code>!base</code></p>
+<p>
+? 无自定义地址首先取 <code>&lt;base href=&#34;http://ip:port/path/to&#34; /&gt;</code> 的 href，
+取出 <code>/path/to</code> 部分作为 base</p>
+<p>
+\: 有自定义的时候，加上开头 <code>/</code> 和去掉尾部 <code>/</code> ，如： <code>path/to</code> 变成
+<code>/path/to</code> , 或 <code>/path/to/</code> 变成 <code>/path/to</code></p>
+</li>
+<li>
+<p><code>const historyNavigation = useHistoryStateNavigation(base)</code></p>
+<p>
+将 <code>window.location</code> 和 <code>window.history</code> 进行封装，返回</p>
+<p>
+<code>{location, state, push, replace}</code> 对象，所以这里重点就是这个函数。</p>
+</li>
+<li>
+<p><code>const historyListeners = useHistoryListeners(...)</code></p>
+<p>
+history 变更监听器。</p>
+</li>
+<li>
+<p><code>go(delta, triggerListeners)</code> 函数</p>
+<p>
+在调用 <code>history.go(delta)</code> 之前检测是否暂停 history listeners</p>
+</li>
+<li>
+<p>组装 <code>routerHistory</code></p>
+<p>
+合并 <code>{ location: &#39;&#39;, base, go, createHref }</code> 和 historyNavigation, historyListeners</p>
+</li>
+<li>
+<p>在 routerHistory 上定义两个 getter 属性 <code>location</code> &amp; <code>state</code></p>
+</li>
+<li>
+<p>返回 routerHistory 这个将来会被 <code>createRouter({ history })</code> 用到</p>
+</li>
+</ol>
+<script>
+insertFrame('', '2.js', '/js/vue/router/')
+</script>
+<div id="outline-container-use-h5-history" class="outline-3">
+<h3 id="use-h5-history">
+useHistoryStateNavigation(base: string)
+</h3>
+<div id="outline-text-use-h5-history" class="outline-text-3">
+<p>
+解构 window.history, window.location 组装 <code>{location, state, push, replace}</code> 结
+构返回。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">useHistoryStateNavigation</span><span class="p">(</span><span class="nx">base</span>: <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="p">{</span> <span class="nx">history</span><span class="p">,</span> <span class="nx">location</span> <span class="p">}</span> <span class="o">=</span> <span class="nb">window</span><span class="p">;</span>
+
+  <span class="c1">// private variables
+</span><span class="c1"></span>  <span class="kd">let</span> <span class="nx">currentLocation</span>: <span class="kt">ValueContainer</span><span class="p">&lt;</span><span class="nt">HistoryLocation</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="nx">value</span>: <span class="kt">createCurrentLocation</span><span class="p">(</span><span class="nx">base</span><span class="p">,</span> <span class="nx">location</span><span class="p">),</span>
+  <span class="p">};</span>
+  <span class="kd">let</span> <span class="nx">historyState</span>: <span class="kt">ValueContainer</span><span class="p">&lt;</span><span class="nt">StateEntry</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">value</span>: <span class="kt">history.state</span> <span class="p">};</span>
+  <span class="c1">// build current history entry as this is a fresh navigation
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">changeLocation</span><span class="p">(</span>
+      <span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span>
+      <span class="p">{</span>
+        <span class="nx">back</span>: <span class="kt">null</span><span class="p">,</span>
+        <span class="nx">current</span>: <span class="kt">currentLocation.value</span><span class="p">,</span>
+        <span class="nx">forward</span>: <span class="kt">null</span><span class="p">,</span>
+        <span class="c1">// the length is off by one, we need to decrease it
+</span><span class="c1"></span>        <span class="nx">position</span>: <span class="kt">history.length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="nx">replaced</span>: <span class="kt">true</span><span class="p">,</span>
+        <span class="c1">// don&#39;t add a scroll as the user may have an anchor and we want
+</span><span class="c1"></span>        <span class="c1">// scrollBehavior to be triggered without a saved position
+</span><span class="c1"></span>        <span class="nx">scroll</span>: <span class="kt">null</span><span class="p">,</span>
+      <span class="p">},</span>
+      <span class="kc">true</span>
+    <span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="kd">function</span> <span class="nx">changeLocation</span><span class="p">(</span>
+    <span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span>
+    <span class="nx">state</span>: <span class="kt">StateEntry</span><span class="p">,</span>
+    <span class="nx">replace</span>: <span class="kt">boolean</span>
+  <span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>  <span class="p">}</span>
+
+  <span class="kd">function</span> <span class="nx">replace</span><span class="p">(</span><span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span> <span class="nx">data?</span>: <span class="kt">HistoryState</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>  <span class="p">}</span>
+
+  <span class="kd">function</span> <span class="nx">push</span><span class="p">(</span><span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span> <span class="nx">data?</span>: <span class="kt">HistoryState</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">//...
+</span><span class="c1"></span>  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="p">{</span>
+    <span class="nx">location</span>: <span class="kt">currentLocation</span><span class="p">,</span>
+    <span class="nx">state</span>: <span class="kt">historyState</span><span class="p">,</span>
+
+    <span class="nx">push</span><span class="p">,</span>
+    <span class="nx">replace</span><span class="p">,</span>
+  <span class="p">};</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p>解析 location { pathname, search, hash } 返回不带域名的的 path</p>
+<p>
+如：</p>
+<p>
+<code>http://ip:port/ui/#/a/b/?limit=10&amp;page=1</code> -&gt; base: <code>/ui/#</code> -&gt; <code>/a/b</code></p>
+<p>
+<code>http://ip:port/ui/a/b/?limit=10&amp;page=1</code> -&gt; base: <code>/ui</code> -&gt; <code>/a/b</code></p>
+<p>
+<code>http://ip:port/a/ui/b/?limit=10&amp;page=1</code> -&gt; base: <code>/ui</code> -&gt; <code>/a/ui/b</code></p>
+<p>
+结构： <code>{value: url}</code></p>
+</li>
+<li>
+<p><code>historyState = { value: history.state }</code></p>
+<p>
+如果 <code>historyState.value</code> 为空，需要进行初始化 -&gt; <code>changeLocation()</code></p>
+</li>
+<li>
+<p><code>changeLocation(to, state, replace)</code> 函数</p>
+</li>
+<li>
+<p><code>replace(to, data?)</code> 函数</p>
+</li>
+<li>
+<p><code>push(to, data?)</code> 函数</p>
+</li>
+<li>
+<p>最后返回结构 <code>{location: currentLocation, state: historyState, push, replace}</code></p>
+</li>
+</ol>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+createCurrentLocation(base: string,location: Location)
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+对 <code>location { pathname, search, hash }</code> 加工返回新的 url</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">createCurrentLocation</span><span class="p">(</span>
+  <span class="nx">base</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">location</span>: <span class="kt">Location</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">HistoryLocation</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="p">{</span> <span class="nx">pathname</span><span class="p">,</span> <span class="nx">search</span><span class="p">,</span> <span class="nx">hash</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">location</span>
+  <span class="c1">// allows hash based url
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">hashPos</span> <span class="o">=</span> <span class="nx">base</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">hashPos</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// prepend the starting slash to hash so the url starts with /#
+</span><span class="c1"></span>    <span class="kd">let</span> <span class="nx">pathFromHash</span> <span class="o">=</span> <span class="nx">hash</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">pathFromHash</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!==</span> <span class="s1">&#39;/&#39;</span><span class="p">)</span> <span class="nx">pathFromHash</span> <span class="o">=</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="nx">pathFromHash</span>
+    <span class="k">return</span> <span class="nx">stripBase</span><span class="p">(</span><span class="nx">pathFromHash</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+  <span class="p">}</span>
+  <span class="kr">const</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">stripBase</span><span class="p">(</span><span class="nx">pathname</span><span class="p">,</span> <span class="nx">base</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nx">path</span> <span class="o">+</span> <span class="nx">search</span> <span class="o">+</span> <span class="nx">hash</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+函数作用： base 中含有 <code>#</code> 时，直接从 location.hash 中解析出 path。</p>
+<p>
+比如：</p>
+<p>
+<code>base=/ui/#/</code></p>
+<p>
+<code>url=https://ip:port/ui/#/base/industry/grouping?limit=10&amp;page=1&amp;tradeId=19&amp;times=1614652347338</code></p>
+<p>
+最后解析出来的</p>
+<p>
+<code>path=/base/industry/grouping?limit=10&amp;page=1&amp;tradeId=19&amp;times=1614652347338</code></p>
+<p>
+如果 base 不含 <code>#</code> 直接取出 path 中去掉 base 部分的 url，如：</p>
+<p>
+<code>base=/ui/</code> -&gt; <code>url=http://ip:port/ui/path/to...</code> 得到 <code>/path/to</code></p>
+<p>
+如果 base 在 url pathname 的中间，直接返回 pathname 因为这种情况非 base 情况
+<code>http://ip:port/path/ui/to</code> 直接返回 <code>/path/ui/to</code></p>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+changeLocation(to,state,replace)
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">changeLocation</span><span class="p">(</span>
+  <span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span>
+  <span class="nx">state</span>: <span class="kt">StateEntry</span><span class="p">,</span>
+  <span class="nx">replace</span>: <span class="kt">boolean</span>
+<span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+  <span class="c1">//
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">hashIndex</span> <span class="o">=</span> <span class="nx">base</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s2">&#34;#&#34;</span><span class="p">);</span>
+  <span class="c1">// to:list -&gt; /base/#/ui/ -&gt; /ui/list
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">url</span> <span class="o">=</span>
+    <span class="nx">hashIndex</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span>
+      <span class="o">?</span> <span class="p">(</span><span class="nx">location</span><span class="p">.</span><span class="nx">host</span> <span class="o">&amp;&amp;</span> <span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="s2">&#34;base&#34;</span><span class="p">)</span>
+          <span class="o">?</span> <span class="nx">base</span>
+          : <span class="kt">base.slice</span><span class="p">(</span><span class="nx">hashIndex</span><span class="p">))</span> <span class="o">+</span> <span class="nx">to</span>
+  <span class="c1">// http://ip:port + base + to
+</span><span class="c1"></span>      <span class="o">:</span> <span class="nx">createBaseLocation</span><span class="p">()</span> <span class="o">+</span> <span class="nx">base</span> <span class="o">+</span> <span class="nx">to</span><span class="p">;</span>
+  <span class="k">try</span> <span class="p">{</span>
+    <span class="c1">// BROWSER QUIRK
+</span><span class="c1"></span>    <span class="c1">// NOTE: Safari throws a SecurityError when calling this function 100 times in 30 seconds
+</span><span class="c1"></span>    <span class="nx">history</span><span class="p">[</span><span class="nx">replace</span> <span class="o">?</span> <span class="s2">&#34;replaceState&#34;</span> <span class="o">:</span> <span class="s2">&#34;pushState&#34;</span><span class="p">](</span><span class="nx">state</span><span class="p">,</span> <span class="s2">&#34;&#34;</span><span class="p">,</span> <span class="nx">url</span><span class="p">);</span>
+    <span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">state</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">warn</span><span class="p">(</span><span class="s2">&#34;Error with push/replace State&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">err</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// Force the navigation, this also resets the call count
+</span><span class="c1"></span>    <span class="nx">location</span><span class="p">[</span><span class="nx">replace</span> <span class="o">?</span> <span class="s2">&#34;replace&#34;</span> <span class="o">:</span> <span class="s2">&#34;assign&#34;</span><span class="p">](</span><span class="nx">url</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+去掉 base hash 部分将 <code>to</code> 路由组合成 url 调用 <code>history.replace|pushState(state,
+title, url)</code> 改变
+url，同时修改 historyState.value 值。</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
+replace(to, data?)
+</h4>
+<div id="outline-text-headline-8" class="outline-text-4">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">replace</span><span class="p">(</span><span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span> <span class="nx">data?</span>: <span class="kt">HistoryState</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">state</span>: <span class="kt">StateEntry</span> <span class="o">=</span> <span class="nx">assign</span><span class="p">(</span>
+    <span class="p">{},</span>
+    <span class="nx">history</span><span class="p">.</span><span class="nx">state</span><span class="p">,</span>
+    <span class="nx">buildState</span><span class="p">(</span>
+      <span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">back</span><span class="p">,</span>
+      <span class="c1">// keep back and forward entries but override current position
+</span><span class="c1"></span>      <span class="nx">to</span><span class="p">,</span>
+      <span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">forward</span><span class="p">,</span>
+      <span class="kc">true</span>
+    <span class="p">),</span>
+    <span class="nx">data</span><span class="p">,</span>
+    <span class="c1">// 替换操作，使用老的 position 替代新的
+</span><span class="c1"></span>    <span class="c1">// 这个会在 changeLocation 中用来计算 delta 偏移量
+</span><span class="c1"></span>    <span class="p">{</span> <span class="nx">position</span>: <span class="kt">historyState.value.position</span> <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="c1">// 执行 replaceState
+</span><span class="c1"></span>  <span class="c1">// 取 old historyState 然后设置 new historyState
+</span><span class="c1"></span>  <span class="nx">changeLocation</span><span class="p">(</span><span class="nx">to</span><span class="p">,</span> <span class="nx">state</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+  <span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">to</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+push(to, data?)
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">push</span><span class="p">(</span><span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span> <span class="nx">data?</span>: <span class="kt">HistoryState</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// Add to current entry the information of where we are going
+</span><span class="c1"></span>  <span class="c1">// as well as saving the current position
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">currentState</span> <span class="o">=</span> <span class="nx">assign</span><span class="p">(</span>
+    <span class="p">{},</span>
+    <span class="c1">// use current history state to gracefully handle a wrong call to
+</span><span class="c1"></span>    <span class="c1">// history.replaceState
+</span><span class="c1"></span>    <span class="c1">// https://github.com/vuejs/vue-router-next/issues/366
+</span><span class="c1"></span>    <span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span>
+    <span class="nx">history</span><span class="p">.</span><span class="nx">state</span> <span class="kr">as</span> <span class="nx">Partial</span><span class="p">&lt;</span><span class="nt">StateEntry</span><span class="p">&gt;</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+    <span class="p">{</span>
+      <span class="nx">forward</span>: <span class="kt">to</span><span class="p">,</span>
+      <span class="nx">scroll</span>: <span class="kt">computeScrollPosition</span><span class="p">(),</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="c1">// ...
+</span><span class="c1"></span>
+  <span class="c1">// 执行 pushState, 记录 old/new historyState
+</span><span class="c1"></span>  <span class="nx">changeLocation</span><span class="p">(</span><span class="nx">currentState</span><span class="p">.</span><span class="nx">current</span><span class="p">,</span> <span class="nx">currentState</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+
+  <span class="kr">const</span> <span class="nx">state</span>: <span class="kt">StateEntry</span> <span class="o">=</span> <span class="nx">assign</span><span class="p">(</span>
+    <span class="p">{},</span>
+    <span class="nx">buildState</span><span class="p">(</span><span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="nx">to</span><span class="p">,</span> <span class="kc">null</span><span class="p">),</span>
+    <span class="p">{</span> <span class="nx">position</span>: <span class="kt">currentState.position</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">},</span>
+    <span class="nx">data</span>
+  <span class="p">);</span>
+
+  <span class="nx">changeLocation</span><span class="p">(</span><span class="nx">to</span><span class="p">,</span> <span class="nx">state</span><span class="p">,</span> <span class="kc">false</span><span class="p">);</span>
+  <span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">to</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+useHistoryListeners()
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">useHistoryListeners</span><span class="p">(</span>
+  <span class="nx">base</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">historyState</span>: <span class="kt">ValueContainer</span><span class="p">&lt;</span><span class="nt">StateEntry</span><span class="p">&gt;,</span>
+  <span class="nx">currentLocation</span>: <span class="kt">ValueContainer</span><span class="p">&lt;</span><span class="nt">HistoryLocation</span><span class="p">&gt;,</span>
+  <span class="nx">replace</span>: <span class="kt">RouterHistory</span><span class="p">[</span><span class="s2">&#34;replace&#34;</span><span class="p">]</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// 1. popstate 事件处理句柄
+</span><span class="c1"></span>  <span class="c1">// 2. pause listeners
+</span><span class="c1"></span>  <span class="c1">// 3. listen(callback)
+</span><span class="c1"></span>  <span class="c1">// 4. beforeUnloadListener()
+</span><span class="c1"></span>  <span class="c1">// 5. destory()
+</span><span class="c1"></span>  <span class="c1">// 6. add event listenner: popstate + beforeunload
+</span><span class="c1"></span>  <span class="c1">// setup the listeners and prepare teardown callbacks
+</span><span class="c1"></span>  <span class="nb">window</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&#34;popstate&#34;</span><span class="p">,</span> <span class="nx">popStateHandler</span><span class="p">);</span>
+  <span class="nb">window</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&#34;beforeunload&#34;</span><span class="p">,</span> <span class="nx">beforeUnloadListener</span><span class="p">);</span>
+
+  <span class="c1">// 7. return { pauseListeners, listn, destory }
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+popStateHandler({ state })
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<p>
+因为 history.state 保存了执行跳转是 pushState/replaceState 传入的第一个参数值，
+所以可以通过  to/from 上的 state 进行对比得到跳转的方向是 forward 还是 back。</p>
+<p>
+但是 history.state 是实时的，执行完 push/replace 就会发生改变，这里怎么处理这个
+问题呢，能让 to&amp;from 状态得以保存？</p>
+<blockquote>
+<p>答. 因为使用 historyState = { value: history.state } 做了个中介，
+虽然 history.state 实时变化，但是这个 historyState 是不会的，手动用它来管理 to &amp;
+from 的前后状态。</p>
+</blockquote>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">popStateHandler</span>: <span class="kt">PopStateListener</span> <span class="o">=</span> <span class="p">({</span>
+    <span class="nx">state</span><span class="p">,</span>
+  <span class="p">}</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">state</span>: <span class="kt">StateEntry</span> <span class="o">|</span> <span class="kc">null</span>
+  <span class="p">})</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">to</span> <span class="o">=</span> <span class="nx">createCurrentLocation</span><span class="p">(</span><span class="nx">base</span><span class="p">,</span> <span class="nx">location</span><span class="p">)</span>
+    <span class="kr">const</span> <span class="kr">from</span><span class="o">:</span> <span class="nx">HistoryLocation</span> <span class="o">=</span> <span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span>
+    <span class="c1">// 这里拿到的是跳转之前的 state
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">fromState</span>: <span class="kt">StateEntry</span> <span class="o">=</span> <span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span>
+    <span class="kd">let</span> <span class="nx">delta</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">to</span>
+      <span class="c1">// 这里 state 是执行路由跳转之后触发了 popstate 事件
+</span><span class="c1"></span>      <span class="c1">// 去得到的最新状态，对应 to 更新老状态值
+</span><span class="c1"></span>      <span class="nx">historyState</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">state</span>
+
+      <span class="c1">// ignore the popstate and reset the pauseState
+</span><span class="c1"></span>      <span class="c1">// 暂停？忽略事件重置 pauseState ?
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="nx">pauseState</span> <span class="o">&amp;&amp;</span> <span class="nx">pauseState</span> <span class="o">===</span> <span class="kr">from</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">pauseState</span> <span class="o">=</span> <span class="kc">null</span>
+        <span class="k">return</span>
+      <span class="p">}</span>
+      <span class="c1">// 根据 to &amp; from state 计算出要执行跳转的方向或偏移
+</span><span class="c1"></span>      <span class="nx">delta</span> <span class="o">=</span> <span class="nx">fromState</span> <span class="o">?</span> <span class="nx">state</span><span class="p">.</span><span class="nx">position</span> <span class="o">-</span> <span class="nx">fromState.position</span> : <span class="kt">0</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="c1">// 没有新状态，直接替换历史记录
+</span><span class="c1"></span>      <span class="nx">replace</span><span class="p">(</span><span class="nx">to</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// console.log({ deltaFromCurrent })
+</span><span class="c1"></span>    <span class="c1">// Here we could also revert the navigation by calling history.go(-delta)
+</span><span class="c1"></span>    <span class="c1">// this listener will have to be adapted to not trigger again and to wait for the url
+</span><span class="c1"></span>    <span class="c1">// to be updated before triggering the listeners. Some kind of validation function would also
+</span><span class="c1"></span>    <span class="c1">// need to be passed to the listeners so the navigation can be accepted
+</span><span class="c1"></span>    <span class="c1">// call all listeners
+</span><span class="c1"></span>    <span class="nx">listeners</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">listener</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="nx">listener</span><span class="p">(</span><span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span><span class="p">,</span> <span class="kr">from</span><span class="p">,</span> <span class="p">{</span>
+        <span class="nx">delta</span><span class="p">,</span>
+        <span class="kr">type</span><span class="o">:</span> <span class="nx">NavigationType</span><span class="p">.</span><span class="nx">pop</span><span class="p">,</span>
+        <span class="nx">direction</span>: <span class="kt">delta</span>
+          <span class="o">?</span> <span class="nx">delta</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="o">?</span> <span class="nx">NavigationDirection.forward</span>
+            : <span class="kt">NavigationDirection.back</span>
+          <span class="o">:</span> <span class="nx">NavigationDirection</span><span class="p">.</span><span class="kt">unknown</span><span class="p">,</span>
+      <span class="p">})</span>
+    <span class="p">})</span>
+  <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+pauseListeners()
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">pauseListeners() {</span>
+  <span class="nx">pauseState</span> <span class="o">=</span> <span class="nx">currentLocation</span><span class="p">.</span><span class="nx">value</span><span class="p">;</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+listen(callback)
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<p>
+纯粹的 add 操作，更新 <code>listeners[]</code> 和对应的移除函数列表 <code>teardowns[]</code></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// 添加监听函数，返回对应的 teardown 函数
+</span><span class="c1"></span>  <span class="kd">function</span> <span class="nx">listen</span><span class="p">(</span><span class="nx">callback</span>: <span class="kt">NavigationCallback</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// setup the listener and prepare teardown callbacks
+</span><span class="c1"></span>    <span class="nx">listeners</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+
+    <span class="kr">const</span> <span class="nx">teardown</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">index</span> <span class="o">=</span> <span class="nx">listeners</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="nx">listeners</span><span class="p">.</span><span class="nx">splice</span><span class="p">(</span><span class="nx">index</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="nx">teardowns</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">teardown</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">teardown</span>
+  <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-4">
+<h4 id="headline-14">
+beforeUnloadListener()
+</h4>
+<div id="outline-text-headline-14" class="outline-text-4">
+<p>
+整个页面执行卸载之前的事件，发生在 <code>unload</code> 之前。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">beforeUnloadListener() {</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">history</span> <span class="p">}</span> <span class="o">=</span> <span class="nb">window</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">history</span><span class="p">.</span><span class="nx">state</span><span class="p">)</span> <span class="k">return</span>
+    <span class="nx">history</span><span class="p">.</span><span class="nx">replaceState</span><span class="p">(</span>
+      <span class="nx">assign</span><span class="p">({},</span> <span class="nx">history</span><span class="p">.</span><span class="nx">state</span><span class="p">,</span> <span class="p">{</span> <span class="nx">scroll</span>: <span class="kt">computeScrollPosition</span><span class="p">()</span> <span class="p">}),</span>
+      <span class="s1">&#39;&#39;</span>
+    <span class="p">)</span>
+  <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-4">
+<h4 id="headline-15">
+destroy() 注销事件
+</h4>
+<div id="outline-text-headline-15" class="outline-text-4">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">destroy() {</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">teardown</span> <span class="k">of</span> <span class="nx">teardowns</span><span class="p">)</span> <span class="nx">teardown</span><span class="p">();</span>
+  <span class="nx">teardowns</span> <span class="o">=</span> <span class="p">[];</span>
+  <span class="nb">window</span><span class="p">.</span><span class="nx">removeEventListener</span><span class="p">(</span><span class="s2">&#34;popstate&#34;</span><span class="p">,</span> <span class="nx">popStateHandler</span><span class="p">);</span>
+  <span class="nb">window</span><span class="p">.</span><span class="nx">removeEventListener</span><span class="p">(</span><span class="s2">&#34;beforeunload&#34;</span><span class="p">,</span> <span class="nx">beforeUnloadListener</span><span class="p">);</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-web-hash" class="outline-2">
+<h2 id="web-hash">
+createWebHashHistory
+</h2>
+<div id="outline-text-web-hash" class="outline-text-2">
+<p>
+<span style="text-decoration: underline;">/vue-router-next/src/history/hash.ts</span></p>
+<p>
+从源码可以看出，该函数是基于 <code>createWebHistory(base)</code> 完成的，也就是说这个也是基
+于 history api 完成，只不过在这个基础上对 hash 值进行了情况分析和检测，做了进一
+步优化处理。</p>
+<blockquote>
+<p>参数 base，可以函数调用时提供，如果存在 <code>&lt;base href/&gt;</code> 标签会优先取这个标签的
+href 值解析出 base 值。</p>
+</blockquote>
+<p>
+如，函数注释，有以下几种可能情况(如： <code>base=https://example.com/folder</code>)</p>
+<ol>
+<li>
+<p><code>createWebHashHistory()</code> 无参数</p>
+<p>
+结果： <a href="https://example.com/folder#">https://example.com/folder#</a></p>
+</li>
+<li>
+<p><code>createWebHashHistory(&#39;/folder/&#39;)</code></p>
+<p>
+匹配 <code>/folder</code> 成功，结果： <a href="https://example.com/folder/#">https://example.com/folder/#</a></p>
+</li>
+<li>
+<p><code>createWebHashHistory(&#39;/folder/#/app&#39;)</code></p>
+<p>
+中间有 <code>#</code> 符号的：</p>
+<p>
+匹配 <code>/folder</code> 成功，结果： <a href="https://example.com/folder/#/app">https://example.com/folder/#/app</a></p>
+</li>
+<li>
+<p><del>createWebHashHistory(&#39;<em>other-folder</em>&#39;)</del></p>
+<p>
+匹配失败，会直接替换，结果： <a href="https://example.com/other-folder/#">https://example.com/other-folder/#</a></p>
+<p>
+不推荐这种，因为它会改变根路径。</p>
+</li>
+<li>
+<p>无主机的地址，比如本地文件访问： <a href="///usr/etc/folder/index.html">///usr/etc/folder/index.html</a></p>
+<p>
+<code>createWebHashHistory(&#39;/iAmIgnored&#39;)</code></p>
+<p>
+结果： <a href="///usr/etc/folder/index.html#">///usr/etc/folder/index.html#</a></p>
+<p>
+提供的 base 会被忽略。</p>
+</li>
+</ol>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">createWebHashHistory</span><span class="p">(</span><span class="nx">base?</span>: <span class="kt">string</span><span class="p">)</span><span class="o">:</span> <span class="nx">RouterHistory</span> <span class="p">{</span>
+  <span class="c1">// Make sure this implementation is fine in terms of encoding, specially for IE11
+</span><span class="c1"></span>  <span class="c1">// for `file://`, directly use the pathname and ignore the base
+</span><span class="c1"></span>  <span class="c1">// location.pathname contains an initial `/` even at the root: `https://example.com`
+</span><span class="c1"></span>  <span class="nx">base</span> <span class="o">=</span> <span class="nx">location</span><span class="p">.</span><span class="nx">host</span> <span class="o">?</span> <span class="nx">base</span> <span class="o">||</span> <span class="nx">location</span><span class="p">.</span><span class="nx">pathname</span> <span class="o">+</span> <span class="nx">location</span><span class="p">.</span><span class="nx">search</span> <span class="o">:</span> <span class="s1">&#39;&#39;</span>
+  <span class="c1">// allow the user to provide a `#` in the middle: `/base/#/app`
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">base</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="nx">base</span> <span class="o">+=</span> <span class="s1">&#39;#&#39;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">base</span><span class="p">.</span><span class="nx">endsWith</span><span class="p">(</span><span class="s1">&#39;#/&#39;</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nx">base</span><span class="p">.</span><span class="nx">endsWith</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nx">warn</span><span class="p">(</span>
+      <span class="sb">`A hash base must end with a &#34;#&#34;:</span><span class="err">\</span><span class="sb">n&#34;</span><span class="si">${</span><span class="nx">base</span><span class="si">}</span><span class="sb">&#34; should be &#34;</span><span class="si">${</span><span class="nx">base</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span>
+        <span class="sr">/#.*$/</span><span class="p">,</span>
+        <span class="s1">&#39;#&#39;</span>
+      <span class="p">)</span><span class="si">}</span><span class="sb">&#34;.`</span>
+    <span class="p">)</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">createWebHistory</span><span class="p">(</span><span class="nx">base</span><span class="p">)</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+更多请查看 <a href="#web-history">createWebHistory</a> 。</p>
+</div>
+</div>
+<div id="outline-container-mem-his" class="outline-2">
+<h2 id="mem-his">
+<span class="todo">TODO</span>
+createMemoryHistory
+</h2>
+<div id="outline-text-mem-his" class="outline-text-2">
+<p>
+通过一个队列来管理路由。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span><span class="lnt">82
+</span><span class="lnt">83
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">createMemoryHistory</span><span class="p">(</span><span class="nx">base</span>: <span class="kt">string</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">:</span> <span class="nx">RouterHistory</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">listeners</span>: <span class="kt">NavigationCallback</span><span class="p">[]</span> <span class="o">=</span> <span class="p">[]</span>
+  <span class="kd">let</span> <span class="nx">queue</span>: <span class="kt">HistoryLocation</span><span class="p">[]</span> <span class="o">=</span> <span class="p">[</span><span class="nx">START</span><span class="p">]</span>
+  <span class="kd">let</span> <span class="nx">position</span>: <span class="kt">number</span> <span class="o">=</span> <span class="mi">0</span>
+
+  <span class="kd">function</span> <span class="nx">setLocation</span><span class="p">(</span><span class="nx">location</span>: <span class="kt">HistoryLocation</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">position</span><span class="o">++</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">position</span> <span class="o">===</span> <span class="nx">queue</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// we are at the end, we can simply append a new entry
+</span><span class="c1"></span>      <span class="nx">queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">location</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="c1">// we are in the middle, we remove everything from here in the queue
+</span><span class="c1"></span>      <span class="nx">queue</span><span class="p">.</span><span class="nx">splice</span><span class="p">(</span><span class="nx">position</span><span class="p">)</span>
+      <span class="nx">queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">location</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="kd">function</span> <span class="nx">triggerListeners</span><span class="p">(</span>
+    <span class="nx">to</span>: <span class="kt">HistoryLocation</span><span class="p">,</span>
+    <span class="kr">from</span><span class="o">:</span> <span class="nx">HistoryLocation</span><span class="p">,</span>
+    <span class="p">{</span> <span class="nx">direction</span><span class="p">,</span> <span class="nx">delta</span> <span class="p">}</span><span class="o">:</span> <span class="nx">Pick</span><span class="p">&lt;</span><span class="nt">NavigationInformation</span><span class="err">,</span> <span class="err">&#39;</span><span class="na">direction</span><span class="err">&#39;</span> <span class="err">|</span> <span class="err">&#39;</span><span class="na">delta</span><span class="err">&#39;</span><span class="p">&gt;</span>
+  <span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">info</span>: <span class="kt">NavigationInformation</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="nx">direction</span><span class="p">,</span>
+      <span class="nx">delta</span><span class="p">,</span>
+      <span class="kr">type</span><span class="o">:</span> <span class="nx">NavigationType</span><span class="p">.</span><span class="nx">pop</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">callback</span> <span class="k">of</span> <span class="nx">listeners</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">callback</span><span class="p">(</span><span class="nx">to</span><span class="p">,</span> <span class="kr">from</span><span class="p">,</span> <span class="nx">info</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="kr">const</span> <span class="nx">routerHistory</span>: <span class="kt">RouterHistory</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// rewritten by Object.defineProperty
+</span><span class="c1"></span>    <span class="nx">location</span>: <span class="kt">START</span><span class="p">,</span>
+    <span class="nx">state</span><span class="o">:</span> <span class="p">{},</span>
+    <span class="nx">base</span><span class="p">,</span>
+    <span class="nx">createHref</span>: <span class="kt">createHref.bind</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">base</span><span class="p">),</span>
+
+    <span class="nx">replace</span><span class="p">(</span><span class="nx">to</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// remove current entry and decrement position
+</span><span class="c1"></span>      <span class="nx">queue</span><span class="p">.</span><span class="nx">splice</span><span class="p">(</span><span class="nx">position</span><span class="o">--</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="nx">setLocation</span><span class="p">(</span><span class="nx">to</span><span class="p">)</span>
+    <span class="p">},</span>
+
+    <span class="nx">push</span><span class="p">(</span><span class="nx">to</span><span class="p">,</span> <span class="nx">data?</span>: <span class="kt">HistoryState</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">setLocation</span><span class="p">(</span><span class="nx">to</span><span class="p">)</span>
+    <span class="p">},</span>
+
+    <span class="nx">listen</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">listeners</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+      <span class="k">return</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kr">const</span> <span class="nx">index</span> <span class="o">=</span> <span class="nx">listeners</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">callback</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">index</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="nx">listeners</span><span class="p">.</span><span class="nx">splice</span><span class="p">(</span><span class="nx">index</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nx">destroy() {</span>
+      <span class="nx">listeners</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="p">},</span>
+
+    <span class="nx">go</span><span class="p">(</span><span class="nx">delta</span><span class="p">,</span> <span class="nx">shouldTrigger</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="kr">from</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">location</span>
+      <span class="kr">const</span> <span class="nx">direction</span>: <span class="kt">NavigationDirection</span> <span class="o">=</span>
+        <span class="c1">// we are considering delta === 0 going forward, but in abstract mode
+</span><span class="c1"></span>        <span class="c1">// using 0 for the delta doesn&#39;t make sense like it does in html5 where
+</span><span class="c1"></span>        <span class="c1">// it reloads the page
+</span><span class="c1"></span>        <span class="nx">delta</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">?</span> <span class="nx">NavigationDirection.back</span> : <span class="kt">NavigationDirection.forward</span>
+      <span class="nx">position</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="nx">position</span> <span class="o">+</span> <span class="nx">delta</span><span class="p">,</span> <span class="nx">queue</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">shouldTrigger</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">triggerListeners</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">location</span><span class="p">,</span> <span class="kr">from</span><span class="p">,</span> <span class="p">{</span>
+          <span class="nx">direction</span><span class="p">,</span>
+          <span class="nx">delta</span><span class="p">,</span>
+        <span class="p">})</span>
+      <span class="p">}</span>
+    <span class="p">},</span>
+  <span class="p">}</span>
+
+  <span class="nb">Object</span><span class="p">.</span><span class="nx">defineProperty</span><span class="p">(</span><span class="nx">routerHistory</span><span class="p">,</span> <span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="p">{</span>
+    <span class="kr">get</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">queue</span><span class="p">[</span><span class="nx">position</span><span class="p">],</span>
+  <span class="p">})</span>
+
+  <span class="k">return</span> <span class="nx">routerHistory</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-03-05
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue/">vue,</a>
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vue-router-next/">vue-router-next</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-vuex/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">vuex for vue3 源码分析(附.脑图)</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-my-plan/">
+            <span class="next-text nav-default">Vue3 周边源码学习计划表</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

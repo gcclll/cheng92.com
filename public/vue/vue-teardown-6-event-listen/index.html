@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 功能拆解⑥ directives 事件绑定机制 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-teardown-6-event-listen/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 功能拆解⑥ directives 事件绑定机制" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-teardown-6-event-listen/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-06-28T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-06-28T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 功能拆解⑥ directives 事件绑定机制">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机"><meta itemprop="datePublished" content="2021-06-28T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-06-28T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="2397">
+<meta itemprop="keywords" content="vue3,,vue-next,,component,,directives," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 功能拆解⑥ directives 事件绑定机制"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 功能拆解⑥ directives 事件绑定机制</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-06-28 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 2397 字 </span>
+          <span class="more-meta"> 预计阅读 5 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<blockquote>
+<p>本文从源码角度讲解了vue中的事件注册机制(v-on 指令)。</p>
+</blockquote>
+<p>
+该文分析的相关代码在 packages/runtime-dom 包中，主要针对 v-on 的事件注册机制原理
+进行分析一篇文章，相关代码并不多，理解起来也不会有什么困难。</p>
+<p>
+props 属性 patch 入口： <a href="https://github.com/vuejs/vue-next/blob/master/packages/runtime-dom/src/patchProp.ts">runtime-dom/src/patchProp.ts</a></p>
+<p>
+针对 v-on 处理的代码分支：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript">
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">patchProp</span>: <span class="kt">DOMRendererOptions</span><span class="p">[</span><span class="s1">&#39;patchProp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="nx">el</span><span class="p">,</span>
+  <span class="nx">key</span><span class="p">,</span>
+  <span class="nx">prevValue</span><span class="p">,</span>
+  <span class="nx">nextValue</span><span class="p">,</span>
+  <span class="nx">isSVG</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span>
+  <span class="nx">prevChildren</span><span class="p">,</span>
+  <span class="nx">parentComponent</span><span class="p">,</span>
+  <span class="nx">parentSuspense</span><span class="p">,</span>
+  <span class="nx">unmountChildren</span>
+<span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">switch</span> <span class="p">(</span><span class="nx">key</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// ... class, style 属性的处理，主要是进行合并操作
+</span><span class="c1"></span>    <span class="k">default</span><span class="o">:</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">isOn</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// ignore v-model listeners
+</span><span class="c1"></span>        <span class="c1">// v-on 事件属性处理逻辑
+</span><span class="c1"></span>        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">isModelListener</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+          <span class="nx">patchEvent</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">prevValue</span><span class="p">,</span> <span class="nx">nextValue</span><span class="p">,</span> <span class="nx">parentComponent</span><span class="p">)</span>
+        <span class="p">}</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">shouldSetAsProp</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">nextValue</span><span class="p">,</span> <span class="nx">isSVG</span><span class="p">))</span> <span class="p">{</span>
+        <span class="c1">// ... dom 原生属性处理
+</span><span class="c1"></span>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// ...
+</span><span class="c1"></span>      <span class="p">}</span>
+      <span class="k">break</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+所以重点代码在</p>
+<p>
+<code>patchEvent(el, key, prevValue, nextValue, parentComponent)</code></p>
+<p>
+也就是 <span style="text-decoration: underline;">runtime-dom/src/modules/events.ts</span> 中</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">patchEvent</span><span class="p">(</span>
+  <span class="nx">el</span>: <span class="kt">Element</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="nx">_vei?</span>: <span class="kt">Record</span><span class="p">&lt;</span><span class="nt">string</span><span class="err">,</span> <span class="na">Invoker</span> <span class="err">|</span> <span class="na">undefined</span><span class="p">&gt;</span> <span class="p">},</span>
+  <span class="nx">rawName</span>: <span class="kt">string</span><span class="p">,</span>
+  <span class="nx">prevValue</span>: <span class="kt">EventValue</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">nextValue</span>: <span class="kt">EventValue</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span> <span class="o">|</span> <span class="kc">null</span> <span class="o">=</span> <span class="kc">null</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// vei = vue event invokers
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">invokers</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">||</span> <span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">=</span> <span class="p">{})</span>
+  <span class="kr">const</span> <span class="nx">existingInvoker</span> <span class="o">=</span> <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span> <span class="o">&amp;&amp;</span> <span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// patch
+</span><span class="c1"></span>    <span class="nx">existingInvoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">nextValue</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="p">[</span><span class="nx">name</span><span class="p">,</span> <span class="nx">options</span><span class="p">]</span> <span class="o">=</span> <span class="nx">parseName</span><span class="p">(</span><span class="nx">rawName</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// add
+</span><span class="c1"></span>      <span class="kr">const</span> <span class="nx">invoker</span> <span class="o">=</span> <span class="p">(</span><span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="nx">createInvoker</span><span class="p">(</span><span class="nx">nextValue</span><span class="p">,</span> <span class="nx">instance</span><span class="p">))</span>
+      <span class="nx">addEventListener</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">invoker</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// remove
+</span><span class="c1"></span>      <span class="nx">removeEventListener</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">existingInvoker</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+      <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="kc">undefined</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+可以看到这里实现是一种特殊处理方式，而不是简单的直接调用 addEventListener 和
+removeEventListener 直接将所有事件句柄注册到 element 上。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript">  <span class="kr">const</span> <span class="nx">invokers</span> <span class="o">=</span> <span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">||</span> <span class="p">(</span><span class="nx">el</span><span class="p">.</span><span class="nx">_vei</span> <span class="o">=</span> <span class="p">{})</span>
+  <span class="kr">const</span> <span class="nx">existingInvoker</span> <span class="o">=</span> <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<strong>el._vei =&gt; vue event invokers</strong></p>
+<p>
+参数说明：</p>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>desc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>el</td>
+<td>事件的目标元素</td>
+</tr>
+<tr>
+<td>rawName</td>
+<td>事件名称</td>
+</tr>
+<tr>
+<td>prevValue</td>
+<td>绑定在 el 上 rawName 对应事件的老句柄</td>
+</tr>
+<tr>
+<td>nextValue</td>
+<td>绑定在 el 上 rawName 对应事件的新句柄</td>
+</tr>
+<tr>
+<td>instance</td>
+<td>当前组件的实例</td>
+</tr>
+</tbody>
+</table>
+<p>
+参数重点在于  prevValue &amp; nextValue 这两个分别对应了事件的处理新旧函数。</p>
+<p>
+对于所有的 prevValue &amp; nextValue 对应的事件处理函数都不会是直接被注册，而是会被
+封装成一个 Invoker 形式存在。</p>
+<p>
+而 Invoker 来自 createInvoker(nextValue):</p>
+<p>
+一个二次封装函数：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">createInvoker</span><span class="p">(</span>
+  <span class="nx">initialValue</span>: <span class="kt">EventValue</span><span class="p">,</span>
+  <span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span> <span class="o">|</span> <span class="kc">null</span>
+<span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">invoker</span>: <span class="kt">Invoker</span> <span class="o">=</span> <span class="p">(</span><span class="nx">e</span>: <span class="kt">Event</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="c1">// async edge case #6566: inner click event triggers patch, event handler
+</span><span class="c1"></span>    <span class="c1">// attached to outer element during patch, and triggered again. This
+</span><span class="c1"></span>    <span class="c1">// happens because browsers fire microtask ticks between event propagation.
+</span><span class="c1"></span>    <span class="c1">// the solution is simple: we save the timestamp when a handler is attached,
+</span><span class="c1"></span>    <span class="c1">// and the handler would only fire if the event passed to it was fired
+</span><span class="c1"></span>    <span class="c1">// AFTER it was attached.
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">timeStamp</span> <span class="o">=</span> <span class="nx">e</span><span class="p">.</span><span class="nx">timeStamp</span> <span class="o">||</span> <span class="nx">_getNow</span><span class="p">()</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">timeStamp</span> <span class="o">&gt;=</span> <span class="nx">invoker</span><span class="p">.</span><span class="nx">attached</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">callWithAsyncErrorHandling</span><span class="p">(</span>
+        <span class="nx">patchStopImmediatePropagation</span><span class="p">(</span><span class="nx">e</span><span class="p">,</span> <span class="nx">invoker</span><span class="p">.</span><span class="nx">value</span><span class="p">),</span>
+        <span class="nx">instance</span><span class="p">,</span>
+        <span class="nx">ErrorCodes</span><span class="p">.</span><span class="nx">NATIVE_EVENT_HANDLER</span><span class="p">,</span>
+        <span class="p">[</span><span class="nx">e</span><span class="p">]</span>
+      <span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="nx">invoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">initialValue</span>
+  <span class="nx">invoker</span><span class="p">.</span><span class="nx">attached</span> <span class="o">=</span> <span class="nx">getNow</span><span class="p">()</span>
+  <span class="k">return</span> <span class="nx">invoker</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+返回一个</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">interface</span> <span class="nx">Invoker</span> <span class="kr">extends</span> <span class="nx">EventListener</span> <span class="p">{</span>
+  <span class="nx">value</span>: <span class="kt">EventValue</span>
+  <span class="nx">attached</span>: <span class="kt">number</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+封装过程重点做了几件事情：</p>
+<ol>
+<li>
+<p>invoker 里面 <code>callWithAsyncErrorHandling()</code> 方式执行了事件句柄函数</p>
+<p>
+拦截事件处理函数执行过程中差生的错误异常，这些异常可以通过 vue 的全局配置来捕
+获：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">instance</span> <span class="o">=</span> <span class="nx">createApp</span><span class="p">(</span><span class="nx">App</span><span class="p">)</span>
+<span class="nx">instance</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">errorHandler</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">vm</span><span class="p">,</span> <span class="nx">info</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// 处理错误异常
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>执行前提是 <code>timeStamp &gt;= invoker.attached - 1</code></p>
+<p>
+注释内容：</p>
+<blockquote>
+<p>async edge case #6566: inner click event triggers patch, event handler
+ attached to outer element during patch, and triggered again. This happens
+ because browsers fire microtask ticks between event propagation. the
+ solution is simple: we save the timestamp when a handler is attached, and the handler would only fire if the event passed to it was fired AFTER it was attached.</p>
+</blockquote>
+<p>
+个人翻译理解： <span style="text-decoration: underline;">事件注册期间会同时注册到 outer element 上，这是因为浏览器会在
+事件冒泡期间触发微任务 ticks，从而导致会被重复触发事件。</span></p>
+<p>
+解决方案就是记录事件注册完成时的时间戳，在执行的时候检测是不是过了该时间，只
+有过了该时间触发的才会去执行。</p>
+</li>
+<li>
+<p>记录时间戳</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="nx">invoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">initialValue</span>
+<span class="nx">invoker</span><span class="p">.</span><span class="nx">attached</span> <span class="o">=</span> <span class="nx">getNow</span><span class="p">()</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+<div class="tip-block">
+<p><p><strong>TIP</strong></p></p>
+<p>
+注意在 invoker 函数中有个特殊步骤：</p>
+<p>
+<code>patchStopImmediatePropagation(e, invoker.value)</code> 这是做什么的？？？</p>
+<p>
+稍后再讲~~</p>
+</div>
+<p>
+回头在看 <a href="https://github.com/vuejs/vue-next/blob/master/packages/runtime-dom/src/patchProp.ts">patchProp()</a></p>
+<p>
+<code>el._vei</code> 上保存了所有的 &lt;eventName, fns&gt; 事件和事件句柄的映射关系。</p>
+<p>
+当发现新事件来到时，首先检测的是当前事件名是不是曾经注册过事件句柄，如果注册过就
+继续复用并且直接覆盖之前的注册的事件句柄:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span> <span class="o">&amp;&amp;</span> <span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// patch
+</span><span class="c1"></span> <span class="nx">existingInvoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">nextValue</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+但是请注意，这里的覆盖并非是直接就将 element 上的 listener 删除了再赋值
+(<code>addEventListener</code>)的操作。</p>
+<div class="warn-block">
+<p><p><strong>WARNING</strong></p></p>
+<p>
+时刻注意，绑定到 element 上的 event listener 永远都是一个 Invoker，且一旦第一次
+注册了之后这个 Invoker 就会一直作为该 element 上 event name 对应的 event listener
+存在。之后的所有变更都是发生在封装之后的 Invoker 上的，如上面的赋值操作，改变的
+只是 invoker.value 。</p>
+</div>
+<p>
+而对于这个 value 值是个  <code>type EventValue = Function | Function[]</code> 类型，这个值
+的处理发生在 <a href="/vue/vue-mind-map-compiler-core-transform-generate/#headline-28">compiler-core</a> 和 <a href="/vue/vue-mind-map-compiler-dom/#v-on">compiler-dom</a> 阶段的 vOn.ts 中，这里就不多做赘述了，
+有兴趣的可以通过链接查看之前相关的分析(compiler-core 重点在于模指令的解析，
+compiler-dom 阶段重点在于修饰符的处理上)。</p>
+<p>
+继续看 patchEvent :</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span> <span class="o">&amp;&amp;</span> <span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// patch
+</span><span class="c1"></span>    <span class="nx">existingInvoker</span><span class="p">.</span><span class="nx">value</span> <span class="o">=</span> <span class="nx">nextValue</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="p">[</span><span class="nx">name</span><span class="p">,</span> <span class="nx">options</span><span class="p">]</span> <span class="o">=</span> <span class="nx">parseName</span><span class="p">(</span><span class="nx">rawName</span><span class="p">)</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">nextValue</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// add
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">invoker</span> <span class="o">=</span> <span class="p">(</span><span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="nx">createInvoker</span><span class="p">(</span><span class="nx">nextValue</span><span class="p">,</span> <span class="nx">instance</span><span class="p">))</span>
+    <span class="nx">addEventListener</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">invoker</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">existingInvoker</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// remove
+</span><span class="c1"></span>    <span class="nx">removeEventListener</span><span class="p">(</span><span class="nx">el</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">existingInvoker</span><span class="p">,</span> <span class="nx">options</span><span class="p">)</span>
+      <span class="nx">invokers</span><span class="p">[</span><span class="nx">rawName</span><span class="p">]</span> <span class="o">=</span> <span class="kc">undefined</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+两个 if…else，这段代码很容易理解不是！！！</p>
+<p>
+需要注意的是最后的一个 <code>else if (existingInvoker)</code> 到这里的时候会将事件句柄给移
+除。</p>
+<p>
+比如：</p>
+<p>
+<code>&lt;div @click=&#34;null&#34; /&gt;</code>
+<code>&lt;div @click=&#34;&#34; /&gt;</code>
+<code>&lt;div @click=&#34;false&#34; /&gt;</code></p>
+<p>
+等等，事件句柄是一些空值的时候会当作是移除操作。</p>
+<p>
+那么到这里基本也完成了事件的『封装-注册-移除』部分代码。</p>
+<ul>
+<li>
+<p>封装： <code>Invoker</code> 记录 attach 时间戳防止重复触发，捕获异常</p>
+</li>
+<li>
+<p>注册：一个事件名只会注册一个 <code>Invoker</code> 后续操作都是针对这个 invoker 而言</p>
+</li>
+<li>
+<p>移除：使用 v-on 最后解析得到的值如果是空值时会被视为移除操作</p>
+</li>
+</ul>
+<p>那么之前说到的 <code>patchStopImmediatePropagation(e, invoker.value)</code> 又是什么操作？</p>
+<p>
+对于原生的事件有个原生的函数 <code>event.stopImmediatePropagation()</code> 这个函数的含义：
+它可以在任意一个事件句柄函数中调用，来阻止后面的事件被调用。</p>
+<p>
+比如：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">a</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// log a
+</span><span class="c1"></span><span class="p">}</span>
+<span class="kr">const</span> <span class="nx">b</span> <span class="o">=</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// log b
+</span><span class="c1"></span>  <span class="nx">e</span><span class="p">.</span><span class="nx">stopImmediatePropagation</span><span class="p">()</span>
+<span class="p">}</span>
+<span class="kr">const</span> <span class="nx">c</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// log c
+</span><span class="c1"></span><span class="p">}</span>
+<span class="kr">const</span> <span class="nx">d</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// log d
+</span><span class="c1"></span><span class="p">}</span>
+
+<span class="nx">el</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="nx">a</span><span class="p">)</span>
+<span class="nx">el</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span>
+<span class="nx">el</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="nx">c</span><span class="p">)</span>
+<span class="nx">el</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="nx">d</span><span class="p">)</span>
+
+<span class="c1">// 完了之后触发 click 会得到结果
+</span><span class="c1">// log a
+</span><span class="c1">// log b
+</span><span class="c1"></span>
+<span class="c1">// c/d 不会被执行，这就是 stopImmediatePropagation 的作用。
+</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+因此 vue events.ts 中的 <code>patchStopImmediatePropagation(e: Event, value:
+EventValue)</code> 就是为了模拟这个作用，来让这个原生功能生效，因为 events.ts 中对事件
+的绑定上面说过了，针对element上同一事件名的事件只会有一个句柄 Invoker 函数，所以
+原生的 stopImmediatePropagation 功能就会失效。</p>
+<p>
+功能模拟：只有 invoker.value 是个数组时才会生效。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kd">function</span> <span class="nx">patchStopImmediatePropagation</span><span class="p">(</span>
+  <span class="nx">e</span>: <span class="kt">Event</span><span class="p">,</span>
+  <span class="nx">value</span>: <span class="kt">EventValue</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">EventValue</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">originalStop</span> <span class="o">=</span> <span class="nx">e</span><span class="p">.</span><span class="nx">stopImmediatePropagation</span>
+    <span class="nx">e</span><span class="p">.</span><span class="nx">stopImmediatePropagation</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="nx">originalStop</span><span class="p">.</span><span class="nx">call</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
+      <span class="p">;(</span><span class="nx">e</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_stopped</span> <span class="o">=</span> <span class="kc">true</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">value</span><span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="nx">fn</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">e</span>: <span class="kt">Event</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="o">!</span><span class="p">(</span><span class="nx">e</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">).</span><span class="nx">_stopped</span> <span class="o">&amp;&amp;</span> <span class="nx">fn</span><span class="p">(</span><span class="nx">e</span><span class="p">))</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">value</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+其实就是重写了 e.stopImmediatePropagation 给事件注册一个 <code>_stopped</code> 属性，然后将
+value 中所有的 fn 进一步进行封装返回一个全新的 fn:</p>
+<p>
+<code>(e: Event) =&gt; !(e as any)._stopped &amp;&amp; fn(e)</code></p>
+<p>
+通过检测 _stoppped 标记来达到阻止后续函数的执行的目的。</p>
+<p>
+最后，这里还有个针对三个修饰符的处理(<code>/(?:Once|Passive|Capture)$/</code>)，因为在
+compiler-dom 阶段，这三个修饰符会被单独解析，比如：</p>
+<p>
+<code>&lt;div @click.once=.../&gt;</code></p>
+<p>
+最后被解析成 <code>onClickOnce</code> 依此类推： <code>onClickPassive</code>, <code>onClickCapture</code> 所以这
+里要进行拆分一下，等于是拆分出：</p>
+<p>
+<code>{once: true, passive: true, capture: true}</code> 的结构。</p>
+<p>
+源码：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">optionsModifierRE</span> <span class="o">=</span> <span class="sr">/(?:Once|Passive|Capture)$/</span>
+
+<span class="kd">function</span> <span class="nx">parseName</span><span class="p">(</span><span class="nx">name</span>: <span class="kt">string</span><span class="p">)</span><span class="o">:</span> <span class="p">[</span><span class="kt">string</span><span class="p">,</span> <span class="nx">EventListenerOptions</span> <span class="o">|</span> <span class="kc">undefined</span><span class="p">]</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">options</span>: <span class="kt">EventListenerOptions</span> <span class="o">|</span> <span class="kc">undefined</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">optionsModifierRE</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">name</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nx">options</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="kd">let</span> <span class="nx">m</span>
+    <span class="k">while</span> <span class="p">((</span><span class="nx">m</span> <span class="o">=</span> <span class="nx">name</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">optionsModifierRE</span><span class="p">)))</span> <span class="p">{</span>
+      <span class="nx">name</span> <span class="o">=</span> <span class="nx">name</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">name</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="nx">m</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">length</span><span class="p">)</span>
+      <span class="p">;(</span><span class="nx">options</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">)[</span><span class="nx">m</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">toLowerCase</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">true</span>
+      <span class="nx">options</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">).</span><span class="nx">toLowerCase</span><span class="p">(),</span> <span class="nx">options</span><span class="p">]</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<div class="warn-block">
+<p><p><strong>WARNING</strong></p></p>
+<p>
+*小结*：</p>
+<p>
+有点湊篇幅的嫌疑 😪</p>
+<p>
+内容其实很简单，四个函数，两次封装。</p>
+<ol>
+<li>
+<p>createInvoker 封装事件句柄函数 Invoker</p>
+</li>
+<li>
+<p>patchEvent 检测 el._vei 注册 invoker.value</p>
+</li>
+<li>
+<p>patchStopImmediatePropagation 通过添加 event._stopped 模拟原生功能，拦截后面
+的函数执行</p>
+</li>
+<li>
+<p>parseName 三个修饰符的处理工作 <code>once/passive/capture</code></p>
+</li>
+</ol>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-06-28
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vue-next/">vue-next,</a>
+          <a href="/tags/component/">component,</a>
+          <a href="/tags/directives/">directives</a>
+          </div>
+      <nav class="post-nav">
+        
+        <a class="next" href="/vue/vue-update-log-01/">
+            <span class="next-text nav-default">Vue3 更新日志 01</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

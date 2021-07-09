@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>开发过程中遇到的各种疑难杂症 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/post/issues/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="开发过程中遇到的各种疑难杂症" />
+<meta property="og:description" content="各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/post/issues/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2021-02-01T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-02-01T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="开发过程中遇到的各种疑难杂症">
+<meta itemprop="description" content="各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名"><meta itemprop="datePublished" content="2021-02-01T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-02-01T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="1107">
+<meta itemprop="keywords" content="issues," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="开发过程中遇到的各种疑难杂症"/>
+<meta name="twitter:description" content="各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">开发过程中遇到的各种疑难杂症</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-02-01 </span>
+        <div class="post-category">
+            <a href="/categories/issues/"> issues </a>
+            </div>
+          <span class="more-meta"> 约 1107 字 </span>
+          <span class="more-meta"> 预计阅读 3 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#golang">golang</a>
+<ul>
+<li><a href="#headline-2">go get 无法下载问题？</a>
+</li>
+</ul>
+</li>
+<li><a href="#emacs">emacs</a>
+<ul>
+<li><a href="#headline-4">lsp 不能识别 webpack/vite 别名？</a>
+</li>
+<li><a href="#headline-5">company-caf error</a>
+</li>
+</ul>
+</li>
+<li><a href="#web">web</a>
+<ul>
+<li><a href="#headline-7">require.cache 缓存问题?</a>
+</li>
+<li><a href="#headline-8">怎么在 html 中使用 <code>.svg</code> 文件</a>
+</li>
+<li><a href="#headline-9">google fonts 加速</a>
+</li>
+<li><a href="#headline-10">IE8 解决 <code>Object.defineProperty</code> 兼容性问题</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-11">typescript</a>
+<ul>
+<li><a href="#headline-12">TypeScript error: Property &#39;X&#39; does not exist on type &#39;Window&#39;</a>
+</li>
+<li><a href="#headline-13">TS2307: Cannot find module &#39;X&#39; or its corresponding type declarations.</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-14">macos</a>
+</li>
+<li><a href="#other">其他</a>
+<ul>
+<li><a href="#headline-16">Pulling without specifying how to reconcile divergent branches is … ?</a>
+</li>
+<li><a href="#headline-17">kex_exchange_identification: read: Connection reset by peer?</a>
+</li>
+<li><a href="#headline-18">hugo even 修改 scss 没反应 ?</a>
+</li>
+<li><a href="#headline-19">怎么更新项目中所有的 <code>npm</code> 包?</a>
+</li>
+<li><a href="#headline-20">git ignore 无效(如： <code>.log/</code>)？</a>
+</li>
+<li><a href="#headline-21">华为手机📱现在哪里去现在谷歌商城?</a>
+</li>
+<li><a href="#headline-22">添加 submodule 失败 ?</a>
+</li>
+<li><a href="#headline-23">ssh 登录次数过多问题(many authentication)</a>
+</li>
+<li><a href="#headline-24">macos install adb</a>
+</li>
+<li><a href="#headline-25">批量下载 bilibili 视频(you-get 命令)？</a>
+</li>
+<li><a href="#headline-26">macos in stall java environment ?</a>
+</li>
+<li><a href="#headline-27">git merge 的时候忽略指定文件？</a>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<blockquote>
+<p>各种疑难杂症集合。</p>
+</blockquote>
+<p><img src="/img/tmp/tftz-001.jpg" alt="/img/tmp/tftz-001.jpg" title="/img/tmp/tftz-001.jpg" /></p>
+<div id="outline-container-golang" class="outline-2">
+<h2 id="golang">
+golang
+</h2>
+<div id="outline-text-golang" class="outline-text-2">
+<div id="outline-container-headline-2" class="outline-4">
+<h4 id="headline-2">
+go get 无法下载问题？
+</h4>
+<div id="outline-text-headline-2" class="outline-text-4">
+<p>
+    <code>Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout</code></p>
+<p>
+    <a href="https://shockerli.net/post/go-get-golang-org-x-solution/">https://shockerli.net/post/go-get-golang-org-x-solution/</a></p>
+<ul>
+<li>
+<p><code>export GO111MODULE=on</code></p>
+</li>
+<li>
+<p><code>export GOPROXY=https://goproxy.io</code></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-emacs" class="outline-2">
+<h2 id="emacs">
+emacs
+</h2>
+<div id="outline-text-emacs" class="outline-text-2">
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+lsp 不能识别 webpack/vite 别名？
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+   <a href="https://github.com/vuejs/vetur/issues/890">Default FAQ js(ts)config for webpack aliases doesn&#39;t work. · Issue #890 ·
+   vuejs/vetur</a></p>
+<div class="src src-diff">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-diff" data-lang="diff">{
+ &#34;compilerOptions&#34;: {
+     &#34;target&#34;: &#34;esnext&#34;,
+     &#34;module&#34;: &#34;esnext&#34;,
+     &#34;moduleResolution&#34;: &#34;node&#34;,
+     &#34;strict&#34;: true,
+     &#34;jsx&#34;: &#34;preserve&#34;,
+     &#34;sourceMap&#34;: true,
+     &#34;resolveJsonModule&#34;: true,
+     &#34;esModuleInterop&#34;: true,
+     &#34;lib&#34;: [&#34;esnext&#34;, &#34;dom&#34;],
+<span class="gi">+        &#34;paths&#34;: {
+</span><span class="gi">+          &#34;@/*&#34;: [&#34;src/*&#34;]
+</span><span class="gi">+        }
+</span><span class="gi"></span>   },
+ &#34;include&#34;: [&#34;src/**/*.ts&#34;, &#34;src/**/*.d.ts&#34;, &#34;src/**/*.tsx&#34;, &#34;src/**/*.vue&#34;]
+ }
+</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+   在 <code>tsconfig.json</code> 中增加一项配置 <code>paths</code> 告诉 lsp 别名含义。</p>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+company-caf error
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<p>
+<a href="https://www.gitmemory.com/issue/company-mode/company-mode/1027/710347661">frontend company-pseudo-tooltip-frontend error - company-mode</a></p>
+<pre class="example">
+But, I suppose I can get in ~/.emacs.d/.local/straight/repos/company-mode and git pull Did this but got this warning You are not currently on a branch. Please specify which branch you want to merge with. See git-pull(1) for details.
+
+=git pull &lt;remote&gt; &lt;branch&gt;=
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-web" class="outline-2">
+<h2 id="web">
+web
+</h2>
+<div id="outline-text-web" class="outline-text-2">
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+require.cache 缓存问题?
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<p>
+   在学习 vue3.0 代码中遇到一个问题，在 org-src-block 中 require vue package 文
+   件，在修改这个 js 的时候执行 org-src-block 最后的结果怎么都是没修改之前的。</p>
+<blockquote>
+<p>答： 因为 require 之前引入过可能被缓存了起来，可以通过下面的函数来避免引入已缓存的
+   模块。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js">
+<span class="kd">function</span> <span class="nx">requireUncached</span><span class="p">(</span><span class="nx">module</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">delete</span> <span class="nx">require</span><span class="p">.</span><span class="nx">cache</span><span class="p">[</span><span class="nx">require</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">module</span><span class="p">)];</span>
+  <span class="k">return</span> <span class="nx">require</span><span class="p">(</span><span class="nx">module</span><span class="p">);</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+   即。在 require 之前先删除缓存，然后使用 <code>requireUncached(path)</code> 去引入文件。</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
+怎么在 html 中使用 <code>.svg</code> 文件
+</h4>
+<div id="outline-text-headline-8" class="outline-text-4">
+<div class="src src-html">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-html" data-lang="html">  <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;your.svg&#34;</span><span class="p">/&gt;</span>
+  <span class="p">&lt;</span><span class="nt">object</span> <span class="na">data</span><span class="o">=</span><span class="s">&#34;your.svg&#34;</span><span class="p">/&gt;</span>
+   <span class="p">&lt;</span><span class="nt">iframe</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;your.svg&#34;</span><span class="p">/&gt;</span>
+   <span class="p">&lt;</span><span class="nt">embed</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;your.svg&#34;</span><span class="p">/&gt;</span>
+   <span class="p">&lt;</span><span class="nt">div</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;background:url(your.svg)&#34;</span><span class="p">&gt;</span>...<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<ol>
+<li>
+<p><a href="https://vecta.io/blog/best-way-to-embed-svg">https://vecta.io/blog/best-way-to-embed-svg</a></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+google fonts 加速
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<p>
+   <kbd>直连更快…</kbd></p>
+<table>
+<thead>
+<tr>
+<th>site</th>
+<th>name</th>
+<th>ping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="http://fonts.useso.com">http://fonts.useso.com</a></td>
+<td>360</td>
+<td>unknown</td>
+</tr>
+<tr>
+<td><a href="http://fonts.lug.ustc.edu.cn">http://fonts.lug.ustc.edu.cn</a></td>
+<td>中科大</td>
+<td>66ms</td>
+</tr>
+<tr>
+<td><a href="http://fonts.css.network">http://fonts.css.network</a></td>
+<td>捷速网络 香港</td>
+<td>160ms</td>
+</tr>
+<tr>
+<td><a href="http://fonts.gmirror.org">http://fonts.gmirror.org</a></td>
+<td>七牛</td>
+<td>timeout</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-4">
+<h4 id="headline-10">
+IE8 解决 <code>Object.defineProperty</code> 兼容性问题
+</h4>
+<div id="outline-text-headline-10" class="outline-text-4">
+<p>
+   <a href="http://lpsjj.cn/thread-222-1-1.html">http://lpsjj.cn/thread-222-1-1.html</a></p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+typescript
+</h2>
+<div id="outline-text-headline-11" class="outline-text-2">
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+TypeScript error: Property &#39;X&#39; does not exist on type &#39;Window&#39;
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">declare</span> <span class="kr">const</span> <span class="nb">window</span><span class="o">:</span> <span class="kt">any</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-3">
+<h3 id="headline-13">
+TS2307: Cannot find module &#39;X&#39; or its corresponding type declarations.
+</h3>
+<div id="outline-text-headline-13" class="outline-text-3">
+<p>
+是因为找不到 vue 文件，直接加上后缀 x.vue 就好了。</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+macos
+</h2>
+<div id="outline-text-headline-14" class="outline-text-2">
+<p>
+<a href="https://developer.apple.com/forums/thread/121776">Can&#39;t delete APFS local snapshots | Apple Developer Forums</a></p>
+<p>
+<code>$ tmutil thinlocalsnapshots / 999999999999999 4</code></p>
+</div>
+</div>
+<div id="outline-container-other" class="outline-2">
+<h2 id="other">
+其他
+</h2>
+<div id="outline-text-other" class="outline-text-2">
+<div id="outline-container-headline-16" class="outline-4">
+<h4 id="headline-16">
+Pulling without specifying how to reconcile divergent branches is … ?
+</h4>
+<div id="outline-text-headline-16" class="outline-text-4">
+<div class="warn-block">
+<p><p><strong>WARNING</strong></p></p>
+<p>
+    hint: Pulling without specifying how to reconcile divergent branches is
+    hint: discouraged. You can squelch this message by running one of the following
+    hint: commands sometime before your next pull:
+    hint:
+    hint:   git config pull.rebase false  # merge (the default strategy)
+    hint:   git config pull.rebase true   # rebase
+    hint:   git config pull.ff only       # fast-forward only
+    hint:
+    hint: You can replace &#34;git config&#34; with &#34;git config –global&#34; to set a default
+    hint: preference for all repositories. You can also pass –rebase, –no-rebase,
+    hint: or –ff-only on the command line to override the configured default per
+    hint: invocation.</p>
+</div>
+<p>
+   修复:</p>
+<div class="src src-shell">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># 全局设置</span>
+$ git config --global pull.ff only</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-4">
+<h4 id="headline-17">
+kex_exchange_identification: read: Connection reset by peer?
+</h4>
+<div id="outline-text-headline-17" class="outline-text-4">
+<div class="warn-block">
+<p><p><strong>WARNING</strong></p></p>
+<p>
+   $ git clone git@code.aliyun.com:gccll/cloudboss.git
+    Cloning into &#39;cloudboss&#39;…
+    kex_exchange_identification: read: Connection reset by peer
+    fatal: Could not read from remote repository.</p>
+<p>
+    Please make sure you have the correct access rights
+    and the repository exists.</p>
+</div>
+<p>
+   网络问题，直接换个网络就行了。</p>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
+hugo even 修改 scss 没反应 ?
+</h4>
+<div id="outline-text-headline-18" class="outline-text-4">
+<p>
+   需要 hugo extended 版本：</p>
+<div class="src src-shell">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell"><span class="c1">#/bin/bash</span>
+
+mkdir <span class="nv">$HOME</span>/src
+<span class="nb">cd</span> <span class="nv">$HOME</span>/src
+git clone https://github.com/gohugoio/hugo.git
+<span class="nb">cd</span> hugo
+go install --tags extended</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+   brew:</p>
+<div class="src src-shell">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell">$ brew install hugo
+$ <span class="nb">cd</span> /opt/local/bin
+$ ln -s /usr/local/bin/hugo /opt/local/bin/hugo</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-4">
+<h4 id="headline-19">
+怎么更新项目中所有的 <code>npm</code> 包?
+</h4>
+<div id="outline-text-headline-19" class="outline-text-4">
+<p>
+   <a href="https://flaviocopes.com/update-npm-dependencies/">  参考链接。</a></p>
+<div class="src src-shell">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell">   $ npm install -g npm-check-updates
+   $ ncu -u
+   $ npm update
+   $ npm install
+   $ ncu -u <span class="o">&amp;&amp;</span> npm update <span class="o">&amp;&amp;</span> npm install</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-20" class="outline-4">
+<h4 id="headline-20">
+git ignore 无效(如： <code>.log/</code>)？
+</h4>
+<div id="outline-text-headline-20" class="outline-text-4">
+<div class="src src-shell">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell"><span class="nb">alias</span> git-ignore-logs<span class="o">=</span><span class="s2">&#34;mv .log ~/Desktop &amp;&amp; git rm -r .log &amp;&amp; git commit -m &#39;clear logs&#39; &amp;&amp; git push&#34;</span>
+
+<span class="c1"># commands</span>
+$ mv .log ~/Desktop
+$ git rm -r .log
+$ git commit -m <span class="s2">&#34;clear logs&#34;</span>
+$ git push</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
+华为手机📱现在哪里去现在谷歌商城?
+</h4>
+<div id="outline-text-headline-21" class="outline-text-4">
+<p>
+-&gt; <a href="https://www.huaweicentral.com/download-latest-google-play-store-application-apk/">下载地址</a></p>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-4">
+<h4 id="headline-22">
+添加 submodule 失败 ?
+</h4>
+<div id="outline-text-headline-22" class="outline-text-4">
+<pre class="example">
+  ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
+  A git directory for &#39;themes/even&#39; is found locally with remote(s):
+    origin	https://github.com/olOwOlo/hugo-theme-even.git
+  If you want to reuse this local git directory instead of cloning again from
+    https://github.com/gcclll/hugo-theme-even.git
+  use the &#39;--force&#39; option. If the local git directory is not the correct repo
+  or you are unsure what this means choose another name with the &#39;--name&#39; option.
+</pre>
+<p>
+    本意就是 fork themes/even 出来修改，结果出现问题。</p>
+<p>
+    <strong>解决方案 1:</strong></p>
+<ol>
+<li>
+<p><code>$ git ls-files stage themes/even</code></p>
+</li>
+<li>
+<p><code>$ git rm --cached themes/even</code></p>
+</li>
+<li>
+<p><code>$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even</code></p>
+</li>
+</ol>
+<p><strong>解决方案 2:</strong></p>
+<ol>
+<li>
+<p><code>$ cd .git/modules</code></p>
+</li>
+<li>
+<p><code>$ rm -rf themes/even</code></p>
+</li>
+<li>
+<p><code>$ cd ../..</code></p>
+</li>
+<li>
+<p><code>$ git submodule add https://github.com/gcclll/hugo-theme-even.git themes/even</code></p>
+</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-4">
+<h4 id="headline-23">
+ssh 登录次数过多问题(many authentication)
+</h4>
+<div id="outline-text-headline-23" class="outline-text-4">
+<p>
+   <code>$ ssh-add -D</code> 删除认证缓存</p>
+</div>
+</div>
+<div id="outline-container-headline-24" class="outline-4">
+<h4 id="headline-24">
+macos install adb
+</h4>
+<div id="outline-text-headline-24" class="outline-text-4">
+<p>
+   <code>$  /bin/bash -c &#34;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)&#34;</code></p>
+<p>
+   <code>$ brew cask install android-platform-tools</code></p>
+<p>
+   <code>$ adb devices</code></p>
+</div>
+</div>
+<div id="outline-container-headline-25" class="outline-4">
+<h4 id="headline-25">
+批量下载 bilibili 视频(you-get 命令)？
+</h4>
+</div>
+<div id="outline-container-headline-26" class="outline-4">
+<h4 id="headline-26">
+macos in stall java environment ?
+</h4>
+<div id="outline-text-headline-26" class="outline-text-4">
+<p>
+    <a href="https://mkyong.com/java/how-to-install-java-on-mac-osx/">https://mkyong.com/java/how-to-install-java-on-mac-osx/</a></p>
+<p>
+    <code>$ brew tap adoptopenjdk/openjdk</code></p>
+<p>
+    <code>$ brew search jdk</code></p>
+<p>
+    <code>$ brew cask install adoptopenjdk11</code></p>
+<p>
+    <code>$ /usr/libexec/java_home -V</code></p>
+<p>
+    <code>$ java -version</code></p>
+</div>
+</div>
+<div id="outline-container-headline-27" class="outline-4">
+<h4 id="headline-27">
+git merge 的时候忽略指定文件？
+</h4>
+<div id="outline-text-headline-27" class="outline-text-4">
+<p>
+    <a href="https://www.jianshu.com/p/09b546b936a7">https://www.jianshu.com/p/09b546b936a7</a></p>
+<ul>
+<li>
+<p><code>$ git config --global merge.ours.driver true</code></p>
+</li>
+<li>
+<p><code>$ echo &#39;index.php merge=ours&#39; &gt;&gt; .gitattributes</code></p>
+</li>
+<li>
+<p><code>$ git add .gitattributes</code></p>
+</li>
+<li>
+<p><code>$ git commit -m &#39;chore: Preserve index.php during merges&#39;</code></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-02-01
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/issues/">issues</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/post/cheng/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">我的私人空间</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/linux-doc/">
+            <span class="next-text nav-default">Linux 知识大全</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+
+        if (typeof LivereTower === 'function') { return; }
+
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
+    </div>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>
