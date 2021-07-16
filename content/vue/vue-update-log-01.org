@@ -495,13 +495,17 @@ Fast-forward
 
 [[https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md][vue-next/CHANGELOG.md at master · vuejs/vue-next]]
 
-*Note*: this release contains a type-only change that requires TypeScript 4.0+, which may cause build issues in projects still using TS 3.x.
+*Note*: this release contains a type-only change that requires TypeScript 4.0+,
+which may cause build issues in projects still using TS 3.x.
 
 只包含一些类型的变更。
 
 *Bug Fixes*
-- compiler-core: fix missing createVNode import on nested v-for ([[https://github.com/vuejs/vue-next/commit/ad4d3915d39515a3e9ff2de691f82cb922a314b9][ad4d391]]), closes [[https://github.com/vuejs/vue-next/issues/2718][#2718]]
-- compiler-sfc: should keep template nodes with no content ([[https://github.com/vuejs/vue-next/issues/2468][#2468]]) ([[https://github.com/vuejs/vue-next/commit/5b9b37fc9b363be2989c1e9d76ab6e950cdfe2ad][5b9b37f]]), closes [[https://github.com/vuejs/vue-next/issues/2463][#2463]]
+
+- compiler-core: fix missing createVNode import on nested v-for ([[https://github.com/vuejs/vue-next/commit/ad4d3915d39515a3e9ff2de691f82cb922a314b9][ad4d391]]),
+  closes [[https://github.com/vuejs/vue-next/issues/2718][#2718]]
+- compiler-sfc: should keep template nodes with no content ([[https://github.com/vuejs/vue-next/issues/2468][#2468]]) ([[https://github.com/vuejs/vue-next/commit/5b9b37fc9b363be2989c1e9d76ab6e950cdfe2ad][5b9b37f]]),
+  closes [[https://github.com/vuejs/vue-next/issues/2463][#2463]]
 
   #+begin_src diff
    -> packages/compiler-sfc/src/parse.ts
@@ -515,7 +519,77 @@ Fast-forward
     }
     switch (node.tag) {
   #+end_src
-- compiler-sfc: support transforming asset urls with full base url. (#2477) (db786b1)
+
+
+** 支持 options.base 资源路径
+
+#+begin_quote
+compiler-sfc: support transforming asset urls with full base url. ([[https://github.com/vuejs/vue-next/issues/2477][#2477]])
+([[https://github.com/vuejs/vue-next/commit/db786b1afe41c26611a215e6d6599d50312b9c2f][db786b1]])
+#+end_quote
+
+  #+begin_src typescript
+    // packages/compiler-sfc/src/templateTransformAssetUrl.ts
+    // function -> transformAssetUrl
+  if (options.base && attr.value.content[0] === '.') {
+        // explicit base - directly rewrite relative urls into absolute url
+        // to avoid generating extra imports
+        // Allow for full hostnames provided in options.base
+        const base = parseUrl(options.base)
+        const protocol = base.protocol || ''
+        const host = base.host ? protocol + '//' + base.host : ''
+        const basePath = base.path || '/'
+
+        // when packaged in the browser, path will be using the posix-
+        // only version provided by rollup-plugin-node-builtins.
+        attr.value.content =
+            host +
+            (path.posix || path).join(basePath, url.path + (url.hash || ''))
+        return
+    }
+  #+end_src
+
+  测试：
+
+  #+begin_src js
+  const url = process.env.VNEXT_PKG_SFC +'/dist/compiler-sfc.cjs.js'
+  const sfc = require(url.replace('stb-', ''))
+  const { compileTemplate: compile } = sfc
+  const source = `
+<div>
+<img src="/path/to/a.png" />
+<img src="./path/to/b.png" />
+</div>
+`
+  const result1 = compile({ source })
+  console.log('\n>>> 没有 options.base \n', result1.code);
+
+  return 0
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+
+  >>> 没有 options.base
+   import { createVNode as _createVNode, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+  import _imports_0 from './path/to/b.png'
+
+
+  const _hoisted_1 = /*#__PURE__*/_createVNode("img", { src: "/path/to/a.png" }, null, -1 /* HOISTED */)
+  const _hoisted_2 = /*#__PURE__*/_createVNode("img", { src: _imports_0 }, null, -1 /* HOISTED */)
+
+  export function render(_ctx, _cache) {
+    return (_openBlock(), _createBlock("div", null, [
+      _hoisted_1,
+      _hoisted_2
+    ]))
+  }
+  0
+  #+end_example
+
+
+
+
 - runtime-core: component mount anchor memory leak (#2459) (3867bb4), closes #2458
 - runtime-core: skip patchBlockChildren if n1.dynamicChildren is null (#2717) (c59897c), closes #2715 #2485
 - runtime-dom: support mounting app on ShadowRoot (#2447) (b2189ba), closes #2399

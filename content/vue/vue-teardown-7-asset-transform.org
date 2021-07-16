@@ -1,0 +1,374 @@
+#+TITLE: Vue3 功能拆解⑦ assets url 转换规则
+#+DATE: <2021-07-16 23:34:00>
+#+TAGS[]: vue3, vue-next, assets transform
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文从源码角度讲解了 vue3 中是如何对 assets url 进行转换的，比如 ~<img
+src="@img/vue/test.png">~ 在编译之后是怎么样？ 这篇文章将详尽的接晓。
+#+end_quote
+
+本文涉及的源码包： compiler-sfc, compiler-core。
+
+assets url 在模板中的使用方式：
+
+#+begin_src js
+const template = `
+<img src="./logo.png"/>
+<img src="~fixtures/logo.png"/>
+<img src="~/fixtures/logo.png"/>
+<img src="http://example.com/fixtures/logo.png"/>
+<img src="/fixtures/logo.png"/>
+<img src="data:image/png;base64,i"/>
+`
+#+end_src
+
+下面会从源码角度取分析各种情况最后被解析的结果。
+
+该解析过成在 SFC 模板解析模块 compiler-sfc 触发中，但是最终解析的是
+compiler-core 模块。
+
+相关函数： [[https://github.com/vuejs/vue-next/blob/master/packages/compiler-sfc/src/templateTransformAssetUrl.ts][packages/compiler-sfc/src/templateTransofrmAssetUrl.ts]] 中的
+transformAssetUrl，这个函数并非直接在哪里调用，而是做为选项，转换器传递给了
+compiler-core ，在 transform 介段处理，具体代码简要流程。
+
+[[https://github.com/vuejs/vue-next/blob/master/packages/compiler-sfc/src/compileTemplate.ts][compiler-sfc:src/compileTemplate.ts]]
+
+#+begin_src typescript
+
+function compileTemplate(options) {
+  // ... 一些预处理
+  return doCompileTemplate(options)
+  // ... 和错误处理
+}
+
+function doCompileTemplate({/* SFCTemplateCompileOptions ... */}) {
+  // ...
+  let nodeTransforms: NodeTransform[] = []
+  if (isObject(transformAssetUrls)) {
+    const assetOptions = normalizeOptions(transformAssetUrls)
+    // 因为 compiler-core:transform 阶段 traverseNode 中调用
+    // nodeTransform 的时候只有 (node, context) => ...
+    // 所以这里需要进行一次封装，将 options 传递给 transformAssetUrl
+    nodeTransforms = [
+      createAssetUrlTransformWithOptions(assetOptions),
+      createSrcsetTransformWithOptions(assetOptions)
+    ]
+  } else if (transformAssetUrls !== false) {
+    nodeTransforms = [transformAssetUrl, transformSrcset]
+  }
+
+  // ...
+  let { code, ast, preamble, map } = compiler.compile(source, {
+    // ... 一系列选项
+    ...compilerOptions,
+    // ⚠ 这是本节关注的重点
+    nodeTransforms: nodeTransforms.concat(compilerOptions.nodeTransforms || []),
+    // ...
+  })
+
+  // ...
+}
+#+end_src
+
+省略一些无关紧要的代码，这里重点关注 ~transformAssetUrl~ 和 ~transformSrcset~ 两
+个，尤其是前者。
+
+上面是 compiler-sfc 阶段的大致逻辑，接下来执行两个 ~transformXxx~ 的地方发生在
+
+[[https://github.com/vuejs/vue-next/blob/master/packages/compiler-core/src/transform.ts][compiler-core:src/transform.ts]](更详尽的分析在[[/vue/vue-mind-map-compiler-core-transform-generate/][这里]] 。)
+
+transform() -> traverseNode() 从 root 节点开始递归处理 ast，来自 ast.ts 解析后的
+AST 结构。
+
+traverseNode() 函数分三个阶段实现
+
+1. 收集 node transform 函数，并会提前处理一些节点
+2. 根据节点类型 NodeTypes，做相应的分支处理，比如： children
+3. 最后一个 while 反方向执行收集到的 node transform 完成转换
+
+
+这些步骤不展开讲了，更详细的还是这篇文章: [[/vue/vue-mind-map-compiler-core-transform-generate/][Vue3 源码头脑风暴之 3 ☞compiler-core - transform + codegen]]
+
+再回头看 transformAssetUrl 内的条件：
+
+#+begin_src typescript
+export const transformAssetUrl: NodeTransform = (
+  node,
+  context,
+  options: AssetURLOptions = defaultAssetUrlOptions
+) => {
+  // 条件1:
+  if (node.type === NodeTypes.ELEMENT) {
+    if (!node.props.length) {
+      return
+    }
+  }
+
+  // 条件2:
+  const tags = options.tags || defaultAssetUrlOptions.tags
+  const attrs = tags[node.tag]
+  const wildCardAttrs = tags['*']
+  if (!attrs && !wildCardAttrs) {
+    return
+  }
+
+  // 开始处理 node.props
+
+  node.props.forEach((attr, index) => {
+    // 1. props 过滤
+    if (
+        attr.type !== NodeTypes.ATTRIBUTE ||
+        !assetAttrs.includes(attr.name) ||
+        !attr.value ||
+        isExternalUrl(attr.value.content) ||
+        isDataUrl(attr.value.content) ||
+        attr.value.content[0] === '#' ||
+        (!options.includeAbsolute && !isRelativeUrl(attr.value.content))
+      ) {
+        return
+      }
+
+    // ... 排除了上面的情况
+
+    // 2. 相对路径转换，包括新增的 options.base 选项(db786b1)
+    //  https://github.com/vuejs/vue-next/issues/2477
+      const url = parseUrl(attr.value.content)
+      if (options.base && attr.value.content[0] === '.') {
+        // parseUrl 处理结果
+        // ~assets/images/ => assets/images
+        // 或者
+        // /assets/images/ => assets/images
+        // 最后使用 url 将 base 转成 URL 对象(包含： path,hash,host,...)。
+        const base = parseUrl(options.base)
+        const protocol = base.protocol || ''
+        const host = base.host ? protocol + '//' + base.host : ''
+        const basePath = base.path || '/'
+
+        // 经过两次 parseUrl 分别对 attr.value 和 base 的处理
+        // 最终得到下面的组合
+        // 假设 base = "https://www.cheng92.com/img/vue"
+        // <img src="./vue/test.png" />
+        // base = { protocol: "https://", host: "www.cheng92.com", path: "/img/vue" }
+        // url = { path: "vue/test.png", hash: '' }
+        // 最终组合结果： base.host + base.path + url.path + url.hash
+        // = https://www.cheng92.com/img/vue/test.png
+        // 综合上面的分析
+        // ~vue/test.png => import ... from 'vue/test.png'
+        // @vue/test.png => import ... from '@vue/test.png'
+        // ./test.png => https://www.cheng92.com/img/vue/test.png
+        // 因为只有 . 开头的当做相对路径结合 base 来拼接
+        attr.value.content =
+          host +
+          (path.posix || path).join(basePath, url.path + (url.hash || ''))
+        return
+      }
+
+    // 3. 接下来是没有 options.base 的情况处理，对于资源处理是
+    const exp = getImportsExpressionExp(url.path, url.hash, attr.loc, context)
+    node.props[index] = {
+      type: NodeTypes.DIRECTIVE,
+      name: 'bind',
+      arg: createSimpleExpression(attr.name, true, attr.loc),
+      exp,
+      modifiers: [],
+      loc: attr.loc
+    }
+  })
+}
+#+end_src
+
+ *条件1*: 首先是 ELEMENT 类型节点且有 props 的情况下这个函数彩绘被收集进当前组件
+ 的 transform 队列中。
+
+ *条件2*: 必需是指定类型的标签，这里有默认的标签列表
+ #+begin_src typescript
+ export const defaultAssetUrlOptions: Required<AssetURLOptions> = {
+   base: null,
+   includeAbsolute: false,
+   tags: {
+     video: ['src', 'poster'],
+     source: ['src'],
+     img: ['src'],
+     image: ['xlink:href', 'href'],
+     use: ['xlink:href', 'href']
+   }
+ }
+// 默认情况只有 video, source, img, image, use 标签
+// 满足情况
+ #+end_src
+
+ 满足条件后会针对每个 prop 进行单独处理:
+
+1. 过滤掉不满足处理条件的
+
+   1) 非 ATTRIBUTE 类型，可能是指令
+   2) 检查标签属性名是否在 ~options.tags~ 对应的 tag 的范围值内, 比如： ~<img>~ 是 src， ~<video>~ 是 src 或 poster 等等...
+   3) 已经是 ~http(s)://~ 打头的完整链接
+   4) ~data:xxx~ 开头的 url ，比如： base64 之后的 url
+   5) #xx 开头的值，比如： ~<a href="#"/>~
+   6) 最后一个条件就是过滤掉非相对路径的情况(相对路径： *.,~,@* 三个字符开头的路径
+      被视为相对路径, 比如： ~"./path/to", "~/path/to", "@dir/path/to"~)
+
+2. 相对路径转换，包括新增的 ~options.base~ 选项([[https://github.com/vuejs/vue-next/commit/db786b1afe41c26611a215e6d6599d50312b9c2f][db786b1]], [[https://github.com/vuejs/vue-next/issues/2477][#2477]])
+
+   ~const url = parseUrl(attr.value.content)~
+
+   parseUrl 转换，首先将 =~img/vue/test.png= 转成 =img/vue/test.png= 然后交给
+   ~url~ 解析出 URL 对象： ~{path, hash, href, host, ...}~ 如： [[#parseUrl][parseUrl 实现]]
+
+3. 接下来是没有 options.base 或者非相对路径的情况处理，如： =~/img/vue/test.png=
+   或 ~@img/vue/test.png~ 的处理
+
+    转变成 import imgUrl from '..../..../x.png' 的引入语法。
+
+    ~const exp = getImportsExpressionExp(url.path, url.hash, attr.loc, context)~
+
+     这个函数所完成的工作:
+   1) 从 context.imports 中查找是否已经存在
+   2) 创建 import exp 对象最后会径由 codegen 阶段生成 import ... from ... 代码(SIMPLE_EXPRESSION)
+   3) 缓存到 context.imports.push({ exp, path })
+   4) hash 和 path 同时存在的情况
+
+      对 url 值进行提升处理 context.hoist(...) 比如下面测试中的:
+
+      ~<use href="~@svg/file.svg#fragment"></use>~
+
+      编译后：
+
+      ~const _hoisted_1 = _imports_2 + '#fragment'~
+      ~const _hoisted_8 = /*#__PURE__*/_createVNode("use", { href: _hoisted_1
+      }, null, -1 /* HOISTED */)~
+
+      首先是 ~<use>~ 元素本身进行了提升，因为是普通标签，没有动态属性或指令，也没
+      有动态的 children 所以是静态节点给提升，同时因为 href 值有 hash 有 path 所以该值也做了提升处理，当做静态来处理。
+
+4. 测试：
+
+    #+begin_src js
+    const url = process.env.VNEXT_PKG_SFC +'/dist/compiler-sfc.cjs.js'
+    const sfc = require(url.replace('stb-', ''))
+    const { compileTemplate: compile } = sfc
+    const source = `
+        <img src="/vue/logo.png" />
+        <img src="./vue/logo.png" />
+        <img src="@vue/logo.png" />
+        <img src="~vue/logo.png"/>
+        <img src="https://www.cheng92.com/img/vue/logo.png"/>
+        <img src="data:image/png;base64,i"/>
+        <use href="~@svg/file.svg#fragment"></use>
+        `
+    const opt = {}
+    const run = () => compile({ source, transformAssetUrls: opt })
+    let result = run()
+    console.log('\n>>> 没有 options.base \n', result.code);
+
+    opt.base = 'https://www.cheng92.com/img'
+    result = compile({ source, transformAssetUrls: opt })
+    console.log('\n>>> 有 options.base \n', result.code);
+    return 0
+    #+end_src
+
+    #+RESULTS:
+    #+begin_example
+
+    >>> 没有 options.base
+     import { createVNode as _createVNode, Fragment as _Fragment, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+    import _imports_0 from './vue/logo.png'
+    import _imports_1 from '@vue/logo.png'
+    import _imports_2 from 'vue/logo.png'
+    import _imports_3 from '@svg/file.svg'
+
+
+    const _hoisted_1 = _imports_3 + '#fragment'
+    const _hoisted_2 = /*#__PURE__*/_createVNode("img", { src: "/vue/logo.png" }, null, -1 /* HOISTED */)
+    const _hoisted_3 = /*#__PURE__*/_createVNode("img", { src: _imports_0 }, null, -1 /* HOISTED */)
+    const _hoisted_4 = /*#__PURE__*/_createVNode("img", { src: _imports_1 }, null, -1 /* HOISTED */)
+    const _hoisted_5 = /*#__PURE__*/_createVNode("img", { src: _imports_2 }, null, -1 /* HOISTED */)
+    const _hoisted_6 = /*#__PURE__*/_createVNode("img", { src: "https://www.cheng92.com/img/vue/logo.png" }, null, -1 /* HOISTED */)
+    const _hoisted_7 = /*#__PURE__*/_createVNode("img", { src: "data:image/png;base64,i" }, null, -1 /* HOISTED */)
+    const _hoisted_8 = /*#__PURE__*/_createVNode("use", { href: _hoisted_1 }, null, -1 /* HOISTED */)
+
+    export function render(_ctx, _cache) {
+      return (_openBlock(), _createBlock(_Fragment, null, [
+        _hoisted_2,
+        _hoisted_3,
+        _hoisted_4,
+        _hoisted_5,
+        _hoisted_6,
+        _hoisted_7,
+        _hoisted_8
+      ], 64 /* STABLE_FRAGMENT */))
+    }
+
+    >>> 有 options.base
+     import { createVNode as _createVNode, Fragment as _Fragment, openBlock as _openBlock, createBlock as _createBlock } from "vue"
+    import _imports_0 from '@vue/logo.png'
+    import _imports_1 from 'vue/logo.png'
+    import _imports_2 from '@svg/file.svg'
+
+
+    const _hoisted_1 = _imports_2 + '#fragment'
+    const _hoisted_2 = /*#__PURE__*/_createVNode("img", { src: "/vue/logo.png" }, null, -1 /* HOISTED */)
+    const _hoisted_3 = /*#__PURE__*/_createVNode("img", { src: "https://www.cheng92.com/img/vue/logo.png" }, null, -1 /* HOISTED */)
+    const _hoisted_4 = /*#__PURE__*/_createVNode("img", { src: _imports_0 }, null, -1 /* HOISTED */)
+    const _hoisted_5 = /*#__PURE__*/_createVNode("img", { src: _imports_1 }, null, -1 /* HOISTED */)
+    const _hoisted_6 = /*#__PURE__*/_createVNode("img", { src: "https://www.cheng92.com/img/vue/logo.png" }, null, -1 /* HOISTED */)
+    const _hoisted_7 = /*#__PURE__*/_createVNode("img", { src: "data:image/png;base64,i" }, null, -1 /* HOISTED */)
+    const _hoisted_8 = /*#__PURE__*/_createVNode("use", { href: _hoisted_1 }, null, -1 /* HOISTED */)
+
+    export function render(_ctx, _cache) {
+      return (_openBlock(), _createBlock(_Fragment, null, [
+        _hoisted_2,
+        _hoisted_3,
+        _hoisted_4,
+        _hoisted_5,
+        _hoisted_6,
+        _hoisted_7,
+        _hoisted_8
+      ], 64 /* STABLE_FRAGMENT */))
+    }
+    0
+    #+end_example
+
+
+小结：
+
+#+begin_quote
+1. base 选项传递给 compileTemplate 是以 ~{ transformAssetUrls: { base: '...' }}~
+   属性
+2. 没有 base 情况， ~./path/to~ => ~import ... from './path/to'~ 当做相对路径处
+   理
+3. 有 base 情况, ~./path/to~ => ~src: 'https://www.cheng92.com/path/to~ 会将
+   base 解析后与解析后的 src 进行拼接，没有 ~import~
+4. =~= 语法情况， =~/path/to= => ~import ... from 'path/to'~
+5. =@= 语法情况， =@path/to= => ~import ... from '@path/to'~
+6. =~@= 有 path 又有 hash 的情况， url 值会进行提升，如:
+
+   ~<use href="~@svg/file.svg#fragment"></use>~
+#+end_quote
