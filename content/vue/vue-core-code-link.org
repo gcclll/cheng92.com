@@ -1,10 +1,9 @@
 #+TITLE: Vue3 自问自答系列❓❓❓
-#+DATE: <2021-07-16 23:44:21>
+#+DATE: <2021-07-17 17:24:45>
 #+TAGS[]: vue, vue3
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
 #+STARTUP: indent shrink
-
 
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
@@ -25,7 +24,7 @@
 1. [[/vue/vue-teardown-7-asset-transform/][模板中的资源 URL 是如何识别的，最后又是被编译成啥了？]](如： ~<img
    src="@img/vue/test.png" />~)
 2. TODO component render 函数在哪里执行？
-3. TODO <script setup> 原理和编译过程及结果？
+3. <script setup> 原理和编译过程及结果？
 4. [[/vue/vue-mind-map-runtime-core-3-component/#setup][setup 函数如何解析？又是如何执行？]]
 
    render -> patch -> processComponent -> mountComponent ->

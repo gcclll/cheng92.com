@@ -1,0 +1,222 @@
+#+TITLE: Vue3 功能拆解⑧ script setup 来龙去脉
+#+DATE: <2021-07-17 17:32:46>
+#+TAGS[]: vue3, vue-next, script.setup
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文将从源码，编译前后让你明白 <script setup> 标签内如何正确的书写代码，及每个语
+法背后的原理又是什么？
+#+end_quote
+
+本文涉及的源码包： [[https://github.com/vuejs/vue-next/tree/master/packages/compiler-sfc][compiler-sfc]], [[https://github.com/vuejs/vue-next/tree/master/packages/compiler-core][compiler-core]]。
+
+SFC <script setup> 的编译相关代码在 [[https://github.com/vuejs/vue-next/blob/master/packages/compiler-sfc/src/compileScript.ts][packages/compiler-sfc/src/compileScript.ts]]
+
+使用到的第三方插件 ： [[https://babeljs.io/docs/en/babel-parser][@babel/parser->parse]], [[https://github.com/Rich-Harris/magic-string][magic-string]], [[https://github.com/Rich-Harris/estree-walker][estree-walker]]
+* script setup
+* 插件使用测试
+
+** @babel/parser:
+
+#+begin_src js
+const { parse } = require('/usr/local/lib/node_modules/@babel/parser/lib/index')
+
+const ast = parse(`
+const foo = 100, bar = 200;
+function baz() {
+  console.log(foo + bar)
+}
+`)
+const program = ast.program
+console.log('>>> foo 变量声明 AST\n', program.body[0].declarations[0]);
+// console.log('>>> bar 变量声明 AST\n', program.body[0].declarations[1]);
+console.log('>>> baz 函数声明 AST\n', program.body[1]);
+// console.log('>>> 代码体 AST\n', program.body);
+// console.log('>>> 代码 AST\n', program);
+// console.log('>>> 完整的 AST 结构\n', ast);
+return 0
+#+end_src
+
+#+RESULTS:
+#+begin_example
+>>> foo 变量声明 AST
+ Node {
+  type: 'VariableDeclarator',
+  start: 7,
+  end: 16,
+  loc: SourceLocation {
+    start: Position { line: 2, column: 6 },
+    end: Position { line: 2, column: 15 },
+    filename: undefined,
+    identifierName: undefined
+  },
+  range: undefined,
+  leadingComments: undefined,
+  trailingComments: undefined,
+  innerComments: undefined,
+  extra: undefined,
+  id: Node {
+    type: 'Identifier',
+    start: 7,
+    end: 10,
+    loc: SourceLocation {
+      start: [Position],
+      end: [Position],
+      filename: undefined,
+      identifierName: 'foo'
+    },
+    range: undefined,
+    leadingComments: undefined,
+    trailingComments: undefined,
+    innerComments: undefined,
+    extra: undefined,
+    name: 'foo'
+  },
+  init: Node {
+    type: 'NumericLiteral',
+    start: 13,
+    end: 16,
+    loc: SourceLocation {
+      start: [Position],
+      end: [Position],
+      filename: undefined,
+      identifierName: undefined
+    },
+    range: undefined,
+    leadingComments: undefined,
+    trailingComments: undefined,
+    innerComments: undefined,
+    extra: { rawValue: 100, raw: '100' },
+    value: 100
+  }
+}
+>>> baz 函数声明 AST
+ Node {
+  type: 'FunctionDeclaration',
+  start: 29,
+  end: 72,
+  loc: SourceLocation {
+    start: Position { line: 3, column: 0 },
+    end: Position { line: 5, column: 1 },
+    filename: undefined,
+    identifierName: undefined
+  },
+  range: undefined,
+  leadingComments: undefined,
+  trailingComments: undefined,
+  innerComments: undefined,
+  extra: undefined,
+  id: Node {
+    type: 'Identifier',
+    start: 38,
+    end: 41,
+    loc: SourceLocation {
+      start: [Position],
+      end: [Position],
+      filename: undefined,
+      identifierName: 'baz'
+    },
+    range: undefined,
+    leadingComments: undefined,
+    trailingComments: undefined,
+    innerComments: undefined,
+    extra: undefined,
+    name: 'baz'
+  },
+  generator: false,
+  async: false,
+  params: [],
+  body: Node {
+    type: 'BlockStatement',
+    start: 44,
+    end: 72,
+    loc: SourceLocation {
+      start: [Position],
+      end: [Position],
+      filename: undefined,
+      identifierName: undefined
+    },
+    range: undefined,
+    leadingComments: undefined,
+    trailingComments: undefined,
+    innerComments: undefined,
+    extra: undefined,
+    body: [ [Node] ],
+    directives: []
+  }
+}
+0
+#+end_example
+** magic-string
+
+对字符串进行增删改查的各种操作， vue3 中使用该插件来替换编译之后的 ast code。
+
+#+begin_src js
+const MagicString = require('/usr/local/lib/node_modules/magic-string/dist/magic-string.cjs.js')
+
+const log = console.log
+const s = new MagicString('problems = 99')
+
+log('替换变量名 -> ', s.overwrite(0, 8, 'answer').toString())
+log('替换变量值 -> ', s.overwrite(11, 13, '42').toString())
+log('前后加内容 -> ', s.prepend('var ').append(';').toString())
+const map = s.generateMap({
+  source: 'source.js',
+  file: 'converted.js.map',
+  includeContent: true
+}) // generates a v3 sourcemap
+
+log('生产 source map -> ', map.toString())
+#+end_src
+
+#+RESULTS:
+: 替换变量名 ->  answer = 99
+: 替换变量值 ->  answer = 42
+: 前后加内容 ->  var answer = 42;
+: 生产 source map ->  {"version":3,"file":"converted.js.map","sources":["source.js"],"sourcesContent":["problems = 99"],"names":[],"mappings":"IAAA,MAAQ,GAAG"}
+: undefined
+** estree-walker
+
+一个遍历 ast 的插件。
+
+#+begin_src js
+const walk = require('/usr/local/lib/node_modules/estree-walker/src/index.js').walk
+const acorn = require('/usr/local/lib/node_modules/acorn/dist/acorn.js')
+
+const ast = acorn.parse(`const foo = 100`)
+walk(ast, {
+  enter(node, parent, prop, index) {
+    console.log('enter>>>', node, parent, prop, index);
+  },
+  leave(node, parent, prop, index) {
+    console.log('leave>>>', node, parent, prop, index);
+  }
+})
+#+end_src
+
+#+RESULTS:
