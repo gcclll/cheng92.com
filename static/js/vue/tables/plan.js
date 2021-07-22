@@ -1,6 +1,12 @@
 var prefix = "q9djlA";
 var plans = [
   {
+    link: "/web/web-component.org",
+    name: "Web Component",
+    status: "WAITING",
+    desc: "WEB 原生组件",
+  },
+  {
     link: "/vue/vue-mind-map-reactivity",
     name: "vue3/reactivity",
     status: "DONE",
@@ -39,7 +45,7 @@ var plans = [
   {
     link: "/vue/vue-mind-map-runtime-core",
     name: "vue3/runtime-core",
-    status: "DOING",
+    status: "DONE",
     startTime: "2021-01-08",
     desc: "解析 AST 生成 render 函数",
   },
@@ -67,12 +73,17 @@ var plans = [
   {
     link: "/vue/vue-core-patch-flags",
     name: "vue3 功能细化",
-    status: "WAITING",
+    status: "DOING",
     startTime: "2021-03-10",
     desc: "功能细化分析",
   },
 ];
 
+plans = [].concat(plans.filter((p) => p.status === 'DOING'),
+                  plans.filter(p => p.status === 'PENDING'),
+                  plans.filter(p => p.status === 'WAITING'),
+                  plans.filter(p => p.status === 'DONE'),
+                 )
 plans.forEach(function(plan) {
   plan.class = prefix + " " + prefix + "-" + plan.class;
 });

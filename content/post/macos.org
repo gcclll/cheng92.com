@@ -22,6 +22,204 @@ insertCssLink("/js/vue/css/awesome.css");
 <script src="/js/vue/awesome/common.js"></script>
 #+end_export
 
+* CLI
+** [[https://github.com/jarun/bcal#installation][bcal]], 字节计算，转换
+
+bcal 进入或直接使用 ~$ bcal <expr> ...~ :
+
+#+begin_src sh
+╭─simon at gcl in ~/.doom.d on native✘✘✘ 21-07-22 - 15:24:39
+╰─⠠⠵ bcal                                                                     ~/.doom.d
+q/double Enter -> quit, ? -> help
+bcal> "(5kb+10mb)"
+                                10005000 B
+
+            IEC standard (base 2)
+
+                        9.7705078125e+03 KiB
+                        9.5415115356e+00 MiB
+                        9.3178823590e-03 GiB
+                        9.0994944912e-06 TiB
+
+            SI standard (base 10)
+
+                                   10005 kB
+                        1.0005000000e+01 MB
+                        1.0005000000e-02 GB
+                        1.0005000000e-05 TB
+
+ADDRESS
+ (d) 10005000
+ (h) 0x98aa08
+bcal>
+#+end_src
+
+使用方式，采用各种表达式方式：
+
+1. 支持数学计算
+
+    #+begin_src sh
+    $ bcal "(5kb+2mb)/3"
+    $ bcal "5 tb / 12"
+    $ bcal "2.5mb*3"
+    ╰─⠠⠵ bcal "2.5mb*3"                                                           ~/.doom.d
+    RESULT
+                                    7500000 B
+
+                IEC standard (base 2)
+
+                            7.3242187500e+03 KiB
+                            7.1525573730e+00 MiB
+                            6.9849193096e-03 GiB
+                            6.8212102633e-06 TiB
+
+                SI standard (base 10)
+
+                                        7500 kB
+                            7.5000000000e+00 MB
+                            7.5000000000e-03 GB
+                            7.5000000000e-06 TB
+
+    ADDRESS
+    (d) 7500000
+    (h) 0x7270e0
+
+    $ bcal "(2giB * 2) / (2kib >> 2)"
+    ╰─⠠⠵ bcal "(2giB * 2) / (2kib >> 2)"                                          ~/.doom.d
+    8388608
+    #+end_src
+
+2. 转成其它格式，单位大小写敏感
+
+   #+begin_src sh
+    $ bcal 20140115 b
+    $ bcal 0x1335053 B
+    $ bcal 0xaabbcc kb
+    $ bcal 0xdef Gib
+
+    ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:39:04
+    ╰─⠠⠵ bcal 20140115 b                                                          ~/.doom.d
+    UNIT CONVERSION
+                                    20140115 B
+
+                IEC standard (base 2)
+
+                            1.9668081055e+04 KiB
+                            1.9207110405e+01 MiB
+                            1.8756943755e-02 GiB
+                            1.8317327886e-05 TiB
+
+                SI standard (base 10)
+
+                            2.0140115000e+04 kB
+                            2.0140115000e+01 MB
+                            2.0140115000e-02 GB
+                            2.0140115000e-05 TB
+
+    ADDRESS
+    (d) 20140115
+    (h) 0x1335053
+
+    LBA:OFFSET (sector size: 0x200)
+    (d) 39336:83
+    (h) 0x99a8:0x53
+   #+end_src
+
+3. 指定区块大小
+
+   #+begin_src sh
+    $ bcal 0xaabbcc kb -s 4096
+   #+end_src
+
+4. LBA 转成 CHS:
+
+    #+begin_src sh
+    $ bcal -f l500
+    $ bcal -f l0x600-18-0x7e
+    $ bcal -f l0x300-0x12-0x7e
+
+    # result:
+    ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:32:44
+    ╰─⠠⠵ bcal -f l500                                                             ~/.doom.d
+    LBA2CHS
+    LBA:500  MAX_HEAD:16  MAX_SECTOR:63
+    CHS: (d) 0 7 60, (h) 0x0 0x7 0x3c
+    #+end_src
+
+5. CHS 转成 LBA
+
+   #+begin_src sh
+    $ bcal -f l500
+    $ bcal -f l0x600-18-0x7e
+    $ bcal -f l0x300-0x12-0x7e
+
+    # result:
+    ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:40:28
+    ╰─⠠⠵ bcal -f l0x300-0x12-0x7e                                                 ~/.doom.d
+    LBA2CHS
+    LBA:768  MAX_HEAD:18  MAX_SECTOR:126
+    CHS: (d) 0 6 13, (h) 0x0 0x6 0xd
+   #+end_src
+
+6. 显示一个数据的2进制，10 进制和 16 进制表示形式
+
+   *b* (2进制), *d* (十进制), *h* (16进制)。
+
+   #+begin_src sh
+    $ bcal -c 20140115
+    ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:44:32
+    ╰─⠠⠵ bcal -c 20140115                                                         ~/.doom.d
+    (b) 0b1001100110101000001010011
+    (d) 20140115
+    (h) 0x1335053
+
+    $ bcal -c 0b1001100110101000001010011
+    ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:44:14
+    ╰─⠠⠵ bcal -c 0b1001100110101000001010011                                      ~/.doom.d
+    (b) 0b1001100110101000001010011
+    (d) 20140115
+    (h) 0x1335053
+
+    $ bcal -c 0x1335053
+
+    ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:42:10
+    ╰─⠠⠵ bcal -c 0x1335053                                                        ~/.doom.d
+    (b) 0b1001100110101000001010011
+    (d) 20140115
+    (h) 0x1335053
+   #+end_src
+
+   交互模式：
+   #+begin_src sh
+    q/double Enter -> quit, ? -> help
+    bcal> c 20140115 # 直接使用对应的选项
+   #+end_src
+
+7. 执行 ~bc~, 在交互模式下输入 ~b~
+
+   #+begin_src sh
+    $ bcal -b '3.5 * 2.1 + 5.7'
+    bcal> b
+    bc vars: scale = 10, ibase = 10, last = r
+    bc> 3.5 * 2.1 + 5.7
+   #+end_src
+
+8. 管道输入，结果给 *bcal* 处理
+
+   #+begin_src sh
+   $ printf '15 kib + 15 gib \n r / 5' | bcal -m
+   $ printf '15 + 15 + 2' | bcal -bm
+   #+end_src
+
+9. 从文件获取输入给 *bcal*
+
+   #+begin_src sh
+    $ cat expr
+    15 gib + 15 kib
+    r / 5
+    $ bcal -m < expr
+   #+end_src
+
 * Nix
 
 install:

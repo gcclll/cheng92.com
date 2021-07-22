@@ -1,0 +1,6 @@
+;; -*- mode: emacs-lisp -*-
+
+;; pandoc-mode project settings file
+;; saved on 2021.07.22 14:15
+
+((master-file . "/Users/simon/blog/cheng92.com/content/post/my-first-post.org"))

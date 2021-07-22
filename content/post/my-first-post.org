@@ -13,6 +13,10 @@ window.g_need_fold = 1
 
 [[https://www.cnblogs.com/Open_Source/archive/2011/07/17/2108747.html#sec-9][Org-mode 简明手册 - open source - 博客园]]
 
+* emoji
+
+:cat: :cactus:
+
 * ein, emacs-ipython-notebook
 
 #+begin_src ein-python :session localhost
@@ -22,6 +26,10 @@ x = numpy.linspace(0, 2*math.pi)
 plt.plot(x, numpy.sin(x))
 #+end_src
 
+* latex
+
+$f(x) = x^{2}$
+(@1(@1j)j)
 * org
 ~xxxxxxxxf~
 
@@ -31,12 +39,17 @@ plt.plot(x, numpy.sin(x))
 
 /aaa/
 
++删除线+
 
 $x^{2}$
 
 *xxx*
 
-[[yt:https://www.youtube.com/watch?v=lLDb3diAHPQ]]
+| 名字 | 性别 |
+|------+------|
+|      |      |
+|      |      |
+
 
 * colorful text
 :PROPERTIES:
@@ -226,11 +239,6 @@ icons:
 ** 网易云音乐
 #+begin_export html
 {{% music "28196554" %}}
-#+end_export
-** YouTuBe
-
-#+begin_export html
-{{% youtube "wC5pJm8RAu4" %}}
 #+end_export
 ** 增加代码区复制按钮
    1. 修改 *themes/even/assets/js/main.js* 增加 addCopyButton 原理就是，将
