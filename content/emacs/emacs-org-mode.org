@@ -5,7 +5,910 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent align
 
+* Restclient
 
+** 基础用法
+#+begin_src restclient
+# -*- restclient -*-
+#
+# Gets  all Github APIs, formats JSON, shows response status and headers underneath.
+# Also sends a User-Agent header, because the Github API requires this.
+#
+GET https://api.github.com
+User-Agent: Emacs Restclient
+
+#
+# It can even show an image!
+#
+GET http://upload.wikimedia.org/wikipedia/commons/6/63/Wikipedia-logo.png
+
+#
+# A bit of json GET, you can pass headers too
+#
+GET http://jira.atlassian.com/rest/api/latest/issue/JRA-9
+User-Agent: Emacs24
+Accept-Encoding: compress, gzip
+
+
+#
+# Post works too, entity just goes after an empty line. Same is for PUT.
+# 请求数据
+#
+POST https://jira.atlassian.com/rest/api/2/search
+Content-Type: application/json
+
+{
+        "jql": "project = HCPUB",
+        "startAt": 0,
+        "maxResults": 15,
+        "fields": [
+                "summary",
+                "status",
+                "assignee"
+        ]
+}
+#+end_src
+
+删除：
+#+begin_src restclient
+#
+# And delete, will return not-found error...
+#
+DELETE https://jira.atlassian.com/rest/api/2/version/20
+#+end_src
+
+设置变量：
+
+#+begin_src restclient
+# Set a variable to the value of your ip address using a jq expression
+GET http://httpbin.org/ip
+-> jq-set-var :my-ip .origin
+#+end_src
+
+** 变量
+
+#+begin_src restclient
+# :myvar = the value
+# :myvar := (some (artbitrary 'elisp)
+
+# 多行
+:myvar = <<
+Authorization: :my-auth
+Content-Type: application/json
+User-Agent: SomeApp/1.0
+#
+
+# 或使用 lisp，要以 # 结束
+:myvar := <<
+(some-long-elisp
+    (code spanning many lines)
+#
+
+
+#+end_src
+
+使用：
+#+begin_src restclient
+# Some generic vars
+
+:my-auth = 319854857345898457457
+:my-headers = <<
+Authorization: :my-auth
+Content-Type: application/json
+User-Agent: SomeApp/1.0
+#
+
+# Update a user's name
+
+:user-id = 7
+:the-name := (format "%s %s %d" 'Neo (md5 "The Chosen") (+ 100 1))
+
+PUT http://localhost:4000/users/:user-id/
+:my-headers
+
+{ "name": ":the-name" }
+#+end_src
+
+测试：
+
+取单个用户
+#+begin_src restclient
+:origin = https://reqres.in
+
+# get single user by id=2
+GET :origin/api/users/2
+#+end_src
+
+创建用户
+#+begin_src restclient
+# create user
+:origin = https://reqres.in
+
+POST :origin/api/users
+
+{ "name": "test", "job": "test" }
+#+end_src
+
+* Verb
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: verb
+:END:
+
+[[https://github.com/federicotdn/verb/tree/main/examples][Examples]]
+
+[[/img/emacs/emacs-verb.svg]]
+
+** Response Buffer
+
+Response Buffer 的内容类型主要由 Content-Type 和 ~verb-content-type-handlers~ 的
+内容决定，而字符编码要么是用 ~Content-Type~ 中指定的要么是
+~verb-default-response-charset~ 的值，默认是 ~utf-8~ 。
+
+而类型主要就两种， Text 和 Binary, 文本会根据 ~charset~ 来进行解码后显示，对于二
+进制内容则使用 emacs 内置能力直接显示。
+
+~verb-content-type-handlers~ 的值：
+
+#+begin_src emacs-lisp
+;; Value
+(setq verb-content-type-handlers
+      '(("text/html" html-mode)
+        ("\\(application\\|text\\)/xml" xml-mode)
+        ("application/xhtml\\+xml" xml-mode)
+        ("application/json" verb-handler-json)
+        ("application/javascript" js-mode)
+        ("application/css" css-mode)
+        ("text/plain" text-mode)
+        ("application/pdf" doc-view-mode t)
+        ("image/png" image-mode t)
+        ("image/svg\\+xml" image-mode t)
+        ("image/x-windows-bmp" image-mode t)
+        ("image/gif" image-mode t)
+        ("image/jpe?g" image-mode t)))
+#+end_src
+
+关闭 Response Buffer 两个函数：
+
+~verb-kill-response-buffer-and-window, <C-c C-r C-k>~ 关闭当前。
+
+~verb-kill-all-response-buffers, <C-c C-r C-a>~ 关闭所有。
+
+重新发送请求： ~verb-re-send-request, <C-c C-r r>~
+
+如果在 Response Buffer 中想查看请求内容可以使用：
+
+~verb-show-request, <C-c C-r C-q>~
+
+~verb-toggle-show-headers, <C-c C-r C-h>~
+
+** Request Headers :verb:
+
+#+begin_src verb :wrap src ob-verb-response
+get https://reqres.in/api/users
+Accept: application/json
+Content-Language: de-DE
+#+end_src
+
+头部信息必须紧随 url 后面，中间可以有空行或注释(~# 注释~)。
+
+有些字段有自己的默认值
+
+#+begin_src verb :wrap src ob-verb-response
+MIME-Version: 1.0
+Connection: close or keep-alive
+Content-Length: number of bytes in request body (only when body is present)
+Host: URL host
+Accept: */* (default value, but may be overwritten by the user)
+Accept-Encoding: gzip
+Extension: Security/Digest Security/SSL
+#+end_src
+
+例子：
+#+begin_src verb :wrap src ob-verb-response
+post https://reqres.in/api/users
+Accept: application/json
+Content-Type: application/json; charset=utf-8
+
+{
+    "name": "John",
+    "age": 42
+}
+#+end_src
+
+#+RESULTS:
+#+begin_src ob-verb-response
+(Request timed out after 10.03 seconds)
+#+end_src
+
+另外请求的数据体还可以用
+
+#+begin_src javascript
+{
+  "name": "John",
+  "age": 42
+}
+#+end_src
+
+形式表示。
+** Verb Variables :verb:
+
+template https://reqres.in/api/users
+Accept: application/json
+Authentication: {{(verb-var token)}}
+
+~{{(verb-var token)}}~
+
+这等于是执行的时候要求你输入一个 token 值，如果想设置默认的值就这样：
+
+~{{(verb-var token "default value")}}~
+
+*** Get users list
+get
+Content-Language: de-DE
+
+*** Create a user
+post
+Content-Type: application/json; charset=utf-8
+
+{
+    "name": "{{(user-full-name)}}",
+    "age": "{{(read-string "Age: ")}}"
+}
+
+** Org Header Properties :verb:
+:properties:
+:test: 这是个标题属性
+:end:
+
+除了 ~Verb-Store~ 之外的其它以 ~Verb-~ 开始的都会被当作 metadata 添加到请求中去。
+
+*** Verb-Map-Request
+:properties:
+:Verb-Map-Request: remove-body-newlines
+:end:
+
+post /{{(verb-var user-id)}}/upload
+Content-Type: text/plain; charset=utf-8
+
+foo,
+bar,
+baz
+
+如上面的数据在发送之前会被 ~remove-body-newlines~ 处理之后返回，即实际发送给服务
+器的变成了： ~foo,bar,baz~
+
+#+begin_src emacs-lisp
+(defun remove-body-newlines (rs)
+  ;; RS is of type `verb-request-spec'
+  (oset rs body (replace-regexp-in-string "\n" " " (oref rs body)))
+  rs)
+#+end_src
+
+可以通过给 org head 增加 ~Verb-Map-Request~ 来指定一个函数，这个函数会在请求发出
+或导出之前执行。
+*** Verb-Store :verb:
+
+template https://reqres.in/api
+Accept: application/json
+Content-Type: application/json; charset=utf-8
+
+这个属性很特殊，当指定了这个之后，请求的结果会自动保存到这它指定的变量上去。
+
+然后可以通过 ~verb-stored-response~ 函数去取到这个变量的值。
+
+如：
+**** Create a user
+:properties:
+:Verb-Store: new-user
+:end:
+
+post
+Content-Type: application/json; charset=utf-8
+
+{
+    "name": "{{(user-full-name)}}",
+    "age": "{{(read-string "Age: ")}}"
+}
+
+这里的结果保存到了 ~new-user~
+
+**** Get last created user
+get /{{(verb-json-get (oref (verb-stored-response "new-user") body) "id")}}
+Accept: application/json
+
+这里去取保存的结果。
+**** Get IP
+:properties:
+:Verb-Store: new-person
+:end:
+
+post /users
+
+{
+    "name": "John",
+    "age": 42
+}
+
+**** get Stored IP
+
+get /users/{{(verb-json-get (oref (verb-stored-response "new-person") body) "id")}}
+
+**** Get Last Response
+
+get /users/{{(verb-json-get (oref verb-last body) "id")}}
+
+取上一个请求的响应数据。
+** Org Source Block Properties
+*** :wrap
+
+~:wrap src ob-verb-response~
+
+指定结果用 src block 将结果包起来。
+
+#+begin_src verb :wrap src ob-verb-response
+get https://api.ipify.org?format=json
+#+end_src
+
+#+RESULTS:
+#+begin_src ob-verb-response
+HTTP/1.1 200 OK
+Server: Cowboy
+Connection: keep-alive
+Content-Type: application/json
+Vary: Origin
+Date: Sat, 24 Jul 2021 11:15:56 GMT
+Content-Length: 22
+Via: 1.1 vegur
+
+{
+  "ip": "27.38.254.246"
+}
+#+end_src
+*** :op
+
+没有指定 :op 的时候默认是 ~:op send~
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+可以使用 :var keyword 来给 verb src block 传递参数，然后在代码块中用
+
+~(verb-var <variable-name>)~ 使用。
+#+end_tip
+
+1. ~:op send get-headers~: 只显示响应头信息。
+   #+begin_src verb :wrap src ob-verb-response :op send get-headers
+    get https://api.ipify.org?format=json
+   #+end_src
+
+   #+RESULTS:
+   #+begin_src ob-verb-response
+   Server: Cowboy
+   Connection: keep-alive
+   Content-Type: application/json
+   Vary: Origin
+   Date: Sat, 24 Jul 2021 11:11:31 GMT
+   Content-Length: 22
+   Via: 1.1 vegur
+   #+end_src
+
+2. ~:op send get-body~: 只显示响应体信息。
+
+   #+begin_src verb :wrap src ob-verb-response :op send get-body
+    get https://api.ipify.org?format=json
+   #+end_src
+
+   #+RESULTS:
+   #+begin_src ob-verb-response
+   {
+     "ip": "27.38.254.246"
+   }
+   #+end_src
+
+3. ~:op export curl~ 将请求导出为 CURL 格式。
+
+   #+begin_src verb :op export curl
+    get https://api.ipify.org?format=json
+   #+end_src
+
+   #+RESULTS:
+   : curl 'https://api.ipify.org/?format=json'
+
+4. ~:op export verb~ 将请求导出为 verb 格式。
+
+   #+begin_src verb :op export verb
+    get https://api.ipify.org?format=json
+   #+end_src
+
+   #+RESULTS:
+   : GET https://api.ipify.org/?format=json
+** Upload File
+# ResponseType: arraybuffer
+
+#+begin_src verb :wrap src ob-verb-response
+post /{{(verb-var user-id)}}/upload
+Content-Type: text/markdown; charset=utf-8
+
+{{(verb-read-file "~/Desktop/test.md")}}
+#+end_src
+
+下面为什么内容前面要加上 {{}} ，因为 org-mode 默认 ~**~ 是标题，加个空的 ~{{}}~
+可避免问题。
+#+begin_src verb :wrap src ob-verb-response
+post /{{(verb-var user-id)}}/upload
+Content-Type: text/markdown; charset=utf-8
+
+# Sample Markdown file
+
+{{}}**This text is bold.**
+{{}}*This text is italicized.*
+#+end_src
+** Upload Multiple Files
+
+post www.example.com
+Accept: */*
+Content-Type: multipart/form-data; boundary={{(verb-boundary)}}
+
+{{(verb-part "file" "1.txt")}}
+Content-Type: text/plain
+
+{{(verb-read-file "/path/to/1.txt")}}
+{{(verb-part "file" "2.html")}}
+Content-Type: text/html
+
+{{(verb-read-file "/path/to/2.html")}}
+{{(verb-part)}}
+
+** Binary content type tests :verb:
+# Each subheading specifies a request for a binary content type
+# 每个子标题都是一个请求资源的类型
+# (non-text), like PDF documents, images, etc.
+template https://www.gnu.org
+
+*** PDF
+# Read a PDF document using doc-view-mode.
+get /licenses/quick-guide-gplv3.pdf
+
+*** Images
+template /graphics
+
+**** PNG image
+# Get a PNG image
+get /gnu-head.png
+
+**** JPG image
+# Get a JPG image
+get /bokma-gnu.jpg
+
+**** SVG image
+# Get a SVG image
+get /logo-fsf.org.svg
+** /dev/null as a Service :verb:
+# In modern days everything is a service. You create documents, upload
+# photos, deploy computers, but what’s happening to your trash? That’s
+# why we’re launching /dev/null to the cloud.
+#
+# https://devnull-as-a-service.com/home/
+
+post https://devnull-as-a-service.com/dev/null
+Content-Type: text/plain; charset=utf-8
+
+Hello!
+** Hacker News API :verb:
+# Documentation and Samples for the Official HN API
+# https://github.com/HackerNews/API
+
+template https://hacker-news.firebaseio.com/v0
+Accept: application/json
+
+*** Item
+# Stories, comments, jobs, Ask HNs and even polls are just
+# items. They're identified by their ids, which are unique integers,
+# and live under /v0/item/<id>.
+
+get /item/{{(read-string "Item ID: ")}}.json?print=pretty
+
+*** User
+# Users are identified by case-sensitive ids, and live under
+# /v0/user/. Only users that have public activity (comments or story
+# submissions) on the site are available through the API.
+
+get /user/{{(read-string "User ID: ")}}.json
+
+*** Live Data
+# The coolest part of Firebase is its support for change
+# notifications. While you can subscribe to individual items and
+# profiles, you'll need to use the following to observe front page
+# ranking, new items, and new profiles.
+
+**** Max Item ID
+# The current largest item id is at /v0/maxitem. You can walk backward
+# from here to discover all items.
+get /maxitem.json
+
+**** Top Stories
+get /topstories.json
+
+**** New Stories
+get /newstories.json
+
+**** Best Stories
+get /beststories.json
+** Export to EWW example                                                :verb:
+# Use C-c C-r C-w to perform the request using EWW
+get http://neverssl.com
+Accept: text/html
+
+** ipify API :verb:
+# A Simple Public IP Address API
+# https://www.ipify.org/
+# https://github.com/rdegges/ipify-api
+
+*** IPv4
+template https://api.ipify.org
+
+**** JSON
+get ?format=json
+
+**** Text
+get ?format=text
+
+*** IPv6
+template https://api6.ipify.org
+
+**** JSON
+get ?format=json
+
+**** Text
+get ?format=text
+
+** Kanye REST API :verb:
+# A free REST API for random Kanye West quotes (Kanye as a Service).
+
+template https://api.kanye.rest
+
+*** Get quotes text response (Babel)
+:properties:
+:Verb-Store: kanye
+:end:
+
+# Evaluating (oref (verb-stored-response "kanye") body) will return
+# the last retrieved quote.
+
+#+BEGIN_SRC verb :wrap src ob-verb-response
+get ?format=text
+#+END_SRC
+
+#+RESULTS:
+#+begin_src ob-verb-response
+HTTP/1.1 200 OK
+Date: Sat, 24 Jul 2021 05:29:44 GMT
+Content-Type: application/json
+Transfer-Encoding: chunked
+Connection: keep-alive
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: Content-Type
+Access-Control-Allow-Methods: GET
+Expect-CT: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+Report-To: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=yHwX2nlypygqT90DSvEtAsrxWQU9YjDmSajgfG9hzsmYqNFvKAAZRP0CqOKVhvgSZ4b1cdLk1d%2BF8gxrow4rkKyy1xnIxtB9qUv4XfU2Ls6GETgSh7uthXVNf5T6oz3V2g%3D%3D"}],"group":"cf-nel","max_age":604800}
+NEL: {"report_to":"cf-nel","max_age":604800}
+Vary: Accept-Encoding
+Server: cloudflare
+CF-RAY: 673ac0a53ce6eb3d-LAX
+alt-svc: h3-27=":443"; ma=86400, h3-28=":443"; ma=86400, h3-29=":443"; ma=86400, h3=":443"; ma=86400
+
+{
+  "quote": "I don't wanna see no woke tweets or hear no woke raps ... it's show time ... it's a whole different energy right now"
+}
+#+end_src
+
+*** Get JSON quotes, body only (Babel)
+#+BEGIN_SRC verb :wrap src ob-verb-response :op send get-body
+get
+#+END_SRC
+
+#+RESULTS:
+#+begin_src ob-verb-response
+{
+  "quote": "The thought police want to suppress freedom of thought"
+}
+#+end_src
+*** Get JSON quotes
+#+begin_src verb :wrap src ob-verb-response
+get
+#+end_src
+
+#+RESULTS:
+#+begin_src ob-verb-response
+HTTP/1.1 200 OK
+Date: Sun, 25 Jul 2021 06:37:39 GMT
+Content-Type: application/json
+Transfer-Encoding: chunked
+Connection: keep-alive
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: Content-Type
+Access-Control-Allow-Methods: GET
+Expect-CT: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+Report-To: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=b%2Bwjrw%2BO3AfKcLJXXQYyedGb%2BGEF%2BOrodpiucCNhs2kiJRw4kI6axDCBz6uIXKsMajdiiL2FLSy34eVmH0HyBQ22Vt6zK91I4aeHHXQ2bJYC4OQs6tj34Cc3x4Y93xOplg%3D%3D"}],"group":"cf-nel","max_age":604800}
+NEL: {"report_to":"cf-nel","max_age":604800}
+Vary: Accept-Encoding
+Server: cloudflare
+CF-RAY: 67436180ffac3131-LAX
+alt-svc: h3-27=":443"; ma=86400, h3-28=":443"; ma=86400, h3-29=":443"; ma=86400, h3=":443"; ma=86400
+
+{
+  "quote": "If I got any cooler I would freeze to death"
+}
+#+end_src
+
+** Open Library API :verb:
+# Open Library has developed a suite of APIs to help developers get up
+# and running with our data. We encourage interested developers to
+# join the ol-tech mailing list to stay up-to-date with the latest
+# news, or dive in with our own development team at our bug tracker or
+# our GitHub source code repository.
+
+# Open Library has a RESTful API, best used to link into Open Library
+# data in JSON, YAML and RDF/XML. There's also an earlier JSON API,
+# which is deprecated now. This is only retained for backward
+# compatibility.
+
+# From: https://openlibrary.org/developers/api
+
+template http://openlibrary.org
+User-Agent: Verb/Emacs Emacs/{{emacs-version}}
+Accept: application/json
+
+*** Search
+# Open Library provides an experimental API to search.
+template /search.json
+
+**** By Title
+#+BEGIN_SRC verb :wrap src ob-verb-response
+get ?title={{(verb-var title)}}
+#+END_SRC
+
+**** By Author
+get ?author={{(verb-var author "Frank Herbert")}}
+
+*** Subjects
+# This API is experimental. Please be aware that this may change in future.
+get /subjects/{{(verb-var subject)}}.json
+
+*** Books
+:properties:
+:Verb-Store: book
+:end:
+# The API allows requesting information on one or more books using
+# ISBNs, OCLC Numbers, LCCNs and OLIDs (Open Library IDs).
+
+get /api/books?bibkeys=ISBN:{{(verb-var isbn)}}&format=json
+
+*** Book Cover
+# Get a book's cover based on the value of (verb-var isbn) and the
+# "book" stored response. To set those, make sure to execute "Books"
+# request at least once.
+get {{(verb-json-get (oref (verb-stored-response "book") body) (concat "ISBN:" (verb-var isbn)) "thumbnail_url")}}
+Accept: image/jpeg
+
+** Postman Echo API :verb:
+# Postman Echo is service you can use to test your REST clients and
+# make sample API calls. It provides endpoints for GET, POST, PUT,
+# various auth mechanisms and other utility endpoints.
+
+# The documentation for the endpoints as well as example responses can
+# be found at https://postman-echo.com.
+
+template https://postman-echo.com
+
+*** GZIP test
+# This endpoint returns the response using gzip compression
+# algorithm. The uncompressed response is a JSON string containing the
+# details of the request sent by the client.
+get /gzip
+Accept-Encoding: gzip
+
+*** Stream test
+# This endpoint allows one to receive streaming http response using
+# chunked transfer encoding of a configurable length.
+get /stream/5
+
+*** Post
+# This endpoint echoes the HTTP headers, request parameters, the
+# contents of the request body and the complete URI requested when data
+# is sent as a form parameter.
+post /post
+Content-Type: application/json
+
+{
+  "hello": 1, "bye": {}
+}
+
+**** Post (raw text)
+# Send some plain text instead of JSON. Get the text itself from a
+# local file.
+template
+Content-Type: text/plain
+
+{{(verb-read-file "../test/test.txt")}}
+*** Status code
+# This endpoint allows one to instruct the server which status code to
+# respond with.
+get /status/{{(read-number "Status: ")}}
+** REQ|RES :verb:
+# Test your front-end against a real API
+# A hosted REST-API ready to respond to your AJAX requests.
+# https://reqres.in/
+
+template https://reqres.in/api?delay=0
+Content-Type: application/json
+
+*** Users
+
+template /users
+
+**** Get endpoint headers
+head
+
+**** Get endpoint options
+options
+
+**** List users
+
+get ?page=1
+
+**** Create user
+post
+Content-Type: application/json
+
+{
+    "name": "{{(user-login-name)}}",
+    "age": 55
+}
+
+**** Operate on a single user
+
+template /2
+
+***** Get a single user
+get
+
+***** Replace a user
+put
+
+{
+    "name": "Bob"
+}
+
+***** Update a user
+patch
+
+{
+    "name": "Bob"
+}
+
+***** Delete a user
+delete
+
+*** Login
+
+post /login
+
+#+BEGIN_SRC javascript
+{
+    "email": "eve.holt@reqres.in",
+    "password": "hello"
+}
+#+END_SRC
+
+** Scryfall REST API :verb:
+# Scryfall is a powerful Magic: The Gathering card search.
+
+# Scryfall provides a REST-like API for ingesting our card data
+# programmatically. The API exposes information available on the
+# regular site in easy-to-consume formats.
+# https://scryfall.com/docs/api
+
+template https://api.scryfall.com
+
+*** Cards list
+# Returns a List object that contains all cards in Scryfall’s
+# database. This method is paginated, returning 175 cards at a
+# time. The cards are ordered roughly newest to oldest. Review the
+# documentation for paginating the List type.
+
+# Every card type in every language is returned, including planar
+# cards, schemes, Vanguard cards, tokens, emblems, and funny
+# cards. Make sure you’ve reviewed documentation for the Card type.
+
+# Scryfall currently has 267,162 cards, and this endpoint has 1527
+# pages. This represents more than 400 MB of JSON data: beware your
+# memory and storage limits if you are downloading the entire
+# database.
+
+get /cards
+
+**** Single card by ID
+# Returns a single card with the given Scryfall ID.
+
+get /{{(read-string "Card ID: " "4b332e3d-dcf4-4f62-8130-124ec5d23b90")}}?format=text
+
+**** Get a random card image
+# Returns a single random Card object.
+
+get /random?format=image
+
+*** Sets
+# Returns a List object of all Sets on Scryfall.
+
+get /sets
+
+**** Single set by ID
+# Returns a Set with the given Scryfall ID.
+
+get /{{(read-string "Set ID: " "914a6c6d-cb3b-45e8-a2db-9978a2339faf")}}
+** API2 convert :verb:
+
+template https://api2.online-convert.com
+x-oc-api-key: d89c39a23d8f41ca8fd13ef85297b9a7
+Cache-Control: no-cache
+
+[[https://www.api2convert.com/docs/getting_started/quickstart.html][api documents]]
+
+*** get id and server
+:properties:
+:Verb-Store: convert-response
+:end:
+
+post /jobs
+
+{
+    "conversion": [{
+        "category": "image",
+        "target": "png"
+    }]
+}
+
+*** base64 -> image
+:properties:
+:Verb-Store: image-response
+:end:
+
+POST {{(verb-json-get (oref (verb-stored-response "convert-response") body) "server")}}/upload-base64/{{(verb-json-get (oref (verb-stored-response "convert-response") body) "id")}}
+Content-Type: image/png
+
+{
+  "content": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
+  "filename": "black-pixel"
+}
+
+*** get the upload image
+
+POST /jobs
+
+{
+    "input": [{
+        "type": "input_id",
+        "source": "{{(verb-json-get (oref (verb-stored-response "image-response") body) "id" "input")}}"
+    }],
+    "conversion": [{
+        "target": "png"
+    }]
+}
+
+*** multiple image
+
+POST /dl/web2/upload-base64/a6f691e2-839e-49e5-829d-dc2d97486fe1
+Content-Type: application/json
+
+[{
+  "content": "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=",
+  "filename": "black_pixel.gif"
+},{
+  "content": "data:text/plain;base64,dGVzdCBzdHJpbmc=",
+  "filename": "example_string.txt"
+}]
 * tables
 
 ** 列宽和对齐(Column width and alignment)
@@ -16,14 +919,13 @@
 | 2 | two                 | boring |
 | 3 | this is a long text | column |
 
-
 * keybindings
 ** 逗号(*,*)
 
 *** *, s* trees/subtrees 操作
 
-| key     | function              | description                    |
-|---------+-----------------------+--------------------------------|
+| key   | function              | description                    |
+|-------+-----------------------+--------------------------------|
 | ~, s h~ | org-premote-subtree   | 升级, h4 -> h3                 |
 | ~, s l~ | org-demote-subtree    | 降级, h3 -> h4                 |
 | ~, s n~ | org-narrow-to-subtree | 定位到当前的标题试图，隐藏其他 |
@@ -33,11 +935,11 @@
 
 *** *, b* org-babel-* 操作
 
-| key     | function                     | description        |
-|---------+------------------------------+--------------------|
+| key   | function                     | description        |
+|-------+------------------------------+--------------------|
 | ~, b p~ | org-babel-previous-src-block | 跳转到上一个代码块 |
 | ~, b n~ | org-babel-next-src-block     | 跳转到下一个代码块 |
-|         |                              |                    |
+|       |                              |                    |
 * Hyperlinks(超链接)
 ** Internal Links(内部链接)
 1. org file
@@ -161,3 +1063,4 @@ link: [[#literal_eg][literal_eg]]
 Hi, my name is ${1:$$(my/capitalize-first-char yas-text)}.
 $0
 #+end_example
+* [[https://github.com/fniessen/org-html-themes][org-html-themes]]

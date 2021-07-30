@@ -13,12 +13,58 @@ window.g_need_fold = 1
 
 [[https://www.cnblogs.com/Open_Source/archive/2011/07/17/2108747.html#sec-9][Org-mode 简明手册 - open source - 博客园]]
 
+* embrace
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: embrace
+:END:
+
+** embrace-add(~,ea~)
+
+Documentation
+Two Emacs manuals, the GNU Emacs manual and An Introduction to Programming in Emacs Lisp, can be purchased in printed form from the FSF store.
+
+These manuals, along with the Emacs Lisp Reference Manual and several other manuals documenting major modes and other optional features, can also be read online. They are also distributed with Emacs in Info format; type C-h i in Emacs to view them.
+
+#+BEGIN_QUOTE
+@@html:<font color="red">GNU</font>@@ Emacs manual: Read Online or Purchase
+An Introduction to Programming in Emacs Lisp: Read Online or Purchase
+Emacs Lisp Reference Manual: Read Online
+@@html:<kbd>@@Other Emacs manuals: Read Onlin_e
+The Emacs /distribution/ includes the full source code for the manuals, as well as several Emacs Reference Cards in various languages.
+#+END_QUOTE
+
+Asking for help
+To ask for \{ help\ } with GNU +Emacs+, use the mailing list help-gnu-emacs@gnu.org or the newsgroup gnu.emacs.help. The mailing list and newsgroup are linked: messages posted on one appear on the other as well.
+
+Reporting bugs
+To report bugs, or to <button>contribute</button> fixes and improvements, use the built-in Emacs bug reporter (M-x report-emacs-bug) or send email to bug-gnu-emacs@gnu.org. You can browse our bug database at debbugs.gnu.org. For more information on contributing, see the CONTRIBUTE file (also distributed with Emacs).
+To report bugs, or to <button>contribute</button> fixes and improvements, use the built-in Emacs bug reporter (M-x report-emacs-bug) or send email to bug-gnu-emacs@gnu.org. You can browse our bug database at debbugs.gnu.org. For more information on contributing, see the CONTRIBUTE file (also distributed with Emacs).
+To report bugs, or to <button>contribute</button> fixes and improvements, use the built-in Emacs bug reporter (M-x report-emacs-bug) or send email to bug-gnu-emacs@gnu.org. You can browse our bug database at debbugs.gnu.org. For more information on contributing, see the CONTRIBUTE file (also distributed with Emacs).
+TodoTo report bugs, or to <button>contribute</button> fixes and improvements, use the built-in Emacs bug reporter (M-x report-emacs-bug) or send email to bug-gnu-emacs@gnu.org. You can browse our bug database at debbugs.gnu.org. For more information on contributing, see the CONTRIBUTE file (also distributed with Emacs).
+
+=For all other queries, consult the list of Emacs-related mailing lists on savannah.gnu.org and the complete list of GNU mailing lists on lists.gnu.org. See Get Help with GNU Software for help with GNU software in general.@@html:</kbd>@@__=
+
+#+begin_src js
+function test(a, b, c, d, e) {
+  console.log('aaaaa = ' + a)
+  console.log('aaaaa = ' + b)
+  console.log('aaaaa = ' + c)
+  console.log('aaaaa = ' + d)
+  console.log('aaaaa = ' + e)
+`}`
+#+end_src
+
+** embrace-change(~,ec~)
+** embrace-delete(~,ed~)
 * emoji
 
 :cat: :cactus:
 
 * ein, emacs-ipython-notebook
 
+https://www.cheng92.com
+gccll/test
 #+begin_src ein-python :session localhost
 import numpy, math, matplotlib.pyplot as plt
 %matplotlib inline
@@ -31,6 +77,10 @@ plt.plot(x, numpy.sin(x))
 $f(x) = x^{2}$
 (@1(@1j)j)
 * org
+#+begin_verse
+test
+#+end_verse
+
 ~xxxxxxxxf~
 
 =xxxxxx=

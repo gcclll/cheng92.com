@@ -1,0 +1,105 @@
+#+TITLE: My Awesome Everything
+#+DATE: <2021-07-25 15:50:34>
+#+TAGS[]: awesome
+#+CATEGORIES[]: awesome
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+#+FILETAGS: :verb:
+
+* APIs
+
+基于 org-verb-mode.
+
+** TODO [[https://www.online-convert.com/developer][online-convert]] 在线转换接口
+
+https://www.api2convert.com/ 这里获取 API Key.
+
+
+** TODO [[https://dashboard.juhe.cn/home/][聚合数据]] :verb:
+** gnu.org :verb:
+
+template https://www.gnu.org
+
+*** PDF
+
+get /licenses/quick-guide-gplv3.pdf
+
+*** Images
+
+template /graphics
+
+**** PNG image
+
+get /gnu-head.png
+
+** openlibrary.org :verb:
+
+template https://openlibrary.org
+User-Agent: Verb/Emacs Emacs/{{emacs-version}}
+Accept: application/json
+
+*** Seach
+   template /search.json
+
+*** Sbujects
+   # 支持取用户如数，read-string "Tip: "
+   # 比如：输入 search
+   # 最后请求链接为：/subjects/search.json
+   get /subjects/{{(read-string "Subject: ")}}.json
+
+*** books
+   # verb 变量声明:
+   :properties:
+   :Verb-Store: book
+   :end:
+
+   # test useing ISBNs, OCLS Numbers, LCCNs and OLIDs(Open Library IDs).
+   get /api/books?bibkeys=ISBN:{{(verb-var isbn)}}&format=json
+
+  CLOSED: [2020-08-27 Thu 00:07]
+  - State "DONE"       from              [2020-08-27 Thu 00:07]
+  template https://reqres.in
+  # 共用的部分可以放到 template 下面来统一声明
+  Accept: application/json
+  # verb 变量
+  Authentication: {{(verb-var token)}}
+** User :verb:
+*** User management
+get
+Content-Language: de-DE
+
+*** Get users list
+get /api/users
+Content-Language: de-DE
+
+*** create a user
+
+post /api/users
+Content-Type: application/json; charset=utf-8
+
+#+begin_src js
+    {
+    "name": "John",
+    "age": 42
+    }
+#+end_src
+
+post /api/users
+
+#+begin_src js
+    {
+
+    "name": "{{(user-full-name)}}",
+    "age": "{{(read-string "Age: ")}}"
+    }
+#+end_src
+
+#+RESULTS:
+* Cloud Servers
+
+1. [[https://www.sanfengyun.com/][三丰云]], 三十天的免费，到期直接续费使用，记得设置闹钟哦~~
+
+   服务器只能用一天，完了之后需要每五天续费一次。。。
+* Development
+
+[[/web/awesome-web][Awesome Web Development(WEB开发资源)]]

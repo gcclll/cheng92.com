@@ -364,6 +364,22 @@ example:
 <script src="/path/to/test.js"></script>
 #+end_src
 
+** Share VPN
+
+Parallel Desktop - Ubuntu share the VPN of host computer.
+
+Ubuntu -> 设置 -> 网络 -> VPN: Network Proxy, 网络代理：
+
+http/https, socks proxy:
+
+IP: 宿主机的 IP，推荐配置成静态IP。
+
+PORT: 代理工具的端口号，比如： clashX 的 *7890/7891*
+
+完了之后还要在代码工具那允许下局域网连接：
+
+[[/img/tmp/clashx-allow-lan.png]]
+
 ** 窗口管理
 
 #+begin_export html

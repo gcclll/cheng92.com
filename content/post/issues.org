@@ -129,6 +129,42 @@ declare const window: any
 
 ~$ tmutil thinlocalsnapshots / 999999999999999 4~
 
+** LaTeX
+
+*** basictex
+
+[[https://tex.stackexchange.com/questions/307483/setting-up-basictex-homebrew][Reference ->]]
+
+~$ brew install --cask basictex~
+
+安装之后，需要手动安装，不然找不到 pdflatex ：
+
+#+begin_example
+╭─simon@gcl ~
+╰─$ pdflatex
+zsh: command not found: pdflatex
+#+end_example
+
+手动安装过程：
+
+#+begin_src sh
+# simon @ gcl in ~ [10:31:59] C:1
+$ bash --login                                                                ~
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+gcl:~ simon$ which pdflatex
+/Library/TeX/texbin/pdflatex
+gcl:~ simon$ cd /usr/local/Caskroom/basictex/
+gcl:basictex simon$ ls
+2021.0325
+gcl:basictex simon$ cd 2021.0325/
+gcl:2021.0325 simon$ ls
+mactex-basictex-20210325.pkg
+gcl:2021.0325 simon$ open mactex-basictex-20210325.pkg
+#+end_src
+
 * 其他
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]

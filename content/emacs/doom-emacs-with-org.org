@@ -1,7 +1,7 @@
 #+title: Doom Emacs Configuration
 #+subtitle: The Methods, Management, and Menagerie of Madness
 #+author: Zhicheng Lee
-#+date: @@html:<!--@@{{{git-rev}}}@@html:-->@@@@latex:\\\Large\bfseries@@ {{{modification-time(%Y-%m-%d, t)}}} @@latex:\\\normalsize\mdseries@@{{{modification-time(%H:%M, t)}}} @@latex:\acr{\lowercase{@@{{{timezone}}}@@latex:}}\iffalse@@, {{{git-rev}}}@@latex:\fi@@
+#+date: @@html:<!--@@@@html:<a href="https://github.com/gcclll/.doom.d/commit/fe602c5" style="text-decoration: none"><code style="padding: 0; color: var(--text-light); font-size: inherit; opacity: 0.7">fe602c5</code></a>@@@@latex:\href{https://github.com/gcclll/.doom.d/commit/fe602c5}{fe602c5}@@@@html:-->@@@@latex:\\\Large\bfseries@@ {{{modification-time(%Y-%m-%d, t)}}} @@latex:\\\normalsize\mdseries@@{{{modification-time(%H:%M, t)}}} @@latex:\acr{\lowercase{@@{{{timezone}}}@@latex:}}\iffalse@@, {{{git-rev}}}@@latex:\fi@@
 #+macro: timezone (eval (substring (shell-command-to-string "date +%Z") 0 -1))
 #+macro: git-rev (eval (format "@@html:<a href=\"https://github.com/gcclll/.doom.d/commit/%1$s\" style=\"text-decoration: none\"><code style=\"padding: 0; color: var(--text-light); font-size: inherit; opacity: 0.7\">%1$s</code></a>@@@@latex:\\href{https://github.com/gcclll/.doom.d/commit/%1$s}{%1$s}@@" (substring (shell-command-to-string "git rev-parse --short HEAD") 0 -1)))
 #+startup: fold
@@ -223,6 +223,48 @@ Finally save buffer.
     (insert hstub)
     (evil-insert 0)))
 #+end_src
+** quick-find
+#+begin_src emacs-lisp
+
+;;;###autoload
+(defun dired-timesort (filename &optional wildcards)
+  (let ((dired-listing-switches "-lhat"))
+    (dired filename wildcards)))
+
+;;;###autoload
+(defmacro quick-find (key file &optional path find-args)
+  `(bind-key
+    ,key
+    (cond
+     ((stringp ,find-args)
+      '(lambda (&optional arg)
+         (interactive)
+         (find-dired (expand-file-name ,file ,path) ,find-args)))
+     ((and
+       ;; (not (tramp-tramp-file-p (expand-file-name ,file ,path)))
+       (or (file-directory-p (expand-file-name ,file ,path))
+           (not (file-exists-p (expand-file-name ,file ,path)))))
+      '(lambda (&optional arg)
+         (interactive)
+         (dired-timesort (expand-file-name ,file ,path))))
+     (t
+      '(lambda (&optional arg)
+         (interactive)
+         (find-file (expand-file-name ,file ,path)))))))
+#+end_src
+** embrace
+
+#+begin_src emacs-lisp
+;;;###autoload
+(defun gcl/embrace-prog-mode-hook ()
+  (dolist (lst '((?` "`" . "`")))
+    (embrace-add-pair (car lst) (cadr lst) (cddr lst))))
+
+;;;###autoload
+(defun gcl/embrace-org-mode-hook ()
+  (dolist (lst '((?c "@@html:<font color=\"red\">" . "</font>@@")))
+    (embrace-add-pair (car lst) (cadr lst) (cddr lst))))
+#+end_src
 * Init.el
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle "init.el" :comments no
@@ -250,7 +292,7 @@ Finally save buffer.
        doom              ; what makes DOOM look the way it does
        doom-dashboard    ; a nifty splash screen for Emacs
        doom-quit         ; DOOM quit-message prompts when you quit Emacs
-       (emoji +unicode +ascii +github)  ; 🙂
+       (emoji +ascii +github)  ; 🙂
        fill-column       ; a `fill-column' indicator
        hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
        hydra
@@ -265,7 +307,7 @@ Finally save buffer.
        (popup +all +defaults)   ; tame sudden yet inevitable temporary windows
        ;;tabs              ; a tab bar for Emacs
        ;; (treemacs +lsp)          ; a project drawer, like neotree but cooler
-       unicode           ; extended unicode support for various languages
+       ;; unicode           ; extended unicode support for various languages
        vc-gutter         ; vcs diff in the fringe
        vi-tilde-fringe   ; fringe tildes to mark beyond EOB
        (window-select +numbers)     ; visually switch windows
@@ -365,13 +407,14 @@ Finally save buffer.
        (latex             ; writing papers in Emacs has never been so fun
         +latexmk
         +cdlatex
+        +lsp
         +fold)
        ;;lean              ; for folks with too much to prove
        ;;ledger            ; be audit you can be
        (lua +lsp)               ; one-based indices? one-based indices
        markdown          ; writing docs for people to ignore
        ;;nim               ; python + lisp at the speed of c
-       ;;nix               ; I hereby declare "nix geht mehr!"
+       nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
        (org               ; organize your plain life in plain text
         +attach
@@ -387,7 +430,7 @@ Finally save buffer.
         +present
         +protocol
         +pomodoro
-        +roam
+        +roam2
         +noter)
        (php +lsp)               ; perl's insecure younger brother
        plantuml          ; diagrams for confusing people more
@@ -412,7 +455,7 @@ Finally save buffer.
        ;;zig               ; C, but simpler
 
        :email
-       ;;(mu4e +gmail)
+       (mu4e +gmail)
        ;;notmuch
        ;;(wanderlust +gmail)
 
@@ -476,7 +519,7 @@ to bakup some of my private things.
     (gcl/async-shell-command-silently (format "emacs --batch --eval \"(progn \
 (require 'org) (setq org-confirm-babel-evaluate nil) \
 (org-babel-tangle-file \\\"%s\\\"))\" \
-&& /bin/bash ~/.gclrc/shl/cp-config-org.sh"
+&& /bin/bash ~/.gclrc/bin/rsync-doom-config"
              +literate-config-file))))
 #+end_src
 
@@ -510,6 +553,7 @@ private:
       web-mode-enable-current-column-highlight t
 
       ;; org
+      org-roam-v2-ack t                 ; close v2 warning
       org-roam-directory "~/.gclrc/roam/"
       org-directory "~/.gclrc/org/"
       org-log-done 'time                        ; having the time a item is done sounds convenient
@@ -528,7 +572,14 @@ private:
       ;; mouse wheel
       mouse-wheel-follow-mouse 't
       mouse-wheel-scroll-amount '(1 ((shift) . 1))
-    )
+
+      vc-log-view-type nil
+      ;; mu4e
+      +mu4e-backend 'offlineimap
+
+      ;; osx
+      ;; browse-url-browser-function 'browse-url-default-macosx-browser
+      )
 
 (setq-default
  fill-column 80
@@ -548,41 +599,140 @@ private:
 :header-args:emacs-lisp: :tangle "config.el" :comments no
 :END:
 
+Keybindings reference:
+
+[[https://github.com/hlissner/doom-emacs/blob/develop/modules/config/default/%2Bevil-bindings.el][evil-bindings.el]]
+
+[[https://github.com/hlissner/doom-emacs/blob/617fc7f1cc6c91d80a30aca0445ae21f1bd5ddc9/modules/editor/evil/config.el][editor/evil/config.el]]
+
 ** Unbindings
-#+begin_src emacs-lisp
-(global-set-key (kbd "s-p") nil)        ; ns-print-buffer
-(global-set-key (kbd ",") nil)
-#+end_src
-** F1~12
+[[https://github.com/hlissner/doom-emacs/issues/1099][To Unbind]]
+
 
 #+begin_src emacs-lisp
-(global-set-key (kbd "<f3>") 'hydra-multiple-cursors/body)
+
+(global-set-key (kbd "C-d") nil)        ; ns-print-buffer
+(global-set-key (kbd "s-p") nil)        ; ns-print-buffer
+(global-set-key (kbd "<f1>") nil)        ; ns-print-buffer
+(global-set-key (kbd "<f2>") nil)        ; ns-print-buffer
+(define-key evil-normal-state-map (kbd ",") nil)
+(define-key evil-visual-state-map (kbd ",") nil)
+;; (global-set-key (kbd ",") nil)
+(map! "C-e" nil
+      :n "C-t" nil)
+;; (undefine-key! "SPC :" "SPC ~" "SPC ." "SPC X" "C-c C-r" ",")
+;; (undefine-key! evil-normal-state-map ",")
+(undefine-key! org-mode-map "C-c C-r")
+#+end_src
+** F1~12(kbd)
+
+#+begin_src emacs-lisp
+(global-set-key (kbd "<f1>") 'gcl-everything/body)
 (global-set-key (kbd "<f5>") 'deadgrep)
 (global-set-key (kbd "<M-f5>") 'deadgrep-kill-all-buffers)
+(global-set-key (kbd "<f8>") 'quickrun)
 (global-set-key (kbd "<f12>") 'smerge-vc-next-conflict)
 (global-set-key (kbd "<f11>") '+vc/smerge-hydra/body)
+(global-set-key (kbd "C-t") '+vterm/toggle)
+(global-set-key (kbd "C-S-t") '+vterm/here)
+(global-set-key (kbd "C-d") 'kill-current-buffer)
+
 #+end_src
 
 ** Global
-#+begin_src emacs-lisp
-;; unbind
-(map! "C-e" nil)
+*** M(Option/Alt)
 
+#+begin_src emacs-lisp
 (map!
- ;; --------------- M, Option/Alt ---------------
  ;; "M-1"          #'bm-toggle
  ;; "M-2"          #'bm-next
  ;; "M-@"          #'bm-previous
  "M--"          #'gcl/goto-match-paren
  "M-i"          #'parrot-rotate-next-word-at-point
- ;; --------------- C, Control ---------------
+ "M-TAB"        #'gcl-everything/body
+ ;; "S-M-SPC"      #'counsel-osx-app
+ )
+#+end_src
+
+*** C(Control)
+
+#+begin_src emacs-lisp
+(map!
  :niv   "C-e"   #'evil-end-of-line
  :niv   "C-="   #'er/expand-region
+
  "C-a"          #'crux-move-beginning-of-line
  "C-s"          #'+default/search-buffer
- "C-:"          #'avy-goto-char
- "C-;"          #'avy-goto-char-2
- ;; --------------- s, Command ---------------
+ )
+#+end_src
+
+**** C-c
+#+begin_src emacs-lisp
+(map!
+ ;; a -> applications, ...
+ "C-c a"        #'org-agenda
+
+ ;; b -> bookmark, buffer ...
+ "C-c b l"      #'bm-show-all
+ "C-c b s"      #'bm-buffer-save
+
+ ;; i -> date, time, ...
+ "C-c i d"      #'insert-current-date-time
+ "C-c i t"      #'insert-current-time
+
+ ;; f -> file, directory, ...
+ "C-c f o"      #'crux-open-with
+
+ ;; h -> help
+ "C-c h d"      #'dash-at-point
+ "C-c h D"      #'dash-at-point-with-docset
+
+ ;; n -> network utils
+ ;; "C-c n x"      #'xxx
+
+ ;; s -> search/engine ...
+ ;; "C-c s r"  ;; ...
+
+ ;; s -> replace
+ "C-c r r"      #'vr/replace
+ "C-c r q"      #'vr/query-replace
+
+ ;; u -> url, ...
+ "C-c u u"      #'crux-view-url
+ "C-c u o"      #'link-hint-open-link
+ "C-c u c"      #'link-hint-copy-link
+ "C-c u a"      #'link-hint-open-link-at-point
+ "C-c u C"      #'link-hint-copy-link-at-point
+
+ ;; y -> youdao, ...
+ "C-c y y"      #'youdao-dictionary-search-at-point+
+
+ "C-c C-r C-r"          #'verb-send-request-on-point-other-window-stay
+ "C-c C-r C-s"          #'verb-send-request-on-point-other-window
+ "C-c C-r C-f"          #'verb-send-request-on-point
+ "C-c C-r C-m"          #'verb-send-request-on-point-no-window
+ "C-c C-r C-k"          #'verb-kill-response-buffer-and-window
+ "C-c C-r C-a"          #'verb-kill-all-response-buffers
+ "C-c C-r C-u"          #'verb-export-request-on-point-curl
+ "C-c C-r C-b"          #'verb-export-request-on-point-verb
+ "C-c C-r C-w"          #'verb-export-request-on-point-eww
+ "C-c C-r C-l"          #'verb-show-vars        ; 查看已存在的变量值列表
+ "C-c C-r C-v"          #'verb-set-var
+
+ )
+#+end_src
+**** C-x
+#+begin_src emacs-lisp
+(map!
+ ;; "C-x p"        #'vmd-mode
+ ;; "C-x d"        #'dash-at-point
+ ;; "C-x D"        #'dash-at-point-with-docset
+ )
+#+end_src
+*** s(Command)
+
+#+begin_src emacs-lisp
+(map!
  "s-<"          #'move-text-up
  "s->"          #'move-text-down
  ;; "s-'"          #'cycle-quotes
@@ -594,76 +744,123 @@ private:
  ;; "s-p d"      #'projector-run-default-shell-command
  ;; "s-p r"      #'projector-run-shell-command-project-root
  ;; "s-p R"      #'projector-rerun-buffer-process
+ )
+#+end_src
 
+*** Evil
 
- ;; --------------- C-c ---------------
- ;; a -> applications, ...
- "C-c a c"      #'org-mac-chrome-insert-frontmost-url
- ;; d -> date, time, ...
- "C-c d d"      #'insert-current-date-time
- "C-c d t"      #'insert-current-time
- ;; f -> file, directory, ...
- "C-c f o"      #'crux-open-with
- ;; s -> search, replace, ...
- "C-c s r"      #'vr/replace
- "C-c s q"      #'vr/query-replace
- ;; u -> url, ...
- "C-c u u"      #'crux-view-url
- "C-c u o"      #'link-hint-open-link
- "C-c u c"      #'link-hint-copy-link
- "C-c u a"      #'link-hint-open-link-at-point
- "C-c u C"      #'link-hint-copy-link-at-point
- ;; y -> youdao, ...
- "C-c y y"      #'youdao-dictionary-search-at-point+
+#+begin_src emacs-lisp
+(evil-define-minor-mode-key '(normal motion) 'evil-snipe-local-mode
+  "s" #'avy-goto-char
+  "S" #'avy-goto-char-2
+  "w" #'avy-goto-word-1
+  "W" #'avy-goto-word-0
+  )
 
- ;; --------------- C-x ---------------
- ;; "C-x p"        #'vmd-mode
+(evil-define-key '(normal motion visual) map
+   "s" #'avy-goto-char
+   "S" #'avy-goto-char-2
+   "w" #'avy-goto-word-1
+   "W" #'avy-goto-word-0
+  )
 
- ;; --------------- Evil ---------------
+(map!
+ :n     "+"     #'evil-numbers/inc-at-pt
+ :n     "-"     #'evil-numbers/dec-at-pt
+
+ ;; g
  :n     "g["    #'beginning-of-defun
  :n     "g]"    #'end-of-defun
  :n     "gd"    #'xref-find-definitions
  :n     "gD"    #'xref-find-references
  :n     "gb"    #'xref-pop-marker-stack
+
+ ;; z
  :n     "z-"    #'sp-splice-sexp
  :n     "z."    #'emmet-wrap-with-markup
- :n     "+"     #'evil-numbers/inc-at-pt
- :n     "-"     #'evil-numbers/dec-at-pt
 
- ;; --------------- Leader SPC ---------------
+ :n     "gi"    nil
+ (:prefix ("gi" . "mine")
+  :n    "f"     #'+org/attach-file-and-insert-link)
+
+ :nv     ","     nil
+ (:prefix ("," . "gccll")
+  :nv    "`"     #'gcl-everything/body
+
+  ;; embrace
+  (:prefix ("e" . "embrace")
+   :n    "a"    #'embrace-add
+   :n    "c"    #'embrace-change
+   :n    "d"    #'embrace-delete
+   )
+
+  )
+ )
+
+;; remap gs-> keybinding
+(map! :after evil-easymotion
+      :map evilem-map
+      "c"       #'avy-goto-char
+      "C"       #'avy-goto-char-2
+      "w"       #'avy-goto-word-1
+      "W"       #'avy-goto-word-0
+      "ll"      #'avy-goto-line
+      "lu"      #'avy-goto-line-above
+      "ld"      #'avy-goto-line-below
+      )
+#+end_src
+
+*** SPC
+#+begin_src emacs-lisp
+(map!
  :leader
- :nv    "SPC"   #'execute-extended-command
+ :nv    "SPC"           #'execute-extended-command
 
  ;; b -> Buffer
- :n     "bf"    #'osx-lib-reveal-in-finder
+ :n     "bf"            #'osx-lib-reveal-in-finder
 
  ;; f -> File
- :n     "fo"    #'crux-open-with
- :n     "fj"    #'dired-jump
+ :n     "fo"            #'crux-open-with
+ :n     "fj"            #'dired-jump
 
  ;; d -> directory
- :n     "dd"    #'deft
+ :n     "dd"            #'deft
+
+ ;; d -> edit
+ :n     "es"            #'sudo-edit
 
  ;; i -> Insert, Imenu
- :n     "im"    #'imenu-list
- :n     "iM"    #'lsp-ui-imenu
+ :n     "ia"            #'+org/attach-file-and-insert-link
+ :n     "im"            #'imenu-list
+ :n     "iM"            #'lsp-ui-imenu
+
+ ;; l -> load, ...
+ :n     "lr"            #'ranger
+ :n     "ld"            #'dired
 
  ;; r -> Run
- ;; :n     "rp"    #'projector-run-shell-command-project-root
- ;; :n     "rP"    #'projector-run-default-shell-command
+ ;; :n     "rp"         #'projector-run-shell-command-project-root
+ ;; :n     "rP"         #'projector-run-default-shell-command
+
+ ;; s -> search ?
+ (:map (scss-mode-map css-mode-map)
+  :n     "si"            #'counsel-css
+  )
 
  ;; / -> Search
  ;; :n     "/r"    #'deadgrep
-)
+ )
 #+end_src
 ** Org-mode
 #+begin_src emacs-lisp
 (map! :map org-mode-map
-      :n       "tt"     #'org-todo
-      :n       "tc"     #'org-toggle-checkbox
-      :n       "tpp"    #'org-priority
-      :n       "tpu"    #'org-priority-up
-      :n       "tpd"    #'org-priority-down
+      :n        "tt"            #'org-todo
+      :n        "tT"            #'counsel-org-tag
+      :n        "tc"            #'org-toggle-checkbox
+      :n        "tpp"           #'org-priority
+      :n        "tpu"           #'org-priority-up
+      :n        "tpd"           #'org-priority-down
+
 
       "C-c e e"         #'all-the-icons-insert
       "C-c e a"         #'all-the-icons-insert-faicon
@@ -674,27 +871,52 @@ private:
       "C-c e i"         #'all-the-icons-insert-alltheicon
 
       ;; org clock
-      "C-c c i"        #'org-clock-in
-      "C-c c o"        #'org-clock-out
-      "C-c c h"        #'counsel-org-clock-history
-      "C-c c g"        #'counsel-org-clock-goto
-      "C-c c c"        #'counsel-org-clock-context
-      "C-c c r"        #'counsel-org-clock-rebuild-history
+      "C-c c i"         #'org-clock-in
+      "C-c c o"         #'org-clock-out
+      "C-c c h"         #'counsel-org-clock-history
+      "C-c c g"         #'counsel-org-clock-goto
+      "C-c c c"         #'counsel-org-clock-context
+      "C-c c r"         #'counsel-org-clock-rebuild-history
+
+      ;; insert
+      "C-c i u"         #'org-mac-chrome-insert-frontmost-url
+      "C-c i c"         #'copyright
+
+      ;; org-roam, C-c r <x>
+
+      ;; verb
+      "C-c C-r C-r"     #'verb-send-request-on-point-other-window-stay
+      "C-c C-r C-s"     #'verb-send-request-on-point-other-window
+      "C-c C-r C-f"     #'verb-send-request-on-point
+      "C-c C-r C-m"     #'verb-send-request-on-point-no-window
+      "C-c C-r C-k"     #'verb-kill-response-buffer-and-window
+      "C-c C-r C-a"     #'verb-kill-all-response-buffers
+      "C-c C-r C-u"     #'verb-export-request-on-point-curl
+      "C-c C-r C-b"     #'verb-export-request-on-point-verb
+      "C-c C-r C-w"     #'verb-export-request-on-point-eww
+      "C-c C-r C-l"     #'verb-show-vars        ; 查看已存在的变量值列表
+
 )
 #+end_src
 ** Web-mode
-
+** QuickFind
 #+begin_src emacs-lisp
- (map! :map web-mode-map
-       "<f2>"    #'hydra-web-mode/body
-       )
+(quick-find "C-h C-x C-s" "~/.ssh/config")
+(quick-find "C-h C-x C-z" "~/.zshrc")
+(quick-find "C-h C-x C-d" "~/.gclrc/org/todo.org")
+(quick-find "C-h C-x C-o" "~/.offlineimaprc")
 #+end_src
-
 * Package Settings
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle "config.el" :comments no
 :END:
 
+** Autoinsert
+#+begin_src emacs-lisp
+(use-package! autoinsert
+  :hook
+  (find-file . auto-insert))
+#+end_src
 ** Avy
 #+begin_src emacs-lisp
 (global-set-key (kbd "M-g f") 'avy-goto-line)
@@ -743,6 +965,20 @@ private:
         company-minimum-prefix-length 2)
   (add-hook 'evil-normal-state-entry-hook #'company-abort)) ;; make aborting less annoying.
 #+end_src
+** Counsel-osx-app
+#+begin_src emacs-lisp
+(use-package! counsel-osx-app
+  :bind* ("S-M-SPC" . counsel-osx-app)
+  :commands counsel-osx-app
+  :config
+  (setq counsel-osx-app-location
+        (list "/Applications"
+              "/Applications/Misc"
+              "/Applications/Utilities"
+              (expand-file-name "~/Applications")
+              (expand-file-name "~/.nix-profile/Applications")
+              "/Applications/Xcode.app/Contents/Applications")))
+#+end_src
 ** Cycle-quotes
 #+begin_src emacs-lisp
 (use-package! cycle-quotes
@@ -769,12 +1005,75 @@ private:
   (defun emacs-everywhere-raise-frame-1 ()
     (call-process "wmctrl" nil nil nil "-a" emacs-everywhere-frame-name)))
 #+end_src
+** Embrace
+#+begin_src emacs-lisp
+(add-hook 'org-mode-hook 'gcl/embrace-org-mode-hook)
+(add-hook 'prog-mode-hook 'gcl/embrace-prog-mode-hook)
+#+end_src
+** Engine-mode
+#+begin_src emacs-lisp
+
+(use-package! engine-mode
+  :config
+  (engine/set-keymap-prefix (kbd "C-c s"))
+  ;; (setq engine/browser-function 'eww-browse-url)
+  (defengine amazon
+    "http://www.amazon.com/s/ref=nb_sb_noss?url=search-alias%3Daps&field-keywords=%s"
+    :keybinding "a")
+  (defengine baidu "https://www.baidu.com/s?wd=%s"
+    :keybinding "bb")
+  (defengine baidu-image "https://image.baidu.com/search/index?tn=baiduimage&word=%s"
+    :keybinding "bi")
+  (defengine ctan
+    "http://www.ctan.org/search/?x=1&PORTAL=on&phrase=%s"
+    :docstring "Search the Comprehensive TeX Archive Network (ctan.org)"
+    :keybinding "c")
+  (defengine duckduckgo
+    "https://duckduckgo.com/?q=%s"
+    :keybinding "d")
+  (defengine github
+    "https://github.com/search?ref=simplesearch&q=%s"
+    :keybinding "g")
+  (defengine qwant
+    "https://www.qwant.com/?q=%s"
+    :docstring "什么都能搜到哦~~😍😍"
+    :keybinding "q")
+  (defengine rfcs
+    "http://pretty-rfc.herokuapp.com/search?q=%s"
+    :keybinding "r")
+  (defengine stack-overflow
+    "https://stackoverflow.com/search?q=%s"
+    :keybinding "s")
+  (defengine twitter
+    "https://twitter.com/search?q=%s"
+    :keybinding "t")
+  (defengine wolfram-alpha
+    "http://www.wolframalpha.com/input/?i=%s"
+    :docstring "数学搜索引擎，公式，坐标图等。"
+    :keybinding "w") ; 数学搜索引擎，公式，坐标图等
+  (defengine youtube
+    "http://www.youtube.com/results?aq=f&oq=&search_query=%s"
+    :keybinding "y")
+
+  (defengine google-images
+    "http://www.google.com/images?hl=en&source=hp&biw=1440&bih=795&gbv=2&aq=f&aqi=&aql=&oq=&q=%s"
+    :keybinding "/i")
+  (defengine google-maps
+    "http://maps.google.com/maps?q=%s"
+    :docstring "Mappin' it up."
+    :keybinding "/m")
+  (defengine google
+    "http://www.google.com/search?ie=utf-8&oe=utf-8&q=%s"
+    :keybinding "//")
+
+  (engine-mode 1))
+#+end_src
 ** Dash-at-point
 #+begin_src emacs-lisp
 (use-package! dash-at-point
   :bind
-  ((",d" . dash-at-point)
-   (",D" . dash-at-point-with-docset)))
+  (("C-x d" . dash-at-point)
+   ("C-x D" . dash-at-point-with-docset)))
 #+end_src
 ** Deadgrep
 
@@ -794,6 +1093,12 @@ private:
 | ~g~       | 重新搜索                  |
 | ~TAB~     | 展开/闭合结果             |
 | ~C-c C-k~ | 停止正在执行的搜索        |
+** Delsel
+#+begin_src emacs-lisp
+(use-package! delsel
+  :config
+  (delete-selection-mode t))
+#+end_src
 ** Dotenv-mode
 #+begin_src emacs-lisp
 (use-package! dotenv-mode
@@ -842,6 +1147,219 @@ private:
   (add-hook! 'after-init-hook #'global-hungry-delete-mode)
   (global-hungry-delete-mode 1))
 #+end_src
+** Hydra
+
+[[https://github.com/jkitchin/scimax/blob/68aaf5f0685a23c3ae60b16613c5bcd20e8a158b/scimax-hydra.el][scimax-hydra.el]]
+
+#+begin_src emacs-lisp
+(map! :map dired-mode-map
+      "<f2>"    #'gcl-dired/body
+      :map ranger-mode-map
+      "<f2>"    #'gcl-dired/body
+      :map org-agenda-mode-map
+      "<f2>"    #'gcl-agenda-view/body
+      :map web-mode-map
+      "<f2>"    #'hydra-web-mode/body
+      )
+
+(defhydra gcl-jump-hydra (:color blue :columns 3 :hint nil)
+  "Jump -> Body"
+  ("a" gcl-agenda-view/body "Org-Agenda")
+  ("c" gcl-jump-char/body "Char Jump")
+  ("l" gcl-jump-line/body "Line Jump")
+  ("w" gcl-jump-word/body "Word Jump")
+
+  )
+
+(defhydra gcl-repl-hydra (:color blue :columns 3 :hint nil)
+  "REPL "
+  ("e" ielm " ELisp")
+  ("h" httprepl " HTTP")
+  ("l" +lua/open-repl " Lua")
+  ("n" nodejs-repl " Node.js")
+  ("p" +python/open-repl " Python")
+  ("s" skewer-repl " Skewer")
+  )
+
+
+
+(defhydra gcl-everything (:color blue :columns 3 :hint nil)
+  "🗯 做任何你想不到的事情~~~~ 👁👁👁👁👁👁👁👁👁
+🌻"
+  ("j" gcl-jump-hydra/body "Avy")
+  ("r" gcl-repl-hydra/body "REPL")
+  ("v" gcl-verb-hydra/body "Verb")
+  )
+
+#+end_src
+
+*** Avy
+
+Char:
+
+#+begin_src emacs-lisp
+(defhydra gcl-jump-char (:color blue :columns 3 :hint nil)
+  "Jump By Char ->"
+  ("c" avy-goto-char "Char")
+  ("l" avy-goto-char-in-line "In line")
+  ("t" avy-goto-char-timer "Timer")
+  ("2" avy-goto-char-2 "Char2")
+  ("a" avy-goto-char-2-above "Above")
+  ("b" avy-goto-char-2-below "Below")
+  )
+#+end_src
+
+Line:
+#+begin_src emacs-lisp
+(defhydra gcl-jump-line (:color blue :columns 3 :hint nil)
+  "Jump To Line ->"
+  ("u" avy-goto-line-above "Above")
+  ("d" avy-goto-line-below "Below")
+  ("s" avy-goto-line "Line Start")
+  ("e" avy-goto-end-of-line "Line End")
+  )
+#+end_src
+
+Word:
+#+begin_src emacs-lisp
+(defhydra gcl-jump-word (:color blue :columns 3 :hint nil)
+  "Jump By Word ->"
+  ("l" avy-jump-to-word-in-line "in line")
+  ("w" avy-goto-word-1 "word1")
+  ("0" avy-goto-word-0 "word0")
+  ("a" avy-goto-word-0-above "above-0")
+  ("A" avy-goto-word-1-above "above-1")
+  ("b" avy-goto-word-0-below "below0")
+  ("B" avy-goto-word-1-below "below1")
+  ("o" avy-goto-word-or-subword-1 "word or subword")
+  ("s" avy-subword-0 "subword-0")
+  ("S" avy-subword-1 "subword-1")
+  )
+#+end_src
+*** Dired
+
+#+begin_src emacs-lisp
+(defhydra gcl-dired (:color blue :hint nil)
+  "
+Mark              Operate         Misc              Navigate
+----              -------         ----              --------
+_fd_: flag del    _C_: copy       _+_: mkdir        _<up>_: up directory
+_f#_: autosave    _R_: rename     _o_: open other
+_f~_: backups     _D_: delete
+_f&_: garbage     _F_: open marks
+_fe_: extension
+----
+_m_: mark         _T_: touch
+_/_: directories  _M_: chmod
+_@_: symlinks     _G_: chgrp
+_O_: omitted      _O_: chown
+----
+_U_: unmark all   _A_: find regx
+_t_: toggle marks _Q_: find/rep
+"
+    ;; marking
+  ("t" dired-toggle-marks)
+  ("m" dired-mark :exit nil)
+  ("u" dired-unmark :exit nil)
+  ("fd" dired-flag-file-deletion)
+  ("f#" dired-flag-auto-save-files)
+  ("f~" dired-flag-backup-files)
+  ("f&" dired-flag-garbage-files)
+  ("fe" dired-flag-extension)
+  ("/" dired-mark-directories)
+  ("@" dired-mark-symlinks)
+  ("." dired-mark-extension)
+  ("O" dired-mark-omitted)
+  ("U" dired-unmark-all-marks)
+
+  ("C" dired-do-copy)
+  ("R" dired-do-rename)
+  ("D" dired-do-delete :exit nil)
+  ("F" dired-do-find-marked-files)
+  ("!" dired-do-shell-command)
+  ("&" dired-do-async-shell-command)
+
+  ("T" dired-do-touch)
+  ("M" dired-do-chmod)
+  ("G" dired-do-chgrp)
+  ("O" dired-do-chown)
+
+  ("A" dired-do-find-regexp)
+  ("Q" dired-do-find-regexp-and-replace)
+
+  ("+" dired-create-directory)
+  ("o" dired-find-file-other-window)
+
+  ("<up>" dired-up-directory)
+  )
+#+end_src
+*** Movement
+#+begin_src emacs-lisp
+(defhydra hydra-movement ()
+  ("j" next-line "down" :column "Vertical")
+  ("k" previous-line "up")
+  ("l" forward-char "forward" :column "Horizontal")
+  ("h" backward-char "back"))
+#+end_src
+*** Org-agenda
+#+begin_src emacs-lisp
+(defun org-agenda-cts ()
+  (and (eq major-mode 'org-agenda-mode)
+       (let ((args (get-text-property
+                    (min (1- (point-max)) (point))
+                    'org-last-args)))
+         (nth 2 args))))
+
+(defhydra gcl-agenda-view (:color blue :columns 3 :hint none)
+    "
+_d_: ?d? day        _g_: time grid=?g?  _a_: arch-trees
+_w_: ?w? week       _[_: inactive       _A_: arch-files
+_t_: ?t? fortnight  _f_: follow=?f?     _r_: clock report=?r?
+_m_: ?m? month      _e_: entry text=?e? _D_: include diary=?D?
+_y_: ?y? year       _q_: quit           _L__l__c_: log = ?l?"
+    ("SPC" org-agenda-reset-view)
+  ("d" org-agenda-day-view (if (eq 'day (org-agenda-cts)) "[x]" "[ ]"))
+  ("w" org-agenda-week-view (if (eq 'week (org-agenda-cts)) "[x]" "[ ]"))
+  ("t" org-agenda-fortnight-view (if (eq 'fortnight (org-agenda-cts)) "[x]" "[ ]"))
+  ("m" org-agenda-month-view (if (eq 'month (org-agenda-cts)) "[x]" "[ ]"))
+  ("y" org-agenda-year-view (if (eq 'year (org-agenda-cts)) "[x]" "[ ]"))
+  ("l" org-agenda-log-mode (format "% -3S" org-agenda-show-log))
+  ("L" (org-agenda-log-mode '(4)))
+  ("c" (org-agenda-log-mode 'clockcheck))
+  ("f" org-agenda-follow-mode (format "% -3S" org-agenda-follow-mode))
+  ("a" org-agenda-archives-mode)
+  ("A" (org-agenda-archives-mode 'files))
+  ("r" org-agenda-clockreport-mode (format "% -3S" org-agenda-clockreport-mode))
+  ("e" org-agenda-entry-text-mode (format "% -3S" org-agenda-entry-text-mode))
+  ("g" org-agenda-toggle-time-grid (format "% -3S" org-agenda-use-time-grid))
+  ("D" org-agenda-toggle-diary (format "% -3S" org-agenda-include-diary))
+  ("!" org-agenda-toggle-deadlines)
+  ("[" (let ((org-agenda-include-inactive-timestamps t))
+         (org-agenda-check-type t 'timeline 'agenda)
+         (org-agenda-redo)
+         (message "Display now includes inactive timestamps as well")))
+  ("q" (message "Abort") :exit t)
+  ("v" nil)
+  )
+#+end_src
+*** Verb
+#+begin_src emacs-lisp
+(defhydra gcl-verb-hydra (:colors yellow :columns 3 :hint nil)
+  ("r" verb-send-request-on-point-other-window-stay "Send Focus")
+  ("s" verb-send-request-on-point-other-window "Send Blur")
+  ("f" verb-send-request-on-point "Fullscreen")
+  ("m" verb-send-request-on-point-no-window "No Window")
+  ("K" verb-kill-all-response-buffers "Kill All")
+
+  ("vl" verb-show-vars "Show Vars")
+  ("vl" verb-set-var "Set Var")
+  ("vu" verb-unset-vars "Unset Vars")
+
+  ("ec" verb-export-request-on-point-curl "Export Curl")
+  ("ev" verb-export-request-on-point-verb "Export Verb")
+  ("ew" verb-export-request-on-point-verb "Export EWW")
+  )
+#+end_src
 ** Imenu
 
 #+begin_src emacs-lisp
@@ -873,10 +1391,13 @@ private:
 ** Link-hint
 
 #+begin_src emacs-lisp
-(use-package! link-hint
-  :config
-  (setq browse-url-browser-function 'browse-url
-        browse-url-generic-args '("--target" "tab")))
+;; (use-package! link-hint
+;;   :config
+;;   (setq
+;;    browse-url-browser-function 'browse-url
+;;    ;; browse-url-generic-args '("--target" "tab")
+;;    )
+;;   )
 #+end_src
 ** Lsp
 
@@ -889,7 +1410,10 @@ private:
          (python-mode . lsp)
          (go-mode . lsp)
          (css-mode . lsp)
-         (js2-mode . lsp))
+         (js2-mode . lsp)
+         (bibtex-mode . lsp)
+         (tex-mode . lsp)
+         (latex-mode . lsp))
   :commands lsp
   :config
   (setq lsp-idle-delay 0.2
@@ -900,7 +1424,12 @@ private:
   :config
   (setq lsp-headerline-breadcrumb-enable t ; 左上角显示文件路径
         lsp-lens-enable t                  ; 显示被引用次数
-        ))
+        )
+  :bind (:map lsp-ui-mode-map
+         ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+         ([remap xref-find-references] . lsp-ui-peek-find-references)
+         ([remap xref-pop-marker-stack] . lsp-ui-peek-jump-backward)
+         ))
 
 ;; 关闭自动格式化，全局关闭
 ;; (setq +form-with-lsp nil)
@@ -954,14 +1483,6 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
 ;;   (setq grip-github-user "gcclll"
 ;;         grip-github-password "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"))
 #+end_src
-*** Vmd-mode
-#+begin_src emacs-lisp
-(use-package! vmd-mode
-  :after markdown-mode
-  :bind
-  (:map markdown-mode-map ("C-x p" . vmd-mode)))
-#+end_src
-
 *** Pandoc-mode
 #+begin_src emacs-lisp
 (use-package! pandoc-mode
@@ -970,6 +1491,14 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
   (markdown-mode org-mode)
   (pandoc-mode . pandoc-load-default-settings))
 #+end_src
+*** Vmd-mode
+#+begin_src emacs-lisp
+(use-package! vmd-mode
+  :after markdown-mode
+  :bind
+  (:map markdown-mode-map ("C-x p" . vmd-mode)))
+#+end_src
+
 ** Maple-iedit
 
 #+begin_src emacs-lisp
@@ -990,6 +1519,45 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
            ("C-t" . map-iedit-skip-and-match-next)
            ("C-T" . map-iedit-skip-and-match-previous)))
 #+end_src
+** Mu4e
+
+[[https://github.com/hlissner/doom-emacs/blob/develop/modules/email/mu4e/README.org][README.org ->]]
+
+** Net-utils
+#+begin_src emacs-lisp
+(use-package! net-utils
+  :bind
+  (:map mode-specific-map
+        :prefix-map net-utils-prefix-map ; C-c n x
+        :prefix "n"
+        ("p" . ping)
+        ("i" . ifconfig)
+        ("w" . iwconfig)
+        ("n" . netstat)
+        ("p" . ping)
+        ("a" . arp)
+        ("r" . route)
+        ("h" . nslookup-host)
+        ("d" . dig)
+        ("s" . smbclient)
+        ("t" . traceroute)))
+
+(use-package! browse-at-remote
+  :config
+  (setq
+   browse-at-remote-remote-type-domains '(("bitbucket.org" . "bitbucket")
+                                          ("github.com" . "github")
+                                          ("gitlab.com" . "gitlab")
+                                          ("git.savannah.gnu.org" . "gnu")
+                                          ("gist.github.com" . "gist")
+                                          ("git.sr.ht" . "sourcehut")
+                                          ("vs-ssh.visualstudio.com" . "ado")
+                                          ("pagure.io" . "pagure")
+                                          ("src.fedoraproject.org" . "pagure")
+                                          ("code.aliyun.com" . "aliyun")
+                                          )
+))
+#+end_src
 ** Org-mode
 
 *** Basic
@@ -1001,9 +1569,20 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
         ("*" . "+")
         ("1." . "a.")))
 
+
+;; (use-package! org
+;;   :hook (
+;;          ;; (verb-mode . org-mode)
+;;          (+org-pretty-mode . org-mode)))
+
 (after! org
-  (add-hook 'org-mode-hook #'+org-pretty-mode)
   (add-hook 'org-mode-hook (lambda () (visual-line-mode -1)))
+
+  (org-babel-do-load-languages 'org-babel-load-languages
+                             (append org-babel-load-languages
+                              '((restclient . t)
+                                (verb . t))
+                              ))
 
   (setq
    org-todo-keywords
@@ -1028,15 +1607,15 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
                             ("[-]" . ,(doom-color 'yellow))
                             ("[?]" . ,(doom-color 'red))
                             )
-   org-enforce-todo-dependencies nil ;; if t, it hides todo entries with todo children from agenda
-   org-enforce-todo-checkbox-dependencies nil
+   ;; org-enforce-todo-dependencies nil ;; if t, it hides todo entries with todo children from agenda
+   ;; org-enforce-todo-checkbox-dependencies nil
    org-provide-todo-statistics t
    org-pretty-entities t
    org-hierarchical-todo-statistics t
 
    ;; org-startup-with-inline-images t
    org-hide-emphasis-markers t
-   org-fontify-whole-heading-line nil
+   ;; org-fontify-whole-heading-line nil
    org-src-fontify-natively t
    org-imenu-depth 9
 
@@ -1075,6 +1654,27 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
   :hook
   (org-mode . valign-mode))
 #+end_src
+*** Verb
+#+begin_src emacs-lisp
+;; (setq verb-base-headers '(("User-Agent" . "my-user-agent")))
+
+;; unused: b,d,f,g,j,k,m,n,o,p,r,t,u,v,w,x,y,z
+(use-package! verb
+  :after org
+  :config
+  (setq
+   tempo-template-org-verb '("#+begin_src verb :wrap src ob-verb-response"
+                             nil '> n p n
+                             "#+end_src" >)
+   verb-auto-kill-response-buffers t)
+  )
+#+end_src
+
+#+begin_src verb :wrap src ob-verb-response
+get https://api.ipify.org/?format=json
+#+end_src
+
+[[/emacs/emacs-org-mode/#verb][Demos]]
 
 *** org-clock
 #+begin_src emacs-lisp
@@ -1322,7 +1922,15 @@ is selected, only the bare key is returned."
                    :type entry
                    :template ("* %?"
                               "%i %a"))
-                  ("Email" :keys "e"
+                  ("Emacs" :keys "e"
+                   :icon ("emacs" :set "fileicon" :color "purple")
+                   :file +org-capture-todo-file
+                   :prepend t
+                   :headline "Emacs"
+                   :type entry
+                   :template ("* TODO %? :emacs:"
+                              "%i %a"))
+                  ("Email" :keys "E"
                    :icon ("envelope" :set "faicon" :color "blue")
                    :file +org-capture-todo-file
                    :prepend t
@@ -1511,13 +2119,20 @@ is selected, only the bare key is returned."
                                  (search    . "%l")
                                  )
       org-agenda-tags-column 80
+      org-agenda-skip-scheduled-if-done t
+      org-agenda-skip-deadline-if-done t
+      org-agenda-skip-timestamp-if-done t
+      ;; org-agenda-todo-ignore-scheduled t
+      ;; org-agenda-todo-ignore-deadlines t
+      ;; org-agenda-todo-ignore-timestamp t
+      ;; org-agenda-todo-ignore-with-date t
+      org-agenda-start-on-weekday nil ; 从今天开始
       org-agenda-todo-list-sublevels t
       org-agenda-include-deadlines t
       org-agenda-log-mode-items '(closed clock state)
       org-agenda-block-separator nil
       org-agenda-compact-blocks t
-      org-agenda-breadcrumbs-separator " ❱
- "
+      org-agenda-breadcrumbs-separator " ❱ "
       org-agenda-current-time-string "⏰ ┈┈┈┈┈┈┈┈┈┈┈ now"
       org-agenda-sorting-strategy
       '((agenda habit-down time-up effort-up priority-down category-keep)
@@ -1579,66 +2194,58 @@ is selected, only the bare key is returned."
 
 #+begin_src emacs-lisp
 ;; (use-package! org-roam-lib
-  ;; :after org-roam)
+;; :after org-roam)
 
-(after! org-roam
-  (add-hook 'org-roam-dailies-find-file-hook #'aj-org-roam-setup-dailies-file-h)
-  (add-hook
-   'org-roam-capture-after-find-file-hook
-   (lambda ()
-     (org-id-get-create)
-     (save-buffer)
-     (org-roam-db-update)))
+(use-package! org-roam
+  :config
+  (setq
+   org-roam-file-extensions '("txt" "org")
+   org-roam-capture-templates
+   (quote
+    (("d" "default" plain
+      (function org-roam-capture--get-point)
+      "%?" :file-name "%<%Y_%m%d>_${slug}"
+      :head "#+TITLE: ${title}\n\n" :unnarrowed t)))
+   )
+  (org-roam-setup)
+  :bind (("C-c r l" . org-roam-buffer-toggle)
+         ("C-c r f" . org-roam-node-find)
+         ("C-c r g" . org-roam-graph)
+         ("C-c r i" . org-roam-node-insert)
+         ("C-c r c" . org-roam-capture)
+         ("C-c r j" . org-roam-dailies-capture-today)
+         ))
+#+end_src
+*** org-preview-html
+#+begin_src emacs-lisp
+(use-package! org-preview-html
+  :after org)
+#+end_src
+*** org-download
 
-  (doom-store-persist "custom" '(org-roam-directory))
-
-  (setq +org-roam-open-buffer-on-find-file nil
-        org-roam-db-update-method 'immediate
-        org-roam-buffer-width 0.2
-        org-roam-buffer-position 'left
-        org-roam-tag-sources '(prop vanilla all-directories)
-
-        org-roam-prefer-id-links t
-        org-roam-db-location (expand-file-name
-                              "org-roam.db"
-                              (concat doom-etc-dir (file-name-nondirectory org-roam-directory)))
-        org-roam-dailies-directory "journal/"
-        org-roam-capture-templates
-        `(("d" "default" plain #'org-roam-capture--get-point
-           "%?"
-           :file-name ,(concat +org-roam-inbox-prefix "%<%Y%m%d%H%M%S>-${slug}")
-           :head "#+title: ${title}\n"
-           :unnarrowed t
-           ))
-        org-roam-capture-ref-templates
-        `(("r" "ref" plain #'org-roam-capture--get-point
-           "%?"
-           :file-name ,(concat +org-roam-inbox-prefix "${slug}")
-           :head "#+title: ${title}\n#+roam_key: ${ref}"
-           :unnarrowed t
-           :immediate-finish t
-           ))
-        org-roam-dailies-capture-templates
-        `(("d" "default" entry (function org-roam-capture--get-point)
-           "* %?"
-           :file-name ,(concat org-roam-dailies-directory "%<%Y-%m-%d>")
-           :head "#+title: %<%A, %d %B %Y>\n"
-           ))
-        org-roam-capture-immediate-template
-        `("d" "default" plain #'org-roam-capture--get-point
-          "%?"
-          :file-name ,(concat +org-roam-inbox-prefix "%<%Y%m%d%H%M%S>-${slug}")
-          :head "#+title: ${title}\n"
-          :unnarrowed t
-          :immediate-finish t
-          )
-        )
-
-  (advice-add #'org-roam-db--update-meta :around #'aj-fix-buffer-file-name-for-indirect-buffers-a)
-  (advice-add #'org-roam-doctor :around #'aj-fix-buffer-file-name-for-indirect-buffers-a)
-  (advice-add #'org-roam-link--replace-link-on-save :after #'+org-roam/replace-file-with-id-link)
+#+begin_src emacs-lisp
+(use-package! org-download
+  :after org
+  :bind
+  (:map org-mode-map
+   (("s-Y" . org-download-screenshot)
+    ("s-y" . org-download-yank)))
   )
 #+end_src
+*** mathpix.el
+
+[[https://github.com/jethrokuan/mathpix.el][mathpix.el]] uses [[https://mathpix.com/][Mathpix’s]] API to convert clips into latex equations:
+
+要收费~。
+
+#+begin_src emacs-lisp
+;; (use-package! mathpix.el
+;;   :custom ((mathpix-app-id "app-id")
+;;            (mathpix-app-key "app-key"))
+;;   :bind
+;;   ("C-x m" . mathpix-screenshot))
+#+end_src
+
 ** OSX
 
 Keybindings:
@@ -1701,7 +2308,38 @@ Keybindings:
 
         ))
 #+end_src
-
+** PDF
+** Popper
+#+begin_src emacs-lisp
+(use-package! popper
+  :bind
+  ("C-`" . popper-toggle-latest)
+  ("C-~" . popper-cycle)
+  ("C-s-`" . popper-kill-latest-popup)
+  :custom
+  (popper-reference-buffers
+   '("*eshell*"
+     "*vterm*"
+     "*color-rg*"
+     "Output\\*$"
+     "*Process List*"
+     "COMMIT_EDITMSG"
+     embark-collect-mode
+     deadgrep-mode
+     grep-mode
+     rg-mode
+     rspec-compilation-mode
+     inf-ruby-mode
+     nodejs-repl-mode
+     ts-comint-mode
+     compilation-mode))
+  :config
+  (defun zero-point-thirty-seven () 0.37)
+  (advice-add 'popper-determine-window-height :override #'zero-point-thirty-seven)
+  :init
+  (popper-mode)
+  )
+#+end_src
 ** Projectile
 
 ignore some directories.
@@ -1720,12 +2358,17 @@ ignore some directories.
   (projectile vterm))
 
 (map!
- "s-p b"      #'projector-switch-to-shell-buffer
- "s-p B"      #'projector-run-shell-command-current-directory-background
- "s-p c"      #'projector-run-shell-command-current-directory
- "s-p d"      #'projector-run-default-shell-command
- "s-p r"      #'projector-run-shell-command-project-root
- "s-p R"      #'projector-rerun-buffer-process
+ (:prefix "s-p"
+   "b"        #'projector-switch-to-shell-buffer
+   "-"        #'projector-rerun-buffer-process
+
+  (:prefix ("r" . "Run")
+   "c"        #'projector-run-shell-command-current-directory-background
+   "C"        #'projector-run-shell-command-current-directory
+   "r"        #'projector-run-shell-command-project-root-background
+   "R"        #'projector-run-shell-command-project-root
+   )
+  )
 )
 #+end_src
 ** Ranger
@@ -1734,6 +2377,20 @@ ignore some directories.
 (after! ranger
   :config
   (setq ranger-show-literal nil))
+#+end_src
+** Restclient
+
+#+begin_src emacs-lisp
+(use-package! restclient
+  :mode (("\\.rest\\'" . restclient-mode)
+         ("\\.restclient\\'" . restclient-mode)))
+
+(use-package! ob-restclient
+  :after org restclient
+  :init
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((restclient . t))))
 #+end_src
 
 ** Smartparen
@@ -1752,6 +2409,25 @@ ignore some directories.
        "C-{" #'sp-backward-slurp-sexp
        "C-}" #'sp-backward-barf-sexp
        ))
+#+end_src
+** Server
+卡死了...
+#+begin_src emacs-lisp
+;; (use-package! server
+;;  :unless (or noninteractive
+;;              alternate-emacs)
+;;  :no-require
+;;  :config
+;;  (unless (file-exists-p "/tmp/gcl-emacs")
+;;    (make-directory "/tmp/gcl-emacs")
+;;    (chmod "/tmp/gcl-emacs" 448))
+;;  (setq server-socket-dir "/tmp/gcl-emacs")
+;;  :hook (after-init . server-start))
+#+end_src
+** Sudo-edit
+#+begin_src emacs-lisp
+(map!
+ )
 #+end_src
 ** Treemacs
 
@@ -1807,12 +2483,23 @@ Doom Emacs default configuration is too slow, let’s speed it up.
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle "config.el" :comments no
 :END:
-** Web Development
+
+
+#+begin_src emacs-lisp
+(add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . rjsx-mode))
+(add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.[a-z]+rc$" . conf-mode))
+(add-to-list 'auto-mode-alist '("[Mm]akefile" . makefile-gmake-mode))
+(add-to-list 'auto-mode-alist '("\\.mak$" . makefile-gmake-mode))
+(add-to-list 'auto-mode-alist '("\\.make$" . makefile-gmake-mode))
+(add-to-list 'auto-mode-alist '("[._]bash.*" . shell-script-mode))
+#+end_src
+
+** Web
 
 Use `.prettierrc` file for prettier.
 
 #+begin_src emacs-lisp
-;; (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . rjsx-mode))
 
 (defun maybe-use-prettier ()
   "Enable prettier-js-mode if an rc file is located."
@@ -1875,6 +2562,8 @@ Use `.prettierrc` file for prettier.
                   (apply orig-fn args))))
   )
 #+end_src
+** Java
+*** [[https://github.com/jdee-emacs/jdee][Jdee]] ?
 * My Packages
 :PROPERTIES:
 :header-args:emacs-lisp: :tangle "packages.el" :comments no
@@ -1884,6 +2573,7 @@ Use `.prettierrc` file for prettier.
 #+begin_src emacs-lisp
 (package! dotenv-mode)
 (package! leetcode)
+(package! ob-restclient)
 #+end_src
 *** WEB
 
@@ -1903,12 +2593,24 @@ Use `.prettierrc` file for prettier.
   :recipe (:host github
            :repo "waymondo/dash-at-point"))
 #+end_src
-** File&Directory Management
+** F&D
+
+File and directory management packages.
 
 #+begin_src emacs-lisp
 (package! crux)
 (package! deft)
+(package! autoinsert)
 (package! ranger)
+(package! sudo-edit)
+#+end_src
+** Window
+
+Window management packages.
+
+#+begin_src emacs-lisp
+(package! popper
+  :recipe (:host github :repo "waymondo/popper") :disable t)
 #+end_src
 ** Funny
 #+begin_src emacs-lisp
@@ -1924,11 +2626,18 @@ Use `.prettierrc` file for prettier.
            :repo "tecosaur/emacs-everywhere"))
 (package! systemd
   :pin "b6ae63a236605b1c5e1069f7d3afe06ae32a7bae")
-
+(package! counsel-osx-app)
+(package! prodigy)
 #+end_src
+** Markdown
 ** Network
 #+begin_src emacs-lisp
 (package! counsel-tramp)
+(package! net-utils)
+(package! engine-mode)
+;; (package! server)
+(package! verb)
+(package! httprepl)
 #+end_src
 ** Org
 #+begin_src emacs-lisp
@@ -1953,8 +2662,16 @@ Use `.prettierrc` file for prettier.
 (package! ox-gfm)
 (package! org-ol-tree
   :recipe (:host github :repo "Townk/org-ol-tree"))
+(package! org-sort-tasks
+  :recipe (:host github :repo "felipelalli/org-sort-tasks"))
+(package! org-preview-html :disable t)
+(package! org-download)
+(package! org-roam)
+;; (package! mathpix.el
+;;   :recipe ((:host github :repo "jethrokuan/mathpix.el")))
+(package! lsp-latex)
 #+end_src
-
+** PDF
 ** Projectile
 #+begin_src emacs-lisp
 (package! bm)
@@ -1978,6 +2695,7 @@ Use `.prettierrc` file for prettier.
 
 #+begin_src emacs-lisp
 (package! cycle-quotes)
+(package! delsel)
 (package! hungry-delete)
 (package! move-text)
 (package! pangu-spacing)
@@ -1993,5 +2711,191 @@ Use `.prettierrc` file for prettier.
 ** Disabled
 
 #+begin_src emacs-lisp
-(disable-packages! bookmark tide eldoc valign grip-mode org-roam)
+(disable-packages! bookmark tide eldoc valign grip-mode)
 #+end_src
+* Practices
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: practices
+:END:
+
+** Evil-mode
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: practices-evil
+:END:
+
+
+常用的按键练习 :one: :two: :three: :runner: 。
+
+
+#+begin_warn
+
+可以重写的键值，用处不大：
+
+*g _*, *g ^*, *g a*, *g A*, *g e/E*, *g i/I*, *g J*, *g l/L*, *g m*, *g n/N*
+
+*g o/O*, *g u/U*, *g v/V*, *g y/Y*
+#+end_warn
+
+*** g [x]
+
+1. 函数头尾跳转
+
+    *g [*, ~beginning-of-defun~
+
+    *g ]*, ~end-of-defun~
+
+2. 注释前后一行
+
+    *g c -> [n] j/k*, ~nc-comment-operator~, [n] 可以输入数字来说明将要被注释的行数
+
+3. 查找并打开文件
+
+    *g f*, ~+lookup/file~, 支持链接
+
+    *g F*, ~evil-find-file-at-point-with-line~, 打开文件并跳到对应的行
+
+    如： ~/github/tmp/test/a.js:10 按下 *g f/F* 后会直接在当前窗口内打开该
+
+    文件并且跳转到第 10 行。
+
+4. 跳到标题位置
+
+    *g h*, ~org-up-element~, 当前的标题处
+
+    *g H*, ~org-top~, 当前的一级标题处, 比如在这里按会跳到 [[#practices][Practices]]
+
+    *g j*, ~org-forward-element~, 下一个同级元素(标题，段，行，等)
+
+    *g k*, ~org-backward-element~, 上一个同级元素(标题，段，行，等)
+
+5. imenu
+
+    *g O*, ~imenu~
+
+6. 粘贴替换
+
+    *g p*, ~/alt-paste~ , 选中状态，按下后将粘贴板上的内容替换选中的内容
+
+7. 填充文本
+
+    *g w/W*, ~evil-fill~
+
+    *g q*, ~fill-and-move~, 将持中内容变成一行？
+
+    *g Q*, ~org-fill-paragraph~
+
+    实用案例，如：
+
+    #+begin_example
+    test1 test2 test3
+    test4 test5 test6
+    test7 test8 test9
+    #+end_example
+
+    选中上面的 test1-9 按下 *g q* 后变成：
+
+    #+begin_example
+    test1 test2 test3 test4 test5 test6 test7 test8 test9
+    #+end_example
+
+    这对文本格式化挺有用的。
+
+8. 执行代码
+
+    *g r*, ~+eval:region~, 执行选中区域代码
+
+    *g R*, ~+eval/buffer~, 执行整个 Buffer
+
+9. 切换工作区
+
+    *g t/T*, ~+workspace:switch-next/previous~ 切换工作区
+
+10. 交换，需要先选中
+
+    *g x/X*, ~evil-exchange~
+
+    如： aaa - bbb
+
+    -> 选中 aaa ->  *gx* -> 选中 bbb -> *gx*
+
+    结果： bbb - aaa
+
+*** g s, 搜索定位
+
+通过按下组合键之后，根据显示的字符来将光标定位到输入的字符位置。
+
+1. 所有窗口
+
+    *gs -> SPC*, ~closure~
+
+2. 块，前半部分
+
+    *gs -> [[*, ~backward-section-begin~, 定位当前位置前半部分块首
+
+    *gs -> []*, ~backward-section-end~, 定位当前位置前半部分块尾
+
+3. 块，后半部分
+
+    *gs -> ][*, ~forward-section-begin~, 定位当前位置后半部分块首
+
+    *gs -> ]]*, ~forward-section-end~, 定位当前位置后半部分块尾
+
+4. search
+
+    *gs -> #*, ~search-word-backward~
+
+    *gs -> **, ~search-word-forward~
+
+5. 非空行
+
+    *gs -> -*, ~previous-line-first-non-blank~, 向前
+
+    *gs -> +*, ~next-line-first-non-blank~, 向后
+
+6. avy
+
+    *gs -> /*,, ~avy-goto-char-timer~
+
+    *gs -> l*, ~avy-goto-char-0~, 零字符搜索
+
+    *gs -> s*, ~avy-goto-char-2~, 两个字符搜索
+
+7. 单词开始和结束
+
+    *gs -> b/B*, ~backward-word|WORD-begin~, 向后
+
+    *gs -> [g] e/E*, ~backward-word|WORD-end~, 向后
+
+    *gs -> w/W*, ~forward-word|WORD-begin~, 向前
+
+8. 查找字符
+
+    *gs -> f*, ~find-char~, 向前
+
+    *gs -> F*, ~find-char-backward~, 向后
+
+    *gs -> t*, ~find-char-to~
+
+    *gs -> T*, ~find-char-to-backward~
+
+9. 可视行, 即忽略折叠的行
+
+    *gs -> gj*, ~next-visual-line~
+
+    *gs -> gk*, ~previous-visual-line~
+
+10. 上下行
+
+    *gs -> j*, ~next-line~
+
+    *gs -> k*, ~previous-line~
+** Embrace(~,e~)
+
+[[/post/my-first-post/#embrace][practices place...]]
+
+*** embrach-add(~,ea~)
+
+*** embrach-change(~,ec~)
+*** embrach-delete(~,ed~)

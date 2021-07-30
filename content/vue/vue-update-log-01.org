@@ -159,7 +159,7 @@ which may cause build issues in projects still using TS 3.x.
 
   *>3.2* 中已经没有 ~__isShadowRoot~ 相关的代码了。
 
-- TODO ssr: properly handle ssr empty slot and fallback (88f6b33)
+- [ ] ssr: properly handle ssr empty slot and fallback (88f6b33)
 
 - transition: ensure manual style manipulation in transition leave hooks work (cbaa380), closes #2720
 - transition: ensure styles from *-leave-active trigger transition (#2716) (3f8f9b6), closes #2712
