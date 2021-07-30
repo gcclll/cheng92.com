@@ -386,3 +386,31 @@ PORT: 代理工具的端口号，比如： clashX 的 *7890/7891*
 <div id="mac-window"></div>
 <script src="/js/vue/awesome/mac-window.js"></script>
 #+end_export
+* ubuntu
+
+** [[https://www.cnblogs.com/yxqxx/p/12319130.html][修改家目录和主机名]]
+
+假设当前名字为 ~parallels~ (安装虚拟机的时候默认是这个), 将基修改为： ~simon~
+
+1. ~$ su~ , 切换 root
+2. ~$ passwd <user>~, 修改密码
+3. ~$ reboot~, 重启
+4. ~$ su~
+5. ~$ vim /etc/passwd~, 找到 ~parallels~ 那一行， *只修改用户名为 simon，其它不要动*
+6. ~$ vim /etc/shadow~, 找到 ~parallels~ 那一行，同样只修改用户名为 simon
+7. ~$ vim /etc/group~, 找到所有的 ~parallels~, 使用 ~:%s/parallels/simon/g~ 全局替换
+8. ~$ reboot~, 重启
+9. ~$ vim /etc/hostname~ 修改成想要的主机名
+10. ~$ vim /etc/passwd~ 找到 ~simon~ 那一行(这里用户名已经经过上面的修改成了 ~simon~)，
+    修改目录名
+11. ~$ cd /home~
+12. ~$ mv parallels simon~, 修改家目录名字
+13. ~$ reboot~, OK.
+
+
+可能的问题（我没遇到）：修改主目录名时候，只修改了 ~/etc/password~ 而没有给
+~/home/parallels~ 重命名，导致开机后一直登陆蛤面循环。
+
+*解* ： ~Ctrl+Alt+[F1~F6]~ 登陆后直接修改 ~/home/parallels~, 重启。
+
+~Ctrl+Alt+F7~ 进入图形模式。
