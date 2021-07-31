@@ -960,6 +960,43 @@ Content-Type: application/json
 
    link source: ~C-c C-l~ 或者 ~org-insert-link~ 或者直接 ~[[#doc_header][文档开
    头位置]]~ ，请点击：[[#doc_header][文档开头位置]]
+** 实现非标题项内部跳转
+
+添加 meta: ~@@html:<span id="test-link"></span>~
+
+添加链接跳转到上面的 meta： ~@@html:<a href="#test-link">some thing</a>~
+
+这样点击 [[some thing]] 会占满到 id 为 ~test-link~ 的那个元素位置。
+
+如： @@html:<span id="test-meta-id">请点击下面的链接跳回到我这里来。。。。</span>@@
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+some thing !!!
+
+@@html:<a href="#test-meta-id">:link:点我跳回到上面！！</a>@@
 
 * Markup for Rich Contents(富文本)
 

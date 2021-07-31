@@ -112,3 +112,23 @@ function filterFns(o = {}) {
 function domDiffProps(newProps, oldProps, option) {
   domDiff(filterFns(newProps), filterFns(oldProps), option);
 }
+
+function run_vue_tmpl(id, template, data = {}) {
+  const app = Vue.createApp({
+    template: `<div class="comment-block">${template}</div>
+    <el-button type="primary" @click="click">查看测试源码</el-button>
+    <div class="chroma language-js" v-if="showCode"><pre class="chroma">{{code}}</pre></div>
+  `,
+    setup() {
+      const showCode = Vue.ref(false)
+      return {
+        showCode,
+        code: Vue.computed(() => document.querySelector(`script.${id}`).textContent),
+        click: () => (showCode.value = !showCode.value),
+        ...data
+      }
+    }
+  })
+  const root = document.getElementById(id)
+  app.use(ElementPlus).mount(root)
+}

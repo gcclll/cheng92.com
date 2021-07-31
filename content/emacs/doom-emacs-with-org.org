@@ -183,6 +183,14 @@ https://github.com/Konfekt/wsl-gui-bins/blob/master/zeal
 
 #+begin_src emacs-lisp
 ;;;###autoload
+(defun gcl/indent-org-block-automatically ()
+  (interactive)
+  (when (org-in-src-block-p)
+   (org-edit-special)
+   (indent-region (point-min) (point-max))
+   (org-edit-src-exit)))
+
+;;;###autoload
 (defun aj-org-agenda-save-and-refresh-a (&rest _)
   "Save org files and refresh.
 Only org files contributing to `org-agenda' are saved.
@@ -854,49 +862,60 @@ Keybindings reference:
 ** Org-mode
 #+begin_src emacs-lisp
 (map! :map org-mode-map
-      :n        "tt"            #'org-todo
-      :n        "tT"            #'counsel-org-tag
-      :n        "tc"            #'org-toggle-checkbox
-      :n        "tpp"           #'org-priority
-      :n        "tpu"           #'org-priority-up
-      :n        "tpd"           #'org-priority-down
+      (:prefix "t"
+       :n "t" #'org-todo
+       :n "T" #'counsel-org-tag
+       (:prefix ("c" . "checkbox")
+        :n "c" #'org-toggle-checkbox
+        :n "u" #'org-update-checkbox-count
+        )
+       (:prefix ("p" . "priority")
+        :n "p" #'org-priority
+        :n "u" #'org-priority-up
+        :n "d" #'org-priority-down
+        ))
 
+      (:prefix "C-c"
+       (:prefix ( "d" . "Do" )
+        "f" #'gcl/indent-org-block-automatically
+        )
+       (:prefix ("e" . "Emoji")
+        "e" #'all-the-icons-insert
+        "a" #'all-the-icons-insert-faicon
+        "f" #'all-the-icons-insert-fileicon
+        "w" #'all-the-icons-insert-wicon
+        "o" #'all-the-icons-insert-octicon
+        "m" #'all-the-icons-insert-material
+        "i" #'all-the-icons-insert-alltheicon
+        )
+       (:prefix ("c" . "Org Clock")
+        "i" #'org-clock-in
+        "o" #'org-clock-out
+        "h" #'counsel-org-clock-history
+        "g" #'counsel-org-clock-goto
+        "c" #'counsel-org-clock-context
+        "r" #'counsel-org-clock-rebuild-history
+        )
+       (:prefix ("i" . "Insert")
+        "u" #'org-mac-chrome-insert-frontmost-url
+        "c" #'copyright
+        )
 
-      "C-c e e"         #'all-the-icons-insert
-      "C-c e a"         #'all-the-icons-insert-faicon
-      "C-c e f"         #'all-the-icons-insert-fileicon
-      "C-c e w"         #'all-the-icons-insert-wicon
-      "C-c e o"         #'all-the-icons-insert-octicon
-      "C-c e m"         #'all-the-icons-insert-material
-      "C-c e i"         #'all-the-icons-insert-alltheicon
-
-      ;; org clock
-      "C-c c i"         #'org-clock-in
-      "C-c c o"         #'org-clock-out
-      "C-c c h"         #'counsel-org-clock-history
-      "C-c c g"         #'counsel-org-clock-goto
-      "C-c c c"         #'counsel-org-clock-context
-      "C-c c r"         #'counsel-org-clock-rebuild-history
-
-      ;; insert
-      "C-c i u"         #'org-mac-chrome-insert-frontmost-url
-      "C-c i c"         #'copyright
-
-      ;; org-roam, C-c r <x>
-
-      ;; verb
-      "C-c C-r C-r"     #'verb-send-request-on-point-other-window-stay
-      "C-c C-r C-s"     #'verb-send-request-on-point-other-window
-      "C-c C-r C-f"     #'verb-send-request-on-point
-      "C-c C-r C-m"     #'verb-send-request-on-point-no-window
-      "C-c C-r C-k"     #'verb-kill-response-buffer-and-window
-      "C-c C-r C-a"     #'verb-kill-all-response-buffers
-      "C-c C-r C-u"     #'verb-export-request-on-point-curl
-      "C-c C-r C-b"     #'verb-export-request-on-point-verb
-      "C-c C-r C-w"     #'verb-export-request-on-point-eww
-      "C-c C-r C-l"     #'verb-show-vars        ; 查看已存在的变量值列表
-
-)
+       ;; org-roam, C-c r <x>
+       (:prefix ("C-r" . "Verb")
+        "C-r"     #'verb-send-request-on-point-other-window-stay
+        "C-s"     #'verb-send-request-on-point-other-window
+        "C-f"     #'verb-send-request-on-point
+        "C-m"     #'verb-send-request-on-point-no-window
+        "C-k"     #'verb-kill-response-buffer-and-window
+        "C-a"     #'verb-kill-all-response-buffers
+        "C-u"     #'verb-export-request-on-point-curl
+        "C-b"     #'verb-export-request-on-point-verb
+        "C-w"     #'verb-export-request-on-point-eww
+        "C-l"     #'verb-show-vars        ; 查看已存在的变量值列表
+        )
+       )
+      )
 #+end_src
 ** Web-mode
 ** QuickFind
@@ -1719,7 +1738,7 @@ get https://api.ipify.org/?format=json
   :config
   (setq org-appear-autoemphasis t
         org-appear-autosubmarkers t
-        org-appear-autolinks t)
+        org-appear-autolinks nil)
   )
 #+end_src
 
@@ -1970,6 +1989,11 @@ is selected, only the bare key is returned."
                                :icon ("globe" :set "faicon" :color "green")
                                :desc "%(org-cliplink-capture) "
                                :i-type "read:web"
+                               )
+                              ("Links" :keys "l"
+                               :icon ("link" :set "octicon" :color "blue")
+                               :desc "%(org-cliplink-capture) "
+                               :i-type "link:web"
                                )
                               ("Article" :keys "a"
                                :icon ("file-text" :set "octicon" :color "yellow")
