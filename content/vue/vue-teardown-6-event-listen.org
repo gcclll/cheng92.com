@@ -381,7 +381,9 @@ function parseName(name: string): [string, EventListenerOptions | undefined] {
       options
     }
   }
-  return [name.slice(2).toLowerCase(), options]
+  // return [name.slice(2).toLowerCase(), options]
+  // #b302cbb, fooBar -> foo-bar
+  return [hyphenate(name.slice(2)), options]
 }
 #+end_src
 

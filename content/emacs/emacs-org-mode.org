@@ -5,6 +5,15 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent align
 
+* ob-jq
+#+begin_src jq
+{"a": "test"}
+
+.a
+#+end_src
+
+#+RESULTS:
+
 * Restclient
 
 ** 基础用法

@@ -51,13 +51,14 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 * 3.0.6(2021-02-24)
 ** Important
 
-此次更新重点内容：
+此次更新重点内容(值得关注的点)：
 
  1. *ADD*: ~BigInt~ 类型和 /SFC/ 支持 @@html:<a href="#add-bigint">:link:</a>@@
  2. *FIX*: 修复 ~class: ['foo', false, undefined, 'bar']~ 被解析成 ~<div class="foo
     bar"/>~ 问题 @@html:<a href="#fix-array-class">:link:</a>@@。
+ 3. *FIX*: 修复 ~foo-bar~ 事件名无法触发问题 @@html:<a href="#fix-kebab-event-name">:link:</a>@@ 。
 
-** Bug Fixes [6/27]
+** Bug Fixes [11/25]
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: bug306
@@ -76,32 +77,233 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 - [-] devtools: send instance to devtools when it's mounted instead of created (4fecb27)
 - [-] docs: change reference to passed deadline (#2930) (de7f9d1)
 - [-] hmr: deep clone reused hoisted trees during dev (5a7a1b8), closes vitejs/vite#2022
-- [-] runtime-core: align $parent/$root with the template ref when using expose (#3158) (f43a3b0)
-- [-] runtime-core: allow overriding properties other than props (#3105) (73117f6)
-- [-] runtime-core: check the DEV_ROOT_FRAGMENT flag correctly in the dev environment (#2750) (347a879)
-- [-] runtime-core: component methods should override global properties in DEV (#3074) (2587f36)
-- [-] runtime-core: ensure app instance can be garbage collected after unmount (close #2907) (#2909) (60e05ef)
-- [-] runtime-core: instanceWatch should pass this.proxy to source as the first argument (#2753) (ec8fd10)
-- [-] runtime-dom: ensure readonly type prop on textarea is handled patched as attribute (#2888) (c5d147c), closes #2766
-- [-] kebab-case events are attached correctly on web components, see [[https://github.com/vuejs/vue-next/issues/2841][#2841]]
-  ([[https://github.com/vuejs/vue-next/issues/2847][#2847]]) ([[https://github.com/vuejs/vue-next/commit/b302cbbbd3fd512f2b8afbd9c873060a40bf8e62][b302cbb]])
+- [-] runtime-core: align $parent/$root with the template ref when using expose ([[https://github.com/vuejs/vue-next/issues/3158][#3158]]) ([[https://github.com/vuejs/vue-next/commit/f43a3b0bebf0837223e7b8f046dad63e34cd323b][f43a3b0]])
+- [X] runtime-core: allow overriding properties other than props ([[https://github.com/vuejs/vue-next/issues/3105][#3105]]) ([[https://github.com/vuejs/vue-next/commit/73117f6b5b1e36c9400248ed9e815839c49a12c8][73117f6]])
 
-  这个问题意思是，vue 中并没有对来自 DOM 中的事件名为 ~foo-bar~ 形式的事件做处理，
-  尽管在 vue 模板中有 ~<div @foo-bar="click"/>~ 绑定事件。
+  允许重写非组件 props 的属性，比如：原生 API ~hasOwnProperty~
 
-  而事情的原因在于：
+  #+begin_src diff
+  packages/runtime-core/src/componentPublicInstance.ts
+@@ -368,7 +368,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
+      setupState[key] = value
+    } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      data[key] = value
+-    } else if (key in instance.props) {
++    } else if (hasOwn(instance.props, key)) {
+      __DEV__ &&
+        warn(
+          `Attempting to mutate prop "${key}". Props are readonly.`,
+  #+end_src
 
-  vue 中将 ~@foo-bar~ 实际是转换成了 ~forBar~ ([[/vue/vue-teardown-6-event-listen/][Vue3 功能拆解⑥ directives 事件绑定机制]])，所以对于原生组件发出的 ~foo-bar~ 事件
-  是有没做出响应。
+  测试：
 
-  [[https://jsfiddle.net/meo9Lfya/3/][提问者测试代码 ->]]:
+  #+begin_src diff
+ packages/runtime-core/__tests__/componentProps.spec.ts
+@@ -295,6 +295,10 @@ describe('component props', () => {
+      ;(instance!.proxy as any).foo = 2
+    }).toThrow(TypeError)
+    expect(`Attempting to mutate prop "foo"`).toHaveBeenWarned()
+    // should not throw when overriding properties other than props
++    expect(() => {
++      ;(instance!.proxy as any).hasOwnProperty = () => {}
++    }).not.toThrow(TypeError)
+  })
+  #+end_src
+- [X] runtime-core: check the DEV_ROOT_FRAGMENT flag correctly in the dev environment ([[https://github.com/vuejs/vue-next/issues/2750][#2750]]) ([[https://github.com/vuejs/vue-next/commit/347a8798a4c5f0b426f3ac84a01d752d823fb51b][347a879]])
 
-  #+begin_export html
-  <div id="u79o4f"></div>
-  <script src="/js/vue/tests/u79o4f.js"></script>
-  #+end_export
+  #+begin_src diff
+    // to have comments along side the root element which makes it a fragment
+    let root = result
+    let setRoot: ((root: VNode) => void) | undefined = undefined
+-    if (__DEV__ && result.patchFlag & PatchFlags.DEV_ROOT_FRAGMENT) {
++    if (
++      __DEV__ &&
++      result.patchFlag > 0 &&
++      result.patchFlag & PatchFlags.DEV_ROOT_FRAGMENT
++    ) {
+      ;[root, setRoot] = getChildRoot(result)
+    }
 
+  #+end_src
+- [X] runtime-core: component methods should override global properties in DEV ([[https://github.com/vuejs/vue-next/issues/3074][#3074]]) ([[https://github.com/vuejs/vue-next/commit/2587f36fe311359e2e34f40e8e47d2eebfab7f42][2587f36]])
 
+  #+begin_src diff
+ packages/runtime-core/src/componentOptions.ts
+@@ -604,7 +604,17 @@ export function applyOptions(
+    for (const key in methods) {
+      const methodHandler = (methods as MethodOptions)[key]
+      if (isFunction(methodHandler)) {
+-        ctx[key] = methodHandler.bind(publicThis)
++        // In dev mode, we use the `createRenderContext` function to define methods to the proxy target,
++        // and those are read-only but reconfigurable, so it needs to be redefined here
++        if (__DEV__) {
++          Object.defineProperty(ctx, key, {
++            value: methodHandler.bind(publicThis),
++            configurable: true,
++            enumerable: false
++          })
++        } else {
++          ctx[key] = methodHandler.bind(publicThis)
++        }
+        if (__DEV__) {
+          checkDuplicateProperties!(OptionTypes.METHODS, key)
+        }
+
+  #+end_src
+
+  测试：
+
+  #+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { nodeOps, render, h, serializeInner: s, createApp } = value
+
+const Comp = {
+  methods: {
+    foo() {
+      return 'foo'
+    }
+  },
+  render() {
+    return this.foo()
+  }
+}
+
+const app = createApp(Comp)
+app.config.globalProperties.foo = () => 'bar'
+
+const root = nodeOps.createElement('div')
+app.mount(root)
+
+console.log(s(root))
+return 0
+
+  #+end_src
+
+  #+RESULTS:
+  : foo
+  : 0
+- [X] runtime-core: ensure app instance can be garbage collected after unmount (close [[https://github.com/vuejs/vue-next/issues/3074][#2907]]) ([[https://github.com/vuejs/vue-next/issues/2909][#2909]]) ([[https://github.com/vuejs/vue-next/commit/60e05eff232c3ddfca1c20e52f72aa36165d8a22][60e05ef]])
+
+  #+begin_src diff
+ packages/runtime-core/src/apiCreateApp.ts
+@@ -272,6 +272,7 @@ export function createAppAPI<HostElement>(
+          if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+            devtoolsUnmountApp(app)
+          }
++          delete app._container.__vue_app__
+        } else if (__DEV__) {
+          warn(`Cannot unmount an app that is not mounted.`)
+        }
+  #+end_src
+
+  取消引用。
+
+  #+begin_src typescript
+function unmount() {
+  if (isMounted) {
+    render(null, app._container)
+    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+      app._instance = null
+      devtoolsUnmountApp(app)
+    }
+    delete app._container.__vue_app__
+  } else if (__DEV__) {
+    warn(`Cannot unmount an app that is not mounted.`)
+  }
+}
+  #+end_src
+
+  mount 里面保存的 ~__vue_ap__~
+
+  #+begin_src typescript
+function mount(
+  rootContainer: HostElement,
+  isHydrate?: boolean,
+  isSVG?: boolean
+): any {
+  if (!isMounted) {
+    // ...
+       vnode.appContext = context
+
+    // HMR root reload ...
+
+    if (isHydrate && hydrate) {
+      hydrate(vnode as VNode<Node, Element>, rootContainer as any)
+    } else {
+      render(vnode, rootContainer, isSVG)
+    }
+    isMounted = true
+    app._container = rootContainer
+    // for devtools and telemetry
+    ;(rootContainer as any).__vue_app__ = app
+
+    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+      app._instance = vnode.component
+      devtoolsInitApp(app, version)
+    }
+
+    return vnode.component!.proxy
+  }  // ...
+}
+  #+end_src
+- [X] runtime-core: instanceWatch should pass this.proxy to source as the first argument ([[https://github.com/vuejs/vue-next/issues/2753][#2753]]) ([[https://github.com/vuejs/vue-next/commit/ec8fd10cec61c33c7c8056413a1c609ac90e1215][ec8fd10]])
+
+  当 watch 一个函数的时候，将 instance.proxy 做为第一个参数传给这个函数。
+
+  测试：
+
+  #+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { nodeOps, render, h, serializeInner: s, createApp } = value
+
+let instance = null
+const source = (proxy) => console.log(instance && ( proxy === instance.proxy ))
+const Comp = {
+  created() {
+    instance = this
+    this.$watch(source, () => {})
+  },
+  render() {}
+}
+
+const root = nodeOps.createElement('div')
+createApp(Comp).mount(root)
+return 0
+  #+end_src
+
+  #+RESULTS:
+  : false
+  : 0
+
+  修复：
+
+  #+begin_src diff
+ packages/runtime-core/src/apiWatch.ts
+@@ -181,7 +181,9 @@ function doWatch(
+        } else if (isReactive(s)) {
+          return traverse(s)
+        } else if (isFunction(s)) {
+-          return callWithErrorHandling(s, instance, ErrorCodes.WATCH_GETTER)
++          return callWithErrorHandling(s, instance, ErrorCodes.WATCH_GETTER, [
++            instance && (instance.proxy as any)
++          ])
+        } else {
+          __DEV__ && warnInvalidSource(s)
+        }
+@@ -190,7 +192,9 @@ function doWatch(
+    if (cb) {
+      // getter with cb
+      getter = () =>
+-        callWithErrorHandling(source, instance, ErrorCodes.WATCH_GETTER)
++        callWithErrorHandling(source, instance, ErrorCodes.WATCH_GETTER, [
++          instance && (instance.proxy as any)
++        ])
+    } else {
+      // no cb -> simple effect
+      getter = () => {
+  #+end_src
 - [X] types: extract the correct props type for the DateConstructor ([[https://github.com/vuejs/vue-next/issues/2676][#2676]]) ([[https://github.com/vuejs/vue-next/commit/48f0d2944f0f9d2f556e62782fc61985897b2ed4][48f0d29]])
 - [X] ensure all published packages contan a LICENCE file (close #2650) (#2857) (6a48d23)
 - [X] remove superfluous spaces when normalizing class ([[https://github.com/vuejs/vue-next/issues/3083][#3083]]) ([[https://github.com/vuejs/vue-next/commit/4b551420fc058c4683219db5d75893f9fc69aa04][4b55142]])

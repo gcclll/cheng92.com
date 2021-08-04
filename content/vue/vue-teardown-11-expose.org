@@ -1,0 +1,417 @@
+#+TITLE: Vue3 功能拆解⑪ expose options&api
+#+DATE: <2021-08-04 21:32:55>
+#+TAGS[]: vue3, vue-next,
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+vue3 中 expose 的原理及使用。
+#+end_quote
+
+本文涉及的源码包： [[https://github.com/vuejs/vue-next/tree/master/packages/ru][runtime-core]]。
+
+组件中的所有选项处理(methods, data, ...)都在这个函数中，其中就包括 expose:
+
+[[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/componentOptions.ts][componentOptions.ts:applyOptions(instance: ComponentInternalInstance)]]
+
+options 初始化顺序：
+
+1. props
+2. inject
+3. methods
+4. data, 延迟处理，因为它依赖 ~this~
+5. computed
+6. watch, 延迟处理，因为它依赖 ~this~
+
+
+@@html:<span id="applyOptions"></span>@@
+#+begin_src typescript
+export function applyOptions(instance: ComponentInternalInstance) {
+  const options = resolveMergedOptions(instance)
+  const publicThis = instance.proxy! as any
+  const ctx = instance.ctx
+  shouldCacheAccess = false
+
+  const {
+    // ...
+    // public API
+    expose,
+    // ...
+  } = options
+
+
+  // ...
+
+  if (isArray(expose)) {
+    if (expose.length) {
+      const exposed = instance.exposed || (instance.exposed = {})
+      expose.forEach(key => {
+        Object.defineProperty(exposed, key, {
+          get: () => publicThis[key],
+          set: val => (publicThis[key] = val)
+        })
+      })
+    } else if (!instance.exposed) {
+      instance.exposed = {}
+    }
+  }
+
+  // ...
+}
+#+end_src
+
+expose 属性的访问路径:
+
+~expose[] -> instance.exposed -> publicThis -> instance.proxy~
+
+@@html:<span id="instance-proxy"></span>@@
+instance.proxy 创建自：
+
+[[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/component.ts][runtime-core/src/component.ts:setupStatefulComponent]]
+
+#+begin_src typescript
+ // 1. create public instance / render proxy
+  // also mark it raw so it's never observed
+  instance.proxy = markRaw(new Proxy(instance.ctx, PublicInstanceProxyHandlers))
+#+end_src
+
+是对 instance.ctx 的代理，当你在实例中通过 ~this.xxx~ 或 ~ctx.xxx~ 去访问属性的时候实际走的是下
+面这个代理。
+
+#+begin_src typescript
+ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
+   // get proxy
+  get({ _: instance }: ComponentRenderContext, key: string) {
+    const { ctx, setupState, data, props, accessCache, type, appContext } = instance
+
+    let normalizedProps
+    if (key[0] !== '$') {
+      // 1. 非 $xx 的属性访问顺序: setupState -> data -> ctx -> props
+      // setupState 是 setup() 返回对象时的值，或 <script setup> 标签中的状态
+      // 并且这个会记录每次访问时的 key 对应在哪个对象上，这样下次就不用再过一篇这
+      // 里繁琐的逻辑了
+      // ...
+    }
+
+    // 2. 下面是针对 this.$xxx 的访问，顺序是：
+    // publicPropertiesMap -> cssModule -> ctx -> globalProperties
+    // 找到对应 key 的 get 方法, 注意点
+    //   1) this.$attrs 的访问会触发 track
+    //   2) globalProperties 参过 app.config.globalProperties 注册的全局属性
+    const publicGetter = publicPropertiesMap[key]
+    let cssModule, globalProperties
+    // public $xxx properties
+    // ...
+  },
+
+   // set proxy
+  set(
+    { _: instance }: ComponentRenderContext,
+    key: string,
+    value: any
+  ): boolean {
+    const { data, setupState, ctx } = instance
+    // 设置优先级： setupState -> options data
+    if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+      setupState[key] = value
+    } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      data[key] = value
+    } else if (hasOwn(instance.props, key)) {
+      // ...不允许直接修改 props
+      return false
+    }
+
+    if (key[0] === '$' && key.slice(1) in instance) {
+      // ...不允许直接修改 $xxx 上的属性
+      return false
+    } else {
+      // 开发时，可以修改 app.config.globalProperties 上属性的值
+      if (__DEV__ && key in instance.appContext.config.globalProperties) {
+        Object.defineProperty(ctx, key, {
+          enumerable: true,
+          configurable: true,
+          value
+        })
+      } else {
+        ctx[key] = value
+      }
+    }
+    return true
+  },
+
+  has(
+    {
+      _: { data, setupState, accessCache, ctx, appContext, propsOptions }
+    }: ComponentRenderContext,
+    key: string
+  ) {
+    let normalizedProps
+    // 检测属性有无时的代理：
+    // 缓存(取值时缓存的) -> data -> setup state -> props -> ctx -> $xxx -> globalProperties
+    return (
+      accessCache![key] !== undefined ||
+      (data !== EMPTY_OBJ && hasOwn(data, key)) ||
+      (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) ||
+      ((normalizedProps = propsOptions[0]) && hasOwn(normalizedProps, key)) ||
+      hasOwn(ctx, key) ||
+      hasOwn(publicPropertiesMap, key) ||
+      hasOwn(appContext.config.globalProperties, key)
+    )
+  }
+}
+#+end_src
+
+#+begin_success
+@@html:<p><strong>属性代理</strong></p>@@
+
+1. 取值操作可能经过的路径(依优先级从左到右)：
+
+   非 ~$xxx~ 的属性： ~setup state~ > ~data~ > ~ctx~ > ~props~
+
+   ~$xxx~ 的属性： ~publicPropertiesMap~ -> ~cssModule~ -> ~ctx~ -> ~globalProperties~
+
+   实际上 ~$xxx~ 的属性只是 ~ctx.xxx~ 的别名。
+
+2. 设值，只能设置 ~setup state~ > ~options data~
+
+   有一和情况比较特殊：当要设置的 key 在 ~setup state~, ~options data~, ~props~, ~$xxx~,
+   ~globalProperties~ 上都没有的时候，最后会直接被添加的 ~ctx~ 上去：
+
+   ~ctx[key] = value~
+
+3. has 属性检查的顺序： ~cache 中~ > ~data~ > ~setup state~ > ~props~ > ~ctx~ >
+   ~publicPropertiesMap~ > ~globalProperties~
+#+end_success
+
+publicPropertiesMap:
+
+#+begin_src typescript
+export const publicPropertiesMap: PublicPropertiesMap = extend(
+  Object.create(null),
+  {
+    $: i => i,
+    $el: i => i.vnode.el,
+    $data: i => i.data,
+    $props: i => (__DEV__ ? shallowReadonly(i.props) : i.props),
+    $attrs: i => (__DEV__ ? shallowReadonly(i.attrs) : i.attrs),
+    $slots: i => (__DEV__ ? shallowReadonly(i.slots) : i.slots),
+    $refs: i => (__DEV__ ? shallowReadonly(i.refs) : i.refs),
+    $parent: i => getPublicInstance(i.parent),
+    $root: i => getPublicInstance(i.root),
+    $emit: i => i.emit,
+    $options: i => (__FEATURE_OPTIONS_API__ ? resolveMergedOptions(i) : i.type),
+    $forceUpdate: i => () => queueJob(i.update),
+    $nextTick: i => nextTick.bind(i.proxy!),
+    $watch: i => (__FEATURE_OPTIONS_API__ ? instanceWatch.bind(i) : NOOP)
+  } as PublicPropertiesMap
+)
+#+end_src
+
+从上面的 @@html:<a href="#applyOptions">代码流程</a>@@ 来看，好像和 props, data 没什么区别吧:question:
+
+最终不都是走了 proxy get 那一套:question:
+
+从这里好像看不出什么...
+
+下面是官方([[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/__tests__/apiExpose.spec.ts][runtime-core/__tests__/apiExpose.spec.ts]])的例子：
+
+#+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { nodeOps, render, h, serializeInner: s, ref, defineComponent, toRaw } = value
+
+const Child = defineComponent({
+  render() {},
+  expose: ['fox', 'foo'],
+  setup(_, { expose }) {
+    expose({
+      foo: 1,
+      bar: ref(2)
+    })
+
+    return {
+      bar: ref(3),
+      baz: ref(4)
+    }
+  }
+})
+
+const childRef = ref()
+const Parent = {
+  setup() {
+    return () => h(Child, { ref: childRef })
+  }
+}
+
+const root = nodeOps.createElement('div')
+render(h(Parent), root)
+console.log('childRef.value = ', childRef.value);
+console.log('childRef.value.foo = ', childRef.value.foo);
+console.log('childRef.value.bar = ', childRef.value.bar);
+console.log('childRef.value.baz = ', childRef.value.baz);
+console.log('childRef.value.fox = ', childRef.value.fox);
+#+end_src
+
+#+RESULTS:
+#+begin_example
+key = __v_raw
+key = __v_isReadonly
+key = __v_raw
+key = __v_skip
+childRef.value =  {
+  foo: [Getter/Setter],
+  bar: RefImpl { _rawValue: 2, _shallow: false, __v_isRef: true, _value: 2 }
+}
+key = foo
+childRef.value.foo =  undefined
+key = bar
+childRef.value.bar =  2
+key = baz
+childRef.value.baz =  undefined
+key = fox
+childRef.value.fox =  undefined
+undefined
+#+end_example
+@@html:<span id="test-output"></span>@@
+
+从测试用例来看，这个 expose 用途是将组件本身的属性暴露出去，可以在父组件中通过
+ref 取到该组件元素的引用 childRef ，然后就可以通过这个引用来直接访问 expose 出来
+的属性。
+
+那这个是怎么做到的？
+
+既然和 ref 元素本身有关系，那就得从这个 ref 去下手看看了。
+
+ref 值设置的地方(~setRef(...)~)：在组件渲染完成之后才会有实际的DOM元素，所以这个肯定是发生在
+mounted 之后。
+
+调用 ~setRef()~ 的地方有：
+
+1. [[/vue/vue-mind-map-runtime-core-2-render/#fn-patch][patch(n1, n2, ...)]] 函数的最后
+
+   #+begin_src typescript
+    // set ref
+    if (ref != null && parentComponent) {
+      setRef(ref, n1 && n1.ref, parentSuspense, n2 || n1, !n2)
+    }
+    #+end_src
+
+2. [[/vue/vue-mind-map-runtime-core-1/#headline-62][unmount(vnode, ...)]] 的时候取消引用，防止内存泄漏
+
+   #+begin_src typescript
+    if (ref != null) {
+      setRef(ref, null, parentSuspense, vnode, true)
+    }
+    #+end_src
+
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+另外，组件实际的 DOM 元素的引用是在 vnode.el 上，这个值是在 ~mountElement(vnode)~
+中创建真实 DOM 元素的时候被赋值的，而 ~setRef()~ 是在 patch() 最后执行，所以在这个
+时候 vnode.el 上就已经有了该组件真实 DOM 元素的引用，因为所有的组件流程一开始都
+是经过的 ~patch()~ 函数([[/img/vue3/runtime-core/vue-runtime-core-render-component.svg][组件渲染完整流程图]])。
+
+[[/vue/vue-mind-map-runtime-core-2-render/#fn-mountElement][Vue3 源码头脑风暴之 7 ☞ runtime-core(3) - render component]]
+#+end_tip
+
+/上面只是知道了设置，但实际这里是需要知道是对 childRef.value.foo 的取值会发生些什
+么，流程是什么，最终又是怎么和 expose 发生关联的？/
+
+下面来仔细看下 ~setRef~ 里面又发生了什么，设想应该是对 ref 的引用是不是做了代理:question:
+
+[[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/renderer.ts][runtime-core/src/renderer.ts:setRef]]
+
+#+begin_src typescript
+ export const setRef = (
+  rawRef: VNodeNormalizedRef,
+  oldRawRef: VNodeNormalizedRef | null,
+  parentSuspense: SuspenseBoundary | null,
+  vnode: VNode,
+  isUnmount = false
+) => {
+  // ... rawRef 是数组处理
+
+  // 异步组件判断，如果是异步的需要等异步组件完成渲染才可以
+  // isAsyncWrapper:
+  // export const isAsyncWrapper = (i: ComponentInternalInstance | VNode): boolean =>
+  // !!(i.type as ComponentOptions).__asyncLoader
+
+  // 有状态的组件：对象组件, vnode.ts:createVNode 里面的检测
+  // isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : ...
+  // 重点就在这：先取 expose proxy 然后取 component.proxy
+  const refValue =
+    vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+      ? getExposeProxy(vnode.component!) || vnode.component!.proxy
+      : vnode.el
+  const value = isUnmount ? null : refValue
+
+  // ...
+
+  // <div ref="formRef" /> -> this.$refs.formRef
+  if (isString(ref)) {
+    // refs[ref] = value ...
+  } else if (isRef(ref)) {
+    // 这个正是这里使用的案例所执行的分支
+  }
+
+  // ...
+}
+#+end_src
+
+在 setRef 中检测到如果是有状态的组件，会先执行 ~getExposeProxy(instance)~
+去~instance.exposed~ 中取值，如果没有则再去组件实例的代理(也就是最开始分析的
+@@html:<a href="#instance-proxy">:link:instance.proxy</a>@@)中去取 expose proxy:
+
+#+begin_src typescript
+export function getExposeProxy(instance: ComponentInternalInstance) {
+  if (instance.exposed) {
+    return (
+      instance.exposeProxy ||
+        (instance.exposeProxy = new Proxy(proxyRefs(markRaw(instance.exposed)), {
+          get(target, key: string) {
+            console.log('key = ' + key);
+            if (key in target) {
+              return target[key]
+            } else if (key in publicPropertiesMap) {
+              return publicPropertiesMap[key](instance)
+            }
+          }
+        }))
+    )
+  }
+}
+#+end_src
+
+上面代码加了打印可以从 @@html:<a href="#test-output">:link:上面的例子</a>@@ 中看到 key 的值。
+
+到这里基本明白了 expose + ref 使用，整个取值过程又是什么了！！
+
+总结(如下图)：
+
+[[/img/vue3/runtime-core/runtime-core-expose.svg]]

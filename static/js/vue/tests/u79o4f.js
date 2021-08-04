@@ -26,9 +26,8 @@ window.customElements.define('test-element', TestElement)
 
 const app_u79o4f = Vue.createApp({
   template: `
-<test-element @foo-bar="log" @foobar="log" ref="testElement">
+<test-element @foo-bar="log" @foobar="log" ref="testElement"></test-element>
 {{message}}
-</test-element>
 <br/>
 <el-button type="primary" @click="mountEventListener">加载原生事件</el-button>
 `,
@@ -46,6 +45,6 @@ const app_u79o4f = Vue.createApp({
   }
 })
 
-app_u79o4f.config.isNativeTag = (tag) => tag === 'test-element'
+// app_u79o4f.config.isNativeTag = (tag) => tag === 'test-element'
 
 app_u79o4f.use(ElementPlus).mount('#u79o4f')

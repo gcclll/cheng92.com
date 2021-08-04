@@ -469,7 +469,7 @@ Finally save buffer.
 
        :app
        calendar
-       ;;emms
+       emms
        everywhere        ; *leave* Emacs!? You must be joking
        irc               ; how neckbeards socialize
        (rss +org)        ; emacs as an RSS reader
@@ -824,6 +824,11 @@ Keybindings reference:
  :leader
  :nv    "SPC"           #'execute-extended-command
 
+ (:prefix ("a" . "Applications")
+  :n    "e"     #'emms
+  :n    "E"     #'emms-smart-browse
+  )
+
  ;; b -> Buffer
  :n     "bf"            #'osx-lib-reveal-in-finder
 
@@ -1004,6 +1009,16 @@ Keybindings reference:
   :bind
   ("s-'" . cycle-quotes))
 #+end_src
+** EAF
+#+begin_src emacs-lisp
+ ;; (use-package! eaf
+ ;;  :commands (eaf-open-browser eaf-open find-file)
+ ;;  :config
+ ;;  (use-package! ctable)
+ ;;  (use-package! deferred)
+ ;;  (use-package! epc))
+#+end_src
+
 ** Emacs-everywhere
 #+begin_src emacs-lisp
 (use-package! emacs-everywhere
@@ -1194,6 +1209,7 @@ Keybindings reference:
   "REPL "
   ("e" ielm " ELisp")
   ("h" httprepl " HTTP")
+  ("j" jq-interactivly " JSON")
   ("l" +lua/open-repl " Lua")
   ("n" nodejs-repl " Node.js")
   ("p" +python/open-repl " Python")
@@ -1975,6 +1991,21 @@ is selected, only the bare key is returned."
                                :icon ("react" :set "alltheicon" :color "blue")
                                :desc ""
                                :i-type "web:react"
+                               )
+                              ("JavaScript" :keys "j"
+                               :icon ("javascript-shield" :set "alltheicon" :color "yellow")
+                               :desc ""
+                               :i-type "web:javascript"
+                               )
+                              ("HTML" :keys "h"
+                               :icon ("html5" :set "alltheicon" :color "orange")
+                               :desc ""
+                               :i-type "web:html"
+                               )
+                              ("CSS" :keys "c"
+                               :icon ("css3" :set "alltheicon" :color "blue")
+                               :desc ""
+                               :i-type "web:css"
                                ))
                    )
                   ("Interesting" :keys "i"
@@ -2409,12 +2440,15 @@ ignore some directories.
   :mode (("\\.rest\\'" . restclient-mode)
          ("\\.restclient\\'" . restclient-mode)))
 
+(use-package! restclient-jq
+  :after restclient)
 (use-package! ob-restclient
   :after org restclient
   :init
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((restclient . t))))
+
 #+end_src
 
 ** Smartparen
@@ -2598,6 +2632,12 @@ Use `.prettierrc` file for prettier.
 (package! dotenv-mode)
 (package! leetcode)
 (package! ob-restclient)
+;; FIX: jq-set-var not found
+(package! restclient-jq :recipe
+  (:host github
+   :repo "pashky/restclient.el"
+   :files ("restclient-jq.el")))
+;; (package! ob-jq)
 #+end_src
 *** WEB
 
@@ -2731,7 +2771,17 @@ Window management packages.
            :repo "honmaple/emacs-maple-iedit"))
 (package! vmd-mode)
 #+end_src
+** EAF
+#+begin_src emacs-lisp
+;; (when (package! eaf :recipe (:host github
+;;                              :repo "manateelazycat/emacs-application-framework"
+;;                              :files ("*.el" "*.py" "app" "core")
+;;                              :build (:not compile)))
 
+;;   (package! ctable :recipe (:host github :repo "kiwanami/emacs-ctable"))
+;;   (package! deferred :recipe (:host github :repo "kiwanami/emacs-deferred"))
+;;   (package! epc :recipe (:host github :repo "kiwanami/emacs-epc")))
+ #+end_src
 ** Disabled
 
 #+begin_src emacs-lisp
@@ -2923,3 +2973,4 @@ Window management packages.
 
 *** embrach-change(~,ec~)
 *** embrach-delete(~,ed~)
+** Emms

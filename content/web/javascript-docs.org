@@ -33,10 +33,18 @@
 SegmentFault 思否]]
 
 * 操作符
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: op
+:END:
+
+
+[[https://tc39.es/ecma262/#sec-relational-operators][ operator.]]
+
 ** delete
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: api-op-delete
+:CUSTOM_ID: delete
 :END:
 
 [[https://tc39.es/ecma262/#sec-returnifabrupt][ReturnIfAbrupt]]
@@ -76,6 +84,40 @@ if (IsPropertyReference(ref)) {
   return base.DeleteBinding(ref.[[ReferencedName]])
 }
 #+end_src
+** in
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: in
+:END:
+
+
+#+begin_example
+RelationalExpression : RelationalExpression in ShiftExpression
+1. Let lref be the result of evaluating RelationalExpression.
+2. Let lval be ? GetValue(lref).
+3. Let rref be the result of evaluating ShiftExpression.
+4. Let rval be ? GetValue(rref).
+5. If Type(rval) is not Object, throw a TypeError exception.
+6. Return ? HasProperty(rval, ? ToPropertyKey(lval)).
+#+end_example
+
+code:
+
+#+begin_src js
+ function in(lRelationalExp, rShiftExp) {
+   let lref = lRelationalExp()
+   let lval = GetValue(lref)
+   let rref = rShiftExp()
+   let rval = GetValue(rref)
+   if (!isObject(rval)) {
+     throw new TypeError('right shift expression is not object.')
+   }
+   return HasProperty(rval, ToProperty(lval))
+ }
+#+end_src
+
+-> [[#HasProperty][HasProperty(O, P)]]
+
 * Document
 ** Document.execCommand()
 * Array
@@ -957,7 +999,27 @@ result:
 4. /FunctionBody : SourceElementsopt/
    
    TODO
+** H
+*** HasProperty(O, p)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: HasProperty
+:END:
 
+[[https://tc39.es/ecma262/#sec-hasproperty][Link ->]]
+
+-> 7.3.11 HasProperty ( O, P )
+
++The abstract operation HasProperty takes arguments O (an Object) and P (a+
++property key). It returns a completion record which, if its [[Type]] is normal, has+
++a [[Value]] which is a Boolean. It is used to determine whether an object has a+
++property with the specified property key+. *The property may be either an own or
+inherited(属性可以是自己的也可以是继承来的，即查找整个原型链)*. +It performs the
+following steps when called+:
+
+1. Assert: Type(O) is Object.
+2. Assert: IsPropertyKey(P) is true.
+3. Return ? O.[[HasProperty]](P).
 ** I
 *** IsPropertyKey ( argument )
 :PROPERTIES:

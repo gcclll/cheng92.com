@@ -261,7 +261,7 @@ const processElement = (
 * mountElement(...args)
 :PROPERTIES:
 :COLUMNS: %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: fn-patchElement
+:CUSTOM_ID: fn-mountElement
 :END:
 
 进行到这里我们可以进行初步的判断， patch 和 mount 的区别，

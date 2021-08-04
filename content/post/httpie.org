@@ -1,0 +1,66 @@
+#+TITLE: HTTPie Tool Usage Learning
+#+DATE: <2023-08-03 17:00:29>
+#+TAGS[]: tools, httpie
+#+CATEGORIES[]: tools
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+电脑配置问题导致稍微开多了个软件都有点卡 %-) 。
+
+加上不太喜欢到一个地方就下个软件什么的，能命令行操作的为什么不用呢？
+
+期望的状态就是，除了 Emacs 和 shell 终端，什么软件都不想开啊！！！
+
+而 Emacs 里面的 verb 或 restclient 感觉不太好用（也可以是太菜了）。
+
+主要还是钱 :money_with_wings: 不够换不起电脑 :desktop: ~~~~
+
+所以发现了这东西，那就折腾下咯~~
+
+Github: [[https://github.com/httpie/httpie][httpie]]
+
+* 特性介绍
+
+搬运工：
+
+1. Expressive and intuitive syntax: 语法简单
+2. Formatted and colorized terminal output: 多样化的终端输出
+3. Built-in JSON support: 内置的 JSON 支持
+3. Forms and file uploads: 表单和文件上传
+4. HTTPS, proxies, and authentication: 协议，认证支持
+5. Arbitrary request data: 任意请求数据
+6. Custom headers: 自定义请求头
+7. Persistent sessions: 支持 session
+8. Wget-like downloads: 类 wget 的下载
+9. Linux, macOS and Windows support: 多系统支持
+10. Plugins: 插件系统
+11. Documentation: 文档
+12. Test coverage: 覆盖测试
+
+
+[[https://raw.githubusercontent.com/httpie/httpie/master/httpie.png]]
+* 使用方法
+
+~$ https httpie.io/hello~
+
+~$ http [flags] [METHOD] URL [ITEM [ITEM]]~
+
+或
+
+~http --help~ 查看。
+
+在 Emacs 中可以使用 shell src block 。
+
+如：
+
+#+begin_src shell :wrap example
+# https GET httpie.io/hello User-Agent:Bacon/1.0
+# http PUT pie.dev/put X-API-Token:123 name=John
+# http -f POST pie.dev/post hello=World
+# http -v pie.dev/get User-Agent:Bacon/1.0
+# http pie.dev/cookies Cookie:sessionid=foo
+#+end_src
+
+#+RESULTS:
+#+begin_example
+#+end_example

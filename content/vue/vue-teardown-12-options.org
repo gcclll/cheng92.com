@@ -1,12 +1,15 @@
-#+TITLE: Vue3 功能拆解⑩ SFC style
-#+DATE: <2021-07-31 12:01:59>
-#+TAGS[]: vue3, vue-next, Transition
+#+TITLE: Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)
+#+DATE: <21-08-04 21:52:48>
+#+TAGS[]: vue3, vue-next,
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
 #+begin_export html
 <link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
 <kbd>
 <font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
 诗号：六道同坠，魔劫万千，引渡如来。
@@ -26,9 +29,9 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 [[/img/bdx/yiyeshu-001.jpg]]
 
 #+begin_quote
-本系列为 vue-next 源码分析系列的旁系分支，主要目的在于对 vue3 源码中的一些细节进
-行分析。本文讲述的是 SFC 中 style 的解析，比如： ~v-deep~ 的使用及原理。
-
+本文主要是分析 applyOptions 函数。
 #+end_quote
+
+本文涉及的源码包： [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/componentOptions.ts][runtime-core/src/componentOptions.ts:applyOptions(instance: ComponentInternalInstance)]]。
 
 * TODO
