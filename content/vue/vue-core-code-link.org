@@ -21,12 +21,55 @@
 要链接到本网站内文章，不排除有外链其他网站。
 #+end_quote
 
-1. [[/vue/vue-teardown-9-transition/][trasition 组件原理分析？]]
-2. [[/vue/vue-teardown-7-asset-transform/][模板中的资源 URL 是如何识别的，最后又是被编译成啥了？]](如： ~<img
+1. ~h('div', { ref: childRef })~ [[/vue/vue-teardown-11-expose/#set-ref][ref 属性什么时候不会指向]] ~vnode.el~ :question:
+
+2. ~setup(_, ctx)~ 的第二个参数？
+   @@html:<span id="cl-setup"></span>@@
+
+   [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/component.ts][runtime-core/src/component.ts:createSetupContext()]]
+
+   最后返回的对象：
+
+   #+begin_src json
+   {
+      attrs: instance.attrs,
+      slots: instance.slots,
+      emit: instance.emit,
+      expose
+    }
+   #+end_src
+
+   setup() 函数被调用的地方： [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/component.ts][component.ts:setupStatefulComponent]]
+
+   调用流程：
+
+   renderer.ts:mountComponent -> setupComponent()
+
+   component.ts:setupComponent() -> setupStatefulComponent() ->
+   setup(instance.props, setupContenxt)
+
+   expose 函数：
+   #+begin_src typescript
+    const expose: SetupContext['expose'] = exposed => {
+      if (__DEV__ && instance.exposed) {
+        warn(`expose() should be called only once per setup().`)
+      }
+      instance.exposed = exposed || {}
+    }
+   #+end_src
+
+   [[/vue/vue-mind-map-runtime-core-3-component/#headline-12][更详细的过程->]]
+
+3. [[/vue/vue-teardown-9-transition/][trasition 组件原理分析？]]
+
+4. [[/vue/vue-teardown-7-asset-transform/][模板中的资源 URL 是如何识别的，最后又是被编译成啥了？]](如： ~<img
    src="@img/vue/test.png" />~)
-3. TODO component render 函数在哪里执行？
-4. <script setup> 原理和编译过程及结果？
-5. [[/vue/vue-mind-map-runtime-core-3-component/#setup][setup 函数如何解析？又是如何执行？]]
+
+5. TODO component render 函数在哪里执行？
+
+6. <script setup> 原理和编译过程及结果？
+
+7. [[/vue/vue-mind-map-runtime-core-3-component/#setup][setup 函数如何解析？又是如何执行？]]
 
    render -> patch -> processComponent -> mountComponent ->
    createComponentInstance -> 创建组件实例，初始化组件结构 ->
@@ -38,7 +81,7 @@
    也就是说在 setup 执行之前 props, emits, slots 都已经可以访问了，并且这个函数
    在组 件整个生命周期中只会调用一次，因为后面组件的更新时直接调用 ~instance.update~ 来完成，不会进入 mountComponent 。
 
-6. [[/vue/vue-teardown-4-props-attrs/][props ? attrs ? 当给子组件传递属性的时候，哪些在 props 中，哪些在 attrs中？]]
+8. [[/vue/vue-teardown-4-props-attrs/][props ? attrs ? 当给子组件传递属性的时候，哪些在 props 中，哪些在 attrs中？]]
 
    比如：
    #+begin_src html
@@ -49,23 +92,23 @@
 
    是 props ? attrs ?
 
-7. [[/vue/vue-teardown-2-sheduler/][vue3 中和 scheduler 任务调度有关的代码！]]
+9. [[/vue/vue-teardown-2-sheduler/][vue3 中和 scheduler 任务调度有关的代码！]]
 
    讲述了 runtime-core/src/scheduler.ts 中 api 在哪些地方有用到，这些使用的地方
    任务执行顺序又是什么❓
 
-8. [[/vue/vue-mind-map-runtime-dom/#prop-on-xxx][vue3 事件绑定是如何实现的(stopImmediatePropagation 又是啥?)？]]
+10. [[/vue/vue-mind-map-runtime-dom/#prop-on-xxx][vue3 事件绑定是如何实现的(stopImmediatePropagation 又是啥?)？]]
 
-   简述：一个元素一个事件名对应的事件只会绑定一个 listener 及 封装之后的
-   invoker，此时为了实现原生事件的 stopImmediatePropagation 功能，对
-   invoker.value 即事件句柄列表里面的所有事件句柄(函数)进行了重写。
+    简述：一个元素一个事件名对应的事件只会绑定一个 listener 及 封装之后的
+    invoker，此时为了实现原生事件的 stopImmediatePropagation 功能，对
+    invoker.value 即事件句柄列表里面的所有事件句柄(函数)进行了重写。
 
-9. [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
+11. [[/vue/vue-mind-map-runtime-core/#scheduler][vue3 异步任务调度机制 runtime-core->scheduler 是如何实现的?]]
 
-   vue3 中的异步更新任务分为三种： pre cbs/queue jobs/post cbs，他们的执行都有一
-   定的先后顺序，点击[[/vue/vue-mind-map-runtime-core/#scheduler][链接]]了解更多分析内容。
+    vue3 中的异步更新任务分为三种： pre cbs/queue jobs/post cbs，他们的执行都有一
+    定的先后顺序，点击[[/vue/vue-mind-map-runtime-core/#scheduler][链接]]了解更多分析内容。
 
-10. [[/vue/vue-mind-map-runtime-core-render/#keyed-children][vue3 diff 原理？]]
+12. [[/vue/vue-mind-map-runtime-core-render/#keyed-children][vue3 diff 原理？]]
 
    | old         | new           | 更新原则     |
    |-------------+---------------+--------------|
@@ -124,7 +167,7 @@
 
        + 最后根据最长递增序列算法进行移动，前提是需要移动
 
-11. [[/vue/vue-mind-map-runtime-core-3-component/#keep-alive][keep-alive 组件实现原理？]]
+13. [[/vue/vue-mind-map-runtime-core-3-component/#keep-alive][keep-alive 组件实现原理？]]
 
     activate 和 deactivate 状态切换的实际原理是什么？
 

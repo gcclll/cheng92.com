@@ -34,6 +34,12 @@ vue3 中 expose 的原理及使用。
 
 本文涉及的源码包： [[https://github.com/vuejs/vue-next/tree/master/packages/ru][runtime-core]]。
 
+* expose in options
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: options
+:END:
+
 组件中的所有选项处理(methods, data, ...)都在这个函数中，其中就包括 expose:
 
 [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/componentOptions.ts][componentOptions.ts:applyOptions(instance: ComponentInternalInstance)]]
@@ -88,7 +94,14 @@ expose 属性的访问路径:
 
 ~expose[] -> instance.exposed -> publicThis -> instance.proxy~
 
-@@html:<span id="instance-proxy"></span>@@
+* instance.proxy
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: instance-proxy
+:END:
+
+对组件上下文对象的代理对象。
+
 instance.proxy 创建自：
 
 [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/component.ts][runtime-core/src/component.ts:setupStatefulComponent]]
@@ -198,7 +211,7 @@ instance.proxy 创建自：
 
 2. 设值，只能设置 ~setup state~ > ~options data~
 
-   有一和情况比较特殊：当要设置的 key 在 ~setup state~, ~options data~, ~props~, ~$xxx~,
+   有一种情况比较特殊：当要设置的 key 在 ~setup state~, ~options data~, ~props~, ~$xxx~,
    ~globalProperties~ 上都没有的时候，最后会直接被添加的 ~ctx~ 上去：
 
    ~ctx[key] = value~
@@ -237,7 +250,13 @@ export const publicPropertiesMap: PublicPropertiesMap = extend(
 
 从这里好像看不出什么...
 
-下面是官方([[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/__tests__/apiExpose.spec.ts][runtime-core/__tests__/apiExpose.spec.ts]])的例子：
+* ref & setRef
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: set-ref
+:END:
+
+来看下面官方([[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/__tests__/apiExpose.spec.ts][runtime-core/__tests__/apiExpose.spec.ts]])的例子：
 
 #+begin_src js
 const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
@@ -299,8 +318,8 @@ undefined
 @@html:<span id="test-output"></span>@@
 
 从测试用例来看，这个 expose 用途是将组件本身的属性暴露出去，可以在父组件中通过
-ref 取到该组件元素的引用 childRef ，然后就可以通过这个引用来直接访问 expose 出来
-的属性。
+ref 取到该组件元素的引用 childRef (~严格来说当有 expose 时就不再是指向 vnode.el了~)，
+然后就可以通过这个引用来直接访问 expose 出来的属性。
 
 那这个是怎么做到的？
 
@@ -384,10 +403,11 @@ mounted 之后。
 }
 #+end_src
 
-在 setRef 中检测到如果是有状态的组件，会先执行 ~getExposeProxy(instance)~
-去~instance.exposed~ 中取值，如果没有则再去组件实例的代理(也就是最开始分析的
-@@html:<a href="#instance-proxy">:link:instance.proxy</a>@@)中去取 expose proxy:
+在 setRef 中检测到如果是有状态的组件，会先执行
+~getExposeProxy(instance)~ 去 ~instance.exposed~ 中取值，如果没有则再去组件实例的代
+理(也就是最开始分析的[[#instance-proxy][instance.proxy]])中去取 expose proxy:
 
+@@html:<span id="getExposeProxy"></span>@@
 #+begin_src typescript
 export function getExposeProxy(instance: ComponentInternalInstance) {
   if (instance.exposed) {
@@ -408,10 +428,225 @@ export function getExposeProxy(instance: ComponentInternalInstance) {
 }
 #+end_src
 
+
 上面代码加了打印可以从 @@html:<a href="#test-output">:link:上面的例子</a>@@ 中看到 key 的值。
 
-到这里基本明白了 expose + ref 使用，整个取值过程又是什么了！！
+以上就是 expose + ref 的使用及原理，下面还会对一些其它细节进行回顾。
 
-总结(如下图)：
+* $root and $parent
+
+在 Child 中可以通过 this.$root 和 this.$parent 去取到 parent 中 expose 出
+来的属性，这个又是怎么实现的呢:question::question::question:
+
+先看下测试用例([[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/__tests__/apiExpose.spec.ts][runtime-core/__tests__/apiExpose.spec.ts]])：
+
+#+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { nodeOps, render, h, serializeInner: s, defineComponent } = value
+
+let Root
+const Child = defineComponent( {
+  render() {
+    console.log("this.$parent.foo = " + this.$parent.foo);
+    console.log("this.$parent.bar = " + this.$parent.bar);
+    console.log("this.$root.foo = " + this.$root.foo);
+    console.log("this.$root.bar = " + this.$root.bar);
+    console.log("$root: ", this.$root);
+    console.log("Root:", Root);
+  }
+} )
+
+const Parent = defineComponent({
+  expose: [],
+  setup(_, { expose }) {
+    expose({ foo: 1 })
+    return { bar: 2 }
+  },
+  render() {
+    return h(Child)
+  }
+})
+
+// #1
+console.log('> root = parent');
+const root1 = nodeOps.createElement('div')
+render(h(Parent), root1)
+
+Root = defineComponent({
+  render () {
+    return h(Parent)
+  }
+})
+
+// #2
+console.log('> root = parent.$parent');
+const root2 = nodeOps.createElement('div')
+render(h(Root), root2)
+return 0
+#+end_src
+
+#+RESULTS:
+#+begin_example
+> root = parent
+this.$parent.foo = 1
+this.$parent.bar = undefined
+this.$root.foo = 1
+this.$root.bar = undefined
+$root:  { foo: 1 }
+Root: undefined
+> root = parent.$parent
+this.$parent.foo = 1
+this.$parent.bar = undefined
+this.$root.foo = undefined
+this.$root.bar = undefined
+$root:  {}
+Root: { render: [Function: render] }
+0
+#+end_example
+
+结果显示， 在 Child 中都可以正确取到 foo ，而取不到 bar。
+
+那么为什么呢:question:
+
+可以从 [[#instance-proxy][publicPropertiesMap]] 中找到 $parent 和 $root 的引用：
+
+#+begin_src typescript
+export const publicPropertiesMap: PublicPropertiesMap = extend(
+  Object.create(null),
+  {
+    // ...
+    $el: i => i.vnode.el,
+    // ...
+    $parent: i => getPublicInstance(i.parent),
+    $root: i => getPublicInstance(i.root),
+    // ...
+  } as PublicPropertiesMap
+)
+#+end_src
+
+两者都是映射到了 ~getPublicInstance~  那什么是 public instance:question:
+
+代码位于： [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/componentPublicInstance.ts][runtime-core/src/componentPublicInstance.ts:getPublicInstance]]
+
+#+begin_src typescript
+/**
+ ,* #2437 In Vue 3, functional components do not have a public instance proxy but
+ ,* they exist in the internal parent chain. For code that relies on traversing
+ ,* public $parent chains, skip functional ones and go to the parent instead.
+ ,*/
+const getPublicInstance = (
+  i: ComponentInternalInstance | null
+): ComponentPublicInstance | ComponentInternalInstance['exposed'] | null => {
+  if (!i) return null
+  // 对象组件，跳过函数组件，如上面的注释，函数组件并没有公共的实例，但是它们
+  // 依旧在 parent 链上
+  if (isStatefulComponent(i)) return i.exposed ? i.exposed : i.proxy
+  // 递归取父级组件实例，这个一直会找到 root
+  return getPublicInstance(i.parent)
+}
+#+end_src
+
+~this.$parent.foo~ 倒是好理解， ~$parent~ 被映射到 ~getPublicInstance(i.parent)~ 找自
+己的父级组件，如果有 exposed 级返回这个对象，所以这里也就等于是 ~instance.exposed.foo~
+
+然而对于 ~this.$root.foo~ 为什么也能取到 ~expose~ 里面的 ~1~ :question:
+
+#+begin_comment
+因为在 root1 的时候 Parent 就是 root 组件，所以 ~instance.root == parent~
+#+end_comment
+
+每个组件都会持有一份对 root 组件的引用，instance.root，这个引用的设置发生在创建
+组件实例的时候:
+
+#+begin_src typescript
+// createComponentInstance(vnode, parent, suspense) ->
+instance.root = parent ? parent.root : instance
+#+end_src
+
+所以 *#1* 和 *#2* 的结果不一样(~1~ 和 ~undefined~)。
+* expose()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: expose
+:END:
+
+除了能使用 options api expose 之外，还可以通过在 setup() 中调用 ~expose({...})~ 来
+暴露部分属性。
+
+#+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { nodeOps, render, h, serializeInner: s, defineComponent, ref } = value
+
+const Child = {
+  render() {
+    return h('div')
+  },
+  setup(_, { expose }) {
+    expose()
+    return {}
+  }
+}
+
+const childRef = ref()
+
+const Parent = {
+  setup() {
+    return () => h(Child, { ref: childRef })
+  }
+}
+
+const root = nodeOps.createElement('div')
+render(h(Parent), root)
+
+console.log('childRef.value.$el.tag = ' + childRef.value.$el.tag);
+return 0
+#+end_src
+
+#+RESULTS:
+: key = __v_raw
+: key = __v_isReadonly
+: key = __v_raw
+: key = __v_skip
+: key = $el
+: childRef.value.$el.tag = div
+: 0
+
+~expose()~ 函数又做了什么呢？为什么这个不传参数呢？
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+~expose()~ 只能在 setup() 中执行，且只能执行一次(非强制，多次也无意义，会覆盖)。
+#+end_warn
+
+有关 setup ctx 参数的说明见: [[/vue/vue-core-code-link/#cl-setup][setup(_, ctx) 的第二个参数？]]
+
+expose 函数其实很简单，赋值及初始化，不能重复调用也只是给出了警告：
+#+begin_src typescript
+const expose: SetupContext['expose'] = exposed => {
+  if (__DEV__ && instance.exposed) {
+    warn(`expose() should be called only once per setup().`)
+  }
+  instance.exposed = exposed || {}
+}
+#+end_src
+
+[[#getExposeProxy][getExposeProxy(instance)]]
+
+设置了 instance.exposed 的代理，并且如果要访问的属性这个对象本身没有的时候会去
+publicPropertiesMap 中去找，所以这个去访问 ~childRef.value.$el~ 的时候在
+~instance.exposed~ 上面是找不到的，最后找到的是 ~$el: i => i.vnode.el~ 。
+
+* 总结
+
+1. 支持 options api ~expose: [...]~
+2. 支持 setup context ~expose({...})~
+3. 同时支持 option api 和 setup context
+4. empty expose 等于没有
+5. ~this.$parent~ 在子组件中使用可以取到父组件 expose 的属性
+6. ~this.$root~ 取到根节点上 expose 的属性
+7. setup() 中调用 ~expose()~ 不传参，最后属性访问会被代理到 ~publicPropertiesMap~ 上
 
 [[/img/vue3/runtime-core/runtime-core-expose.svg]]

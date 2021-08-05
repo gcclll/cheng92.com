@@ -1953,7 +1953,7 @@ is selected, only the bare key is returned."
                    :icon ("sticky-note-o" :set "faicon" :color "green")
                    :file +org-capture-todo-file
                    :prepend t
-                   :headline "Inbox"
+                   :headline "Notes"
                    :type entry
                    :template ("* %?"
                               "%i %a"))
@@ -1986,10 +1986,12 @@ is selected, only the bare key is returned."
                    :children (("Vue" :keys "v"
                                :icon ("vue" :set "fileicon" :color "green")
                                :desc ""
+                               :headline "Vue"
                                :i-type "web:vue")
                               ("React" :keys "r"
                                :icon ("react" :set "alltheicon" :color "blue")
                                :desc ""
+                               :headline "React"
                                :i-type "web:react"
                                )
                               ("JavaScript" :keys "j"
@@ -2544,9 +2546,10 @@ Doom Emacs default configuration is too slow, let’s speed it up.
 
 
 #+begin_src emacs-lisp
-(add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . rjsx-mode))
+(add-to-list 'auto-mode-alist '("\\.js\\(x\\)?\\'" . rjsx-mode))
 (add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.[a-z]+rc$" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.vim\\(rc\\)?\\'" . vimrc-mode))
 (add-to-list 'auto-mode-alist '("[Mm]akefile" . makefile-gmake-mode))
 (add-to-list 'auto-mode-alist '("\\.mak$" . makefile-gmake-mode))
 (add-to-list 'auto-mode-alist '("\\.make$" . makefile-gmake-mode))
@@ -2770,6 +2773,7 @@ Window management packages.
   :recipe (:host github
            :repo "honmaple/emacs-maple-iedit"))
 (package! vmd-mode)
+(package! vimrc-mode)
 #+end_src
 ** EAF
 #+begin_src emacs-lisp
