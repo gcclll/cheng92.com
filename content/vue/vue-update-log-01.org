@@ -57,27 +57,152 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
  2. *FIX*: 修复 ~class: ['foo', false, undefined, 'bar']~ 被解析成 ~<div class="foo
     bar"/>~ 问题 @@html:<a href="#fix-array-class">:link:</a>@@。
  3. *FIX*: 修复 ~foo-bar~ 事件名无法触发问题 @@html:<a href="#fix-kebab-event-name">:link:</a>@@ 。
+ 4. *FIX*: ~this.$watch(fn, callback)~ 的 ~fn~ 第一个参数是 ~instance.proxy~ @@html:<a href="#instanceWatch">:link:</a>@@
 
-** Bug Fixes [11/25]
+** DONE Bug Fixes [25/25]
+CLOSED: [2021-08-05 Thu 23:42]
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: bug306
 :END:
 
-- [-] compiler-core: do not mark v-for as stable on const bindings (734c65b), closes vitejs/vite#1956
-- [-] compiler-dom: ensure global build filename matches the one defined in package.json (close #3181) (#3185) (96b6433)
-- [-] compiler-dom: fix cdn entries (fcb6c89), closes #3181 #3185
-- [-] compiler-sfc: compiler blank srcset (#3005) (9dc816d)
-- [-] compiler-sfc: removeSpecifier issue when removing initial imports (script-setup) (#2729) (6d762a8)
-- [-] compiler-sfc: the empty lang attribute should be treated as no lang specified (#3051) (6d5b623)
-- [-] compiler-sfc: transformAssetUrls.base should not affect known module requests (2ea9867)
-- [-] compiler-sfc: treat const reactive() bindings as mutable (03360ce)
-- [-] compiler-ssr: avoid duplicated asset imports merged from component slot client branch (c69f4ea), closes vitejs/vite#2034
-- [-] devtools: init devtools in production (#2906) (4d9bcb7)
-- [-] devtools: send instance to devtools when it's mounted instead of created (4fecb27)
-- [-] docs: change reference to passed deadline (#2930) (de7f9d1)
-- [-] hmr: deep clone reused hoisted trees during dev (5a7a1b8), closes vitejs/vite#2022
-- [-] runtime-core: align $parent/$root with the template ref when using expose ([[https://github.com/vuejs/vue-next/issues/3158][#3158]]) ([[https://github.com/vuejs/vue-next/commit/f43a3b0bebf0837223e7b8f046dad63e34cd323b][f43a3b0]])
+- [X] compiler-core: do not mark v-for as stable on const bindings ([[https://github.com/vuejs/vue-next/commit/734c65badd8395a78d7beee1fc960aee418361a0][734c65b]]), closes [[https://github.com/vitejs/vite/issues/1956][vitejs/vite#1956]]
+- [X] compiler-dom: ensure global build filename matches the one defined in package.json (close [[https://github.com/vuejs/vue-next/issues/3181][#3181]]) ([[https://github.com/vuejs/vue-next/issues/3185][#3185]]) ([[https://github.com/vuejs/vue-next/commit/96b64335242a99432080aeb879e5c0787207a0de][96b6433]])
+- [X] compiler-dom: fix cdn entries ([[https://github.com/vuejs/vue-next/commit/fcb6c8920c6ee76f57325a178eb9280d7bae4d7c][fcb6c89]]), closes [[https://github.com/vuejs/vue-next/issues/3181][#3181]] [[https://github.com/vuejs/vue-next/issues/3185][#3185]]
+- [X] compiler-sfc: compiler blank srcset ([[https://github.com/vuejs/vue-next/issues/3005][#3005]]) ([[https://github.com/vuejs/vue-next/commit/9dc816d63468b0a2fa2b6123959310014e121b58][9dc816d]])
+
+  允许 ~<img src="./logo.png" srcset=""/>~ 的 ~srcset~ 是个空值，编译后：
+  #+begin_src js
+    _createVNode(\\"img\\", {
+      src: \\"./logo.png\\",
+      srcset: \\"\\"
+    }),
+  #+end_src
+- [X] compiler-sfc: removeSpecifier issue when removing initial imports (script-setup) ([[https://github.com/vuejs/vue-next/issues/2729][#2729]]) ([[https://github.com/vuejs/vue-next/commit/6d5b62351248780663d2612a1f483f7ea9f5e5a2][6d762a8]])
+  #+begin_src js
+const url =
+  process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
+const value = require(url.replace("stb-", ""));
+const parser = '/usr/local/lib/node_modules/@babel/parser/lib'
+const { parse: babelParse } = require(parser)
+const { compileScript, parse } = value;
+
+const src = `<script setup>
+      import { defineProps, defineEmits, ref } from 'vue'
+      defineProps(['foo'])
+      defineEmits(['bar'])
+      const r = ref(0)
+      </script>`
+const { descriptor } = parse(src)
+const code = compileScript(descriptor, { id: 'xxxxx' }).content
+console.log('before babel > \n', code);
+babelParse(code, {
+  sourceType: 'module',
+  plugins: ['bigInt', 'optionalChaining', 'nullishCoalescingOperator', 'typescript']
+})
+
+console.log('after babel > \n', code);
+return 0;
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+  before babel >
+   import { ref } from 'vue'
+
+  export default {
+    props: ['foo'],
+    emits: ['bar'],
+    setup(__props, { expose }) {
+    expose()
+
+
+
+        const r = ref(0)
+
+  return { r, ref, __isScriptSetup: true }
+  }
+
+  }
+  after babel >
+   import { ref } from 'vue'
+
+  export default {
+    props: ['foo'],
+    emits: ['bar'],
+    setup(__props, { expose }) {
+    expose()
+
+
+
+        const r = ref(0)
+
+  return { r, ref, __isScriptSetup: true }
+  }
+
+  }
+  0
+  #+end_example
+- [X] compiler-sfc: the empty lang attribute should be treated as no lang specified ([[https://github.com/vuejs/vue-next/issues/3051][#3051]]) ([[https://github.com/vuejs/vue-next/commit/6d5b62351248780663d2612a1f483f7ea9f5e5a2][6d5b623]])
+- [X] [[/vue/vue-teardown-7-asset-transform/][compiler-sfc: transformAssetUrls.base should not affect known module requests]] ([[https://github.com/vuejs/vue-next/commit/2ea9867398d19148b32643fa0e6523c95b9ca956][2ea9867]])
+- [X] compiler-sfc: treat const reactive() bindings as mutable ([[https://github.com/vuejs/vue-next/commit/03360cefa1b7038174fa3c1fc3a04400b4cdbbce][03360ce]])
+  ~const obj = reactive({})~ 编译成 ~let~ 变量。
+- [X] compiler-ssr: avoid duplicated asset imports merged from component slot client branch ([[https://github.com/vuejs/vue-next/commit/c69f4ea857b7db8d26bbde2f80786c8212d16770][c69f4ea]]), closes [[https://github.com/vitejs/vite/issues/2034][vitejs/vite#2034]]
+
+  ~root.imports~ Set 改成了 Array，允许重复了.
+- [X] devtools: init devtools in production ([[https://github.com/vuejs/vue-next/issues/2906][#2906]]) ([[https://github.com/vuejs/vue-next/commit/4d9bcb768ddc294430aedcf27155aaca292c47bd][4d9bcb7]])
+- [X] devtools: send instance to devtools when it's mounted instead of created ([[https://github.com/vuejs/vue-next/commit/4fecb27f8696fdb8f681948543ea81ea62fe43bf][4fecb27]])
+- [X] docs: change reference to passed deadline ([[https://github.com/vuejs/vue-next/issues/2930][#2930]]) ([[https://github.com/vuejs/vue-next/commit/de7f9d1efd7fa19a908357d3f3a706c52694d8bd][de7f9d1]])
+- [X] hmr: deep clone reused hoisted trees during dev ([[https://github.com/vuejs/vue-next/commit/5a7a1b8293822219283d6e267496bec02234b0bc][5a7a1b8]]), closes [[https://github.com/vitejs/vite/issues/2022][vitejs/vite#2022]]
+
+  开发过程中，对静态提升的组件树进行深拷贝。
+
+  #+begin_src diff
+ packages/runtime-core/src/vnode.ts
+@@ -459,7 +459,7 @@ export function cloneVNode<T, U>(
+): VNode<T, U> {
+  // This is intentionally NOT using spread or extend to avoid the runtime
+  // key enumeration cost.
+-  const { props, ref, patchFlag } = vnode
++  const { props, ref, patchFlag, children } = vnode
+  const mergedProps = extraProps ? mergeProps(props || {}, extraProps) : props
+  return {
+    __v_isVNode: true,
+@@ -479,7 +479,10 @@ export function cloneVNode<T, U>(
+          : normalizeRef(extraProps)
+        : ref,
+    scopeId: vnode.scopeId,
+-    children: vnode.children,
++    children:
++      __DEV__ && patchFlag === PatchFlags.HOISTED && isArray(children)
++        ? (children as VNode[]).map(deepCloneVNode)
++        : children,
+    target: vnode.target,
+    targetAnchor: vnode.targetAnchor,
+    staticCount: vnode.staticCount,
+@@ -513,6 +516,18 @@ export function cloneVNode<T, U>(
+  }
+}
+  #+end_src
+
+  deep clone 函数：
+
+  #+begin_src typescript
+/**
+ * Dev only, for HMR of hoisted vnodes reused in v-for
+ * https://github.com/vitejs/vite/issues/2022
+ */
+function deepCloneVNode(vnode: VNode): VNode {
+  const cloned = cloneVNode(vnode)
+  if (isArray(vnode.children)) {
+    cloned.children = (vnode.children as VNode[]).map(deepCloneVNode)
+  }
+  return cloned
+}
+  #+end_src
+- [X] runtime-core: align $parent/$root with the template ref when using [[/vue/vue-teardown-11-expose/][expose]] ([[https://github.com/vuejs/vue-next/issues/3158][#3158]]) ([[https://github.com/vuejs/vue-next/commit/f43a3b0bebf0837223e7b8f046dad63e34cd323b][f43a3b0]])
+
+  expose 特性详解：[[/vue/vue-teardown-11-expose/][Vue3 功能拆解⑪ expose options&api]]
 - [X] runtime-core: allow overriding properties other than props ([[https://github.com/vuejs/vue-next/issues/3105][#3105]]) ([[https://github.com/vuejs/vue-next/commit/73117f6b5b1e36c9400248ed9e815839c49a12c8][73117f6]])
 
   允许重写非组件 props 的属性，比如：原生 API ~hasOwnProperty~
@@ -248,6 +373,7 @@ function mount(
 }
   #+end_src
 - [X] runtime-core: instanceWatch should pass this.proxy to source as the first argument ([[https://github.com/vuejs/vue-next/issues/2753][#2753]]) ([[https://github.com/vuejs/vue-next/commit/ec8fd10cec61c33c7c8056413a1c609ac90e1215][ec8fd10]])
+  @@html:<span id="instanceWatch"></span>@@
 
   当 watch 一个函数的时候，将 instance.proxy 做为第一个参数传给这个函数。
 
@@ -396,7 +522,8 @@ export const isFormTag = /*#__PURE__*/ makeMap(FORM_TAGS, true)
   ) {
   #+end_src
 
-** Features [5/5]
+** DONE Features [5/5]
+CLOSED: [2021-08-05 Thu 23:42]
 - [X] remove useless option in KeepAlive ([[https://github.com/vuejs/vue-next/issues/3170][#3170]]) ([[https://github.com/vuejs/vue-next/commit/bd1240c1270b610c4ffcf6c32e2bbe2c9265020f][bd1240c]])
 
   删除了 KeepAlive 的 ~inheritRef: true~ 选项。
@@ -497,7 +624,8 @@ return 0
   : <div>60000000100000111</div>
   : 0
 
-** Performance Improvements [1/1]
+** DONE Performance Improvements [1/1]
+CLOSED: [2021-08-05 Thu 23:42]
 
 - [X] reactivity: should not track __isVue ([[https://github.com/vuejs/vue-next/issues/2940][#2940]]) ([[https://github.com/vuejs/vue-next/commit/dd02cf37d5f5a6946bcae01ee70568e38a82c177][dd02cf3]])
 
@@ -532,11 +660,12 @@ which may cause build issues in projects still using TS 3.x.
 
 只包含一些类型的变更。
 
-** *Bug Fixes* [0/1]
+** DONE *Bug Fixes* [9/9]
+CLOSED: [2021-08-05 Thu 23:44]
 
-- compiler-core: fix missing createVNode import on nested v-for ([[https://github.com/vuejs/vue-next/commit/ad4d3915d39515a3e9ff2de691f82cb922a314b9][ad4d391]]),
+- [X] compiler-core: fix missing createVNode import on nested v-for ([[https://github.com/vuejs/vue-next/commit/ad4d3915d39515a3e9ff2de691f82cb922a314b9][ad4d391]]),
   closes [[https://github.com/vuejs/vue-next/issues/2718][#2718]]
-- compiler-sfc: should keep template nodes with no content ([[https://github.com/vuejs/vue-next/issues/2468][#2468]]) ([[https://github.com/vuejs/vue-next/commit/5b9b37fc9b363be2989c1e9d76ab6e950cdfe2ad][5b9b37f]]),
+- [X] compiler-sfc: should keep template nodes with no content ([[https://github.com/vuejs/vue-next/issues/2468][#2468]]) ([[https://github.com/vuejs/vue-next/commit/5b9b37fc9b363be2989c1e9d76ab6e950cdfe2ad][5b9b37f]]),
   closes [[https://github.com/vuejs/vue-next/issues/2463][#2463]]
 
   #+begin_src diff
@@ -551,8 +680,7 @@ which may cause build issues in projects still using TS 3.x.
     }
     switch (node.tag) {
   #+end_src
-
-- [[/vue/vue-teardown-7-asset-transform/][compiler-sfc: support transforming asset urls with full base url.]] ([[https://github.com/vuejs/vue-next/issues/2477][#2477]]) ([[https://github.com/vuejs/vue-next/commit/db786b1afe41c26611a215e6d6599d50312b9c2f][db786b1]])
+- [X] [[/vue/vue-teardown-7-asset-transform/][compiler-sfc: support transforming asset urls with full base url.]] ([[https://github.com/vuejs/vue-next/issues/2477][#2477]]) ([[https://github.com/vuejs/vue-next/commit/db786b1afe41c26611a215e6d6599d50312b9c2f][db786b1]])
 
     针对相对路径而言，当提供了 base 选项的时候，会使用这个值去拼接，如：
 
@@ -561,12 +689,10 @@ which may cause build issues in projects still using TS 3.x.
     ~<img src="./vue/img/test.png" />~ 会被编译成：
 
     ~createVNode('img', { src: 'https://www.cheng92.com/vue/img/test.png' })~
-
-- runtime-core: component mount anchor memory leak ([[https://github.com/vuejs/vue-next/issues/2459][#2459]]) ([[https://github.com/vuejs/vue-next/commit/3867bb4c14131ef94098a62bffba97a5b7d1fe66][3867bb4]]), closes [[https://github.com/vuejs/vue-next/issues/2458][#2458]]
+- [X] runtime-core: component mount anchor memory leak ([[https://github.com/vuejs/vue-next/issues/2459][#2459]]) ([[https://github.com/vuejs/vue-next/commit/3867bb4c14131ef94098a62bffba97a5b7d1fe66][3867bb4]]), closes [[https://github.com/vuejs/vue-next/issues/2458][#2458]]
 
   [[/img/tmp/vue-bug-2459.png]]
-
-- runtime-core: skip patchBlockChildren if n1.dynamicChildren is null ([[https://github.com/vuejs/vue-next/issues/2717][#2717]]) ([[https://github.com/vuejs/vue-next/commit/c59897c7b0dbd82b5bbf3fbca945c0639ac37fb8][c59897c]]), closes [[https://github.com/vuejs/vue-next/issues/2715][#2715]] [[https://github.com/vuejs/vue-next/issues/2485][#2485]]
+- [X] runtime-core: skip patchBlockChildren if n1.dynamicChildren is null ([[https://github.com/vuejs/vue-next/issues/2717][#2717]]) ([[https://github.com/vuejs/vue-next/commit/c59897c7b0dbd82b5bbf3fbca945c0639ac37fb8][c59897c]]), closes [[https://github.com/vuejs/vue-next/issues/2715][#2715]] [[https://github.com/vuejs/vue-next/issues/2485][#2485]]
 
   #+begin_export html
     <script src="https://unpkg.com/vue@3.0.4/dist/vue.global.js"></script>
@@ -624,14 +750,11 @@ which may cause build issues in projects still using TS 3.x.
         )
 
   #+end_src
-
-- +runtime-dom: support mounting app on ShadowRoot+ ([[https://github.com/vuejs/vue-next/pull/2447][#2447]]) (b2189ba), closes [[https://github.com/vuejs/vue-next/issues/2399][#2399]]
+- [X] +runtime-dom: support mounting app on ShadowRoot+ ([[https://github.com/vuejs/vue-next/pull/2447][#2447]]) (b2189ba), closes [[https://github.com/vuejs/vue-next/issues/2399][#2399]]
 
   *>3.2* 中已经没有 ~__isShadowRoot~ 相关的代码了。
-
-- [ ] ssr: properly handle ssr empty slot and fallback (88f6b33)
-
-- [[/vue/vue-teardown-9-transition][transition: ensure manual style manipulation in transition leave hooks work]] ([[https://github.com/vuejs/vue-next/commit/cbaa3805064cb581fc2007cf63774c91d39844fe][cbaa380]]), closes [[https://github.com/vuejs/vue-next/issues/2720][#2720]]
+- [X] ssr: properly handle ssr empty slot and fallback (88f6b33)
+- [X] [[/vue/vue-teardown-9-transition][transition: ensure manual style manipulation in transition leave hooks work]] ([[https://github.com/vuejs/vue-next/commit/cbaa3805064cb581fc2007cf63774c91d39844fe][cbaa380]]), closes [[https://github.com/vuejs/vue-next/issues/2720][#2720]]
 
   在 onLeave hook 中增加
   #+begin_src typescript
@@ -640,12 +763,12 @@ which may cause build issues in projects still using TS 3.x.
   #+end_src
 
   去强制渲染，触发 ~leaveActiveClass~ 。
+- [X] [[/vue/vue-teardown-9-transition][transition: ensure styles from *-leave-active trigger transition]] ([[https://github.com/vuejs/vue-next/issues/2716][#2716]]) ([[https://github.com/vuejs/vue-next/commit/3f8f9b67b3b54a7ae8405baf6d28be7ec074509d][3f8f9b6]]), closes [[https://github.com/vuejs/vue-next/issues/2712][#2712]]
 
-- [[/vue/vue-teardown-9-transition][transition: ensure styles from *-leave-active trigger transition]] ([[https://github.com/vuejs/vue-next/issues/2716][#2716]]) ([[https://github.com/vuejs/vue-next/commit/3f8f9b67b3b54a7ae8405baf6d28be7ec074509d][3f8f9b6]]), closes [[https://github.com/vuejs/vue-next/issues/2712][#2712]]
+** DONE Features [1/1]
+CLOSED: [2021-08-05 Thu 23:44]
 
-** Features
-
-- devtools: send instance (3626ff0)
+- [X] devtools: send instance (3626ff0)
 
   将组件实例给开发工具。
 
