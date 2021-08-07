@@ -1,0 +1,154 @@
+#+TITLE: HTML Marquee 标签
+#+DATE: <2021-08-06 15:56:09>
+#+TAGS[]: web, html
+#+CATEGORIES[]: web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+[[https://dev.w3.org/html5/pf-summary/obsolete.html][Marquee 已经废弃的元素。]]
+
+*能用 transition 和 anmiation，请尽量不要使用这个。*
+
+#+begin_src cpp
+interface HTMLMarqueeElement : HTMLElement {
+           attribute DOMString behavior;
+           attribute DOMString bgColor;
+           attribute DOMString direction;
+           attribute DOMString height;
+           attribute unsigned long hspace;
+           attribute long loop;
+           attribute unsigned long scrollAmount;
+           attribute unsigned long scrollDelay;
+           attribute DOMString trueSpeed;
+           attribute unsigned long vspace;
+           attribute DOMString width;
+
+           attribute Function onbounce;
+           attribute Function onfinish;
+           attribute Function onstart;
+
+  void start();
+  void stop();
+};
+#+end_src
+
+marquee 可以通过自身的 api 开启/开始( *start()* )和关闭/暂停( *stop()* )？
+
+如下测试：
+
+#+begin_export html
+<p style="color:blue"> --> start & stop 控制暂停和开始 <-- </p>
+<marquee id="m1">marquee test start & stop</marquee>
+<button onclick="m1start()">start()</button>
+<button onclick="m1stop()">stop()</button>
+<script type="text/javascript">
+var m1= document.getElementById('m1')
+window.m1start = () => { console.log('m1 start'); m1.start()}
+window.m1stop = () => { console.log('m1 start'); m1.stop() }
+</script>
+<br/><br/><p style="color:blue"> --> behavior: scroll, slide, alternate <-- </p>
+<div style="background:red;width:500px;height:150px;color:white;font-size:22px">
+<marquee behavior="scroll">marquee behavior scroll(default)</marquee>
+<marquee behavior="slide">marquee behavior slide</marquee>
+<marquee behavior="alternate">marquee behavior alternate</marquee>
+</div>
+<br/><br/><p style="color:blue"> --> direction: left, right, up, down <-- </p>
+<div style="background:red;width:500px;height:300px;color:white;font-size:22px">
+<marquee direction="left">marquee direction left(default)</marquee>
+<marquee direction="right">marquee direction right</marquee>
+<marquee style="height:100px;background:blue" direction="up">marquee direction up</marquee>
+<marquee style="height:100px;background:blue" direction="down">marquee direction down</marquee>
+</div>
+<br/><br/><p style="color:blue"> --> scroll interval(default: 85 ms) <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<marquee>scroll interval(default: 85)</marquee>
+<marquee scrolldelay="200">scroll interval: 200</marquee>
+</div>
+<br/><br/>
+<p style="color:blue"> --> treespeed: 影响 scrolldelay 属性，默认：false <-- </p>
+<p style="color:blue"> --> 1. 当 treespeed = false, scrolldelay < 60 时会被设置成 60 <-- </p>
+<p style="color:blue"> --> 2. 当 treespeed = true, scrolldelay 取设置的值，等于是 false 的时候会自动调整 scrolldelay <-- </p>
+<p style="color:red"> --> 如下现象， 好像没啥用， m1 和 m4 速度是同步的 <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<marquee id="marquee1" scrolldelay="30">m1: scroll interval + treespeed(false): 30</marquee>
+<marquee id="marquee2" scrolldelay="60">m2: scroll interval + treespeed(false): 60</marquee>
+<marquee id="marquee3" scrolldelay="120">m3: scroll interval + treespeed(false): 120</marquee>
+<marquee id="marquee4" scrolldelay="30" treespeed="true">m4: scroll interval + treespeed(true ): 30</marquee>
+<marquee id="marquee5" scrolldelay="60" treespeed="true">m5: scroll interval + treespeed(true ): 60</marquee>
+<marquee id="marquee6" scrolldelay="120" treespeed="true">m6: scroll interval + treespeed(true ): 120</marquee>
+</div>
+<br/><br/>
+<p style="color:blue"> --> scrollamount: marquee scroll distance, 每次移动的距离，默认：6px/ms <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<marquee>scrollamount(default: 6px)</marquee>
+<marquee scrollamount="12">scrollamount: 12px</marquee>
+</div>
+<br/><br/>
+<p style="color:blue"> --> loop: marquee loop count, 如果 < 1 则用默认值 -1，否则用指定的数字 <-- </p>
+<p style="color:blue"> --> loop index: 完成一次，自动 +1 当 >= loop count 时候滚动停止，并触发 onfinish <-- </p>
+<p style="color:blue"> --> 如果 loop index >= loop count 时候滚动停止，并触发 onfinish <-- </p>
+<p style="color:blue"> --> 如果 behavior=alternate，loop index >= loop count 时触发 onbounce 事件 <-- </p>
+<p style="color:blue"> --> 否则触发 onstart 事件(loop index < loop count) <-- </p>
+<p style="color:red"> --> start,bounce,finish 在 chrome 上都触发不了 <-- </p>
+<p style="color:red"> --> stackover 上说是最新的版不再维护这个标签的原因 <-- </p>
+<p style="color:red"> --> 但是 Firefox 上测试了下，三个事件都可以正常触发 <-- </p>
+<div style="background:red;width:800px;color:white;font-size:22px">
+<marquee id="ml0" loop="-1" behavior="alternate" >ml1, loop: -1, behavior: alternate, onbounce 没用？</marquee>
+<marquee id="ml1" loop="-1">ml1, loop: -1</marquee>
+<p>info-ml1: <span id="info1"></span></p><br>
+<marquee id="ml2" loop="0">ml2, loop: 0</marquee>
+<p>info-ml2: <span id="info2"></span></p><br>
+<marquee id="ml3" loop="1">ml3, loop: 1</marquee>
+<p>info-ml3: <span id="info3"></span></p><br>
+<marquee id="ml4" loop="2">ml4, loop: 2</marquee>
+<p>info-ml4: <span id="info4"></span></p><br>
+<p>loop index = <span id="loopIndex">0</span></p>
+</div>
+<script>
+listenEvents(ml0, info1, 'ml0')
+listenEvents(ml1, info1, 'ml1')
+listenEvents(ml2, info2, 'ml2')
+listenEvents(ml3, info3, 'ml3')
+listenEvents(ml4, info4, 'ml4')
+function listenEvents(ml, info, text) {
+    ml.addEventListener('start', function(e) {
+      info.textContent = text + ' start'
+    })
+    ml.addEventListener('finish', function(e) {
+      info.textContent = text + ' finish'
+    })
+    ml.addEventListener('bounce', function(e) {
+      info.textContent = text +' bounce'
+    })
+}
+</script>
+
+#+end_export
+
+下表的属性与DOM属性对应关系：
+
+| marquee attribute | DOM attribute |
+|-------------------+---------------|
+| ~behavior~          | ~behavior~      |
+| ~direction~         | ~direction~     |
+| ~height~            | ~height~        |
+| ~width~             | ~width~         |
+| ~hspace~            | ~hspace~        |
+| ~vspace~            | ~vspace~        |
+| ~bgcolor~           | ~bgColor~       |
+| ~scrollamount~      | ~scrollAmount~  |
+| ~scrolldelay~       | ~scrollDelay~   |
+| ~truespeed~         | ~trueSpeed~     |
+
+#+begin_export html
+<p style="color:blue"> --> vspace: 垂直距离，hspace: 水平距离 <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<div style="background: blue">
+    <marquee style="background:red" vspace="50">vspace: 20px</marquee>
+</div>
+<div style="background: black">
+    <marquee style="background:red" hspace="50">hspace: 50px</marquee>
+</div>
+</div>
+
+#+end_export
