@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>demo on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/demo/</link>
+    <description>Recent content in demo on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Thu, 03 Sep 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/demo/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My First Post</title>
+      <link>https://www.cheng92.com/post/my-first-post/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/my-first-post/</guid>
+      <description>window.g_need_fold = 1 Org-mode 简明手册 - open source - 博客园 embrace embrace-add(,ea) Documentation Two Emacs manuals, the GNU Emacs manual and An Introduction to Programming in Emacs Lisp, can be purchased in printed form from</description>
+    </item>
+    
+  </channel>
+</rss>

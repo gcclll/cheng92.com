@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>persist on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/persist/</link>
+    <description>Recent content in persist on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sun, 25 Apr 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/persist/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue Vuex Persist Store(数据持久化) - 简化版</title>
+      <link>https://www.cheng92.com/vue/vue-vuex-persist/</link>
+      <pubDate>Sun, 25 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-vuex-persist/</guid>
+      <description>官方仓库： championswimmer/vuex-persist: A Vuex plugin to persist the store. (Fully Typescript enabled) VuexPersistence 原理就一句话：通过 vuex.subscribe 订阅一个函数，在每次 commit mutation 的</description>
+    </item>
+    
+  </channel>
+</rss>

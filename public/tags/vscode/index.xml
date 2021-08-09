@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>vscode, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/vscode/</link>
+    <description>Recent content in vscode, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Thu, 22 Apr 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/vscode/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>将 VSCode 打造成 Emacs</title>
+      <link>https://www.cheng92.com/post/vscode-to-emacs/</link>
+      <pubDate>Thu, 22 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/vscode-to-emacs/</guid>
+      <description>当前使用的 Doom-Emacs，但是在进行 vue 开发过程中总会遇到一些问题，用起来并</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>preact, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/preact/</link>
+    <description>Recent content in preact, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sun, 20 Jun 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/preact/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Preact 源码学习（一）</title>
+      <link>https://www.cheng92.com/react/preact-zero/</link>
+      <pubDate>Sun, 20 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/react/preact-zero/</guid>
+      <description>建议学习 preact 之前，先看 Build Your Own React - 若叶知秋 或 Build your own React 项目初始化 preact src 下最基础的目录结构</description>
+    </item>
+    
+  </channel>
+</rss>

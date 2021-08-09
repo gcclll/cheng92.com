@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Webs on 若叶知秋</title>
+    <link>https://www.cheng92.com/web/</link>
+    <description>Recent content in Webs on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 06 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/web/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>HTML Marquee 标签</title>
+      <link>https://www.cheng92.com/web/html-marquee-tag/</link>
+      <pubDate>Fri, 06 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/html-marquee-tag/</guid>
+      <description>Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7</description>
+    </item>
+    
+    <item>
+      <title>Web Component 学习记录</title>
+      <link>https://www.cheng92.com/web/web-component/</link>
+      <pubDate>Sun, 18 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/web-component/</guid>
+      <description>TODO</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Api - Array.prototype.reduce</title>
+      <link>https://www.cheng92.com/web/apis/js-api-array-reduce/</link>
+      <pubDate>Wed, 02 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/apis/js-api-array-reduce/</guid>
+      <description>TODO
+ Array.prototype.reduce()
+ 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36  function deepFindFirstChild( parent, path, ) { if (path &amp;amp;&amp;amp; Array.</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Equality Comparison, 等号运算符</title>
+      <link>https://www.cheng92.com/web/apis/js-api-equality-comparison/</link>
+      <pubDate>Tue, 11 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/apis/js-api-equality-comparison/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); ==, === 运算符详解。 ECMAScript® 2022</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Api - Number::toString ( x ) - TODO</title>
+      <link>https://www.cheng92.com/web/apis/js-api-number-tostring/</link>
+      <pubDate>Sat, 08 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/apis/js-api-number-tostring/</guid>
+      <description>Number::toString ( x ) 在进行伪码之前，这里先要弄清楚几点： 标准中的 n, k, s 分别代表什么意思？ n: 这</description>
+    </item>
+    
+    <item>
+      <title>Awesome Web Development(WEB开发资源)</title>
+      <link>https://www.cheng92.com/web/awesome-web/</link>
+      <pubDate>Fri, 23 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/awesome-web/</guid>
+      <description>insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); insertCssLink(&#34;/js/vue/css/awesome.css&#34;); 此文初衷，有时候去找一些库的时候，第一反应就是 awesome-xxx~， 比如</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Api - Number.parseInt(s, r)</title>
+      <link>https://www.cheng92.com/web/apis/js-api-number-parseint/</link>
+      <pubDate>Mon, 25 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/apis/js-api-number-parseint/</guid>
+      <description>parseInt(string, radix) 在使用过程中发现一个问题，看下面的测试代码结果： 1 2 3 4 5 6 7 8 9 10 11 12 13 14</description>
+    </item>
+    
+    <item>
+      <title>HTML 标准</title>
+      <link>https://www.cheng92.com/web/html-spec-whatwg-st/</link>
+      <pubDate>Sat, 19 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/html-spec-whatwg-st/</guid>
+      <description>HTML 标准首页 HTML Standard 13 The HTML syntax 13.5 Named character references 这下面包含了所有符号 名字 - Unicode - 符号 对应关系表。 Element textContent,</description>
+    </item>
+    
+    <item>
+      <title>前端，一点都不好玩</title>
+      <link>https://www.cheng92.com/web/web-fe-zero/</link>
+      <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/web-fe-zero/</guid>
+      <description>window.g_fold_chapter = 1 本文默认处于折叠状态，可点击标题后方的 … 展开或闭合。 参考链接： https://muyiy.cn/question/js/33.html JavaScript 节流和防</description>
+    </item>
+    
+    <item>
+      <title>用 Rollupjs 打包原生项目</title>
+      <link>https://www.cheng92.com/web/javascript-native-dev-with-rollupjs/</link>
+      <pubDate>Sat, 17 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/javascript-native-dev-with-rollupjs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>JavaScript - Promise 实现(0-1)</title>
+      <link>https://www.cheng92.com/web/javascript-ecma-promise/</link>
+      <pubDate>Mon, 12 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/javascript-ecma-promise/</guid>
+      <description>源码参考链接：https://github.com/stefanpenner/e</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Api &amp; 文档</title>
+      <link>https://www.cheng92.com/web/javascript-docs/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/javascript-docs/</guid>
+      <description>regenerator: npm install -g renerator 将 es6+ 语法编译成 es5 语法 社区链接 name link esdiscuss.org es 标准讨论社区 ecma262 官方标准文档 ecma262 官方标</description>
+    </item>
+    
+    <item>
+      <title>Javascript ECMA 6 Plus</title>
+      <link>https://www.cheng92.com/web/javascript-ecma-6-plus/</link>
+      <pubDate>Fri, 28 Aug 2020 15:42:38 +0800</pubDate>
+      
+      <guid>https://www.cheng92.com/web/javascript-ecma-6-plus/</guid>
+      <description>参考链接：https://leanpub.com/understandinges</description>
+    </item>
+    
+  </channel>
+</rss>

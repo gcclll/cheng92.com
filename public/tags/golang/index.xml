@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>golang on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/golang/</link>
+    <description>Recent content in golang on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Wed, 21 Jul 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/golang/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Golang Go Go Go...</title>
+      <link>https://www.cheng92.com/post/golang/</link>
+      <pubDate>Wed, 21 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/golang/</guid>
+      <description>问题 go get i/o timeout ? 1 2 3 4 5 go env -w GO111MODULE=on go env -w GOPROXY=https://goproxy.io,direct # 设置不走 proxy 的私有仓库，多个用逗号相隔（</description>
+    </item>
+    
+  </channel>
+</rss>

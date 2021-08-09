@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Vue3 功能拆解⑪ expose options&amp;api - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue3 中 expose 的原理及使用。 本文涉及的源码包： r" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/vue/vue-teardown-11-expose/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.9d6c07951e716411e0fdd9d1d7616cb41ced57b53993154c49ea809e194527af.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="Vue3 功能拆解⑪ expose options&amp;api" />
+<meta property="og:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue3 中 expose 的原理及使用。 本文涉及的源码包： r" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/vue/vue-teardown-11-expose/" /><meta property="article:section" content="vue" />
+<meta property="article:published_time" content="2021-08-04T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-08-04T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="Vue3 功能拆解⑪ expose options&amp;api">
+<meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue3 中 expose 的原理及使用。 本文涉及的源码包： r"><meta itemprop="datePublished" content="2021-08-04T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-08-04T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="3475">
+<meta itemprop="keywords" content="vue3,,vue-next,," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Vue3 功能拆解⑪ expose options&amp;api"/>
+<meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue3 中 expose 的原理及使用。 本文涉及的源码包： r"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Vue3 功能拆解⑪ expose options&amp;api</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2021-08-04 </span>
+        <div class="post-category">
+            <a href="/categories/vue/"> vue </a>
+            </div>
+          <span class="more-meta"> 约 3475 字 </span>
+          <span class="more-meta"> 预计阅读 7 分钟 </span>
+        <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li><a href="#options">expose in options</a>
+</li>
+<li><a href="#instance-proxy">instance.proxy</a>
+</li>
+<li><a href="#set-ref">ref &amp; setRef</a>
+</li>
+<li><a href="#headline-4">$root and $parent</a>
+</li>
+<li><a href="#expose">expose()</a>
+</li>
+<li><a href="#headline-6">总结</a>
+</li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+<p>
+<img src="/img/bdx/yiyeshu-001.jpg" alt="/img/bdx/yiyeshu-001.jpg" title="/img/bdx/yiyeshu-001.jpg" /></p>
+<blockquote>
+<p>vue3 中 expose 的原理及使用。</p>
+</blockquote>
+<p>
+本文涉及的源码包： <a href="https://github.com/vuejs/vue-next/tree/master/packages/ru">runtime-core</a>。</p>
+<div id="outline-container-options" class="outline-2">
+<h2 id="options">
+expose in options
+</h2>
+<div id="outline-text-options" class="outline-text-2">
+<p>
+组件中的所有选项处理(methods, data, …)都在这个函数中，其中就包括 expose:</p>
+<p>
+<a href="https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/componentOptions.ts">componentOptions.ts:applyOptions(instance: ComponentInternalInstance)</a></p>
+<p>
+options 初始化顺序：</p>
+<ol>
+<li>
+<p>props</p>
+</li>
+<li>
+<p>inject</p>
+</li>
+<li>
+<p>methods</p>
+</li>
+<li>
+<p>data, 延迟处理，因为它依赖 <code>this</code></p>
+</li>
+<li>
+<p>computed</p>
+</li>
+<li>
+<p>watch, 延迟处理，因为它依赖 <code>this</code></p>
+</li>
+</ol>
+<p>
+<span id="applyOptions"></span></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">applyOptions</span><span class="p">(</span><span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">options</span> <span class="o">=</span> <span class="nx">resolveMergedOptions</span><span class="p">(</span><span class="nx">instance</span><span class="p">)</span>
+  <span class="kr">const</span> <span class="nx">publicThis</span> <span class="o">=</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">proxy</span><span class="o">!</span> <span class="kr">as</span> <span class="kt">any</span>
+  <span class="kr">const</span> <span class="nx">ctx</span> <span class="o">=</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">ctx</span>
+  <span class="nx">shouldCacheAccess</span> <span class="o">=</span> <span class="kc">false</span>
+
+  <span class="kr">const</span> <span class="p">{</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>    <span class="c1">// public API
+</span><span class="c1"></span>    <span class="nx">expose</span><span class="p">,</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>  <span class="p">}</span> <span class="o">=</span> <span class="nx">options</span>
+
+
+  <span class="c1">// ...
+</span><span class="c1"></span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">expose</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">expose</span><span class="p">.</span><span class="nx">length</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kr">const</span> <span class="nx">exposed</span> <span class="o">=</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span> <span class="o">||</span> <span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span> <span class="o">=</span> <span class="p">{})</span>
+      <span class="nx">expose</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">key</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nb">Object</span><span class="p">.</span><span class="nx">defineProperty</span><span class="p">(</span><span class="nx">exposed</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="p">{</span>
+          <span class="kr">get</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">publicThis</span><span class="p">[</span><span class="nx">key</span><span class="p">],</span>
+          <span class="kr">set</span><span class="o">:</span> <span class="nx">val</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">publicThis</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">val</span><span class="p">)</span>
+        <span class="p">})</span>
+      <span class="p">})</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// ...
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+expose 属性的访问路径:</p>
+<p>
+<code>expose[] -&gt; instance.exposed -&gt; publicThis -&gt; instance.proxy</code></p>
+</div>
+</div>
+<div id="outline-container-instance-proxy" class="outline-2">
+<h2 id="instance-proxy">
+instance.proxy
+</h2>
+<div id="outline-text-instance-proxy" class="outline-text-2">
+<p>
+对组件上下文对象的代理对象。</p>
+<p>
+instance.proxy 创建自：</p>
+<p>
+<a href="https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/component.ts">runtime-core/src/component.ts:setupStatefulComponent</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="c1">// 1. create public instance / render proxy
+</span><span class="c1"></span>  <span class="c1">// also mark it raw so it&#39;s never observed
+</span><span class="c1"></span>  <span class="nx">instance</span><span class="p">.</span><span class="nx">proxy</span> <span class="o">=</span> <span class="nx">markRaw</span><span class="p">(</span><span class="k">new</span> <span class="nx">Proxy</span><span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">PublicInstanceProxyHandlers</span><span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+是对 instance.ctx 的代理，当你在实例中通过 <code>this.xxx</code> 或 <code>ctx.xxx</code> 去访问属性的时候实际走的是下
+面这个代理。</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kr">export</span> <span class="kr">const</span> <span class="nx">PublicInstanceProxyHandlers</span>: <span class="kt">ProxyHandler</span><span class="p">&lt;</span><span class="nt">any</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span>
+   <span class="c1">// get proxy
+</span><span class="c1"></span>  <span class="kr">get</span><span class="p">({</span> <span class="nx">_</span>: <span class="kt">instance</span> <span class="p">}</span><span class="o">:</span> <span class="nx">ComponentRenderContext</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">ctx</span><span class="p">,</span> <span class="nx">setupState</span><span class="p">,</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">props</span><span class="p">,</span> <span class="nx">accessCache</span><span class="p">,</span> <span class="kr">type</span><span class="p">,</span> <span class="nx">appContext</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">instance</span>
+
+    <span class="kd">let</span> <span class="nx">normalizedProps</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!==</span> <span class="s1">&#39;$&#39;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// 1. 非 $xx 的属性访问顺序: setupState -&gt; data -&gt; ctx -&gt; props
+</span><span class="c1"></span>      <span class="c1">// setupState 是 setup() 返回对象时的值，或 &lt;script setup&gt; 标签中的状态
+</span><span class="c1"></span>      <span class="c1">// 并且这个会记录每次访问时的 key 对应在哪个对象上，这样下次就不用再过一篇这
+</span><span class="c1"></span>      <span class="c1">// 里繁琐的逻辑了
+</span><span class="c1"></span>      <span class="c1">// ...
+</span><span class="c1"></span>    <span class="p">}</span>
+
+    <span class="c1">// 2. 下面是针对 this.$xxx 的访问，顺序是：
+</span><span class="c1"></span>    <span class="c1">// publicPropertiesMap -&gt; cssModule -&gt; ctx -&gt; globalProperties
+</span><span class="c1"></span>    <span class="c1">// 找到对应 key 的 get 方法, 注意点
+</span><span class="c1"></span>    <span class="c1">//   1) this.$attrs 的访问会触发 track
+</span><span class="c1"></span>    <span class="c1">//   2) globalProperties 参过 app.config.globalProperties 注册的全局属性
+</span><span class="c1"></span>    <span class="kr">const</span> <span class="nx">publicGetter</span> <span class="o">=</span> <span class="nx">publicPropertiesMap</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+    <span class="kd">let</span> <span class="nx">cssModule</span><span class="p">,</span> <span class="nx">globalProperties</span>
+    <span class="c1">// public $xxx properties
+</span><span class="c1"></span>    <span class="c1">// ...
+</span><span class="c1"></span>  <span class="p">},</span>
+
+   <span class="c1">// set proxy
+</span><span class="c1"></span>  <span class="kr">set</span><span class="p">(</span>
+    <span class="p">{</span> <span class="nx">_</span>: <span class="kt">instance</span> <span class="p">}</span><span class="o">:</span> <span class="nx">ComponentRenderContext</span><span class="p">,</span>
+    <span class="nx">key</span>: <span class="kt">string</span><span class="p">,</span>
+    <span class="nx">value</span>: <span class="kt">any</span>
+  <span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">setupState</span><span class="p">,</span> <span class="nx">ctx</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">instance</span>
+    <span class="c1">// 设置优先级： setupState -&gt; options data
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">setupState</span> <span class="o">!==</span> <span class="nx">EMPTY_OBJ</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">setupState</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+      <span class="nx">setupState</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">data</span> <span class="o">!==</span> <span class="nx">EMPTY_OBJ</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+      <span class="nx">data</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">hasOwn</span><span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">props</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+      <span class="c1">// ...不允许直接修改 props
+</span><span class="c1"></span>      <span class="k">return</span> <span class="kc">false</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">===</span> <span class="s1">&#39;$&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">key</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">in</span> <span class="nx">instance</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// ...不允许直接修改 $xxx 上的属性
+</span><span class="c1"></span>      <span class="k">return</span> <span class="kc">false</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="c1">// 开发时，可以修改 app.config.globalProperties 上属性的值
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">appContext</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">globalProperties</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nb">Object</span><span class="p">.</span><span class="nx">defineProperty</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="p">{</span>
+          <span class="nx">enumerable</span>: <span class="kt">true</span><span class="p">,</span>
+          <span class="nx">configurable</span>: <span class="kt">true</span><span class="p">,</span>
+          <span class="nx">value</span>
+        <span class="p">})</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">ctx</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="kc">true</span>
+  <span class="p">},</span>
+
+  <span class="nx">has</span><span class="p">(</span>
+    <span class="p">{</span>
+      <span class="nx">_</span><span class="o">:</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">setupState</span><span class="p">,</span> <span class="nx">accessCache</span><span class="p">,</span> <span class="nx">ctx</span><span class="p">,</span> <span class="nx">appContext</span><span class="p">,</span> <span class="nx">propsOptions</span> <span class="p">}</span>
+    <span class="p">}</span><span class="o">:</span> <span class="nx">ComponentRenderContext</span><span class="p">,</span>
+    <span class="nx">key</span>: <span class="kt">string</span>
+  <span class="p">)</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">normalizedProps</span>
+    <span class="c1">// 检测属性有无时的代理：
+</span><span class="c1"></span>    <span class="c1">// 缓存(取值时缓存的) -&gt; data -&gt; setup state -&gt; props -&gt; ctx -&gt; $xxx -&gt; globalProperties
+</span><span class="c1"></span>    <span class="k">return</span> <span class="p">(</span>
+      <span class="nx">accessCache</span><span class="o">!</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span> <span class="o">!==</span> <span class="kc">undefined</span> <span class="o">||</span>
+      <span class="p">(</span><span class="nx">data</span> <span class="o">!==</span> <span class="nx">EMPTY_OBJ</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="o">||</span>
+      <span class="p">(</span><span class="nx">setupState</span> <span class="o">!==</span> <span class="nx">EMPTY_OBJ</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">setupState</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="o">||</span>
+      <span class="p">((</span><span class="nx">normalizedProps</span> <span class="o">=</span> <span class="nx">propsOptions</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">normalizedProps</span><span class="p">,</span> <span class="nx">key</span><span class="p">))</span> <span class="o">||</span>
+      <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="o">||</span>
+      <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">publicPropertiesMap</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="o">||</span>
+      <span class="nx">hasOwn</span><span class="p">(</span><span class="nx">appContext</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">globalProperties</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+    <span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<div class="success-block">
+<p><p><strong>属性代理</strong></p></p>
+<ol>
+<li>
+<p>取值操作可能经过的路径(依优先级从左到右)：</p>
+<p>
+非 <code>$xxx</code> 的属性： <code>setup state</code> &gt; <code>data</code> &gt; <code>ctx</code> &gt; <code>props</code></p>
+<p>
+<code>$xxx</code> 的属性： <code>publicPropertiesMap</code> -&gt; <code>cssModule</code> -&gt; <code>ctx</code> -&gt; <code>globalProperties</code></p>
+<p>
+实际上 <code>$xxx</code> 的属性只是 <code>ctx.xxx</code> 的别名。</p>
+</li>
+<li>
+<p>设值，只能设置 <code>setup state</code> &gt; <code>options data</code></p>
+<p>
+有一种情况比较特殊：当要设置的 key 在 <code>setup state</code>, <code>options data</code>, <code>props</code>, <code>$xxx</code>,
+<code>globalProperties</code> 上都没有的时候，最后会直接被添加的 <code>ctx</code> 上去：</p>
+<p>
+<code>ctx[key] = value</code></p>
+</li>
+<li>
+<p>has 属性检查的顺序： <code>cache 中</code> &gt; <code>data</code> &gt; <code>setup state</code> &gt; <code>props</code> &gt; <code>ctx</code> &gt;
+<code>publicPropertiesMap</code> &gt; <code>globalProperties</code></p>
+</li>
+</ol>
+</div>
+<p>
+publicPropertiesMap:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">publicPropertiesMap</span>: <span class="kt">PublicPropertiesMap</span> <span class="o">=</span> <span class="nx">extend</span><span class="p">(</span>
+  <span class="nb">Object</span><span class="p">.</span><span class="nx">create</span><span class="p">(</span><span class="kc">null</span><span class="p">),</span>
+  <span class="p">{</span>
+    <span class="nx">$</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">i</span><span class="p">,</span>
+    <span class="nx">$el</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">i</span><span class="p">.</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">el</span><span class="p">,</span>
+    <span class="nx">$data</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">i</span><span class="p">.</span><span class="nx">data</span><span class="p">,</span>
+    <span class="nx">$props</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">?</span> <span class="nx">shallowReadonly</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">props</span><span class="p">)</span> <span class="o">:</span> <span class="nx">i</span><span class="p">.</span><span class="nx">props</span><span class="p">),</span>
+    <span class="nx">$attrs</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">?</span> <span class="nx">shallowReadonly</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">attrs</span><span class="p">)</span> <span class="o">:</span> <span class="nx">i</span><span class="p">.</span><span class="nx">attrs</span><span class="p">),</span>
+    <span class="nx">$slots</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">?</span> <span class="nx">shallowReadonly</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">slots</span><span class="p">)</span> <span class="o">:</span> <span class="nx">i</span><span class="p">.</span><span class="nx">slots</span><span class="p">),</span>
+    <span class="nx">$refs</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">?</span> <span class="nx">shallowReadonly</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">refs</span><span class="p">)</span> <span class="o">:</span> <span class="nx">i</span><span class="p">.</span><span class="nx">refs</span><span class="p">),</span>
+    <span class="nx">$parent</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">getPublicInstance</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">parent</span><span class="p">),</span>
+    <span class="nx">$root</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">getPublicInstance</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">root</span><span class="p">),</span>
+    <span class="nx">$emit</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">i</span><span class="p">.</span><span class="nx">emit</span><span class="p">,</span>
+    <span class="nx">$options</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">__FEATURE_OPTIONS_API__</span> <span class="o">?</span> <span class="nx">resolveMergedOptions</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="o">:</span> <span class="nx">i</span><span class="p">.</span><span class="kr">type</span><span class="p">),</span>
+    <span class="nx">$forceUpdate</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">queueJob</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">update</span><span class="p">),</span>
+    <span class="nx">$nextTick</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">nextTick</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">proxy</span><span class="o">!</span><span class="p">),</span>
+    <span class="nx">$watch</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">__FEATURE_OPTIONS_API__</span> <span class="o">?</span> <span class="nx">instanceWatch</span><span class="p">.</span><span class="nx">bind</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="o">:</span> <span class="nx">NOOP</span><span class="p">)</span>
+  <span class="p">}</span> <span class="kr">as</span> <span class="nx">PublicPropertiesMap</span>
+<span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+从上面的 <a href="#applyOptions">代码流程</a> 来看，好像和 props, data 没什么区别吧❓</p>
+<p>
+最终不都是走了 proxy get 那一套❓</p>
+<p>
+从这里好像看不出什么…</p>
+</div>
+</div>
+<div id="outline-container-set-ref" class="outline-2">
+<h2 id="set-ref">
+ref &amp; setRef
+</h2>
+<div id="outline-text-set-ref" class="outline-text-2">
+<p>
+来看下面官方(<a href="https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/__tests__/apiExpose.spec.ts">runtime-core/__tests__/apiExpose.spec.ts</a>)的例子：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">VNEXT_PKG_RC</span> <span class="o">+</span><span class="s1">&#39;/../runtime-test/dist/runtime-test.cjs.js&#39;</span>
+<span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;stb-&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+<span class="kr">const</span> <span class="p">{</span> <span class="nx">nodeOps</span><span class="p">,</span> <span class="nx">render</span><span class="p">,</span> <span class="nx">h</span><span class="p">,</span> <span class="nx">serializeInner</span><span class="o">:</span> <span class="nx">s</span><span class="p">,</span> <span class="nx">ref</span><span class="p">,</span> <span class="nx">defineComponent</span><span class="p">,</span> <span class="nx">toRaw</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">value</span>
+
+<span class="kr">const</span> <span class="nx">Child</span> <span class="o">=</span> <span class="nx">defineComponent</span><span class="p">({</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{},</span>
+  <span class="nx">expose</span><span class="o">:</span> <span class="p">[</span><span class="s1">&#39;fox&#39;</span><span class="p">,</span> <span class="s1">&#39;foo&#39;</span><span class="p">],</span>
+  <span class="nx">setup</span><span class="p">(</span><span class="mi">_</span><span class="p">,</span> <span class="p">{</span> <span class="nx">expose</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="nx">expose</span><span class="p">({</span>
+      <span class="nx">foo</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+      <span class="nx">bar</span><span class="o">:</span> <span class="nx">ref</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+      <span class="nx">bar</span><span class="o">:</span> <span class="nx">ref</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+      <span class="nx">baz</span><span class="o">:</span> <span class="nx">ref</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">})</span>
+
+<span class="kr">const</span> <span class="nx">childRef</span> <span class="o">=</span> <span class="nx">ref</span><span class="p">()</span>
+<span class="kr">const</span> <span class="nx">Parent</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">setup</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">h</span><span class="p">(</span><span class="nx">Child</span><span class="p">,</span> <span class="p">{</span> <span class="nx">ref</span><span class="o">:</span> <span class="nx">childRef</span> <span class="p">})</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kr">const</span> <span class="nx">root</span> <span class="o">=</span> <span class="nx">nodeOps</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">)</span>
+<span class="nx">render</span><span class="p">(</span><span class="nx">h</span><span class="p">(</span><span class="nx">Parent</span><span class="p">),</span> <span class="nx">root</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;childRef.value = &#39;</span><span class="p">,</span> <span class="nx">childRef</span><span class="p">.</span><span class="nx">value</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;childRef.value.foo = &#39;</span><span class="p">,</span> <span class="nx">childRef</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">foo</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;childRef.value.bar = &#39;</span><span class="p">,</span> <span class="nx">childRef</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">bar</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;childRef.value.baz = &#39;</span><span class="p">,</span> <span class="nx">childRef</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">baz</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;childRef.value.fox = &#39;</span><span class="p">,</span> <span class="nx">childRef</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">fox</span><span class="p">);</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+key = __v_raw
+key = __v_isReadonly
+key = __v_raw
+key = __v_skip
+childRef.value =  {
+  foo: [Getter/Setter],
+  bar: RefImpl { _rawValue: 2, _shallow: false, __v_isRef: true, _value: 2 }
+}
+key = foo
+childRef.value.foo =  undefined
+key = bar
+childRef.value.bar =  2
+key = baz
+childRef.value.baz =  undefined
+key = fox
+childRef.value.fox =  undefined
+undefined
+</pre>
+<p><span id="test-output"></span></p>
+<p>
+从测试用例来看，这个 expose 用途是将组件本身的属性暴露出去，可以在父组件中通过
+ref 取到该组件元素的引用 childRef (<code>严格来说当有 expose 时就不再是指向 vnode.el了</code>)，
+然后就可以通过这个引用来直接访问 expose 出来的属性。</p>
+<p>
+那这个是怎么做到的？</p>
+<p>
+既然和 ref 元素本身有关系，那就得从这个 ref 去下手看看了。</p>
+<p>
+ref 值设置的地方(<code>setRef(...)</code>)：在组件渲染完成之后才会有实际的DOM元素，所以这个肯定是发生在
+mounted 之后。</p>
+<p>
+调用 <code>setRef()</code> 的地方有：</p>
+<ol>
+<li>
+<p><a href="/vue/vue-mind-map-runtime-core-2-render/#fn-patch">patch(n1, n2, …)</a> 函数的最后</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="c1">// set ref
+</span><span class="c1"></span> <span class="k">if</span> <span class="p">(</span><span class="nx">ref</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="nx">parentComponent</span><span class="p">)</span> <span class="p">{</span>
+   <span class="nx">setRef</span><span class="p">(</span><span class="nx">ref</span><span class="p">,</span> <span class="nx">n1</span> <span class="o">&amp;&amp;</span> <span class="nx">n1</span><span class="p">.</span><span class="nx">ref</span><span class="p">,</span> <span class="nx">parentSuspense</span><span class="p">,</span> <span class="nx">n2</span> <span class="o">||</span> <span class="nx">n1</span><span class="p">,</span> <span class="o">!</span><span class="nx">n2</span><span class="p">)</span>
+ <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p><a href="/vue/vue-mind-map-runtime-core-1/#headline-62">unmount(vnode, …)</a> 的时候取消引用，防止内存泄漏</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="k">if</span> <span class="p">(</span><span class="nx">ref</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+   <span class="nx">setRef</span><span class="p">(</span><span class="nx">ref</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">parentSuspense</span><span class="p">,</span> <span class="nx">vnode</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+ <span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+<div class="tip-block">
+<p><p><strong>TIP</strong></p></p>
+<p>
+另外，组件实际的 DOM 元素的引用是在 vnode.el 上，这个值是在 <code>mountElement(vnode)</code>
+中创建真实 DOM 元素的时候被赋值的，而 <code>setRef()</code> 是在 patch() 最后执行，所以在这个
+时候 vnode.el 上就已经有了该组件真实 DOM 元素的引用，因为所有的组件流程一开始都
+是经过的 <code>patch()</code> 函数(<a href="/img/vue3/runtime-core/vue-runtime-core-render-component.svg">组件渲染完整流程图</a>)。</p>
+<p>
+<a href="/vue/vue-mind-map-runtime-core-2-render/#fn-mountElement">Vue3 源码头脑风暴之 7 ☞ runtime-core(3) - render component</a></p>
+</div>
+<p>
+<em>上面只是知道了设置，但实际这里是需要知道是对 childRef.value.foo 的取值会发生些什
+么，流程是什么，最终又是怎么和 expose 发生关联的？</em></p>
+<p>
+下面来仔细看下 <code>setRef</code> 里面又发生了什么，设想应该是对 ref 的引用是不是做了代理❓</p>
+<p>
+<a href="https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/renderer.ts">runtime-core/src/renderer.ts:setRef</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"> <span class="kr">export</span> <span class="kr">const</span> <span class="nx">setRef</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="nx">rawRef</span>: <span class="kt">VNodeNormalizedRef</span><span class="p">,</span>
+  <span class="nx">oldRawRef</span>: <span class="kt">VNodeNormalizedRef</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">parentSuspense</span>: <span class="kt">SuspenseBoundary</span> <span class="o">|</span> <span class="kc">null</span><span class="p">,</span>
+  <span class="nx">vnode</span>: <span class="kt">VNode</span><span class="p">,</span>
+  <span class="nx">isUnmount</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// ... rawRef 是数组处理
+</span><span class="c1"></span>
+  <span class="c1">// 异步组件判断，如果是异步的需要等异步组件完成渲染才可以
+</span><span class="c1"></span>  <span class="c1">// isAsyncWrapper:
+</span><span class="c1"></span>  <span class="c1">// export const isAsyncWrapper = (i: ComponentInternalInstance | VNode): boolean =&gt;
+</span><span class="c1"></span>  <span class="c1">// !!(i.type as ComponentOptions).__asyncLoader
+</span><span class="c1"></span>
+  <span class="c1">// 有状态的组件：对象组件, vnode.ts:createVNode 里面的检测
+</span><span class="c1"></span>  <span class="c1">// isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : ...
+</span><span class="c1"></span>  <span class="c1">// 重点就在这：先取 expose proxy 然后取 component.proxy
+</span><span class="c1"></span>  <span class="kr">const</span> <span class="nx">refValue</span> <span class="o">=</span>
+    <span class="nx">vnode</span><span class="p">.</span><span class="nx">shapeFlag</span> <span class="o">&amp;</span> <span class="nx">ShapeFlags</span><span class="p">.</span><span class="nx">STATEFUL_COMPONENT</span>
+      <span class="o">?</span> <span class="nx">getExposeProxy</span><span class="p">(</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">component</span><span class="o">!</span><span class="p">)</span> <span class="o">||</span> <span class="nx">vnode</span><span class="p">.</span><span class="nx">component</span><span class="o">!</span><span class="p">.</span><span class="nx">proxy</span>
+      : <span class="kt">vnode.el</span>
+  <span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="nx">isUnmount</span> <span class="o">?</span> <span class="kc">null</span> <span class="o">:</span> <span class="nx">refValue</span>
+
+  <span class="c1">// ...
+</span><span class="c1"></span>
+  <span class="c1">// &lt;div ref=&#34;formRef&#34; /&gt; -&gt; this.$refs.formRef
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isString</span><span class="p">(</span><span class="nx">ref</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// refs[ref] = value ...
+</span><span class="c1"></span>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">isRef</span><span class="p">(</span><span class="nx">ref</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// 这个正是这里使用的案例所执行的分支
+</span><span class="c1"></span>  <span class="p">}</span>
+
+  <span class="c1">// ...
+</span><span class="c1"></span><span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+在 setRef 中检测到如果是有状态的组件，会先执行
+<code>getExposeProxy(instance)</code> 去 <code>instance.exposed</code> 中取值，如果没有则再去组件实例的代
+理(也就是最开始分析的<a href="#instance-proxy">instance.proxy</a>)中去取 expose proxy:</p>
+<p>
+<span id="getExposeProxy"></span></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">getExposeProxy</span><span class="p">(</span><span class="nx">instance</span>: <span class="kt">ComponentInternalInstance</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="nx">instance</span><span class="p">.</span><span class="nx">exposeProxy</span> <span class="o">||</span>
+        <span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">exposeProxy</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Proxy</span><span class="p">(</span><span class="nx">proxyRefs</span><span class="p">(</span><span class="nx">markRaw</span><span class="p">(</span><span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span><span class="p">)),</span> <span class="p">{</span>
+          <span class="kr">get</span><span class="p">(</span><span class="nx">target</span><span class="p">,</span> <span class="nx">key</span>: <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;key = &#39;</span> <span class="o">+</span> <span class="nx">key</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="k">in</span> <span class="nx">target</span><span class="p">)</span> <span class="p">{</span>
+              <span class="k">return</span> <span class="nx">target</span><span class="p">[</span><span class="nx">key</span><span class="p">]</span>
+            <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">key</span> <span class="k">in</span> <span class="nx">publicPropertiesMap</span><span class="p">)</span> <span class="p">{</span>
+              <span class="k">return</span> <span class="nx">publicPropertiesMap</span><span class="p">[</span><span class="nx">key</span><span class="p">](</span><span class="nx">instance</span><span class="p">)</span>
+            <span class="p">}</span>
+          <span class="p">}</span>
+        <span class="p">}))</span>
+    <span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+上面代码加了打印可以从 <a href="#test-output">🔗上面的例子</a> 中看到 key 的值。</p>
+<p>
+以上就是 expose + ref 的使用及原理，下面还会对一些其它细节进行回顾。</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+$root and $parent
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+在 Child 中可以通过 this.$root 和 this.$parent 去取到 parent 中 expose 出
+来的属性，这个又是怎么实现的呢❓❓❓</p>
+<p>
+先看下测试用例(<a href="https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/__tests__/apiExpose.spec.ts">runtime-core/__tests__/apiExpose.spec.ts</a>)：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">VNEXT_PKG_RC</span> <span class="o">+</span><span class="s1">&#39;/../runtime-test/dist/runtime-test.cjs.js&#39;</span>
+<span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;stb-&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+<span class="kr">const</span> <span class="p">{</span> <span class="nx">nodeOps</span><span class="p">,</span> <span class="nx">render</span><span class="p">,</span> <span class="nx">h</span><span class="p">,</span> <span class="nx">serializeInner</span><span class="o">:</span> <span class="nx">s</span><span class="p">,</span> <span class="nx">defineComponent</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">value</span>
+
+<span class="kd">let</span> <span class="nx">Root</span>
+<span class="kr">const</span> <span class="nx">Child</span> <span class="o">=</span> <span class="nx">defineComponent</span><span class="p">(</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;this.$parent.foo = &#34;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">$parent</span><span class="p">.</span><span class="nx">foo</span><span class="p">);</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;this.$parent.bar = &#34;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">$parent</span><span class="p">.</span><span class="nx">bar</span><span class="p">);</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;this.$root.foo = &#34;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">$root</span><span class="p">.</span><span class="nx">foo</span><span class="p">);</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;this.$root.bar = &#34;</span> <span class="o">+</span> <span class="k">this</span><span class="p">.</span><span class="nx">$root</span><span class="p">.</span><span class="nx">bar</span><span class="p">);</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;$root: &#34;</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">$root</span><span class="p">);</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;Root:&#34;</span><span class="p">,</span> <span class="nx">Root</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span> <span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">Parent</span> <span class="o">=</span> <span class="nx">defineComponent</span><span class="p">({</span>
+  <span class="nx">expose</span><span class="o">:</span> <span class="p">[],</span>
+  <span class="nx">setup</span><span class="p">(</span><span class="mi">_</span><span class="p">,</span> <span class="p">{</span> <span class="nx">expose</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="nx">expose</span><span class="p">({</span> <span class="nx">foo</span><span class="o">:</span> <span class="mi">1</span> <span class="p">})</span>
+    <span class="k">return</span> <span class="p">{</span> <span class="nx">bar</span><span class="o">:</span> <span class="mi">2</span> <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">h</span><span class="p">(</span><span class="nx">Child</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">})</span>
+
+<span class="c1">// #1
+</span><span class="c1"></span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;&gt; root = parent&#39;</span><span class="p">);</span>
+<span class="kr">const</span> <span class="nx">root1</span> <span class="o">=</span> <span class="nx">nodeOps</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">)</span>
+<span class="nx">render</span><span class="p">(</span><span class="nx">h</span><span class="p">(</span><span class="nx">Parent</span><span class="p">),</span> <span class="nx">root1</span><span class="p">)</span>
+
+<span class="nx">Root</span> <span class="o">=</span> <span class="nx">defineComponent</span><span class="p">({</span>
+  <span class="nx">render</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">h</span><span class="p">(</span><span class="nx">Parent</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">})</span>
+
+<span class="c1">// #2
+</span><span class="c1"></span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;&gt; root = parent.$parent&#39;</span><span class="p">);</span>
+<span class="kr">const</span> <span class="nx">root2</span> <span class="o">=</span> <span class="nx">nodeOps</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">)</span>
+<span class="nx">render</span><span class="p">(</span><span class="nx">h</span><span class="p">(</span><span class="nx">Root</span><span class="p">),</span> <span class="nx">root2</span><span class="p">)</span>
+<span class="k">return</span> <span class="mi">0</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+&gt; root = parent
+this.$parent.foo = 1
+this.$parent.bar = undefined
+this.$root.foo = 1
+this.$root.bar = undefined
+$root:  { foo: 1 }
+Root: undefined
+&gt; root = parent.$parent
+this.$parent.foo = 1
+this.$parent.bar = undefined
+this.$root.foo = undefined
+this.$root.bar = undefined
+$root:  {}
+Root: { render: [Function: render] }
+0
+</pre>
+<p>
+结果显示， 在 Child 中都可以正确取到 foo ，而取不到 bar。</p>
+<p>
+那么为什么呢❓</p>
+<p>
+可以从 <a href="#instance-proxy">publicPropertiesMap</a> 中找到 $parent 和 $root 的引用：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">publicPropertiesMap</span>: <span class="kt">PublicPropertiesMap</span> <span class="o">=</span> <span class="nx">extend</span><span class="p">(</span>
+  <span class="nb">Object</span><span class="p">.</span><span class="nx">create</span><span class="p">(</span><span class="kc">null</span><span class="p">),</span>
+  <span class="p">{</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>    <span class="nx">$el</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">i</span><span class="p">.</span><span class="nx">vnode</span><span class="p">.</span><span class="nx">el</span><span class="p">,</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>    <span class="nx">$parent</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">getPublicInstance</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">parent</span><span class="p">),</span>
+    <span class="nx">$root</span>: <span class="kt">i</span> <span class="o">=&gt;</span> <span class="nx">getPublicInstance</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">root</span><span class="p">),</span>
+    <span class="c1">// ...
+</span><span class="c1"></span>  <span class="p">}</span> <span class="kr">as</span> <span class="nx">PublicPropertiesMap</span>
+<span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+两者都是映射到了 <code>getPublicInstance</code>  那什么是 public instance❓</p>
+<p>
+代码位于： <a href="https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/componentPublicInstance.ts">runtime-core/src/componentPublicInstance.ts:getPublicInstance</a></p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="cm">/**
+</span><span class="cm"> ,* #2437 In Vue 3, functional components do not have a public instance proxy but
+</span><span class="cm"> ,* they exist in the internal parent chain. For code that relies on traversing
+</span><span class="cm"> ,* public $parent chains, skip functional ones and go to the parent instead.
+</span><span class="cm"> ,*/</span>
+<span class="kr">const</span> <span class="nx">getPublicInstance</span> <span class="o">=</span> <span class="p">(</span>
+  <span class="nx">i</span>: <span class="kt">ComponentInternalInstance</span> <span class="o">|</span> <span class="kc">null</span>
+<span class="p">)</span><span class="o">:</span> <span class="nx">ComponentPublicInstance</span> <span class="o">|</span> <span class="nx">ComponentInternalInstance</span><span class="p">[</span><span class="s1">&#39;exposed&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">null</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">i</span><span class="p">)</span> <span class="k">return</span> <span class="kc">null</span>
+  <span class="c1">// 对象组件，跳过函数组件，如上面的注释，函数组件并没有公共的实例，但是它们
+</span><span class="c1"></span>  <span class="c1">// 依旧在 parent 链上
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">isStatefulComponent</span><span class="p">(</span><span class="nx">i</span><span class="p">))</span> <span class="k">return</span> <span class="nx">i</span><span class="p">.</span><span class="nx">exposed</span> <span class="o">?</span> <span class="nx">i.exposed</span> : <span class="kt">i.proxy</span>
+  <span class="c1">// 递归取父级组件实例，这个一直会找到 root
+</span><span class="c1"></span>  <span class="k">return</span> <span class="nx">getPublicInstance</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">parent</span><span class="p">)</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<code>this.$parent.foo</code> 倒是好理解， <code>$parent</code> 被映射到 <code>getPublicInstance(i.parent)</code> 找自
+己的父级组件，如果有 exposed 级返回这个对象，所以这里也就等于是 <code>instance.exposed.foo</code></p>
+<p>
+然而对于 <code>this.$root.foo</code> 为什么也能取到 <code>expose</code> 里面的 <code>1</code> ❓</p>
+<div class="comment-block">
+<p>因为在 root1 的时候 Parent 就是 root 组件，所以 <code>instance.root == parent</code></p>
+</div>
+<p>
+每个组件都会持有一份对 root 组件的引用，instance.root，这个引用的设置发生在创建
+组件实例的时候:</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="c1">// createComponentInstance(vnode, parent, suspense) -&gt;
+</span><span class="c1"></span><span class="nx">instance</span><span class="p">.</span><span class="nx">root</span> <span class="o">=</span> <span class="nx">parent</span> <span class="o">?</span> <span class="nx">parent.root</span> : <span class="kt">instance</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+所以 <strong>#1</strong> 和 <strong>#2</strong> 的结果不一样(<code>1</code> 和 <code>undefined</code>)。</p>
+</div>
+</div>
+<div id="outline-container-expose" class="outline-2">
+<h2 id="expose">
+expose()
+</h2>
+<div id="outline-text-expose" class="outline-text-2">
+<p>
+除了能使用 options api expose 之外，还可以通过在 setup() 中调用 <code>expose({...})</code> 来
+暴露部分属性。</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">VNEXT_PKG_RC</span> <span class="o">+</span><span class="s1">&#39;/../runtime-test/dist/runtime-test.cjs.js&#39;</span>
+<span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;stb-&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+<span class="kr">const</span> <span class="p">{</span> <span class="nx">nodeOps</span><span class="p">,</span> <span class="nx">render</span><span class="p">,</span> <span class="nx">h</span><span class="p">,</span> <span class="nx">serializeInner</span><span class="o">:</span> <span class="nx">s</span><span class="p">,</span> <span class="nx">defineComponent</span><span class="p">,</span> <span class="nx">ref</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">value</span>
+
+<span class="kr">const</span> <span class="nx">Child</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">h</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">)</span>
+  <span class="p">},</span>
+  <span class="nx">setup</span><span class="p">(</span><span class="mi">_</span><span class="p">,</span> <span class="p">{</span> <span class="nx">expose</span> <span class="p">})</span> <span class="p">{</span>
+    <span class="nx">expose</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">{}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kr">const</span> <span class="nx">childRef</span> <span class="o">=</span> <span class="nx">ref</span><span class="p">()</span>
+
+<span class="kr">const</span> <span class="nx">Parent</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">setup</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">h</span><span class="p">(</span><span class="nx">Child</span><span class="p">,</span> <span class="p">{</span> <span class="nx">ref</span><span class="o">:</span> <span class="nx">childRef</span> <span class="p">})</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kr">const</span> <span class="nx">root</span> <span class="o">=</span> <span class="nx">nodeOps</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">&#39;div&#39;</span><span class="p">)</span>
+<span class="nx">render</span><span class="p">(</span><span class="nx">h</span><span class="p">(</span><span class="nx">Parent</span><span class="p">),</span> <span class="nx">root</span><span class="p">)</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;childRef.value.$el.tag = &#39;</span> <span class="o">+</span> <span class="nx">childRef</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">$el</span><span class="p">.</span><span class="nx">tag</span><span class="p">);</span>
+<span class="k">return</span> <span class="mi">0</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+key = __v_raw
+key = __v_isReadonly
+key = __v_raw
+key = __v_skip
+key = $el
+childRef.value.$el.tag = div
+0
+</pre>
+<p>
+<code>expose()</code> 函数又做了什么呢？为什么这个不传参数呢？</p>
+<div class="warn-block">
+<p><p><strong>WARNING</strong></p></p>
+<p>
+<code>expose()</code> 只能在 setup() 中执行，且只能执行一次(非强制，多次也无意义，会覆盖)。</p>
+</div>
+<p>
+有关 setup ctx 参数的说明见: <a href="/vue/vue-core-code-link/#cl-setup">setup(_, ctx) 的第二个参数？</a></p>
+<p>
+expose 函数其实很简单，赋值及初始化，不能重复调用也只是给出了警告：</p>
+<div class="src src-typescript">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">expose</span>: <span class="kt">SetupContext</span><span class="p">[</span><span class="s1">&#39;expose&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nx">exposed</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">__DEV__</span> <span class="o">&amp;&amp;</span> <span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">warn</span><span class="p">(</span><span class="sb">`expose() should be called only once per setup().`</span><span class="p">)</span>
+  <span class="p">}</span>
+  <span class="nx">instance</span><span class="p">.</span><span class="nx">exposed</span> <span class="o">=</span> <span class="nx">exposed</span> <span class="o">||</span> <span class="p">{}</span>
+<span class="p">}</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+<a href="#getExposeProxy">getExposeProxy(instance)</a></p>
+<p>
+设置了 instance.exposed 的代理，并且如果要访问的属性这个对象本身没有的时候会去
+publicPropertiesMap 中去找，所以这个去访问 <code>childRef.value.$el</code> 的时候在
+<code>instance.exposed</code> 上面是找不到的，最后找到的是 <code>$el: i =&gt; i.vnode.el</code> 。</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+总结
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
+<ol>
+<li>
+<p>支持 options api <code>expose: [...]</code></p>
+</li>
+<li>
+<p>支持 setup context <code>expose({...})</code></p>
+</li>
+<li>
+<p>同时支持 option api 和 setup context</p>
+</li>
+<li>
+<p>empty expose 等于没有</p>
+</li>
+<li>
+<p><code>this.$parent</code> 在子组件中使用可以取到父组件 expose 的属性</p>
+</li>
+<li>
+<p><code>this.$root</code> 取到根节点上 expose 的属性</p>
+</li>
+<li>
+<p>setup() 中调用 <code>expose()</code> 不传参，最后属性访问会被代理到 <code>publicPropertiesMap</code> 上</p>
+</li>
+</ol>
+<p><img src="/img/vue3/runtime-core/runtime-core-expose.svg" alt="/img/vue3/runtime-core/runtime-core-expose.svg" title="/img/vue3/runtime-core/runtime-core-expose.svg" /></p>
+</div>
+</div>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Zhicheng Lee</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2021-08-04
+        
+    </span>
+  </p>
+  
+  <p class="copyright-item">
+    <span class="item-title">许可协议</span>
+    <span class="item-content"><a rel="license noopener" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a></span>
+  </p>
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/vue3/">vue3,</a>
+          <a href="/tags/vue-next/">vue-next,</a>
+          </div>
+      <nav class="post-nav">
+        <a class="prev" href="/vue/vue-teardown-13-v-deep-in-style/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 功能拆解⑬ style v-deep, v-slotted</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/vue/vue-teardown-12-options/">
+            <span class="next-text nav-default">Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="gitalk-container"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      var gitalk = new Gitalk({
+        id: '2021-08-04 00:00:00 \u002b0000 UTC',
+        title: 'Vue3 功能拆解⑪ expose options\u0026api',
+        clientID: '7251a6b30d0d6c0f4aa2',
+        clientSecret: '320c43a98b0d5ae30535d8cf6cb3be7a05895c77',
+        repo: 'cheng92-comments',
+        owner: 'gcclll',
+        admin: ['gcclll'],
+        body: decodeURI(location.href)
+      });
+      gitalk.render('gitalk-container');
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="https://github.com/gitalk/gitalk">comments powered by gitalk.</a></noscript>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>vue-router, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/vue-router/</link>
+    <description>Recent content in vue-router, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Wed, 21 Apr 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/vue-router/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue3 开发生态链(vuex, vue-router, ...)</title>
+      <link>https://www.cheng92.com/vue/vue-project-ecosystem/</link>
+      <pubDate>Wed, 21 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-project-ecosystem/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 该文记录着实际开发过程中使用到的 vue3 及其生态</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Number on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/number/</link>
+    <description>Recent content in Number on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sat, 08 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/number/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>JavaScript Api - Number::toString ( x ) - TODO</title>
+      <link>https://www.cheng92.com/web/apis/js-api-number-tostring/</link>
+      <pubDate>Sat, 08 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/apis/js-api-number-tostring/</guid>
+      <description>Number::toString ( x ) 在进行伪码之前，这里先要弄清楚几点： 标准中的 n, k, s 分别代表什么意思？ n: 这</description>
+    </item>
+    
+    <item>
+      <title>JavaScript Api - Number.parseInt(s, r)</title>
+      <link>https://www.cheng92.com/web/apis/js-api-number-parseint/</link>
+      <pubDate>Mon, 25 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/apis/js-api-number-parseint/</guid>
+      <description>parseInt(string, radix) 在使用过程中发现一个问题，看下面的测试代码结果： 1 2 3 4 5 6 7 8 9 10 11 12 13 14</description>
+    </item>
+    
+  </channel>
+</rss>

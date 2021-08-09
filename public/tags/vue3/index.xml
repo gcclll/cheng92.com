@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>vue3, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/vue3/</link>
+    <description>Recent content in vue3, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Mon, 09 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/vue3/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue3 功能拆解⑬ style v-deep, v-slotted</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/</link>
+      <pubDate>Mon, 09 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文涉及的源码包： compiler-sfc, runtime-do</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑪ expose options&amp;api</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-11-expose/</link>
+      <pubDate>Wed, 04 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-11-expose/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue3 中 expose 的原理及使用。 本文涉及的源码包： r</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-12-options/</link>
+      <pubDate>Wed, 04 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-12-options/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文主要是分析 applyOptions 函数。 本文涉及的源码包：</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑨ Transition 组件机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-9-transition/</link>
+      <pubDate>Sat, 31 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-9-transition/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑩ SFC style</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-10-sfc-style/</link>
+      <pubDate>Sat, 31 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-10-sfc-style/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑧ script setup 来龙去脉</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-8-script-setup/</link>
+      <pubDate>Sat, 17 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-8-script-setup/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文将从源码，编译前后让你明白 &amp;lt;script setup&amp;gt; 标签内</description>
+    </item>
+    
+    <item>
+      <title>Vue3 自问自答系列❓❓❓</title>
+      <link>https://www.cheng92.com/vue/vue-core-code-link/</link>
+      <pubDate>Sat, 17 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-core-code-link/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 本文纯粹的链接，列出源码学习过程中重要知识点</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑦ assets url 转换规则</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-7-asset-transform/</link>
+      <pubDate>Fri, 16 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-7-asset-transform/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了 vue3 中是如何对 assets url 进行</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑥ directives 事件绑定机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-6-event-listen/</link>
+      <pubDate>Mon, 28 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-6-event-listen/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机</description>
+    </item>
+    
+    <item>
+      <title>Vue3 更新日志 01(3.0.5 ~ 3.2.0-beta.1)</title>
+      <link>https://www.cheng92.com/vue/vue-update-log-01/</link>
+      <pubDate>Mon, 28 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-update-log-01/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md 前言 TIP 本系列文说明：会不定期的更新本地</description>
+    </item>
+    
+    <item>
+      <title>如何开始一个 vite &#43; vue3 &#43; ... 项目</title>
+      <link>https://www.cheng92.com/vue/how-to-build-a-vite-vue3-project/</link>
+      <pubDate>Sat, 29 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/how-to-build-a-vite-vue3-project/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue-i18n-next 1 2 3 4 alias: { &amp;#39;/@&amp;#39;: pathResolve(&amp;#39;src&amp;#39;), + &amp;#39;vue-i18n&amp;#39;: &amp;#39;vue-i18n/dist/vue-i18n.cjs.js&amp;#39; },</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑤ directives 指令系统</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-5-directives/</link>
+      <pubDate>Tue, 11 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-5-directives/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了组件的指令系统，包含</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解④ 组件 props &amp; attrs</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-4-props-attrs/</link>
+      <pubDate>Mon, 10 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-4-props-attrs/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解③ 组件更新机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-3-update-flow/</link>
+      <pubDate>Sat, 08 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-3-update-flow/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 开发生态链(vuex, vue-router, ...)</title>
+      <link>https://www.cheng92.com/vue/vue-project-ecosystem/</link>
+      <pubDate>Wed, 21 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-project-ecosystem/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 该文记录着实际开发过程中使用到的 vue3 及其生态</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 9 ☞ server-renderer</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-server-renderer/</link>
+      <pubDate>Tue, 20 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-server-renderer/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); buffer 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 8 ☞ runtime-dom</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-dom/</link>
+      <pubDate>Wed, 14 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-dom/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 运行时</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解① PatchFlags</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-1-patch-flags/</link>
+      <pubDate>Tue, 13 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-1-patch-flags/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解② Scheduler 渲染机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-2-sheduler/</link>
+      <pubDate>Tue, 13 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-2-sheduler/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 7 ☞ runtime-core(3) - render component</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-core-3-component/</link>
+      <pubDate>Tue, 16 Mar 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-core-3-component/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 本文为</description>
+    </item>
+    
+    <item>
+      <title>vuex for vue3 源码分析(附.脑图)</title>
+      <link>https://www.cheng92.com/vue/vue-vuex/</link>
+      <pubDate>Wed, 10 Mar 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-vuex/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); // insertCssLink(&#34;/js/vue/tables/index.css&#34;); var store = Vuex.createStore({ state() { return { count: 0 }}, mutations: { increment(state) { state.count++ }, decrement(state) {</description>
+    </item>
+    
+    <item>
+      <title>vue-router-next for vue3 源码分析(附.脑图)</title>
+      <link>https://www.cheng92.com/vue/vue-router-next/</link>
+      <pubDate>Fri, 05 Mar 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-router-next/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 慎入😢 vue-router-next 源码分析流程图，此文重点在图，附带一</description>
+    </item>
+    
+    <item>
+      <title>Vue3 周边源码学习计划表</title>
+      <link>https://www.cheng92.com/vue/vue-my-plan/</link>
+      <pubDate>Fri, 26 Feb 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-my-plan/</guid>
+      <description>该文为本人学习计划等相关信息，这里内容将均由 vue3 + element-plus 实现。 状态：DONE 已完成 DOING 进</description>
+    </item>
+    
+    <item>
+      <title>Vue3 -&gt; Vite 脚手架</title>
+      <link>https://www.cheng92.com/vue/vue-vite/</link>
+      <pubDate>Thu, 25 Feb 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-vite/</guid>
+      <description>vue 资源: vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js SSR 框架： Ream - A Vue 3 framework for building amazing apps import.meta 类型声明： 1 2 3 4 5</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-core-2-render/</link>
+      <pubDate>Tue, 26 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-core-2-render/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：vu</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 7 ☞ runtime-core(1)</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-core-1/</link>
+      <pubDate>Fri, 08 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-core-1/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：vu</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 6 ☞compiler-ssr</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-compiler-ssr/</link>
+      <pubDate>Mon, 04 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-compiler-ssr/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：vu</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 5 ☞ compiler-sfc</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-compiler-sfc/</link>
+      <pubDate>Sat, 19 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-compiler-sfc/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：vu</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 4 ☞compiler-dom</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-compiler-dom/</link>
+      <pubDate>Wed, 16 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-compiler-dom/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：vu</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 3 ☞compiler-core - transform &#43; codegen</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-compiler-core-transform-generate/</link>
+      <pubDate>Mon, 30 Nov 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-compiler-core-transform-generate/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：该篇</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-compiler-core-parser/</link>
+      <pubDate>Tue, 24 Nov 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-compiler-core-parser/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的学习及尝试应用于机顶</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 1 ☞reactivity</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-reactivity/</link>
+      <pubDate>Mon, 09 Nov 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-reactivity/</guid>
+      <description>更新日志&amp;amp;Todos ： DONE [2021-01-20 15:16:45] ref 诗号：六道同坠，魔劫万千，引渡如来。 function _log(el, content)</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之☞compiler-core</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-house-cc/</link>
+      <pubDate>Sat, 07 Nov 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-house-cc/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 🌧 序 ⭐ ⭐ 由于图片是使用 github 做的图床，没有 CDN 加速</description>
+    </item>
+    
+    <item>
+      <title>Vue3 所有函数源码即简要说明</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-function-list/</link>
+      <pubDate>Wed, 04 Nov 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-function-list/</guid>
+      <description>reactivity compiler-core compile.ts baseCompile baseCompile(template, options) 将 template 解析成 render 函数，重点步骤: baseParse(template, options) 将字符串模板解析成 AST 对象。 transform(ast, …) 将 AST</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 RFCs 过眼云烟(古陵逝烟)</title>
+      <link>https://www.cheng92.com/vue/vue-next-rfcs/</link>
+      <pubDate>Sat, 19 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-next-rfcs/</guid>
+      <description>诗号：冷灯看剑，剑上几番功名？炉香无须计苍生，纵一川烟逝，万丈云埋，孤阳还照古陵</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 1: parse.ts</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</link>
+      <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-parse_ts/</guid>
+      <description>window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 2: ast.ts</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-ast_ts/</link>
+      <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-ast_ts/</guid>
+      <description>抽象语法树代码源文件。 createVNodeCall 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0 源码系列（二）编译器核心 - Compiler core 3: compile.ts</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/</link>
+      <pubDate>Mon, 31 Aug 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-compiler-core-compile_ts/</guid>
+      <description>window.g_need_fold = 1 该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0源码系列（一）响应式原理 - Reactivity</title>
+      <link>https://www.cheng92.com/vue/vue3-source-code-reactivity/</link>
+      <pubDate>Fri, 28 Aug 2020 15:48:02 +0800</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-code-reactivity/</guid>
+      <description>该系列文章，均以测试用例通过为基准一步步实现一个 vue3 源码副本(学习)。 文字比较长，</description>
+    </item>
+    
+    <item>
+      <title>Vue3.0源码系列 -- 知识点及问题汇总</title>
+      <link>https://www.cheng92.com/vue/vue3-source-picking-shell/</link>
+      <pubDate>Thu, 16 Jul 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue3-source-picking-shell/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); TODO ShapeFlags 的溯源和用途？ 涉及模块： runtime-core 标签(组件</description>
+    </item>
+    
+  </channel>
+</rss>

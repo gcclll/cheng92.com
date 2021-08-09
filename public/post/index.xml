@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on 若叶知秋</title>
+    <link>https://www.cheng92.com/post/</link>
+    <description>Recent content in Posts on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sun, 25 Jul 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My Awesome Everything</title>
+      <link>https://www.cheng92.com/post/awesome/</link>
+      <pubDate>Sun, 25 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/awesome/</guid>
+      <description>APIs 基于 org-verb-mode. TODO online-convert 在线转换接口 https://www.api2convert.com/ 这里获取 API Key. TODO 聚合数据&amp;#xa0;&amp;#xa0;&amp;#xa</description>
+    </item>
+    
+    <item>
+      <title>Golang Go Go Go...</title>
+      <link>https://www.cheng92.com/post/golang/</link>
+      <pubDate>Wed, 21 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/golang/</guid>
+      <description>问题 go get i/o timeout ? 1 2 3 4 5 go env -w GO111MODULE=on go env -w GOPROXY=https://goproxy.io,direct # 设置不走 proxy 的私有仓库，多个用逗号相隔（</description>
+    </item>
+    
+    <item>
+      <title>数据结构与算法 - 学习记录</title>
+      <link>https://www.cheng92.com/post/data-structure-algorithm/</link>
+      <pubDate>Thu, 15 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/data-structure-algorithm/</guid>
+      <description>路线图： MOOC 大学网教程： https://www.icourse163.org/learn/ZJU-93001?tid=1464647442#/learn/announce</description>
+    </item>
+    
+    <item>
+      <title>My MacOS</title>
+      <link>https://www.cheng92.com/post/macos/</link>
+      <pubDate>Thu, 01 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/macos/</guid>
+      <description>😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 MacOS 系统相关的东西 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀</description>
+    </item>
+    
+    <item>
+      <title>华为鸿蒙(Huawei Harmony) - 资源收集</title>
+      <link>https://www.cheng92.com/post/huawei-harmony/</link>
+      <pubDate>Wed, 12 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/huawei-harmony/</guid>
+      <description>Harmony Huawei Developers - Building a Better Connected World with Developers OpenHarmony: OpenHarmony是开放原子开源基金会（OpenAt</description>
+    </item>
+    
+    <item>
+      <title>将 VSCode 打造成 Emacs</title>
+      <link>https://www.cheng92.com/post/vscode-to-emacs/</link>
+      <pubDate>Thu, 22 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/vscode-to-emacs/</guid>
+      <description>当前使用的 Doom-Emacs，但是在进行 vue 开发过程中总会遇到一些问题，用起来并</description>
+    </item>
+    
+    <item>
+      <title>我的私人空间</title>
+      <link>https://www.cheng92.com/post/cheng/</link>
+      <pubDate>Wed, 03 Mar 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/cheng/</guid>
+      <description>杂七杂八的一些东西，总要往哪里放，今天解决明天又忘记了，好记性不如烂笔头，😄😄。</description>
+    </item>
+    
+    <item>
+      <title>开发过程中遇到的各种疑难杂症</title>
+      <link>https://www.cheng92.com/post/issues/</link>
+      <pubDate>Mon, 01 Feb 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/issues/</guid>
+      <description>各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名</description>
+    </item>
+    
+    <item>
+      <title>Linux 知识大全</title>
+      <link>https://www.cheng92.com/post/linux-doc/</link>
+      <pubDate>Fri, 18 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/linux-doc/</guid>
+      <description>👴 Commands(命令) fasd fasd [options] [query ...] [f|a|s|d|z] [opions] [query ...] options: -s list paths with scores -l list paths without scores -i interactive mode -e &amp;lt;cmd&amp;gt; set command</description>
+    </item>
+    
+    <item>
+      <title>Shell 编程</title>
+      <link>https://www.cheng92.com/post/shell/</link>
+      <pubDate>Fri, 18 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/shell/</guid>
+      <description>Bash Reference Manual Bash - Replace pattern in string | bash Tutorial Linux Basis&amp;#xa0;&amp;#xa0;&amp;#xa0;ATTACH</description>
+    </item>
+    
+    <item>
+      <title>si道友免si贫道</title>
+      <link>https://www.cheng92.com/post/life-bdx-persons/</link>
+      <pubDate>Mon, 28 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/life-bdx-persons/</guid>
+      <description>古陵逝烟 烟都众人崇仰的大宗师，乃创立烟都基业与传统之人。为人高深莫测，冷峻绝艳，</description>
+    </item>
+    
+    <item>
+      <title>CSS3 黑森林</title>
+      <link>https://www.cheng92.com/post/css/css3/</link>
+      <pubDate>Sat, 12 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/css/css3/</guid>
+      <description>测试 选择器 :not + :last-child 可以通过 1 2 3 element:not(:last-child) { // 作用于非最后一个元素上 }</description>
+    </item>
+    
+    <item>
+      <title>My First Post</title>
+      <link>https://www.cheng92.com/post/my-first-post/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/my-first-post/</guid>
+      <description>window.g_need_fold = 1 Org-mode 简明手册 - open source - 博客园 embrace embrace-add(,ea) Documentation Two Emacs manuals, the GNU Emacs manual and An Introduction to Programming in Emacs Lisp, can be purchased in printed form from</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>https://www.cheng92.com/post/project./</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/project./</guid>
+      <description>;; -- mode: emacs-lisp --
+;; pandoc-mode project settings file ;; saved on 2021.07.22 14:15
+((master-file . “/Users/simon/blog/cheng92.com/content/post/my-first-post.org”))</description>
+    </item>
+    
+  </channel>
+</rss>

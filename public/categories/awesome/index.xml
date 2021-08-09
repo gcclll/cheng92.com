@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>awesome on 若叶知秋</title>
+    <link>https://www.cheng92.com/categories/awesome/</link>
+    <description>Recent content in awesome on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sun, 25 Jul 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/categories/awesome/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My Awesome Everything</title>
+      <link>https://www.cheng92.com/post/awesome/</link>
+      <pubDate>Sun, 25 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/awesome/</guid>
+      <description>APIs 基于 org-verb-mode. TODO online-convert 在线转换接口 https://www.api2convert.com/ 这里获取 API Key. TODO 聚合数据&amp;#xa0;&amp;#xa0;&amp;#xa</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>HTML Marquee 标签 - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/web/html-marquee-tag/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.9d6c07951e716411e0fdd9d1d7616cb41ced57b53993154c49ea809e194527af.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="HTML Marquee 标签" />
+<meta property="og:description" content="Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/web/html-marquee-tag/" /><meta property="article:section" content="web" />
+<meta property="article:published_time" content="2021-08-06T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-08-06T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="HTML Marquee 标签">
+<meta itemprop="description" content="Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7"><meta itemprop="datePublished" content="2021-08-06T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-08-06T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="651">
+<meta itemprop="keywords" content="web,,html," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="HTML Marquee 标签"/>
+<meta name="twitter:description" content="Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+  <div class="post-content">
+    <p>
+<a href="https://dev.w3.org/html5/pf-summary/obsolete.html">Marquee 已经废弃的元素。</a></p>
+<p>
+<strong>能用 transition 和 anmiation，请尽量不要使用这个。</strong></p>
+<div class="src src-cpp">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">interface</span> <span class="nl">HTMLMarqueeElement</span> <span class="p">:</span> <span class="n">HTMLElement</span> <span class="p">{</span>
+           <span class="n">attribute</span> <span class="n">DOMString</span> <span class="n">behavior</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">DOMString</span> <span class="n">bgColor</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">DOMString</span> <span class="n">direction</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">DOMString</span> <span class="n">height</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">hspace</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="kt">long</span> <span class="n">loop</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">scrollAmount</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">scrollDelay</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">DOMString</span> <span class="n">trueSpeed</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">vspace</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">DOMString</span> <span class="n">width</span><span class="p">;</span>
+
+           <span class="n">attribute</span> <span class="n">Function</span> <span class="n">onbounce</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">Function</span> <span class="n">onfinish</span><span class="p">;</span>
+           <span class="n">attribute</span> <span class="n">Function</span> <span class="n">onstart</span><span class="p">;</span>
+
+  <span class="kt">void</span> <span class="nf">start</span><span class="p">();</span>
+  <span class="kt">void</span> <span class="nf">stop</span><span class="p">();</span>
+<span class="p">};</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+marquee 可以通过自身的 api 开启/开始( <strong>start()</strong> )和关闭/暂停( <strong>stop()</strong> )？</p>
+<p>
+如下测试：</p>
+<p style="color:blue"> --> start & stop 控制暂停和开始 <-- </p>
+<marquee id="m1">marquee test start & stop</marquee>
+<button onclick="m1start()">start()</button>
+<button onclick="m1stop()">stop()</button>
+<script type="text/javascript">
+var m1= document.getElementById('m1')
+window.m1start = () => { console.log('m1 start'); m1.start()}
+window.m1stop = () => { console.log('m1 start'); m1.stop() }
+</script>
+<br/><br/><p style="color:blue"> --> behavior: scroll, slide, alternate <-- </p>
+<div style="background:red;width:500px;height:150px;color:white;font-size:22px">
+<marquee behavior="scroll">marquee behavior scroll(default)</marquee>
+<marquee behavior="slide">marquee behavior slide</marquee>
+<marquee behavior="alternate">marquee behavior alternate</marquee>
+</div>
+<br/><br/><p style="color:blue"> --> direction: left, right, up, down <-- </p>
+<div style="background:red;width:500px;height:300px;color:white;font-size:22px">
+<marquee direction="left">marquee direction left(default)</marquee>
+<marquee direction="right">marquee direction right</marquee>
+<marquee style="height:100px;background:blue" direction="up">marquee direction up</marquee>
+<marquee style="height:100px;background:blue" direction="down">marquee direction down</marquee>
+</div>
+<br/><br/><p style="color:blue"> --> scroll interval(default: 85 ms) <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<marquee>scroll interval(default: 85)</marquee>
+<marquee scrolldelay="200">scroll interval: 200</marquee>
+</div>
+<br/><br/>
+<p style="color:blue"> --> treespeed: 影响 scrolldelay 属性，默认：false <-- </p>
+<p style="color:blue"> --> 1. 当 treespeed = false, scrolldelay < 60 时会被设置成 60 <-- </p>
+<p style="color:blue"> --> 2. 当 treespeed = true, scrolldelay 取设置的值，等于是 false 的时候会自动调整 scrolldelay <-- </p>
+<p style="color:red"> --> 如下现象， 好像没啥用， m1 和 m4 速度是同步的 <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<marquee id="marquee1" scrolldelay="30">m1: scroll interval + treespeed(false): 30</marquee>
+<marquee id="marquee2" scrolldelay="60">m2: scroll interval + treespeed(false): 60</marquee>
+<marquee id="marquee3" scrolldelay="120">m3: scroll interval + treespeed(false): 120</marquee>
+<marquee id="marquee4" scrolldelay="30" treespeed="true">m4: scroll interval + treespeed(true ): 30</marquee>
+<marquee id="marquee5" scrolldelay="60" treespeed="true">m5: scroll interval + treespeed(true ): 60</marquee>
+<marquee id="marquee6" scrolldelay="120" treespeed="true">m6: scroll interval + treespeed(true ): 120</marquee>
+</div>
+<br/><br/>
+<p style="color:blue"> --> scrollamount: marquee scroll distance, 每次移动的距离，默认：6px/ms <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<marquee>scrollamount(default: 6px)</marquee>
+<marquee scrollamount="12">scrollamount: 12px</marquee>
+</div>
+<br/><br/>
+<p style="color:blue"> --> loop: marquee loop count, 如果 < 1 则用默认值 -1，否则用指定的数字 <-- </p>
+<p style="color:blue"> --> loop index: 完成一次，自动 +1 当 >= loop count 时候滚动停止，并触发 onfinish <-- </p>
+<p style="color:blue"> --> 如果 loop index >= loop count 时候滚动停止，并触发 onfinish <-- </p>
+<p style="color:blue"> --> 如果 behavior=alternate，loop index >= loop count 时触发 onbounce 事件 <-- </p>
+<p style="color:blue"> --> 否则触发 onstart 事件(loop index < loop count) <-- </p>
+<p style="color:red"> --> start,bounce,finish 在 chrome 上都触发不了 <-- </p>
+<p style="color:red"> --> stackover 上说是最新的版不再维护这个标签的原因 <-- </p>
+<p style="color:red"> --> 但是 Firefox 上测试了下，三个事件都可以正常触发 <-- </p>
+<div style="background:red;width:800px;color:white;font-size:22px">
+<marquee id="ml0" loop="-1" behavior="alternate" >ml1, loop: -1, behavior: alternate, onbounce 没用？</marquee>
+<marquee id="ml1" loop="-1">ml1, loop: -1</marquee>
+<p>info-ml1: <span id="info1"></span></p><br>
+<marquee id="ml2" loop="0">ml2, loop: 0</marquee>
+<p>info-ml2: <span id="info2"></span></p><br>
+<marquee id="ml3" loop="1">ml3, loop: 1</marquee>
+<p>info-ml3: <span id="info3"></span></p><br>
+<marquee id="ml4" loop="2">ml4, loop: 2</marquee>
+<p>info-ml4: <span id="info4"></span></p><br>
+<p>loop index = <span id="loopIndex">0</span></p>
+</div>
+<script>
+listenEvents(ml0, info1, 'ml0')
+listenEvents(ml1, info1, 'ml1')
+listenEvents(ml2, info2, 'ml2')
+listenEvents(ml3, info3, 'ml3')
+listenEvents(ml4, info4, 'ml4')
+function listenEvents(ml, info, text) {
+    ml.addEventListener('start', function(e) {
+      info.textContent = text + ' start'
+    })
+    ml.addEventListener('finish', function(e) {
+      info.textContent = text + ' finish'
+    })
+    ml.addEventListener('bounce', function(e) {
+      info.textContent = text +' bounce'
+    })
+}
+</script>
+<p>
+下表的属性与DOM属性对应关系：</p>
+<table>
+<thead>
+<tr>
+<th>marquee attribute</th>
+<th>DOM attribute</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>behavior</code></td>
+<td><code>behavior</code></td>
+</tr>
+<tr>
+<td><code>direction</code></td>
+<td><code>direction</code></td>
+</tr>
+<tr>
+<td><code>height</code></td>
+<td><code>height</code></td>
+</tr>
+<tr>
+<td><code>width</code></td>
+<td><code>width</code></td>
+</tr>
+<tr>
+<td><code>hspace</code></td>
+<td><code>hspace</code></td>
+</tr>
+<tr>
+<td><code>vspace</code></td>
+<td><code>vspace</code></td>
+</tr>
+<tr>
+<td><code>bgcolor</code></td>
+<td><code>bgColor</code></td>
+</tr>
+<tr>
+<td><code>scrollamount</code></td>
+<td><code>scrollAmount</code></td>
+</tr>
+<tr>
+<td><code>scrolldelay</code></td>
+<td><code>scrollDelay</code></td>
+</tr>
+<tr>
+<td><code>truespeed</code></td>
+<td><code>trueSpeed</code></td>
+</tr>
+</tbody>
+</table>
+<p style="color:blue"> --> vspace: 垂直距离，hspace: 水平距离 <-- </p>
+<div style="background:red;width:500px;color:white;font-size:22px">
+<div style="background: blue">
+    <marquee style="background:red" vspace="50">vspace: 20px</marquee>
+</div>
+<div style="background: black">
+    <marquee style="background:red" hspace="50">hspace: 50px</marquee>
+</div>
+</div>
+
+  </div>
+</article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="gitalk-container"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      var gitalk = new Gitalk({
+        id: '2021-08-06 00:00:00 \u002b0000 UTC',
+        title: 'HTML Marquee 标签',
+        clientID: '7251a6b30d0d6c0f4aa2',
+        clientSecret: '320c43a98b0d5ae30535d8cf6cb3be7a05895c77',
+        repo: 'cheng92-comments',
+        owner: 'gcclll',
+        admin: ['gcclll'],
+        body: decodeURI(location.href)
+      });
+      gitalk.render('gitalk-container');
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="https://github.com/gitalk/gitalk">comments powered by gitalk.</a></noscript>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>vite on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/vite/</link>
+    <description>Recent content in vite on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sat, 29 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/vite/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>如何开始一个 vite &#43; vue3 &#43; ... 项目</title>
+      <link>https://www.cheng92.com/vue/how-to-build-a-vite-vue3-project/</link>
+      <pubDate>Sat, 29 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/how-to-build-a-vite-vue3-project/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue-i18n-next 1 2 3 4 alias: { &amp;#39;/@&amp;#39;: pathResolve(&amp;#39;src&amp;#39;), + &amp;#39;vue-i18n&amp;#39;: &amp;#39;vue-i18n/dist/vue-i18n.cjs.js&amp;#39; },</description>
+    </item>
+    
+    <item>
+      <title>Vue3 -&gt; Vite 脚手架</title>
+      <link>https://www.cheng92.com/vue/vue-vite/</link>
+      <pubDate>Thu, 25 Feb 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-vite/</guid>
+      <description>vue 资源: vuejs/awesome-vue: 🎉 A curated list of awesome things related to Vue.js SSR 框架： Ream - A Vue 3 framework for building amazing apps import.meta 类型声明： 1 2 3 4 5</description>
+    </item>
+    
+  </channel>
+</rss>

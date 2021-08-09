@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>vue-next, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/vue-next/</link>
+    <description>Recent content in vue-next, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Mon, 09 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/vue-next/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue3 功能拆解⑬ style v-deep, v-slotted</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/</link>
+      <pubDate>Mon, 09 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文涉及的源码包： compiler-sfc, runtime-do</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑪ expose options&amp;api</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-11-expose/</link>
+      <pubDate>Wed, 04 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-11-expose/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); vue3 中 expose 的原理及使用。 本文涉及的源码包： r</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-12-options/</link>
+      <pubDate>Wed, 04 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-12-options/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文主要是分析 applyOptions 函数。 本文涉及的源码包：</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑨ Transition 组件机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-9-transition/</link>
+      <pubDate>Sat, 31 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-9-transition/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑩ SFC style</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-10-sfc-style/</link>
+      <pubDate>Sat, 31 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-10-sfc-style/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑧ script setup 来龙去脉</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-8-script-setup/</link>
+      <pubDate>Sat, 17 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-8-script-setup/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文将从源码，编译前后让你明白 &amp;lt;script setup&amp;gt; 标签内</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑦ assets url 转换规则</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-7-asset-transform/</link>
+      <pubDate>Fri, 16 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-7-asset-transform/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了 vue3 中是如何对 assets url 进行</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑥ directives 事件绑定机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-6-event-listen/</link>
+      <pubDate>Mon, 28 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-6-event-listen/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑤ directives 指令系统</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-5-directives/</link>
+      <pubDate>Tue, 11 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-5-directives/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了组件的指令系统，包含</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解④ 组件 props &amp; attrs</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-4-props-attrs/</link>
+      <pubDate>Mon, 10 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-4-props-attrs/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解③ 组件更新机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-3-update-flow/</link>
+      <pubDate>Sat, 08 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-3-update-flow/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解① PatchFlags</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-1-patch-flags/</link>
+      <pubDate>Tue, 13 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-1-patch-flags/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解② Scheduler 渲染机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-2-sheduler/</link>
+      <pubDate>Tue, 13 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-2-sheduler/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+  </channel>
+</rss>

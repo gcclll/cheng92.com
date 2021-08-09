@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>render on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/render/</link>
+    <description>Recent content in render on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Tue, 16 Mar 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/render/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue3 源码头脑风暴之 7 ☞ runtime-core(3) - render component</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-core-3-component/</link>
+      <pubDate>Tue, 16 Mar 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-core-3-component/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 本文为</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 7 ☞ runtime-core(2) - render</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-core-2-render/</link>
+      <pubDate>Tue, 26 Jan 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-core-2-render/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 声明 ：vu</description>
+    </item>
+    
+  </channel>
+</rss>

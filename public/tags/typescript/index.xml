@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>typescript on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/typescript/</link>
+    <description>Recent content in typescript on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 23 Apr 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/typescript/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Awesome Web Development(WEB开发资源)</title>
+      <link>https://www.cheng92.com/web/awesome-web/</link>
+      <pubDate>Fri, 23 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/awesome-web/</guid>
+      <description>insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); insertCssLink(&#34;/js/vue/css/awesome.css&#34;); 此文初衷，有时候去找一些库的时候，第一反应就是 awesome-xxx~， 比如</description>
+    </item>
+    
+  </channel>
+</rss>

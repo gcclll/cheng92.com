@@ -17,7 +17,7 @@ pygmentsCodefencesGuessSyntax = true
 summaryLength = 40
 hasCJKLanguage = true     # has chinese/japanese/korean ? # 自动检测是否包含 中文\日文\韩文
 paginate = 5                                              # 首页每页显示的文章数
-# disqusShortname = "zcheng"      # disqus_shortname
+disqusShortname = "zcheng"      # disqus_shortname
 googleAnalytics = "UA-175986456-1"      # UA-XXXXXXXX-X
 copyright = ""            # default: author.name ↓        # 默认为下面配置的author.name ↓
 
@@ -170,16 +170,18 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     warn = 180              # Display warning if the last modified time is more than these days ago.    # 如果文章最后更新于这天数之前，显示警告
 
   [params.gitment]          # Gitment is a comment system based on GitHub issues. see https://github.com/imsun/gitment
-    owner = "" # "gcclll"              # Your GitHub ID
-    repo = "" # "cheng92-comments" # "https://github.com/gcclll/cheng92-comments.git"               # The repo to store comments
-    clientId = "" # "7251a6b30d0d6c0f4aa2"           # Your client ID
-    clientSecret = "" # "320c43a98b0d5ae30535d8cf6cb3be7a05895c77"       # Your client secret
+    enable = false
+    owner = "gcclll"              # Your GitHub ID
+    repo = "cheng92-comments" # "https://github.com/gcclll/cheng92-comments.git"               # The repo to store comments
+    clientId = "7251a6b30d0d6c0f4aa2"           # Your client ID
+    clientSecret = "320c43a98b0d5ae30535d8cf6cb3be7a05895c77"       # Your client secret
 
   [params.utterances]       # https://utteranc.es/
     owner = ""              # Your GitHub ID
     repo = ""               # The repo to store comments
 
   [params.gitalk]           # Gitalk is a comment system based on GitHub issues. see https://github.com/gitalk/gitalk
+    enable = true
     owner = "gcclll"              # Your GitHub ID
     repo = "cheng92-comments" # "https://github.com/gcclll/cheng92-comments.git"               # The repo to store comments
     clientId = "7251a6b30d0d6c0f4aa2"           # Your client ID
@@ -207,7 +209,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     options = ""            # default: "{theme: 'simple'}"
 
   [params.busuanzi]         # count web traffic by busuanzi                             # 是否使用不蒜子统计站点访问量
-    enable = false
+    enable = true
     siteUV = true
     sitePV = true
     pagePV = true

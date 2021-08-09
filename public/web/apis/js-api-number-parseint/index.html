@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>JavaScript Api - Number.parseInt(s, r) - 若叶知秋</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Zhicheng Lee" /><meta name="description" content="parseInt(string, radix) 在使用过程中发现一个问题，看下面的测试代码结果： 1 2 3 4 5 6 7 8 9 10 11 12 13 14" /><meta name="keywords" content="Vue, React, JavaScript, Python" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.css" />
+
+
+
+
+<meta name="generator" content="Hugo 0.83.1 with theme even" />
+
+
+<link rel="canonical" href="https://www.cheng92.com/web/apis/js-api-number-parseint/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<link href="/sass/main.min.9d6c07951e716411e0fdd9d1d7616cb41ced57b53993154c49ea809e194527af.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/global.css">
+
+
+<meta property="og:title" content="JavaScript Api - Number.parseInt(s, r)" />
+<meta property="og:description" content="parseInt(string, radix) 在使用过程中发现一个问题，看下面的测试代码结果： 1 2 3 4 5 6 7 8 9 10 11 12 13 14" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cheng92.com/web/apis/js-api-number-parseint/" /><meta property="article:section" content="web" />
+<meta property="article:published_time" content="2021-01-25T00:00:00&#43;00:00" />
+<meta property="article:modified_time" content="2021-01-25T00:00:00&#43;00:00" />
+
+<meta itemprop="name" content="JavaScript Api - Number.parseInt(s, r)">
+<meta itemprop="description" content="parseInt(string, radix) 在使用过程中发现一个问题，看下面的测试代码结果： 1 2 3 4 5 6 7 8 9 10 11 12 13 14"><meta itemprop="datePublished" content="2021-01-25T00:00:00&#43;00:00" />
+<meta itemprop="dateModified" content="2021-01-25T00:00:00&#43;00:00" />
+<meta itemprop="wordCount" content="1520">
+<meta itemprop="keywords" content="javascript,,api,,Number," /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="JavaScript Api - Number.parseInt(s, r)"/>
+<meta name="twitter:description" content="parseInt(string, radix) 在使用过程中发现一个问题，看下面的测试代码结果： 1 2 3 4 5 6 7 8 9 10 11 12 13 14"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">若叶知秋</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/emacs/">
+        <li class="mobile-menu-item">Emacs</li>
+      </a><a href="/algo/">
+        <li class="mobile-menu-item">Algorithm</li>
+      </a><a href="/web/">
+        <li class="mobile-menu-item">Web</li>
+      </a><a href="/vue/">
+        <li class="mobile-menu-item">Vue</li>
+      </a><a href="/react/">
+        <li class="mobile-menu-item">React</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+
+  
+
+
+</nav>
+
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">若叶知秋</a>
+</div>
+
+
+
+
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/emacs/">Emacs</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/algo/">Algorithm</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/web/">Web</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/vue/">Vue</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/react/">React</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li id="search">
+        <img class="icon" src="/img/search.png"/>
+        <input type="search" class="docsearch-input" placeholder="Search" style="display:none;" />
+      </li></ul>
+</nav>
+
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+  <div class="post-content">
+    <blockquote>
+<p><code>parseInt(string, radix)</code></p>
+</blockquote>
+<p>
+在使用过程中发现一个问题，看下面的测试代码结果：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">noop</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{}</span>
+<span class="kd">var</span> <span class="nx">vals</span> <span class="o">=</span> <span class="p">[</span>
+  <span class="mi">1</span><span class="p">,</span> <span class="c1">// 0
+</span><span class="c1"></span>  <span class="s1">&#39;1&#39;</span><span class="p">,</span> <span class="c1">// 1
+</span><span class="c1"></span>  <span class="kc">NaN</span><span class="p">,</span> <span class="c1">// 2
+</span><span class="c1"></span>  <span class="kc">null</span><span class="p">,</span> <span class="c1">// 3
+</span><span class="c1"></span>  <span class="p">{},</span> <span class="c1">// 4
+</span><span class="c1"></span>  <span class="kc">false</span><span class="p">,</span> <span class="c1">// 5
+</span><span class="c1"></span>  <span class="kc">true</span><span class="p">,</span> <span class="c1">// 6
+</span><span class="c1"></span>  <span class="p">{</span> <span class="nx">length</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="o">:</span> <span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="o">:</span> <span class="s1">&#39;b&#39;</span> <span class="p">},</span> <span class="c1">// 7
+</span><span class="c1"></span>  <span class="p">{</span> <span class="nx">a</span><span class="o">:</span> <span class="mi">1</span> <span class="p">},</span> <span class="c1">//8
+</span><span class="c1"></span>  <span class="p">[],</span> <span class="c1">// 9
+</span><span class="c1"></span>  <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="c1">// 10
+</span><span class="c1"></span>  <span class="nx">noop</span><span class="p">,</span> <span class="c1">// 11
+</span><span class="c1"></span>  <span class="kc">undefined</span><span class="p">,</span> <span class="c1">// 12
+</span><span class="c1"></span>  <span class="k">void</span> <span class="mi">0</span> <span class="c1">// 13
+</span><span class="c1"></span><span class="p">]</span>
+
+<span class="c1">// 在执行之前，上面结果会是什么呢？
+</span><span class="c1"></span><span class="kr">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nx">vals</span><span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="nx">v</span> <span class="p">=&gt;</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">v</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;\n&#39;</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;[1,2] =&gt; &#39;</span><span class="p">,</span> <span class="nx">result</span><span class="p">[</span><span class="mi">10</span><span class="p">])</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+
+ [
+    1,   1, NaN, NaN, NaN,
+  NaN, NaN, NaN, NaN, NaN,
+    1, NaN, NaN, NaN
+]
+[1,2] =&gt;  1
+undefined
+</pre>
+<p>
+发现问题没，疑惑点就 <code>parseInt</code> 在 <code>[1,2] // 10</code> 的时候，结果居然是 <strong>1</strong> ?</p>
+<p>
+<a href="https://tc39.es/ecma262/#sec-parseint-string-radix">parseInt</a> 实现伪码：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kr">const</span> <span class="nx">ToString</span> <span class="o">=</span> <span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="s2">&#34;&#34;</span> <span class="o">+</span> <span class="nx">s</span><span class="p">;</span>
+<span class="kr">const</span> <span class="nx">TrimString</span> <span class="o">=</span> <span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">(</span><span class="nx">s</span> <span class="o">||</span> <span class="s2">&#34;&#34;</span><span class="p">).</span><span class="nx">trim</span><span class="p">();</span>
+<span class="kr">const</span> <span class="nx">ToInt32</span> <span class="o">=</span> <span class="p">(</span><span class="nx">v</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="o">+</span><span class="nx">v</span><span class="p">;</span>
+<span class="kr">const</span> <span class="nx">log</span> <span class="o">=</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">;</span>
+<span class="kd">function</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">string</span><span class="p">,</span> <span class="nx">radix</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">inputString</span> <span class="o">=</span> <span class="nx">ToString</span><span class="p">(</span><span class="nx">string</span><span class="p">);</span> <span class="c1">// ~捂脸~，这一行就说明问题了
+</span><span class="c1"></span>  <span class="kd">let</span> <span class="nx">S</span> <span class="o">=</span> <span class="nx">TrimString</span><span class="p">(</span><span class="nx">inputString</span><span class="p">);</span>
+  <span class="kd">let</span> <span class="nx">sign</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="c1">// 0x002D -&gt; &#39;-&#39;, S.codePointAt(0) === 0x002D
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">S</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">ch</span> <span class="o">=</span> <span class="nx">S</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">ch</span> <span class="o">===</span> <span class="s2">&#34;-&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">sign</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+      <span class="c1">// 删除 -
+</span><span class="c1"></span>      <span class="nx">S</span> <span class="o">=</span> <span class="nx">S</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">ch</span> <span class="o">===</span> <span class="s2">&#34;+&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">sign</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+      <span class="c1">// 删除 +
+</span><span class="c1"></span>      <span class="nx">S</span> <span class="o">=</span> <span class="nx">S</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 进制
+</span><span class="c1"></span>  <span class="kd">let</span> <span class="nx">R</span> <span class="o">=</span> <span class="nx">ToInt32</span><span class="p">(</span><span class="nx">radix</span> <span class="o">||</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="kd">let</span> <span class="nx">stripPrefix</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">R</span> <span class="o">!==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 只支持 2~36 进制
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="nx">R</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="o">||</span> <span class="nx">R</span> <span class="o">&gt;</span> <span class="mi">36</span><span class="p">)</span> <span class="k">return</span> <span class="kc">NaN</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">R</span> <span class="o">!==</span> <span class="mi">16</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">stripPrefix</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="c1">// 为 0 时默认 10 进制
+</span><span class="c1"></span>    <span class="nx">R</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">stripPrefix</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">S</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="o">&amp;&amp;</span> <span class="nx">S</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">).</span><span class="nx">toLowerCase</span><span class="p">()</span> <span class="o">===</span> <span class="s2">&#34;0x&#34;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">S</span> <span class="o">=</span> <span class="nx">S</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span> <span class="c1">// delete &#39;0x&#39; or &#39;0X&#39;
+</span><span class="c1"></span>      <span class="nx">R</span> <span class="o">=</span> <span class="mi">16</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// 如果 S 中包含非进制内的字符，将 end 重置为该字符的索引值
+</span><span class="c1"></span>  <span class="kd">let</span> <span class="nx">len</span> <span class="o">=</span> <span class="nx">S</span><span class="p">.</span><span class="nx">length</span><span class="p">,</span>
+    <span class="nx">end</span> <span class="o">=</span> <span class="nx">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="kr">const</span> <span class="nx">table</span> <span class="o">=</span> <span class="s2">&#34;0123456789abcdefghijklmnopqrstuvwxyz&#34;</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">radix</span><span class="p">);</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">len</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">c</span> <span class="o">=</span> <span class="nx">S</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">toLowerCase</span><span class="p">();</span>
+    <span class="c1">// 10 进制是 0 - 9
+</span><span class="c1"></span>    <span class="c1">// 2 -&gt; 0, 1
+</span><span class="c1"></span>    <span class="c1">// 3 -&gt; 0, 1, 2
+</span><span class="c1"></span>    <span class="c1">// ...
+</span><span class="c1"></span>    <span class="c1">// 36 -&gt; 0, ..., 9, a, ..., z
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">table</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="nx">c</span><span class="p">))</span> <span class="p">{</span>
+      <span class="c1">// 这里假设是 10进制
+</span><span class="c1"></span>      <span class="nx">end</span> <span class="o">=</span> <span class="nx">i</span><span class="p">;</span> <span class="c1">// 第一个非进制内的字符
+</span><span class="c1"></span>      <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="kd">let</span> <span class="nx">Z</span> <span class="o">=</span> <span class="nx">S</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">end</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">?</span> <span class="nx">end</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">Z</span><span class="p">)</span> <span class="k">return</span> <span class="kc">NaN</span><span class="p">;</span>
+
+  <span class="kd">let</span> <span class="nx">mathInt</span> <span class="o">=</span> <span class="nx">parseWithRadix</span><span class="p">(</span><span class="nx">Z</span><span class="p">,</span> <span class="nx">R</span><span class="p">);</span>
+
+  <span class="c1">// mathInt 转成对应进制的数
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">mathInt</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">sign</span> <span class="o">===</span> <span class="o">-</span><span class="mi">1</span> <span class="o">?</span> <span class="o">-</span><span class="mi">0</span> <span class="o">:</span> <span class="o">+</span><span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">sign</span> <span class="o">*</span> <span class="nx">mathInt</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">function</span> <span class="nx">parseWithRadix</span><span class="p">(</span><span class="nx">Z</span><span class="p">,</span> <span class="nx">radix</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">mathInt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="kr">const</span> <span class="nx">zLen</span> <span class="o">=</span> <span class="nx">Z</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+
+  <span class="kr">const</span> <span class="nx">base</span> <span class="o">=</span> <span class="s2">&#34;a&#34;</span><span class="p">.</span><span class="nx">codePointAt</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">zLen</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">c</span> <span class="o">=</span> <span class="nx">Z</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">toLowerCase</span><span class="p">();</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">c</span> <span class="o">&gt;=</span> <span class="s2">&#34;a&#34;</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span> <span class="o">&lt;=</span> <span class="s2">&#34;z&#34;</span> <span class="o">&amp;&amp;</span> <span class="nx">radix</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">c</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">+</span> <span class="nx">c</span><span class="p">.</span><span class="nx">codePointAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="nx">base</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="nx">mathInt</span> <span class="o">+=</span> <span class="o">+</span><span class="nx">c</span> <span class="o">*</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">pow</span><span class="p">(</span><span class="nx">radix</span><span class="p">,</span> <span class="nx">zLen</span> <span class="o">-</span> <span class="nx">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">mathInt</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">function</span> <span class="nx">test</span><span class="p">(</span><span class="nx">val</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">result</span> <span class="o">=</span> <span class="p">[];</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="mi">40</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">result</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="sb">`R: </span><span class="si">${</span><span class="nx">i</span><span class="si">}</span><span class="sb">, V: </span><span class="si">${</span><span class="nb">parseInt</span><span class="p">(</span><span class="nx">val</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="nx">log</span><span class="p">(</span><span class="s2">&#34;\n&#34;</span><span class="p">,</span> <span class="nx">result</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="nx">test</span><span class="p">(</span><span class="s2">&#34;EEE&#34;</span><span class="p">);</span>
+<span class="nx">log</span><span class="p">(</span><span class="nb">parseInt</span><span class="p">(</span><span class="s2">&#34;0xEEE&#34;</span><span class="p">,</span> <span class="mi">16</span><span class="p">));</span>
+<span class="nx">log</span><span class="p">(</span><span class="nb">parseInt</span><span class="p">(</span><span class="s2">&#34;111111&#34;</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span>
+<span class="nx">test</span><span class="p">(</span><span class="s2">&#34;-20AFE&#34;</span><span class="p">);</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+
+ [
+  &#39;R: 0, V: NaN&#39;,    &#39;R: 1, V: NaN&#39;,    &#39;R: 2, V: NaN&#39;,
+  &#39;R: 3, V: NaN&#39;,    &#39;R: 4, V: NaN&#39;,    &#39;R: 5, V: NaN&#39;,
+  &#39;R: 6, V: NaN&#39;,    &#39;R: 7, V: NaN&#39;,    &#39;R: 8, V: NaN&#39;,
+  &#39;R: 9, V: NaN&#39;,    &#39;R: 10, V: NaN&#39;,   &#39;R: 11, V: NaN&#39;,
+  &#39;R: 12, V: NaN&#39;,   &#39;R: 13, V: NaN&#39;,   &#39;R: 14, V: NaN&#39;,
+  &#39;R: 15, V: 3374&#39;,  &#39;R: 16, V: 3822&#39;,  &#39;R: 17, V: 4298&#39;,
+  &#39;R: 18, V: 4802&#39;,  &#39;R: 19, V: 5334&#39;,  &#39;R: 20, V: 5894&#39;,
+  &#39;R: 21, V: 6482&#39;,  &#39;R: 22, V: 7098&#39;,  &#39;R: 23, V: 7742&#39;,
+  &#39;R: 24, V: 8414&#39;,  &#39;R: 25, V: 9114&#39;,  &#39;R: 26, V: 9842&#39;,
+  &#39;R: 27, V: 10598&#39;, &#39;R: 28, V: 11382&#39;, &#39;R: 29, V: 12194&#39;,
+  &#39;R: 30, V: 13034&#39;, &#39;R: 31, V: 13902&#39;, &#39;R: 32, V: 14798&#39;,
+  &#39;R: 33, V: 15722&#39;, &#39;R: 34, V: 16674&#39;, &#39;R: 35, V: 17654&#39;,
+  &#39;R: 36, V: 18662&#39;, &#39;R: 37, V: NaN&#39;,   &#39;R: 38, V: NaN&#39;,
+  &#39;R: 39, V: NaN&#39;
+]
+3822
+63
+
+ [
+  &#39;R: 0, V: NaN&#39;,       &#39;R: 1, V: NaN&#39;,
+  &#39;R: 2, V: NaN&#39;,       &#39;R: 3, V: NaN&#39;,
+  &#39;R: 4, V: NaN&#39;,       &#39;R: 5, V: NaN&#39;,
+  &#39;R: 6, V: NaN&#39;,       &#39;R: 7, V: NaN&#39;,
+  &#39;R: 8, V: NaN&#39;,       &#39;R: 9, V: NaN&#39;,
+  &#39;R: 10, V: NaN&#39;,      &#39;R: 11, V: -2787&#39;,
+  &#39;R: 12, V: -3591&#39;,    &#39;R: 13, V: -4539&#39;,
+  &#39;R: 14, V: -5643&#39;,    &#39;R: 15, V: -6915&#39;,
+  &#39;R: 16, V: -133886&#39;,  &#39;R: 17, V: -170201&#39;,
+  &#39;R: 18, V: -213476&#39;,  &#39;R: 19, V: -264551&#39;,
+  &#39;R: 20, V: -324314&#39;,  &#39;R: 21, V: -393701&#39;,
+  &#39;R: 22, V: -473696&#39;,  &#39;R: 23, V: -565331&#39;,
+  &#39;R: 24, V: -669686&#39;,  &#39;R: 25, V: -787889&#39;,
+  &#39;R: 26, V: -921116&#39;,  &#39;R: 27, V: -1070591&#39;,
+  &#39;R: 28, V: -1237586&#39;, &#39;R: 29, V: -1423421&#39;,
+  &#39;R: 30, V: -1629464&#39;, &#39;R: 31, V: -1857131&#39;,
+  &#39;R: 32, V: -2107886&#39;, &#39;R: 33, V: -2383241&#39;,
+  &#39;R: 34, V: -2684756&#39;, &#39;R: 35, V: -3014039&#39;,
+  &#39;R: 36, V: -3372746&#39;, &#39;R: 37, V: NaN&#39;,
+  &#39;R: 38, V: NaN&#39;,      &#39;R: 39, V: NaN&#39;
+]
+undefined
+</pre>
+<blockquote>
+<p>关键点：</p>
+<ol>
+<li>
+<p>输入值一进来就会进行字符串化，这也就解释了为什么数组 <code>[1,2]</code> 最后得到的结果是 <strong>1</strong>
+了</p>
+</li>
+<li>
+<p>进制数的处理，为 0 时 <code>radix = 10</code>, 非 <code>[2, 36]</code> 区间的数视为非法进制</p>
+</li>
+<li>
+<p>输入的内容(<code>string</code>) 如何转成对应进制的数，即 <code>parse(Z, radix)</code> 函数</p>
+</li>
+</ol>
+</blockquote>
+<p>
+字符串转数字函数：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">parse</span><span class="p">(</span><span class="nx">Z</span><span class="p">,</span> <span class="nx">radix</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">let</span> <span class="nx">mathInt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="kr">const</span> <span class="nx">zLen</span> <span class="o">=</span> <span class="nx">Z</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+
+  <span class="kr">const</span> <span class="nx">base</span> <span class="o">=</span> <span class="s1">&#39;a&#39;</span><span class="p">.</span><span class="nx">codePointAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">zLen</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">c</span> <span class="o">=</span> <span class="nx">Z</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">toLowerCase</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">c</span> <span class="o">&gt;=</span> <span class="s1">&#39;a&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span> <span class="o">&lt;=</span> <span class="s1">&#39;z&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">radix</span> <span class="o">===</span> <span class="mi">16</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">c</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">+</span> <span class="nx">c</span><span class="p">.</span><span class="nx">codePointAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="nx">base</span>
+    <span class="p">}</span>
+
+    <span class="nx">mathInt</span> <span class="o">+=</span> <span class="o">+</span><span class="nx">c</span> <span class="o">*</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">pow</span><span class="p">(</span><span class="nx">radix</span><span class="p">,</span> <span class="nx">zLen</span> <span class="o">-</span> <span class="nx">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">mathInt</span>
+<span class="p">}</span>
+<span class="kr">const</span> <span class="nx">log</span> <span class="o">=</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span>
+<span class="nx">log</span><span class="p">(</span><span class="nx">parse</span><span class="p">(</span><span class="s1">&#39;EEE&#39;</span><span class="p">,</span> <span class="mi">16</span><span class="p">))</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+3822
+undefined
+</pre>
+<blockquote>
+<p>❓❓❓ parseInt(0.0000005) = 5  ❓❓❓</p>
+</blockquote>
+<p>
+测试：</p>
+<div class="src src-js">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">test</span><span class="p">(</span><span class="nx">res</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`parseInt(</span><span class="si">${</span><span class="nx">res</span><span class="si">}</span><span class="sb">) = `</span> <span class="o">+</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">res</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.005</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.0005</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.00005</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.000005</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.0000005</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.00000005</span><span class="p">)</span>
+<span class="nx">test</span><span class="p">(</span><span class="mf">0.000000005</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<pre class="example">
+parseInt(0.5) = 0
+parseInt(0.05) = 0
+parseInt(0.005) = 0
+parseInt(0.0005) = 0
+parseInt(0.00005) = 0
+parseInt(0.000005) = 0
+parseInt(5e-7) = 5
+parseInt(5e-8) = 5
+parseInt(5e-9) = 5
+undefined
+</pre>
+<p>
+😭😭😭😭😭😭😭😭😭😭</p>
+<p>
+结果不用分析了吧，上面的结果很明显了，超过6位的小数在 toString 的时候被转成了指
+数表示形式了，而 parseInt 实现伪码一开始就会将传进去的数字转成字符串，所以最后在
+识别字符串的时候遇到了 <code>e</code> 就终止了，最终得到 5 的结果。</p>
+<p>
+本着追根究底的原则，还是去看下 toString 里面是怎么处理的吧 🚆</p>
+<p>
+<a href="https://tc39.es/ecma262/#sec-tostring">ECMAScript® 2022 Language Specification - toString</a></p>
+<p>
+<img src="/img/tmp/ecma-tostring.png" alt="/img/tmp/ecma-tostring.png" title="/img/tmp/ecma-tostring.png" /></p>
+<p>
+这里就要看下数字是如何转成字符串的： <a href="/web/apis/js-api-number-tostring/">Number::toString ( x )</a></p>
+
+  </div>
+</article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'zcheng';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="gitalk-container"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      var gitalk = new Gitalk({
+        id: '2021-01-25 00:00:00 \u002b0000 UTC',
+        title: 'JavaScript Api - Number.parseInt(s, r)',
+        clientID: '7251a6b30d0d6c0f4aa2',
+        clientSecret: '320c43a98b0d5ae30535d8cf6cb3be7a05895c77',
+        repo: 'cheng92-comments',
+        owner: 'gcclll',
+        admin: ['gcclll'],
+        body: decodeURI(location.href)
+      });
+      gitalk.render('gitalk-container');
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="https://github.com/gitalk/gitalk">comments powered by gitalk.</a></noscript>
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:gccll.love@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://stackoverflow.com/users/6062239/simon" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="https://twitter.com/gccll_love" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="https://www.facebook.com/profile.php?id=100013995916088" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="https://github.com/gcclll" class="iconfont icon-github" title="github"></a>
+      <a href="https://www.zhihu.com/people/gccll" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="https://space.bilibili.com/384410681" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="https://www.cheng92.com/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  <div class="busuanzi-footer">
+    <span id="busuanzi_container_site_pv"> 本站总访问量 <span id="busuanzi_value_site_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次 </span>
+      <span class="division">|</span>
+    <span id="busuanzi_container_site_uv"> 本站总访客数 <span id="busuanzi_value_site_uv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 人 </span>
+  </div>
+
+  <span class="copyright-year">
+    &copy; 
+    2020 - 
+    2021<span class="heart"><i class="iconfont icon-heart"></i></span><span>Zhicheng Lee</span>
+  </span>
+</div>
+
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script><script src="https://cdn.jsdelivr.net/npm/docsearch.js@2/dist/cdn/docsearch.min.js"></script>
+<script>
+    docsearch({
+    apiKey: "ac1e64640788e5697016a58be1ec7232",
+    indexName: "cheng92.com",
+    appId: "EDIKM3W4HV",
+    inputSelector: '.docsearch-input',
+    debug: false,
+    });
+</script>
+
+
+
+<script type="text/javascript" src="/js/main.min.db4c43431f3833e1a48d3c8754f77c8250eedde3c20810a308f35779fdf8acd1.js"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-175986456-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+<script src="/js/global.js"></script>
+
+
+</body>
+</html>

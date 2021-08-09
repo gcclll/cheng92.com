@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>html on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/html/</link>
+    <description>Recent content in html on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 06 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/html/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>HTML Marquee 标签</title>
+      <link>https://www.cheng92.com/web/html-marquee-tag/</link>
+      <pubDate>Fri, 06 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/html-marquee-tag/</guid>
+      <description>Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7</description>
+    </item>
+    
+    <item>
+      <title>HTML 标准</title>
+      <link>https://www.cheng92.com/web/html-spec-whatwg-st/</link>
+      <pubDate>Sat, 19 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/html-spec-whatwg-st/</guid>
+      <description>HTML 标准首页 HTML Standard 13 The HTML syntax 13.5 Named character references 这下面包含了所有符号 名字 - Unicode - 符号 对应关系表。 Element textContent,</description>
+    </item>
+    
+  </channel>
+</rss>

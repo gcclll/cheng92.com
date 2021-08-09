@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>pyim on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/pyim/</link>
+    <description>Recent content in pyim on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Thu, 01 Jul 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/pyim/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Doom Emacs 上配置Rime &#43; Pyim</title>
+      <link>https://www.cheng92.com/emacs/emacs-rime-pyim/</link>
+      <pubDate>Thu, 01 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/emacs/emacs-rime-pyim/</guid>
+      <description>折腾，折腾。。。 用的是 2015 版的 macos 在使用外部输入法的时候 emacs 尤其的卡顿，无奈只能折腾内</description>
+    </item>
+    
+  </channel>
+</rss>

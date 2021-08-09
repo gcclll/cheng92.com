@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link href="/sass/main.min.9d6c07951e716411e0fdd9d1d7616cb41ced57b53993154c49ea809e194527af.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
@@ -53,7 +53,7 @@
 <meta itemprop="name" content="Vue3 功能拆解⑥ directives 事件绑定机制">
 <meta itemprop="description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机"><meta itemprop="datePublished" content="2021-06-28T00:00:00&#43;00:00" />
 <meta itemprop="dateModified" content="2021-06-28T00:00:00&#43;00:00" />
-<meta itemprop="wordCount" content="2397">
+<meta itemprop="wordCount" content="2408">
 <meta itemprop="keywords" content="vue3,,vue-next,,component,,directives," /><meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Vue3 功能拆解⑥ directives 事件绑定机制"/>
 <meta name="twitter:description" content="诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机"/>
@@ -158,7 +158,7 @@
         <div class="post-category">
             <a href="/categories/vue/"> vue </a>
             </div>
-          <span class="more-meta"> 约 2397 字 </span>
+          <span class="more-meta"> 约 2408 字 </span>
           <span class="more-meta"> 预计阅读 5 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
@@ -784,6 +784,8 @@ compiler-dom 阶段，这三个修饰符会被单独解析，比如：</p>
 </span><span class="lnt">13
 </span><span class="lnt">14
 </span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
 </span></code></pre></td>
 <td class="lntd">
 <pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="kr">const</span> <span class="nx">optionsModifierRE</span> <span class="o">=</span> <span class="sr">/(?:Once|Passive|Capture)$/</span>
@@ -799,7 +801,9 @@ compiler-dom 阶段，这三个修饰符会被单独解析，比如：</p>
       <span class="nx">options</span>
     <span class="p">}</span>
   <span class="p">}</span>
-  <span class="k">return</span> <span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">).</span><span class="nx">toLowerCase</span><span class="p">(),</span> <span class="nx">options</span><span class="p">]</span>
+  <span class="c1">// return [name.slice(2).toLowerCase(), options]
+</span><span class="c1"></span>  <span class="c1">// #b302cbb, fooBar -&gt; foo-bar
+</span><span class="c1"></span>  <span class="k">return</span> <span class="p">[</span><span class="nx">hyphenate</span><span class="p">(</span><span class="nx">name</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">)),</span> <span class="nx">options</span><span class="p">]</span>
 <span class="p">}</span></code></pre></td></tr></table>
 </div>
 </div>
@@ -857,9 +861,13 @@ compiler-dom 阶段，这三个修饰符会被单独解析，比如：</p>
           <a href="/tags/directives/">directives</a>
           </div>
       <nav class="post-nav">
-        
+        <a class="prev" href="/vue/vue-teardown-7-asset-transform/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">Vue3 功能拆解⑦ assets url 转换规则</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
         <a class="next" href="/vue/vue-update-log-01/">
-            <span class="next-text nav-default">Vue3 更新日志 01</span>
+            <span class="next-text nav-default">Vue3 更新日志 01(3.0.5 ~ 3.2.0-beta.1)</span>
             <span class="next-text nav-mobile">下一篇</span>
             <i class="iconfont icon-right"></i>
           </a>
@@ -880,22 +888,23 @@ compiler-dom 阶段，这三个修饰符会被单独解析，比如：</p>
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     })();
     </script>
-    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="gitalk-container"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js" crossorigin="anonymous"></script>
     <script type="text/javascript">
-      (function(d, s) {
-        var j, e = d.getElementsByTagName(s)[0];
-
-        if (typeof LivereTower === 'function') { return; }
-
-        j = d.createElement(s);
-        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
-        j.async = true;
-
-        e.parentNode.insertBefore(j, e);
-      })(document, 'script');
+      var gitalk = new Gitalk({
+        id: '2021-06-28 00:00:00 \u002b0000 UTC',
+        title: 'Vue3 功能拆解⑥ directives 事件绑定机制',
+        clientID: '7251a6b30d0d6c0f4aa2',
+        clientSecret: '320c43a98b0d5ae30535d8cf6cb3be7a05895c77',
+        repo: 'cheng92-comments',
+        owner: 'gcclll',
+        admin: ['gcclll'],
+        body: decodeURI(location.href)
+      });
+      gitalk.render('gitalk-container');
     </script>
-    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
-    </div>
+    <noscript>Please enable JavaScript to view the <a href="https://github.com/gitalk/gitalk">comments powered by gitalk.</a></noscript>
 
   
 

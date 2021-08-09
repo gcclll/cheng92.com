@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>component on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/component/</link>
+    <description>Recent content in component on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sun, 18 Jul 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/component/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Web Component 学习记录</title>
+      <link>https://www.cheng92.com/web/web-component/</link>
+      <pubDate>Sun, 18 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/web-component/</guid>
+      <description>TODO</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑥ directives 事件绑定机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-6-event-listen/</link>
+      <pubDate>Mon, 28 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-6-event-listen/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了vue中的事件注册机</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解⑤ directives 指令系统</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-5-directives/</link>
+      <pubDate>Tue, 11 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-5-directives/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了组件的指令系统，包含</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解④ 组件 props &amp; attrs</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-4-props-attrs/</link>
+      <pubDate>Mon, 10 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-4-props-attrs/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文从源码角度讲解了，组件的属性归类问题</description>
+    </item>
+    
+    <item>
+      <title>Vue3 功能拆解③ 组件更新机制</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-3-update-flow/</link>
+      <pubDate>Sat, 08 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-3-update-flow/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本系列为 vue-next 源码分析系列的旁系分支，主要目</description>
+    </item>
+    
+    <item>
+      <title>Vue3 源码头脑风暴之 7 ☞ runtime-core(3) - render component</title>
+      <link>https://www.cheng92.com/vue/vue-mind-map-runtime-core-3-component/</link>
+      <pubDate>Tue, 16 Mar 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-mind-map-runtime-core-3-component/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); stb-vue-next 完全拷贝于 vue-next ，主要目的用于学习。 本文为</description>
+    </item>
+    
+  </channel>
+</rss>

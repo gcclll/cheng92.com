@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>script.setup on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/script.setup/</link>
+    <description>Recent content in script.setup on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sat, 17 Jul 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/script.setup/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Vue3 功能拆解⑧ script setup 来龙去脉</title>
+      <link>https://www.cheng92.com/vue/vue-teardown-8-script-setup/</link>
+      <pubDate>Sat, 17 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/vue/vue-teardown-8-script-setup/</guid>
+      <description>诗号：六道同坠，魔劫万千，引渡如来。 -- insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); 本文将从源码，编译前后让你明白 &amp;lt;script setup&amp;gt; 标签内</description>
+    </item>
+    
+  </channel>
+</rss>

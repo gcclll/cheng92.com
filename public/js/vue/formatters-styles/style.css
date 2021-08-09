@@ -24,7 +24,7 @@ header > * {
 
 h2 {
   display: inline-block;
-  margin: 5px 0;
+  /* margin: 5px 0; */
 }
 
 a#fork_me {

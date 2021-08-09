@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link href="/sass/main.min.9d6c07951e716411e0fdd9d1d7616cb41ced57b53993154c49ea809e194527af.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
@@ -53,7 +53,7 @@
 <meta itemprop="name" content="My MacOS">
 <meta itemprop="description" content="😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 MacOS 系统相关的东西 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"><meta itemprop="datePublished" content="2021-07-01T00:00:00&#43;00:00" />
 <meta itemprop="dateModified" content="2021-07-01T00:00:00&#43;00:00" />
-<meta itemprop="wordCount" content="696">
+<meta itemprop="wordCount" content="1897">
 <meta itemprop="keywords" content="macos," /><meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="My MacOS"/>
 <meta name="twitter:description" content="😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀 MacOS 系统相关的东西 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"/>
@@ -158,8 +158,8 @@
         <div class="post-category">
             <a href="/categories/macos/"> macos </a>
             </div>
-          <span class="more-meta"> 约 696 字 </span>
-          <span class="more-meta"> 预计阅读 2 分钟 </span>
+          <span class="more-meta"> 约 1897 字 </span>
+          <span class="more-meta"> 预计阅读 4 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
     </header>
@@ -169,11 +169,25 @@
   <div class="post-toc-content always-active">
     <nav id="TableOfContents">
 <ul>
-<li><a href="#headline-1">Nix</a>
-</li>
-<li><a href="#headline-2">awesome tools</a>
+<li><a href="#headline-1">CLI</a>
 <ul>
-<li><a href="#headline-3">窗口管理</a>
+<li><a href="#headline-2">bcal, 字节计算，转换</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-3">Nix</a>
+</li>
+<li><a href="#headline-4">awesome tools</a>
+<ul>
+<li><a href="#headline-5">Share VPN</a>
+</li>
+<li><a href="#headline-6">窗口管理</a>
+</li>
+</ul>
+</li>
+<li><a href="#headline-7">ubuntu</a>
+<ul>
+<li><a href="#headline-8">修改家目录和主机名</a>
 </li>
 </ul>
 </li>
@@ -198,9 +212,422 @@ insertCssLink("/js/vue/css/awesome.css");
 <script src="/js/vue/awesome/common.js"></script>
 <div id="outline-container-headline-1" class="outline-2">
 <h2 id="headline-1">
-Nix
+CLI
 </h2>
 <div id="outline-text-headline-1" class="outline-text-2">
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+<a href="https://github.com/jarun/bcal#installation">bcal</a>, 字节计算，转换
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+bcal 进入或直接使用 <code>$ bcal &lt;expr&gt; ...</code> :</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh">╭─simon at gcl in ~/.doom.d on native✘✘✘ 21-07-22 - 15:24:39
+╰─⠠⠵ bcal                                                                     ~/.doom.d
+q/double Enter -&gt; quit, ? -&gt; <span class="nb">help</span>
+bcal&gt; <span class="s2">&#34;(5kb+10mb)&#34;</span>
+                                <span class="m">10005000</span> B
+
+            IEC standard <span class="o">(</span>base 2<span class="o">)</span>
+
+                        9.7705078125e+03 KiB
+                        9.5415115356e+00 MiB
+                        9.3178823590e-03 GiB
+                        9.0994944912e-06 TiB
+
+            SI standard <span class="o">(</span>base 10<span class="o">)</span>
+
+                                   <span class="m">10005</span> kB
+                        1.0005000000e+01 MB
+                        1.0005000000e-02 GB
+                        1.0005000000e-05 TB
+
+ADDRESS
+ <span class="o">(</span>d<span class="o">)</span> <span class="m">10005000</span>
+ <span class="o">(</span>h<span class="o">)</span> 0x98aa08
+bcal&gt;</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+使用方式，采用各种表达式方式：</p>
+<ol>
+<li>
+<p>支持数学计算</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh">$ bcal <span class="s2">&#34;(5kb+2mb)/3&#34;</span>
+$ bcal <span class="s2">&#34;5 tb / 12&#34;</span>
+$ bcal <span class="s2">&#34;2.5mb*3&#34;</span>
+╰─⠠⠵ bcal <span class="s2">&#34;2.5mb*3&#34;</span>                                                           ~/.doom.d
+RESULT
+                                <span class="m">7500000</span> B
+
+            IEC standard <span class="o">(</span>base 2<span class="o">)</span>
+
+                        7.3242187500e+03 KiB
+                        7.1525573730e+00 MiB
+                        6.9849193096e-03 GiB
+                        6.8212102633e-06 TiB
+
+            SI standard <span class="o">(</span>base 10<span class="o">)</span>
+
+                                    <span class="m">7500</span> kB
+                        7.5000000000e+00 MB
+                        7.5000000000e-03 GB
+                        7.5000000000e-06 TB
+
+ADDRESS
+<span class="o">(</span>d<span class="o">)</span> <span class="m">7500000</span>
+<span class="o">(</span>h<span class="o">)</span> 0x7270e0
+
+$ bcal <span class="s2">&#34;(2giB * 2) / (2kib &gt;&gt; 2)&#34;</span>
+╰─⠠⠵ bcal <span class="s2">&#34;(2giB * 2) / (2kib &gt;&gt; 2)&#34;</span>                                          ~/.doom.d
+<span class="m">8388608</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>转成其它格式，单位大小写敏感</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> $ bcal <span class="m">20140115</span> b
+ $ bcal 0x1335053 B
+ $ bcal 0xaabbcc kb
+ $ bcal 0xdef Gib
+
+ ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:39:04
+ ╰─⠠⠵ bcal <span class="m">20140115</span> b                                                          ~/.doom.d
+ UNIT CONVERSION
+                                 <span class="m">20140115</span> B
+
+             IEC standard <span class="o">(</span>base 2<span class="o">)</span>
+
+                         1.9668081055e+04 KiB
+                         1.9207110405e+01 MiB
+                         1.8756943755e-02 GiB
+                         1.8317327886e-05 TiB
+
+             SI standard <span class="o">(</span>base 10<span class="o">)</span>
+
+                         2.0140115000e+04 kB
+                         2.0140115000e+01 MB
+                         2.0140115000e-02 GB
+                         2.0140115000e-05 TB
+
+ ADDRESS
+ <span class="o">(</span>d<span class="o">)</span> <span class="m">20140115</span>
+ <span class="o">(</span>h<span class="o">)</span> 0x1335053
+
+ LBA:OFFSET <span class="o">(</span>sector size: 0x200<span class="o">)</span>
+ <span class="o">(</span>d<span class="o">)</span> 39336:83
+ <span class="o">(</span>h<span class="o">)</span> 0x99a8:0x53</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>指定区块大小</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> $ bcal 0xaabbcc kb -s <span class="m">4096</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>LBA 转成 CHS:</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh">$ bcal -f l500
+$ bcal -f l0x600-18-0x7e
+$ bcal -f l0x300-0x12-0x7e
+
+<span class="c1"># result:</span>
+╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:32:44
+╰─⠠⠵ bcal -f l500                                                             ~/.doom.d
+LBA2CHS
+LBA:500  MAX_HEAD:16  MAX_SECTOR:63
+CHS: <span class="o">(</span>d<span class="o">)</span> <span class="m">0</span> <span class="m">7</span> 60, <span class="o">(</span>h<span class="o">)</span> 0x0 0x7 0x3c</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>CHS 转成 LBA</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> $ bcal -f l500
+ $ bcal -f l0x600-18-0x7e
+ $ bcal -f l0x300-0x12-0x7e
+
+ <span class="c1"># result:</span>
+ ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:40:28
+ ╰─⠠⠵ bcal -f l0x300-0x12-0x7e                                                 ~/.doom.d
+ LBA2CHS
+ LBA:768  MAX_HEAD:18  MAX_SECTOR:126
+ CHS: <span class="o">(</span>d<span class="o">)</span> <span class="m">0</span> <span class="m">6</span> 13, <span class="o">(</span>h<span class="o">)</span> 0x0 0x6 0xd</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>显示一个数据的2进制，10 进制和 16 进制表示形式</p>
+<p>
+<strong>b</strong> (2进制), <strong>d</strong> (十进制), <strong>h</strong> (16进制)。</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> $ bcal -c <span class="m">20140115</span>
+ ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:44:32
+ ╰─⠠⠵ bcal -c <span class="m">20140115</span>                                                         ~/.doom.d
+ <span class="o">(</span>b<span class="o">)</span> 0b1001100110101000001010011
+ <span class="o">(</span>d<span class="o">)</span> <span class="m">20140115</span>
+ <span class="o">(</span>h<span class="o">)</span> 0x1335053
+
+ $ bcal -c 0b1001100110101000001010011
+ ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:44:14
+ ╰─⠠⠵ bcal -c 0b1001100110101000001010011                                      ~/.doom.d
+ <span class="o">(</span>b<span class="o">)</span> 0b1001100110101000001010011
+ <span class="o">(</span>d<span class="o">)</span> <span class="m">20140115</span>
+ <span class="o">(</span>h<span class="o">)</span> 0x1335053
+
+ $ bcal -c 0x1335053
+
+ ╭─simon at gcl in ~/.doom.d on native✔ 21-07-22 - 15:42:10
+ ╰─⠠⠵ bcal -c 0x1335053                                                        ~/.doom.d
+ <span class="o">(</span>b<span class="o">)</span> 0b1001100110101000001010011
+ <span class="o">(</span>d<span class="o">)</span> <span class="m">20140115</span>
+ <span class="o">(</span>h<span class="o">)</span> 0x1335053</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+<p>
+交互模式：</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> q/double Enter -&gt; quit, ? -&gt; <span class="nb">help</span>
+ bcal&gt; c <span class="m">20140115</span> <span class="c1"># 直接使用对应的选项</span></code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>执行 <code>bc</code>, 在交互模式下输入 <code>b</code></p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> $ bcal -b <span class="s1">&#39;3.5 * 2.1 + 5.7&#39;</span>
+ bcal&gt; b
+ bc vars: <span class="nv">scale</span> <span class="o">=</span> 10, <span class="nv">ibase</span> <span class="o">=</span> 10, <span class="nv">last</span> <span class="o">=</span> r
+ bc&gt; 3.5 * 2.1 + 5.7</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>管道输入，结果给 <strong>bcal</strong> 处理</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh">$ <span class="nb">printf</span> <span class="s1">&#39;15 kib + 15 gib \n r / 5&#39;</span> <span class="p">|</span> bcal -m
+$ <span class="nb">printf</span> <span class="s1">&#39;15 + 15 + 2&#39;</span> <span class="p">|</span> bcal -bm</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>从文件获取输入给 <strong>bcal</strong></p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"> $ cat expr
+ <span class="m">15</span> gib + <span class="m">15</span> kib
+ r / <span class="m">5</span>
+ $ bcal -m &lt; expr</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
+Nix
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
 <p>
 install:</p>
 <p>
@@ -340,11 +767,11 @@ Note: this program is EXPERIMENTAL and subject to change.
 更新包: <code>nix-channel --update</code></p>
 </div>
 </div>
-<div id="outline-container-headline-2" class="outline-2">
-<h2 id="headline-2">
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
 awesome tools
 </h2>
-<div id="outline-text-headline-2" class="outline-text-2">
+<div id="outline-text-headline-4" class="outline-text-2">
 <p>
 https://github.com/jaywcjlove/awesome-mac/blob/master/README-zh.md</p>
 <p>
@@ -361,13 +788,99 @@ example:</p>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-3" class="outline-3">
-<h3 id="headline-3">
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Share VPN
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Parallel Desktop - Ubuntu share the VPN of host computer.</p>
+<p>
+Ubuntu -&gt; 设置 -&gt; 网络 -&gt; VPN: Network Proxy, 网络代理：</p>
+<p>
+http/https, socks proxy:</p>
+<p>
+IP: 宿主机的 IP，推荐配置成静态IP。</p>
+<p>
+PORT: 代理工具的端口号，比如： clashX 的 <strong>7890/7891</strong></p>
+<p>
+完了之后还要在代码工具那允许下局域网连接：</p>
+<p>
+<img src="/img/tmp/clashx-allow-lan.png" alt="/img/tmp/clashx-allow-lan.png" title="/img/tmp/clashx-allow-lan.png" /></p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
 窗口管理
 </h3>
-<div id="outline-text-headline-3" class="outline-text-3">
+<div id="outline-text-headline-6" class="outline-text-3">
 <div id="mac-window"></div>
 <script src="/js/vue/awesome/mac-window.js"></script>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+ubuntu
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<div id="outline-container-headline-8" class="outline-3">
+<h3 id="headline-8">
+<a href="https://www.cnblogs.com/yxqxx/p/12319130.html">修改家目录和主机名</a>
+</h3>
+<div id="outline-text-headline-8" class="outline-text-3">
+<p>
+假设当前名字为 <code>parallels</code> (安装虚拟机的时候默认是这个), 将基修改为： <code>simon</code></p>
+<ol>
+<li>
+<p><code>$ su</code> , 切换 root</p>
+</li>
+<li>
+<p><code>$ passwd &lt;user&gt;</code>, 修改密码</p>
+</li>
+<li>
+<p><code>$ reboot</code>, 重启</p>
+</li>
+<li>
+<p><code>$ su</code></p>
+</li>
+<li>
+<p><code>$ vim /etc/passwd</code>, 找到 <code>parallels</code> 那一行， <strong>只修改用户名为 simon，其它不要动</strong></p>
+</li>
+<li>
+<p><code>$ vim /etc/shadow</code>, 找到 <code>parallels</code> 那一行，同样只修改用户名为 simon</p>
+</li>
+<li>
+<p><code>$ vim /etc/group</code>, 找到所有的 <code>parallels</code>, 使用 <code>:%s/parallels/simon/g</code> 全局替换</p>
+</li>
+<li>
+<p><code>$ reboot</code>, 重启</p>
+</li>
+<li>
+<p><code>$ vim /etc/hostname</code> 修改成想要的主机名</p>
+</li>
+<li>
+<p><code>$ vim /etc/passwd</code> 找到 <code>simon</code> 那一行(这里用户名已经经过上面的修改成了 <code>simon</code>)，
+修改目录名</p>
+</li>
+<li>
+<p><code>$ cd /home</code></p>
+</li>
+<li>
+<p><code>$ mv parallels simon</code>, 修改家目录名字</p>
+</li>
+<li>
+<p><code>$ reboot</code>, OK.</p>
+</li>
+</ol>
+<p>
+可能的问题（我没遇到）：修改主目录名时候，只修改了 <code>/etc/password</code> 而没有给
+<code>/home/parallels</code> 重命名，导致开机后一直登陆蛤面循环。</p>
+<p>
+<strong>解</strong> ： <code>Ctrl+Alt+[F1~F6]</code> 登陆后直接修改 <code>/home/parallels</code>, 重启。</p>
+<p>
+<code>Ctrl+Alt+F7</code> 进入图形模式。</p>
 </div>
 </div>
 </div>
@@ -398,7 +911,11 @@ example:</p>
           <a href="/tags/macos/">macos</a>
           </div>
       <nav class="post-nav">
-        
+        <a class="prev" href="/post/data-structure-algorithm/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">数据结构与算法 - 学习记录</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
         <a class="next" href="/post/huawei-harmony/">
             <span class="next-text nav-default">华为鸿蒙(Huawei Harmony) - 资源收集</span>
             <span class="next-text nav-mobile">下一篇</span>
@@ -421,22 +938,23 @@ example:</p>
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     })();
     </script>
-    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="gitalk-container"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js" crossorigin="anonymous"></script>
     <script type="text/javascript">
-      (function(d, s) {
-        var j, e = d.getElementsByTagName(s)[0];
-
-        if (typeof LivereTower === 'function') { return; }
-
-        j = d.createElement(s);
-        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
-        j.async = true;
-
-        e.parentNode.insertBefore(j, e);
-      })(document, 'script');
+      var gitalk = new Gitalk({
+        id: '2021-07-01 00:00:00 \u002b0000 UTC',
+        title: 'My MacOS',
+        clientID: '7251a6b30d0d6c0f4aa2',
+        clientSecret: '320c43a98b0d5ae30535d8cf6cb3be7a05895c77',
+        repo: 'cheng92-comments',
+        owner: 'gcclll',
+        admin: ['gcclll'],
+        body: decodeURI(location.href)
+      });
+      gitalk.render('gitalk-container');
     </script>
-    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
-    </div>
+    <noscript>Please enable JavaScript to view the <a href="https://github.com/gitalk/gitalk">comments powered by gitalk.</a></noscript>
 
   
 

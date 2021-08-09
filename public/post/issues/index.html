@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-<link href="/sass/main.min.06b20cf21b1dff0a19c6a6fd2770439ed0c003d544ece3c4e1fbfb34fc217e45.css" rel="stylesheet">
+<link href="/sass/main.min.9d6c07951e716411e0fdd9d1d7616cb41ced57b53993154c49ea809e194527af.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/global.css">
 
@@ -53,7 +53,7 @@
 <meta itemprop="name" content="开发过程中遇到的各种疑难杂症">
 <meta itemprop="description" content="各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名"><meta itemprop="datePublished" content="2021-02-01T00:00:00&#43;00:00" />
 <meta itemprop="dateModified" content="2021-02-01T00:00:00&#43;00:00" />
-<meta itemprop="wordCount" content="1107">
+<meta itemprop="wordCount" content="1240">
 <meta itemprop="keywords" content="issues," /><meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="开发过程中遇到的各种疑难杂症"/>
 <meta name="twitter:description" content="各种疑难杂症集合。 golang go get 无法下载问题？ Get https://proxy.golang.org/golang.org/x/tools/gopls/@v/list: dial tcp 172.217.160.81:443: i/o timeout https://shockerli.net/post/go-get-golang-org-x-solution/ export GO111MODULE=on export GOPROXY=https://goproxy.io emacs lsp 不能识别 webpack/vite 别名"/>
@@ -158,7 +158,7 @@
         <div class="post-category">
             <a href="/categories/issues/"> issues </a>
             </div>
-          <span class="more-meta"> 约 1107 字 </span>
+          <span class="more-meta"> 约 1240 字 </span>
           <span class="more-meta"> 预计阅读 3 分钟 </span>
         <span id="busuanzi_container_page_pv" class="more-meta"> <span id="busuanzi_value_page_pv"><img src="/img/spinner.svg" alt="spinner.svg"/></span> 次阅读 </span>
       </div>
@@ -204,32 +204,40 @@
 </ul>
 </li>
 <li><a href="#headline-14">macos</a>
+<ul>
+<li><a href="#headline-15">LaTeX</a>
+<ul>
+<li><a href="#headline-16">basictex</a>
+</li>
+</ul>
+</li>
+</ul>
 </li>
 <li><a href="#other">其他</a>
 <ul>
-<li><a href="#headline-16">Pulling without specifying how to reconcile divergent branches is … ?</a>
+<li><a href="#headline-18">Pulling without specifying how to reconcile divergent branches is … ?</a>
 </li>
-<li><a href="#headline-17">kex_exchange_identification: read: Connection reset by peer?</a>
+<li><a href="#headline-19">kex_exchange_identification: read: Connection reset by peer?</a>
 </li>
-<li><a href="#headline-18">hugo even 修改 scss 没反应 ?</a>
+<li><a href="#headline-20">hugo even 修改 scss 没反应 ?</a>
 </li>
-<li><a href="#headline-19">怎么更新项目中所有的 <code>npm</code> 包?</a>
+<li><a href="#headline-21">怎么更新项目中所有的 <code>npm</code> 包?</a>
 </li>
-<li><a href="#headline-20">git ignore 无效(如： <code>.log/</code>)？</a>
+<li><a href="#headline-22">git ignore 无效(如： <code>.log/</code>)？</a>
 </li>
-<li><a href="#headline-21">华为手机📱现在哪里去现在谷歌商城?</a>
+<li><a href="#headline-23">华为手机📱现在哪里去现在谷歌商城?</a>
 </li>
-<li><a href="#headline-22">添加 submodule 失败 ?</a>
+<li><a href="#headline-24">添加 submodule 失败 ?</a>
 </li>
-<li><a href="#headline-23">ssh 登录次数过多问题(many authentication)</a>
+<li><a href="#headline-25">ssh 登录次数过多问题(many authentication)</a>
 </li>
-<li><a href="#headline-24">macos install adb</a>
+<li><a href="#headline-26">macos install adb</a>
 </li>
-<li><a href="#headline-25">批量下载 bilibili 视频(you-get 命令)？</a>
+<li><a href="#headline-27">批量下载 bilibili 视频(you-get 命令)？</a>
 </li>
-<li><a href="#headline-26">macos in stall java environment ?</a>
+<li><a href="#headline-28">macos in stall java environment ?</a>
 </li>
-<li><a href="#headline-27">git merge 的时候忽略指定文件？</a>
+<li><a href="#headline-29">git merge 的时候忽略指定文件？</a>
 </li>
 </ul>
 </li>
@@ -507,6 +515,71 @@ macos
 <a href="https://developer.apple.com/forums/thread/121776">Can&#39;t delete APFS local snapshots | Apple Developer Forums</a></p>
 <p>
 <code>$ tmutil thinlocalsnapshots / 999999999999999 4</code></p>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+LaTeX
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<div id="outline-container-headline-16" class="outline-4">
+<h4 id="headline-16">
+basictex
+</h4>
+<div id="outline-text-headline-16" class="outline-text-4">
+<p>
+<a href="https://tex.stackexchange.com/questions/307483/setting-up-basictex-homebrew">Reference -&gt;</a></p>
+<p>
+<code>$ brew install --cask basictex</code></p>
+<p>
+安装之后，需要手动安装，不然找不到 pdflatex ：</p>
+<pre class="example">
+╭─simon@gcl ~
+╰─$ pdflatex
+zsh: command not found: pdflatex
+</pre>
+<p>
+手动安装过程：</p>
+<div class="src src-sh">
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-sh" data-lang="sh"><span class="c1"># simon @ gcl in ~ [10:31:59] C:1</span>
+$ bash --login                                                                ~
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run <span class="sb">`</span>chsh -s /bin/zsh<span class="sb">`</span>.
+For more details, please visit https://support.apple.com/kb/HT208050.
+gcl:~ simon$ which pdflatex
+/Library/TeX/texbin/pdflatex
+gcl:~ simon$ <span class="nb">cd</span> /usr/local/Caskroom/basictex/
+gcl:basictex simon$ ls
+2021.0325
+gcl:basictex simon$ <span class="nb">cd</span> 2021.0325/
+gcl:2021.0325 simon$ ls
+mactex-basictex-20210325.pkg
+gcl:2021.0325 simon$ open mactex-basictex-20210325.pkg</code></pre></td></tr></table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div id="outline-container-other" class="outline-2">
@@ -514,11 +587,11 @@ macos
 其他
 </h2>
 <div id="outline-text-other" class="outline-text-2">
-<div id="outline-container-headline-16" class="outline-4">
-<h4 id="headline-16">
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
 Pulling without specifying how to reconcile divergent branches is … ?
 </h4>
-<div id="outline-text-headline-16" class="outline-text-4">
+<div id="outline-text-headline-18" class="outline-text-4">
 <div class="warn-block">
 <p><p><strong>WARNING</strong></p></p>
 <p>
@@ -551,11 +624,11 @@ $ git config --global pull.ff only</code></pre></td></tr></table>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-17" class="outline-4">
-<h4 id="headline-17">
+<div id="outline-container-headline-19" class="outline-4">
+<h4 id="headline-19">
 kex_exchange_identification: read: Connection reset by peer?
 </h4>
-<div id="outline-text-headline-17" class="outline-text-4">
+<div id="outline-text-headline-19" class="outline-text-4">
 <div class="warn-block">
 <p><p><strong>WARNING</strong></p></p>
 <p>
@@ -571,11 +644,11 @@ kex_exchange_identification: read: Connection reset by peer?
    网络问题，直接换个网络就行了。</p>
 </div>
 </div>
-<div id="outline-container-headline-18" class="outline-4">
-<h4 id="headline-18">
+<div id="outline-container-headline-20" class="outline-4">
+<h4 id="headline-20">
 hugo even 修改 scss 没反应 ?
 </h4>
-<div id="outline-text-headline-18" class="outline-text-4">
+<div id="outline-text-headline-20" class="outline-text-4">
 <p>
    需要 hugo extended 版本：</p>
 <div class="src src-shell">
@@ -618,11 +691,11 @@ $ ln -s /usr/local/bin/hugo /opt/local/bin/hugo</code></pre></td></tr></table>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-19" class="outline-4">
-<h4 id="headline-19">
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
 怎么更新项目中所有的 <code>npm</code> 包?
 </h4>
-<div id="outline-text-headline-19" class="outline-text-4">
+<div id="outline-text-headline-21" class="outline-text-4">
 <p>
    <a href="https://flaviocopes.com/update-npm-dependencies/">  参考链接。</a></p>
 <div class="src src-shell">
@@ -645,11 +718,11 @@ $ ln -s /usr/local/bin/hugo /opt/local/bin/hugo</code></pre></td></tr></table>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-20" class="outline-4">
-<h4 id="headline-20">
+<div id="outline-container-headline-22" class="outline-4">
+<h4 id="headline-22">
 git ignore 无效(如： <code>.log/</code>)？
 </h4>
-<div id="outline-text-headline-20" class="outline-text-4">
+<div id="outline-text-headline-22" class="outline-text-4">
 <div class="src src-shell">
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -674,20 +747,20 @@ $ git push</code></pre></td></tr></table>
 </div>
 </div>
 </div>
-<div id="outline-container-headline-21" class="outline-4">
-<h4 id="headline-21">
+<div id="outline-container-headline-23" class="outline-4">
+<h4 id="headline-23">
 华为手机📱现在哪里去现在谷歌商城?
 </h4>
-<div id="outline-text-headline-21" class="outline-text-4">
+<div id="outline-text-headline-23" class="outline-text-4">
 <p>
 -&gt; <a href="https://www.huaweicentral.com/download-latest-google-play-store-application-apk/">下载地址</a></p>
 </div>
 </div>
-<div id="outline-container-headline-22" class="outline-4">
-<h4 id="headline-22">
+<div id="outline-container-headline-24" class="outline-4">
+<h4 id="headline-24">
 添加 submodule 失败 ?
 </h4>
-<div id="outline-text-headline-22" class="outline-text-4">
+<div id="outline-text-headline-24" class="outline-text-4">
 <pre class="example">
   ➜  cheng92.com git:(master) ✗ g-subm-add https://github.com/gcclll/hugo-theme-even.git themes/even
   A git directory for &#39;themes/even&#39; is found locally with remote(s):
@@ -729,20 +802,20 @@ $ git push</code></pre></td></tr></table>
 </ol>
 </div>
 </div>
-<div id="outline-container-headline-23" class="outline-4">
-<h4 id="headline-23">
+<div id="outline-container-headline-25" class="outline-4">
+<h4 id="headline-25">
 ssh 登录次数过多问题(many authentication)
 </h4>
-<div id="outline-text-headline-23" class="outline-text-4">
+<div id="outline-text-headline-25" class="outline-text-4">
 <p>
    <code>$ ssh-add -D</code> 删除认证缓存</p>
 </div>
 </div>
-<div id="outline-container-headline-24" class="outline-4">
-<h4 id="headline-24">
+<div id="outline-container-headline-26" class="outline-4">
+<h4 id="headline-26">
 macos install adb
 </h4>
-<div id="outline-text-headline-24" class="outline-text-4">
+<div id="outline-text-headline-26" class="outline-text-4">
 <p>
    <code>$  /bin/bash -c &#34;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)&#34;</code></p>
 <p>
@@ -751,16 +824,16 @@ macos install adb
    <code>$ adb devices</code></p>
 </div>
 </div>
-<div id="outline-container-headline-25" class="outline-4">
-<h4 id="headline-25">
+<div id="outline-container-headline-27" class="outline-4">
+<h4 id="headline-27">
 批量下载 bilibili 视频(you-get 命令)？
 </h4>
 </div>
-<div id="outline-container-headline-26" class="outline-4">
-<h4 id="headline-26">
+<div id="outline-container-headline-28" class="outline-4">
+<h4 id="headline-28">
 macos in stall java environment ?
 </h4>
-<div id="outline-text-headline-26" class="outline-text-4">
+<div id="outline-text-headline-28" class="outline-text-4">
 <p>
     <a href="https://mkyong.com/java/how-to-install-java-on-mac-osx/">https://mkyong.com/java/how-to-install-java-on-mac-osx/</a></p>
 <p>
@@ -775,11 +848,11 @@ macos in stall java environment ?
     <code>$ java -version</code></p>
 </div>
 </div>
-<div id="outline-container-headline-27" class="outline-4">
-<h4 id="headline-27">
+<div id="outline-container-headline-29" class="outline-4">
+<h4 id="headline-29">
 git merge 的时候忽略指定文件？
 </h4>
-<div id="outline-text-headline-27" class="outline-text-4">
+<div id="outline-text-headline-29" class="outline-text-4">
 <p>
     <a href="https://www.jianshu.com/p/09b546b936a7">https://www.jianshu.com/p/09b546b936a7</a></p>
 <ul>
@@ -853,22 +926,23 @@ git merge 的时候忽略指定文件？
       (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
     })();
     </script>
-    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="lv-container" data-id="city" data-uid="MTAyMC81MTQwMC8yNzg4MQ==">
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript><div id="gitalk-container"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js" crossorigin="anonymous"></script>
     <script type="text/javascript">
-      (function(d, s) {
-        var j, e = d.getElementsByTagName(s)[0];
-
-        if (typeof LivereTower === 'function') { return; }
-
-        j = d.createElement(s);
-        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
-        j.async = true;
-
-        e.parentNode.insertBefore(j, e);
-      })(document, 'script');
+      var gitalk = new Gitalk({
+        id: '2021-02-01 00:00:00 \u002b0000 UTC',
+        title: '开发过程中遇到的各种疑难杂症',
+        clientID: '7251a6b30d0d6c0f4aa2',
+        clientSecret: '320c43a98b0d5ae30535d8cf6cb3be7a05895c77',
+        repo: 'cheng92-comments',
+        owner: 'gcclll',
+        admin: ['gcclll'],
+        body: decodeURI(location.href)
+      });
+      gitalk.render('gitalk-container');
     </script>
-    <noscript>Please enable JavaScript to view the comments powered by <a href="https://livere.com/">LiveRe.</a></noscript>
-    </div>
+    <noscript>Please enable JavaScript to view the <a href="https://github.com/gitalk/gitalk">comments powered by gitalk.</a></noscript>
 
   
 

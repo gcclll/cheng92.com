@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>linux on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/linux/</link>
+    <description>Recent content in linux on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 18 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/linux/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Linux 知识大全</title>
+      <link>https://www.cheng92.com/post/linux-doc/</link>
+      <pubDate>Fri, 18 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/post/linux-doc/</guid>
+      <description>👴 Commands(命令) fasd fasd [options] [query ...] [f|a|s|d|z] [opions] [query ...] options: -s list paths with scores -l list paths without scores -i interactive mode -e &amp;lt;cmd&amp;gt; set command</description>
+    </item>
+    
+  </channel>
+</rss>

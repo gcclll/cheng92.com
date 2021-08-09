@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>web, on 若叶知秋</title>
+    <link>https://www.cheng92.com/tags/web/</link>
+    <description>Recent content in web, on 若叶知秋</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Fri, 06 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://www.cheng92.com/tags/web/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>HTML Marquee 标签</title>
+      <link>https://www.cheng92.com/web/html-marquee-tag/</link>
+      <pubDate>Fri, 06 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/html-marquee-tag/</guid>
+      <description>Marquee 已经废弃的元素。 能用 transition 和 anmiation，请尽量不要使用这个。 1 2 3 4 5 6 7</description>
+    </item>
+    
+    <item>
+      <title>Web Component 学习记录</title>
+      <link>https://www.cheng92.com/web/web-component/</link>
+      <pubDate>Sun, 18 Jul 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/web-component/</guid>
+      <description>TODO</description>
+    </item>
+    
+    <item>
+      <title>Awesome Web Development(WEB开发资源)</title>
+      <link>https://www.cheng92.com/web/awesome-web/</link>
+      <pubDate>Fri, 23 Apr 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/awesome-web/</guid>
+      <description>insertCssLink(&#34;https://unpkg.com/element-plus/lib/theme-chalk/index.css&#34;); insertCssLink(&#34;/js/vue/css/awesome.css&#34;); 此文初衷，有时候去找一些库的时候，第一反应就是 awesome-xxx~， 比如</description>
+    </item>
+    
+    <item>
+      <title>前端，一点都不好玩</title>
+      <link>https://www.cheng92.com/web/web-fe-zero/</link>
+      <pubDate>Tue, 20 Oct 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.cheng92.com/web/web-fe-zero/</guid>
+      <description>window.g_fold_chapter = 1 本文默认处于折叠状态，可点击标题后方的 … 展开或闭合。 参考链接： https://muyiy.cn/question/js/33.html JavaScript 节流和防</description>
+    </item>
+    
+  </channel>
+</rss>
