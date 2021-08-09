@@ -1,6 +1,6 @@
-#+TITLE: Vue3 功能拆解⑬ style v-deep, v-slotted, ...
-#+DATE: <21-08-09 21:02:14>
-#+TAGS[]: vue3, vue-next,
+#+TITLE: Vue3 功能拆解⑬ style v-deep, v-slotted
+#+DATE: <2021-08-09 21:02:00>
+#+TAGS[]: vue3, vue-next
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
 #+STARTUP: indent

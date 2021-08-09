@@ -1,5 +1,5 @@
 #+TITLE: Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)
-#+DATE: <21-08-04 21:52:48>
+#+DATE: <2021-08-04 21:52:48>
 #+TAGS[]: vue3, vue-next,
 #+CATEGORIES[]: vue
 #+LANGUAGE: zh-cn
