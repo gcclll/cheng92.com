@@ -1,4 +1,4 @@
-#+TITLE: Vue3 更新日志 01(3.0.5 ~ 3.2.0-beta.1)
+#+TITLE: Vue3 更新日志 01(3.0.5 ~ 3.1.5)
 #+DATE: <2021-06-28 11:29:18>
 #+TAGS[]: vue, vue3
 #+CATEGORIES[]: vue
@@ -1062,32 +1062,3 @@ function createDevtoolsComponentHook(hook: DevtoolsHooks) {
   }
 }
   #+end_src
-* tests
-
-#+begin_src js
-const url =
-      process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
-const value = require(url.replace("stb-", ""));
-const { compileScript, parse, compileStyle } = value;
-
-function compileScoped(source, options) {
-  const res = compileStyle({
-    source,
-    filename: 'test.css',
-    id: 'data-v-test',
-    scoped: true,
-    ...options
-  })
-  return res.code
-}
-
-const src = `::v-slotted(h1) { color: red; }`
-const code = compileScoped(src)
-console.log(code)
-return 0;
-#+end_src
-
-#+RESULTS:
-: h1[data-v-test-s] { color: red;
-: }
-: 0
