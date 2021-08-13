@@ -1,4 +1,4 @@
-#+TITLE: 开发过程中遇到的各种疑难杂症
+#+TITLE: 专治各种疑难杂症
 #+DATE: <2021-02-01 15:03:59>
 #+TAGS[]: issues
 #+CATEGORIES[]: issues
@@ -164,6 +164,41 @@ gcl:2021.0325 simon$ ls
 mactex-basictex-20210325.pkg
 gcl:2021.0325 simon$ open mactex-basictex-20210325.pkg
 #+end_src
+* gpg
+
+** gpg: Kelly's Passwords: skipped: No public key
+
+#+begin_quote
+:question:: 执行 pass insert Email/xxx 的时候报错
+gpg: Kelly's Passwords: skipped: No public key
+gpg: [stdin]: encryption failed: No public key
+#+end_quote
+
+解决步骤：
+
+1. ~$ gpg --full-generate-key~
+
+  根据提示输入必要信息完成之后会有如下输出结果：
+
+  #+begin_example
+   Real name: <yourname>
+   Email address: address@gmail.com
+   Comment: <tipinfo>
+   You selected this USER-ID:
+       "yourname (tipinfo) <address@gmail.com>"
+
+       pub     edxxxx 2021-08-13 [SC]
+                   AJGDKJDKJKDJGKJEKGEJKEJGKEJGKEGG
+       uid                      yourname (tipinfo) <address@gmail.com>
+       sub   cvxxxx 2021-08-13 [E]
+  #+end_example
+
+  结果中 ~AJGDKJDKJKDJGKJEKGEJKEJGKEJGKEGG~ 是我们需要的。
+
+2. ~$ pass init "AJGDKJDKJKDJGKJEKGEJKEJGKEJGKEGG"~
+
+3. ~$ pass insert Email/somename~
+
 
 * 其他
 :PROPERTIES:

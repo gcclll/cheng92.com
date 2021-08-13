@@ -139,10 +139,10 @@
   }
 })();
 
-function generateStatusAndStars(user, name = user) {
+function generateStatusAndStars(user, name = user, gitlab = false) {
   return {
     status: `https://img.shields.io/travis/${user}/${name}`,
     stars: `https://img.shields.io/github/stars/${user}/${name}?style=social`,
-    link: `https://github.com/${user}/${name}`,
+    link: `https://${gitlab ? 'gitlab' : 'github'}.com/${user}/${name}`,
   };
 }

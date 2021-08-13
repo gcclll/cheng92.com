@@ -96,3 +96,11 @@ JavaScript 相关的库(比如：数字，日期，字符串，货币转换操�
 <div id="stylelint"></div>
 <script src="/js/vue/awesome/stylelint.js"></script>
 #+end_export
+* Dotfiles
+
+awesome dotfiles.
+
+#+begin_export html
+<div id="dotfiles"></div>
+<script src="/js/vue/awesome/dotfiles.js"></script>
+#+end_export
