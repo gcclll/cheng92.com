@@ -547,17 +547,17 @@ and disconnect it from my hub without explicitly unmounting my backup disk
 before. I disable the menubar icon, which is shown by default by the Spoon.
 
 #+begin_src lua
-Install:andUse("EjectMenu", {
-                 config = {
-                   eject_on_lid_close = false,
-                   eject_on_sleep = true,
-                   show_in_menubar = false,
-                   notify = true,
-                 },
-                 hotkeys = { ejectAll = { hyper, "=" } },
-                 start = true,
---                 loglevel = 'debug'
-})
+-- Install:andUse("EjectMenu", {
+--                  config = {
+--                    eject_on_lid_close = false,
+--                    eject_on_sleep = true,
+--                    show_in_menubar = false,
+--                    notify = true,
+--                  },
+--                  hotkeys = { ejectAll = { hyper, "=" } },
+--                  start = true,
+-- --                 loglevel = 'debug'
+-- })
 #+end_src
 * End ModalMgr
 

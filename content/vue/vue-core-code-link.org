@@ -97,6 +97,8 @@
    讲述了 runtime-core/src/scheduler.ts 中 api 在哪些地方有用到，这些使用的地方
    任务执行顺序又是什么❓
 
+   重点更新： [[https://github.com/vuejs/vue-next/commit/87f69fd0bb67508337fb95cb98135fd5d6ebca7d][6ebca7d]]
+
 10. [[/vue/vue-mind-map-runtime-dom/#prop-on-xxx][vue3 事件绑定是如何实现的(stopImmediatePropagation 又是啥?)？]]
 
     简述：一个元素一个事件名对应的事件只会绑定一个 listener 及 封装之后的

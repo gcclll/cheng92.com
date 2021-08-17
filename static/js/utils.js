@@ -242,3 +242,24 @@ function genAwesomeObject(name, user, brief, site, preview, free) {
 function _100() {
   return genAwesomeObject.apply(null, arguments)
 }
+
+function showCode(id, lang = "javascript") {
+  let script = document.getElementById('s_' + id)
+  script._wrap = script._wrap || document.getElementById('c_' + id)
+  if (!script._wrap) {
+    script._wrap = document.createElement('div')
+    script.parentNode.insertBefore(script._wrap, script)
+  }
+  if (script._showed) {
+    script._wrap.innerHTML = ''
+    script._showed = false
+    return
+  }
+  script._showed = true
+  script._wrap.innerHTML = `
+<pre class="chroma">
+  <code style="color:black" class="language-${lang}" data-lang="${lang}">
+    ${script.innerHTML}
+  </code>
+</pre>`
+}

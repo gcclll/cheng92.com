@@ -492,8 +492,8 @@ Finally save buffer.
 ;;(setq doom-theme 'doom-solarized-light)
 
 ;; (setq doom-font (font-spec :family "JetBrains Mono" :size 16))
-(setq doom-font (font-spec :family "Fira Code" :size 15)
-      doom-variable-pitch-font (font-spec :family "ETBembo" :size 28))
+(setq doom-font (font-spec :family "Fira Code" :size 16)
+      doom-variable-pitch-font (font-spec :family "ETBembo" :size 32))
 ;; (setq doom-font (font-spec :family "Source Code Pro" :size 15))
 
 ;; set title
@@ -860,6 +860,7 @@ Keybindings reference:
  ;; l -> load, ...
  :n     "lr"            #'ranger
  :n     "ld"            #'dired
+ :n     "le"            #'=rss
 
  ;; r -> Run
  ;; :n     "rp"         #'projector-run-shell-command-project-root
@@ -868,6 +869,10 @@ Keybindings reference:
  ;; s -> search ?
  (:map (scss-mode-map css-mode-map)
   :n     "si"            #'counsel-css
+  )
+
+ (:prefix ("v" . "View")
+  :n    "e"            #'mu4e-alert-view-unread-mails
   )
 
  ;; / -> Search
@@ -1028,6 +1033,42 @@ Keybindings reference:
   :bind
   ("s-'" . cycle-quotes))
 #+end_src
+** Dash-at-point
+#+begin_src emacs-lisp
+(use-package! dash-at-point
+  :bind
+  (("C-x d" . dash-at-point)
+   ("C-x D" . dash-at-point-with-docset)))
+#+end_src
+** Deadgrep
+
+正则搜索要在搜索的结果中，选中 _regexp_ 来筛选。
+
+按键绑定：
+
+| key     | func                      |
+|---------+---------------------------|
+| <f5>    | ~deadgrep~                  |
+| M-<f5>  | ~deadgrep-kill-all-buffers~ |
+|---------+---------------------------|
+| ~RET~     | 查看结果                  |
+| ~o~       | 在另一个窗口打开          |
+| ~n/p~     | 结果中上下移动            |
+| ~M-n/M-p~ | 文件头尾之间移动          |
+| ~g~       | 重新搜索                  |
+| ~TAB~     | 展开/闭合结果             |
+| ~C-c C-k~ | 停止正在执行的搜索        |
+** Delsel
+#+begin_src emacs-lisp
+(use-package! delsel
+  :config
+  (delete-selection-mode t))
+#+end_src
+** Dotenv-mode
+#+begin_src emacs-lisp
+(use-package! dotenv-mode
+  :mode ("\\.env\\.?.*\\'" . dotenv-mode))
+#+end_src
 ** EAF
 #+begin_src emacs-lisp
  ;; (use-package! eaf
@@ -1037,7 +1078,172 @@ Keybindings reference:
  ;;  (use-package! deferred)
  ;;  (use-package! epc))
 #+end_src
+** Elfeed
+*** Keybindings
 
+#+begin_src emacs-lisp
+(map! :map elfeed-search-mode-map
+      :after elfeed-search
+      [remap kill-this-buffer] "q"
+      [remap kill-buffer] "q"
+      :n doom-leader-key nil
+      ;; :n "q" #'+rss/quit
+      :n "e" #'elfeed-update
+      :n "r" #'elfeed-search-untag-all-unread
+      :n "u" #'elfeed-search-tag-all-unread
+      :n "s" #'elfeed-search-live-filter
+      :n "RET" #'elfeed-search-show-entry
+      :n "p" #'elfeed-show-pdf
+      :n "+" #'elfeed-search-tag-all
+      :n "-" #'elfeed-search-untag-all
+      :n "S" #'elfeed-search-set-filter
+      :n "b" #'elfeed-search-browse-url
+      :n "y" #'elfeed-search-yank)
+
+(map! :map elfeed-show-mode-map
+      :after elfeed-show
+      [remap kill-this-buffer] "q"
+      [remap kill-buffer] "q"
+      :n doom-leader-key nil
+      :nm "q" #'+rss/delete-pane
+      :nm "o" #'ace-link-elfeed
+      :nm "RET" #'org-ref-elfeed-add
+      :nm "n" #'elfeed-show-next
+      :nm "N" #'elfeed-show-prev
+      :nm "p" #'elfeed-show-pdf
+      :nm "+" #'elfeed-show-tag
+      :nm "-" #'elfeed-show-untag
+      :nm "s" #'elfeed-show-new-live-search
+      :nm "y" #'elfeed-show-yank)
+#+end_src
+*** Usability enhancements
+
+#+begin_src emacs-lisp
+(after! elfeed-search
+  (set-evil-initial-state! 'elfeed-search-mode 'normal))
+(after! elfeed-show-mode
+  (set-evil-initial-state! 'elfeed-show-mode   'normal))
+
+(after! evil-snipe
+  (push 'elfeed-show-mode   evil-snipe-disabled-modes)
+  (push 'elfeed-search-mode evil-snipe-disabled-modes))
+#+end_src
+*** Visual enhancements
+
+#+begin_src emacs-lisp
+(after! elfeed
+
+  ;; (elfeed-org)
+  (use-package! elfeed-link)
+
+  (setq elfeed-search-filter "@4-week-ago +unread"
+        elfeed-search-print-entry-function '+rss/elfeed-search-print-entry
+        elfeed-search-title-min-width 80
+        elfeed-show-entry-switch #'pop-to-buffer
+        elfeed-show-entry-delete #'+rss/delete-pane
+        elfeed-show-refresh-function #'+rss/elfeed-show-refresh--better-style
+        shr-max-image-proportion 0.6)
+
+  (add-hook! 'elfeed-show-mode-hook (hide-mode-line-mode 1))
+  (add-hook! 'elfeed-search-update-hook #'hide-mode-line-mode)
+
+  (defface elfeed-show-title-face '((t (:weight ultrabold :slant italic :height 1.5)))
+    "title face in elfeed show buffer"
+    :group 'elfeed)
+  (defface elfeed-show-author-face `((t (:weight light)))
+    "title face in elfeed show buffer"
+    :group 'elfeed)
+  (set-face-attribute 'elfeed-search-title-face nil
+                      :foreground 'nil
+                      :weight 'light)
+
+  (defadvice! +rss-elfeed-wrap-h-nicer ()
+    "Enhances an elfeed entry's readability by wrapping it to a width of
+`fill-column' and centering it with `visual-fill-column-mode'."
+    :override #'+rss-elfeed-wrap-h
+    (setq-local truncate-lines nil
+                shr-width 120
+                visual-fill-column-center-text t
+                default-text-properties '(line-height 1.1))
+    (let ((inhibit-read-only t)
+          (inhibit-modification-hooks t))
+      (visual-fill-column-mode)
+      ;; (setq-local shr-current-font '(:family "Merriweather" :height 1.2))
+      (set-buffer-modified-p nil)))
+
+  (defun +rss/elfeed-search-print-entry (entry)
+    "Print ENTRY to the buffer."
+    (let* ((elfeed-goodies/tag-column-width 40)
+           (elfeed-goodies/feed-source-column-width 30)
+           (title (or (elfeed-meta entry :title) (elfeed-entry-title entry) ""))
+           (title-faces (elfeed-search--faces (elfeed-entry-tags entry)))
+           (feed (elfeed-entry-feed entry))
+           (feed-title
+            (when feed
+              (or (elfeed-meta feed :title) (elfeed-feed-title feed))))
+           (tags (mapcar #'symbol-name (elfeed-entry-tags entry)))
+           (tags-str (concat (mapconcat 'identity tags ",")))
+           (title-width (- (window-width) elfeed-goodies/feed-source-column-width
+                           elfeed-goodies/tag-column-width 4))
+
+           (tag-column (elfeed-format-column
+                        tags-str (elfeed-clamp (length tags-str)
+                                               elfeed-goodies/tag-column-width
+                                               elfeed-goodies/tag-column-width)
+                        :left))
+           (feed-column (elfeed-format-column
+                         feed-title (elfeed-clamp elfeed-goodies/feed-source-column-width
+                                                  elfeed-goodies/feed-source-column-width
+                                                  elfeed-goodies/feed-source-column-width)
+                         :left)))
+
+      (insert (propertize feed-column 'face 'elfeed-search-feed-face) " ")
+      (insert (propertize tag-column 'face 'elfeed-search-tag-face) " ")
+      (insert (propertize title 'face title-faces 'kbd-help title))
+      (setq-local line-spacing 0.2)))
+
+  (defun +rss/elfeed-show-refresh--better-style ()
+    "Update the buffer to match the selected entry, using a mail-style."
+    (interactive)
+    (let* ((inhibit-read-only t)
+           (title (elfeed-entry-title elfeed-show-entry))
+           (date (seconds-to-time (elfeed-entry-date elfeed-show-entry)))
+           (author (elfeed-meta elfeed-show-entry :author))
+           (link (elfeed-entry-link elfeed-show-entry))
+           (tags (elfeed-entry-tags elfeed-show-entry))
+           (tagsstr (mapconcat #'symbol-name tags ", "))
+           (nicedate (format-time-string "%a, %e %b %Y %T %Z" date))
+           (content (elfeed-deref (elfeed-entry-content elfeed-show-entry)))
+           (type (elfeed-entry-content-type elfeed-show-entry))
+           (feed (elfeed-entry-feed elfeed-show-entry))
+           (feed-title (elfeed-feed-title feed))
+           (base (and feed (elfeed-compute-base (elfeed-feed-url feed)))))
+      (erase-buffer)
+      (insert "\n")
+      (insert (format "%s\n\n" (propertize title 'face 'elfeed-show-title-face)))
+      (insert (format "%s\t" (propertize feed-title 'face 'elfeed-search-feed-face)))
+      (when (and author elfeed-show-entry-author)
+        (insert (format "%s\n" (propertize author 'face 'elfeed-show-author-face))))
+      (insert (format "%s\n\n" (propertize nicedate 'face 'elfeed-log-date-face)))
+      (when tags
+        (insert (format "%s\n"
+                        (propertize tagsstr 'face 'elfeed-search-tag-face))))
+      ;; (insert (propertize "Link: " 'face 'message-header-name))
+      ;; (elfeed-insert-link link link)
+      ;; (insert "\n")
+      (cl-loop for enclosure in (elfeed-entry-enclosures elfeed-show-entry)
+               do (insert (propertize "Enclosure: " 'face 'message-header-name))
+               do (elfeed-insert-link (car enclosure))
+               do (insert "\n"))
+      (insert "\n")
+      (if content
+          (if (eq type 'html)
+              (elfeed-insert-html content base)
+            (insert content))
+        (insert (propertize "(empty)\n" 'face 'italic)))
+      (goto-char (point-min))))
+  )
+#+end_src
 ** Emacs-everywhere
 #+begin_src emacs-lisp
 (use-package! emacs-everywhere
@@ -1120,42 +1326,6 @@ Keybindings reference:
     :keybinding "//")
 
   (engine-mode 1))
-#+end_src
-** Dash-at-point
-#+begin_src emacs-lisp
-(use-package! dash-at-point
-  :bind
-  (("C-x d" . dash-at-point)
-   ("C-x D" . dash-at-point-with-docset)))
-#+end_src
-** Deadgrep
-
-正则搜索要在搜索的结果中，选中 _regexp_ 来筛选。
-
-按键绑定：
-
-| key     | func                      |
-|---------+---------------------------|
-| <f5>    | ~deadgrep~                  |
-| M-<f5>  | ~deadgrep-kill-all-buffers~ |
-|---------+---------------------------|
-| ~RET~     | 查看结果                  |
-| ~o~       | 在另一个窗口打开          |
-| ~n/p~     | 结果中上下移动            |
-| ~M-n/M-p~ | 文件头尾之间移动          |
-| ~g~       | 重新搜索                  |
-| ~TAB~     | 展开/闭合结果             |
-| ~C-c C-k~ | 停止正在执行的搜索        |
-** Delsel
-#+begin_src emacs-lisp
-(use-package! delsel
-  :config
-  (delete-selection-mode t))
-#+end_src
-** Dotenv-mode
-#+begin_src emacs-lisp
-(use-package! dotenv-mode
-  :mode ("\\.env\\.?.*\\'" . dotenv-mode))
 #+end_src
 ** Emoji
 ...
@@ -1496,33 +1666,33 @@ _y_: ?y? year       _q_: quit           _L__l__c_: log = ?l?"
 open Lsp in org source block:
 #+begin_src emacs-lisp
 (cl-defmacro lsp-org-babel-enable (lang)
-"Support LANG in org source code block."
-(setq centaur-lsp 'lsp-mode)
-(cl-check-type lang stringp)
-(let* ((edit-pre (intern (format "org-babel-edit-prep:%s" lang)))
-        (intern-pre (intern (format "lsp--%s" (symbol-name edit-pre)))))
+  "Support LANG in org source code block."
+  (setq centaur-lsp 'lsp-mode)
+  (cl-check-type lang stringp)
+  (let* ((edit-pre (intern (format "org-babel-edit-prep:%s" lang)))
+         (intern-pre (intern (format "lsp--%s" (symbol-name edit-pre)))))
     `(progn
-    (defun ,intern-pre (info)
-        (let ((file-name (->> info caddr (alist-get :file))))
-        (unless file-name
-            (setq file-name (make-temp-file "babel-lsp-")))
-        (setq buffer-file-name file-name)
-        (lsp-deferred)))
-    (put ',intern-pre 'function-documentation
+       (defun ,intern-pre (info)
+         (let ((file-name (->> info caddr (alist-get :file))))
+           (unless file-name
+             (setq file-name (make-temp-file "babel-lsp-")))
+           (setq buffer-file-name file-name)
+           (lsp-deferred)))
+       (put ',intern-pre 'function-documentation
             (format "Enable lsp-mode in the buffer of org source block (%s)."
                     (upcase ,lang)))
-    (if (fboundp ',edit-pre)
-        (advice-add ',edit-pre :after ',intern-pre)
-        (progn
-        (defun ,edit-pre (info)
-            (,intern-pre info))
-        (put ',edit-pre 'function-documentation
+       (if (fboundp ',edit-pre)
+           (advice-add ',edit-pre :after ',intern-pre)
+         (progn
+           (defun ,edit-pre (info)
+             (,intern-pre info))
+           (put ',edit-pre 'function-documentation
                 (format "Prepare local buffer environment for org source block (%s)."
                         (upcase ,lang))))))))
 (defvar org-babel-lang-list
-'("go" "python" "ipython" "bash" "sh" "js" "typescript" "css"))
+  '("go" "python" "ipython" "bash" "sh" "js" "typescript" "css"))
 (dolist (lang org-babel-lang-list)
-(eval `(lsp-org-babel-enable ,lang)))
+  (eval `(lsp-org-babel-enable ,lang)))
 #+end_src
 ** Markdown
 *** Grip-mode
@@ -1589,7 +1759,7 @@ issue: /Error (after-save-hook): Error running hook "grip-org-to-md" because:
  mu4e-view-auto-mark-as-read t
  ;; starttls-use-gnutls t
  ;; smtpmail-starttls-credentials '(("smtp.1and1.com" 587 nil nil))
- mu4e-get-mail-command "mu index && mbsync -a"
+ mu4e-get-mail-command "mbsync -a"
  ;; +mu4e-backend 'offlineimap
  mu4e-maildir "~/Mail"
  mu4e-html2text-command "/usr/local/bin/w3m -T text/html"
@@ -1677,6 +1847,9 @@ www.sunlight-tech.com
 | ~q~       | quit                   |
 |---------+------------------------|
 | ~C-c C-c~ | send email             |
+| ~C-c C-a~ | add attachment         |
+| ~C-c C-e~ | preview                |
+| ~C-x m~   | compose mail           |
 
 *** Mu4e-alert
 
@@ -1757,7 +1930,8 @@ www.sunlight-tech.com
   (org-babel-do-load-languages 'org-babel-load-languages
                              (append org-babel-load-languages
                               '((restclient . t)
-                                (verb . t))
+                                (verb . t)
+                                (deno . t))
                               ))
 
   (setq
@@ -2123,7 +2297,7 @@ is selected, only the bare key is returned."
                    :headline "Web"
                    :type entry
                    :template ("* TODO %{desc}%? :%{i-type}:"
-                              "%i %a [[%F]]")
+                              "%i %a")
                    :children (("Vue" :keys "v"
                                :icon ("vue" :set "fileicon" :color "green")
                                :desc ""
@@ -2663,6 +2837,10 @@ ignore some directories.
 (use-package! visual-regexp-steriods
   :commands (vr/select-replace vr/select-query-replace))
 #+end_src
+** Visual-fill-column
+#+begin_src emacs-lisp
+(use-package! visual-fill-column)
+#+end_src
 ** Which-key
 
 Doom Emacs default configuration is too slow, let’s speed it up.
@@ -2708,6 +2886,8 @@ Doom Emacs default configuration is too slow, let’s speed it up.
 (add-to-list 'auto-mode-alist '("\\.mak$" . makefile-gmake-mode))
 (add-to-list 'auto-mode-alist '("\\.make$" . makefile-gmake-mode))
 (add-to-list 'auto-mode-alist '("[._]bash.*" . shell-script-mode))
+
+;; (add-to-list 'org-src-lang-modes '("deno" . typescript))
 #+end_src
 
 ** Web
@@ -2759,6 +2939,11 @@ Use `.prettierrc` file for prettier.
 (use-package! js-react-redux-yasnippets
   :after yasnippet)
 #+end_src
+*** deno
+#+begin_src emacs-lisp
+(use-package! ob-deno
+  :after org)
+#+end_src
 ** Python
 
 #+begin_src emacs-lisp
@@ -2799,6 +2984,8 @@ Use `.prettierrc` file for prettier.
    :repo "pashky/restclient.el"
    :files ("restclient-jq.el")))
 ;; (package! ob-jq)
+(package! ob-deno)
+(package! deno-fmt)
 #+end_src
 *** WEB
 
@@ -2933,10 +3120,11 @@ Window management packages.
 (package! vmd-mode)
 (package! vimrc-mode)
 #+end_src
-** Themes
+** Themes&UI
 #+begin_src emacs-lisp
 (package! mixed-pitch)
 (package! spacemacs-theme)
+(package! visual-fill-column)
 #+end_src
 ** EAF
 #+begin_src emacs-lisp
@@ -3149,3 +3337,17 @@ Write code blocks to source-specific files.
 *** embrach-change(~,ec~)
 *** embrach-delete(~,ed~)
 ** Emms
+** Development
+*** Deno
+
+#+begin_src deno :results output
+const arr = [1,2,3]
+console.log(arr);
+#+end_src
+
+#+begin_src deno :allow '((net . (httpbin.org example.com)) env) :results output
+  const response = await fetch(`https://httpbin.org/get?user=${Deno.env.get("USER")}`);
+  const json = await response.json();
+
+  console.log(json.args);
+#+end_src

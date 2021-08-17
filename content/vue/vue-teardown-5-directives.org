@@ -34,22 +34,28 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 
  指令列表
 
- | 指令名称             | 用途                                      |
- |----------------------+-------------------------------------------|
- | [[#v-text][v-text]]               | 替换元素 textContext                      |
- | [[#v-html][v-html]]               | 替换元素 innerHTML                        |
- | [[#v-show][v-show]]               | 显示隐藏元素 display 属性                 |
- | [[#v-if][v-if[else/else-if]​]]   | 条件渲染，off-dom 操作                    |
- | [[#v-for][v-for]]                | 列表渲染，循环操作                        |
- | [[#v-on][v-on]]                 | 事件绑定                                  |
- | [[#v-bind][v-bind]]               | 状态绑定                                  |
- | [[#v-model][v-model]]              | 双向绑定                                  |
- | [[#v-slot][v-slot]]               | 插槽指令, ~v-slot:name="scope"~           |
- | [[#v-pre][v-pre]]                | 代码指令                                  |
- | [[#v-cloak][v-cloak]]              | 组件渲染完成之前元素一直是 ~display:none~ |
- | [[#v-once][v-once]]               | 只渲染一次，缓存机制实现                  |
- | [[#v-is][v-is]]                 | ?                                         |
+ | 指令名称           | 用途                                    |
+ |--------------------+-----------------------------------------|
+ | [[#v-text][v-text]]             | 替换元素 textContext                    |
+ | [[#v-html][v-html]]             | 替换元素 innerHTML                      |
+ | [[#v-show][v-show]]             | 显示隐藏元素 display 属性               |
+ | [[#v-if][v-if[else/else-if]​]] | 条件渲染，off-dom 操作                  |
+ | [[#v-for][v-for]]              | 列表渲染，循环操作                      |
+ | [[#v-on][v-on]]               | 事件绑定                                |
+ | [[#v-bind][v-bind]]             | 状态绑定                                |
+ | [[#v-model][v-model]]            | 双向绑定                                |
+ | [[#v-slot][v-slot]]             | 插槽指令, ~v-slot:name="scope"~           |
+ | [[#v-pre][v-pre]]              | 代码指令                                |
+ | [[#v-cloak][v-cloak]]            | 组件渲染完成之前元素一直是 ~display:none~ |
+ | [[#v-once][v-once]]             | 只渲染一次，缓存机制实现                |
+ | [[#v-is][v-is]]               | ?                                       |
+ | [[#v-memo][v-memo]]             |                                         |
 
+* TODO  v-memo, [[https://github.com/vuejs/vue-next/commit/3b64508e3b2d648e346cbf34e1641f4022be61b6][2be61b6]]
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: v-memo
+:END:
 
 * TODO v-text
 :PROPERTIES:

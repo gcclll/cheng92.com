@@ -16,8 +16,8 @@
 </font>
 </kbd><br><br>
 <script src="/js/utils.js"></script>
-<script src="/js/vue/vue-next.js"></script>
-<!--<script src="https://unpkg.com/vue@next"></script>-->
+<!-- <script src="/js/vue/vue-next.js"></script> -->
+<script src="https://unpkg.com/vue@next"></script>
 <script>
 insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 </script>
@@ -267,6 +267,10 @@ requires TS >= 4.1.
 - [-] compiler-sfc: ignore empty blocks (#3520) (b771fdb)
 * TODO 3.2.0-beta.1 (2021-07-16)
 ** Important
+1. *ADD*: ~defineCustomElement~ 结合 ~window.customElements~ 来定义元素 @@html:<a href="#dce">:link: </a>@@
+2. *ADD*: ~v-memo~ 指令可以指定哪些条件下组件需要更新 @@html:<a href="#v-memo">:link: </a>@@
+3. *ADD*: ~watchPostEffect~ 等价于 ~doWatch(effect, null/*cb*/, { flush: 'post' })~ @@html:<a href="#wpe">:link: </a>@@
+4. *ADD*: ~effectScope~  @@html:<a href="/vue/vue-teardown-15-effect-scope">:link: </a>@@
 ** Code Refactoring(代码重构) [0/1]
 - [-] remove deprecated scopeId codegen (f596e00)
 ** Bug Fixes [0/4]
@@ -274,24 +278,496 @@ requires TS >= 4.1.
 - [-] ensure customElements API ssr compatibility (de32cfa), closes #4129
 - [-] runtime-core: fix default shapeFlag for fragments (2a310df)
 - [-] ignore .prop/.attr modifiers in ssr (29732c2)
-** Features [0/10]
+** Features [5/10]
 - [-] sfc: (experimental) new ref sugar (562bddb)
 - [-] sfc: support namespaced component tags when using <script setup> (e5a4412)
 - [-] custom element reflection, casting and edge cases (00f0b3c)
 - [-] remove experimental status of <script setup> (27104ea)
 - [-] support v-bind .prop & .attr modifiers (1c7d737)
-- [-] runtime-dom: defineCustomElement (8610e1c)
-- [-] v-memo (3b64508)
-- [-] watchPostEffect (42ace95)
-- [-] reactivity: new effectScope API (#2195) (f5617fc)
-- [-] reactivity: support onTrack/onTrigger debug options for computed (5cea9a1)
-** Performance improvements [1/7]
-- [-] also hoist all-static children array (b7ea7c1)
-- [-] hoist dynamic props lists (02339b6)
-- [-] reactivity: avoid triggering re-render if computed value did not change (ebaac9a)
-- [-] reactivity: improve reactive effect memory usage (#4001) (87f69fd), closes #2345
-- [-] reactivity: ref-specific track/trigger and miscellaneous optimizations ([[https://github.com/vuejs/vue-next/issues/3995][#3995]]) ([[https://github.com/vuejs/vue-next/commit/64310405acaccabc24985ade95fb1b5c9c06ef76][6431040]])
-- [-] reactivity: use bitwise dep markers to optimize re-tracking ([[https://github.com/vuejs/vue-next/issues/4017][#4017]]) ([[https://github.com/vuejs/vue-next/commit/6cf2377cd49d24814bdff136bf78c77d50d5b41a][6cf2377]])
+- [X] runtime-dom: defineCustomElement ([[https://github.com/vuejs/vue-next/commit/8610e1c9e23a4316f76fb35eebbab4ad48566fbf][8610e1c]])
+  @@html:<span id="dce"></span>@@
+
+  [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/component.ts][runtime-core/src/component.ts:]]
+  #+begin_src typescript
+export interface ComponentInternalInstance {
+  /**
+   ,* is custom element?
+   ,*/
+  isCE?: boolean
+  // ...
+}
+
+export function createComponentInstance(/*...*/) {
+  // ...
+  // 交给 vnode.ce 去处理
+  // apply custom element special handling
+  if (vnode.ce) {
+    vnode.ce(instance)
+  }
+}
+  #+end_src
+
+  [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/helpers/renderSlot.ts][runtime-core/src/helpers/renderSlot.ts]]
+  #+begin_src typescript
+export function renderSlot(/*...*/) {
+  if (currentRenderingInstance!.isCE) {
+    return createVNode(
+      'slot',
+      name === 'default' ? null : { name },
+      fallback && fallback()
+    )
+  }
+  // ...
+}
+  #+end_src
+
+  #+begin_export html
+  <div>测试结果 <button onclick="showCode('rhBIQi');">查看源码</button></div>
+  <div id="rhBIQi" class="comment-block"></div>
+<script id="s_rhBIQi">
+const p_rhBIQi = document.getElementById('rhBIQi')
+const cr = document.createElement('div')
+p_rhBIQi.appendChild(cr)
+const E = Vue.defineCustomElement({
+  render: () => Vue.h('div', 'hello')
+})
+customElements.define('my-element', E)
+cr.innerHTML = "<my-element></my-element>"
+const e = cr.childNodes[0]
+console.log(e, e instanceof E)
+console.log(e._instance)
+console.log(e.shadowRoot.innerHTML)
+</script>
+  #+end_export
+- [X] [[/vue/vue-teardown-5-directives/#v-memo][v-memo 可以指定什么条件下组件会被重新渲染，否则使用缓存结果]] ([[https://github.com/vuejs/vue-next/commit/3b64508e3b2d648e346cbf34e1641f4022be61b6][3b64508]])
+  @@html:<span id="v-memo"></span>@@
+
+  [[https://github.com/vuejs/vue-next/tree/master/packages/compiler-core/src/transforms/vFor.ts][compiler-core/src/transforms/vFor.ts]] 中增加的核心代码：
+
+  #+begin_src typescript
+// v-memo
+if (memo) {
+  const loop = createFunctionExpression(
+    createForLoopParams(forNode.parseResult, [
+      createSimpleExpression(`_cached`)
+    ])
+  )
+  loop.body = createBlockStatement([
+    createCompoundExpression([`const _memo = (`, memo.exp!, `)`]),
+    createCompoundExpression([
+      `if (_cached`,
+      ...(keyExp ? [` && _cached.key === `, keyExp] : []),
+      ` && ${context.helperString(
+IS_MEMO_SAME
+)}(_cached.memo, _memo)) return _cached`
+    ]),
+    createCompoundExpression([`const _item = `, childBlock as any]),
+    createSimpleExpression(`_item.memo = _memo`),
+    createSimpleExpression(`return _item`)
+  ])
+  renderExp.arguments.push(
+    loop as ForIteratorExpression,
+    createSimpleExpression(`_cache`),
+    createSimpleExpression(String(context.cached++))
+  )
+} else {
+  renderExp.arguments.push(createFunctionExpression(
+    createForLoopParams(forNode.parseResult),
+    childBlock,
+    true /* force newline */
+  ) as ForIteratorExpression)
+}
+  #+end_src
+
+  如：
+  #+begin_src js :results value code
+const url = process.env.VNEXT_PKG_RC +'/../compiler-core/dist/compiler-core.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { baseCompile } = value
+
+const compile = c => baseCompile(`<div>${c}</div>`, {
+  mode: "module",
+  prefixIdentifiers: true
+}).code
+
+function test(title, code, options) {
+  console.log('// > ' + title)
+  console.log(compile(code))
+}
+
+console.log('// > on root element')
+console.log(  baseCompile(`<div v-memo="[x]"></div>`, {
+  mode: 'module',
+  prefixIdentifiers: true
+}).code)
+
+test('on normal element', `<div v-memo="[x]"></div>`)
+test('on template v-for', `<template v-for="{ x, y } in list" :key="x" v-memo="[x, y === z]">
+          <span>foobar</span>
+        </template>`)
+return 0
+  #+end_src
+
+  #+RESULTS:
+  #+begin_src js
+  // > on root element
+  import { openBlock as _openBlock, createElementBlock as _createElementBlock, withMemo as _withMemo } from "vue"
+
+  export function render(_ctx, _cache) {
+    return _withMemo([_ctx.x], () => (_openBlock(), _createElementBlock("div")), _cache, 0)
+  }
+  // > on normal element
+  import { openBlock as _openBlock, createElementBlock as _createElementBlock, withMemo as _withMemo } from "vue"
+
+  export function render(_ctx, _cache) {
+    return (_openBlock(), _createElementBlock("div", null, [
+      _withMemo([_ctx.x], () => (_openBlock(), _createElementBlock("div")), _cache, 0)
+    ]))
+  }
+  // > on template v-for
+  import { renderList as _renderList, Fragment as _Fragment, openBlock as _openBlock, createElementBlock as _createElementBlock, isMemoSame as _isMemoSame, withMemo as _withMemo } from "vue"
+
+  export function render(_ctx, _cache) {
+    return (_openBlock(), _createElementBlock("div", null, [
+      (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.list, ({ x, y }, __, ___, _cached) => {
+        const _memo = ([x, y === z])
+        if (_cached && _cached.key === x && _isMemoSame(_cached, _memo)) return _cached
+        const _item = (_openBlock(), _createElementBlock("span", { key: x }, "foobar"))
+        _item.memo = _memo
+        return _item
+      }, _cache, 0), 128 /* KEYED_FRAGMENT */))
+    ]))
+  }
+  0
+  #+end_src
+
+  _withMemo -> [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/helpers/withMemo.ts][runtime-core/src/helpers/withMemo.ts:withMemo]]
+
+  #+begin_src typescript
+export function withMemo(
+  memo: any[],
+  render: () => VNode<any, any>,
+  cache: any[],
+  index: number
+) {
+  const cached = cache[index] as VNode | undefined
+  if (cached && isMemoSame(cached, memo)) {
+    return cached
+  }
+  const ret = render()
+
+  // shallow clone
+  ret.memo = memo.slice()
+  return (cache[index] = ret)
+}
+  #+end_src
+
+  判断不重新渲染条件(memo 长度和元素的值必须一致)：
+  #+begin_src typescript
+export function isMemoSame(cached: VNode, memo: any[]) {
+  const prev: any[] = cached.memo!
+  if (prev.length != memo.length) {
+    return false
+  }
+  for (let i = 0; i < prev.length; i++) {
+    if (prev[i] !== memo[i]) {
+      return false
+    }
+  }
+
+  // make sure to let parent block track it when returning cached
+  if (isBlockTreeEnabled > 0 && currentBlock) {
+    currentBlock.push(cached)
+  }
+  return true
+}
+  #+end_src
+- [X] watchPostEffect ([[https://github.com/vuejs/vue-next/commit/42ace9577da49477ff189950a83d6eead73d0efe][42ace95]])
+  @@html:<span id="wpe"></span>@@
+
+  #+begin_src typescript
+export function watchPostEffect(
+  effect: WatchEffect,
+  options?: DebuggerOptions
+) {
+  return doWatch(effect, null, (__DEV__
+    ? Object.assign(options || {}, { flush: 'post' })
+    : { flush: 'post' }) as WatchOptionsBase)
+}
+  #+end_src
+
+  测试：
+  #+begin_src js
+(async function () {
+  const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+  const value = require(url.replace('stb-', ''))
+  const { render, ref,
+          reactive, nextTick, serializeInner, h, nodeOps,
+          watchPostEffect
+        } = value
+
+  const count = ref(0)
+  let result, n = 0
+  const assertion = count => {
+    result = serializeInner(root) === `${count}`
+    n++
+  }
+
+  const Comp = {
+    setup() {
+      watchPostEffect(() => assertion(count.value))
+      return () => count.value
+    }
+  }
+
+  const root = nodeOps.createElement('div')
+  try {
+    render(h(Comp), root)
+  } catch(e) {
+    console.log(e.message);
+  }
+  console.log('1. result = ' + result + ', n = ' + n)
+
+  count.value++
+
+  await nextTick()
+  console.log('\n2. result = ' + result + ', n = ' + n)
+}());
+return ''
+  #+end_src
+
+  #+RESULTS:
+  : 1. result = true, n = 1
+  : ''
+  : 2. result = true, n = 2
+- [X] [[/vue/vue-teardown-15-effect-scope][reactivity: new effectScope API]] ([[https://github.com/vuejs/vue-next/issues/2195][#2195]]) ([[https://github.com/vuejs/vue-next/commit/f5617fc3bb8fd33927b2567622ac4f8b43f9b5d5][f5617fc]])
+
+  RFC: [[https://github.com/vuejs/rfcs/pull/212][vuejs/rfcs#212]]
+
+  新增的 APIs
+  1. EffectScope (class)
+  2. getCurrentScope
+  3. onScopeDispose
+- [X] reactivity: support onTrack/onTrigger debug options for computed ([[https://github.com/vuejs/vue-next/commit/5cea9a1d4e846f60515ef76ebab4800228645601][5cea9a1]])
+
+  支持 *DEV* 模式下分别在 track 和 trigger 的时候调用 onTrack 和 onTrigger。
+
+ onTrack -> effect.ts:trackEffects:
+ #+begin_src typescript
+if (shouldTrack) {
+  dep.add(activeEffect!)
+  activeEffect!.deps.push(dep)
+  if (__DEV__ && activeEffect!.onTrack) {
+    activeEffect!.onTrack(
+      Object.assign(
+        {
+          effect: activeEffect!
+        },
+        debuggerEventExtraInfo
+      )
+    )
+  }
+}
+ #+end_src
+
+ onTrigger -> effect.ts:triggerEffects:
+ #+begin_src typescript
+for (const effect of isArray(dep) ? dep : [...dep]) {
+  if (effect !== activeEffect || effect.allowRecurse) {
+    if (__DEV__ && effect.onTrigger) {
+      effect.onTrigger(extend({ effect }, debuggerEventExtraInfo))
+    }
+    if (effect.scheduler) {
+      effect.scheduler()
+    } else {
+      effect.run()
+    }
+  }
+}
+
+// onTrigger 参数： { effect } & DebuggerEventExtraInfo
+export type DebuggerEventExtraInfo = {
+  target: object
+  type: TrackOpTypes | TriggerOpTypes
+  key: any
+  newValue?: any
+  oldValue?: any
+  oldTarget?: Map<any, any> | Set<any>
+}
+ #+end_src
+
+ 使用：
+ #+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../reactivity/dist/reactivity.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { reactive, effect, computed } = value
+
+const obj = reactive({ foo: 1 })
+function onTrack(eventInfo) {
+  console.log('TrackEventArg=', eventInfo);
+}
+function onTrigger(eventInfo) {
+  console.log('TriggerEventArg=', eventInfo);
+}
+const c = computed(() => obj.foo, { onTrigger, onTrack })
+
+c.value;
+obj.foo++
+console.log('c.value = ' + c.value)
+return obj
+ #+end_src
+
+ #+RESULTS:
+ #+begin_example
+ TrackEventArg= {
+   effect: ReactiveEffect {
+     fn: [Function (anonymous)],
+     scheduler: [Function (anonymous)],
+     active: true,
+     deps: [ [Set] ],
+     onTrack: [Function: onTrack],
+     onTrigger: [Function: onTrigger]
+   },
+   target: { foo: 1 },
+   type: 'get',
+   key: 'foo'
+ }
+ TriggerEventArg= {
+   effect: ReactiveEffect {
+     fn: [Function (anonymous)],
+     scheduler: [Function (anonymous)],
+     active: true,
+     deps: [ [Set] ],
+     onTrack: [Function: onTrack],
+     onTrigger: [Function: onTrigger]
+   },
+   target: { foo: 2 },
+   type: 'set',
+   key: 'foo',
+   newValue: 2,
+   oldValue: 1,
+   oldTarget: undefined
+ }
+ c.value = 2
+ { foo: 2 }
+ #+end_example
+
+** Performance improvements [7/7]
+- [X] also hoist all-static children array ([[https://github.com/vuejs/vue-next/commit/b7ea7c148552874e8bce399eec9fbe565efa2f4d][b7ea7c1]])
+  如果 children 里面都是静态节点直接将整个 children 数组提升:
+  #+begin_src diff
+const _hoisted_1 = /*#__PURE__*/_createElementVNode(\\"div\\", { key: \\"foo\\" }, null, -1 /* HOISTED */)
++ const _hoisted_2 = [
++  _hoisted_1
++ ]
+
+return function render(_ctx, _cache) {
+  with (_ctx) {
+    const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock } = _Vue
+
+-    return (_openBlock(), _createElementBlock(\\"div\\", null, [
+-      _hoisted_1
+-    ]))
++    return (_openBlock(), _createElementBlock(\\"div\\", null, _hoisted_2))
+  }
+}"
+  #+end_src
+- [X] hoist dynamic props lists ([[https://github.com/vuejs/vue-next/commit/02339b67d8c6fab6ee701a7c4f2773139ed007f5][02339b6]])
+  动态属性名列表提升：
+  #+begin_src diff
+-      _createElementVNode(\\"div\\", { id: foo }, null, 8 /* PROPS */, [\\"id\\"])
++      _createElementVNode(\\"div\\", { id: foo }, null, 8 /* PROPS */, _hoisted_1)
+  #+end_src
+- [X] reactivity: avoid triggering re-render if computed value did not change ([[https://github.com/vuejs/vue-next/commit/ebaac9a56d82d266e333d077b6457543d7cab9ae][ebaac9a]])
+  trigger computed value 之前先检查下值有没改变。
+
+  #+begin_src typescript
+if (this._dirty) {
+  this._dirty = false
+  const newValue = this.effect.run()!
+  if (this._value !== newValue) {
+    this._value = newValue
+    triggerRefValue(this)
+  }
+} else {
+  triggerRefValue(this)
+}
+  #+end_src
+- [X] reactivity: improve reactive effect memory usage ([[https://github.com/vuejs/vue-next/issues/4001][#4001]]) ([[https://github.com/vuejs/vue-next/commit/87f69fd0bb67508337fb95cb98135fd5d6ebca7d][87f69fd]]), closes [[https://github.com/vuejs/vue-next/issues/2345][#2345]]
+
+  改动点：
+
+  1) ReactiveEffect 改用 class 来实现(stop, run 都在这个 class 里面实现)
+
+     #+begin_src typescript
+export class ReactiveEffect<T = any> {
+  active = true
+  deps: Dep[] = []
+
+  // can be attached after creation
+  computed?: boolean
+  allowRecurse?: boolean
+  onStop?: () => void
+  // dev only
+  onTrack?: (event: DebuggerEvent) => void
+  // dev only
+  onTrigger?: (event: DebuggerEvent) => void
+
+  constructor(
+    public fn: () => T,
+    public scheduler: EffectScheduler | null = null,
+    scope?: EffectScope | null
+  ) {
+    recordEffectScope(this, scope)
+  }
+
+  run() {
+    if (!this.active) {
+      return this.fn()
+    }
+    if (!effectStack.includes(this)) {
+      try {
+        effectStack.push((activeEffect = this))
+        enableTracking()
+
+        trackOpBit = 1 << ++effectTrackDepth
+
+        if (effectTrackDepth <= maxMarkerBits) {
+          initDepMarkers(this)
+        } else {
+          cleanupEffect(this)
+        }
+        return this.fn()
+      } finally {
+        if (effectTrackDepth <= maxMarkerBits) {
+          finalizeDepMarkers(this)
+        }
+
+        trackOpBit = 1 << --effectTrackDepth
+
+        resetTracking()
+        effectStack.pop()
+        const n = effectStack.length
+        activeEffect = n > 0 ? effectStack[n - 1] : undefined
+      }
+    }
+  }
+
+  stop() {
+    if (this.active) {
+      cleanupEffect(this)
+      if (this.onStop) {
+        this.onStop()
+      }
+      this.active = false
+    }
+  }
+}
+     #+end_src
+
+  2) effect 通过 ~new ReactiveEffect()~ 创建, 收集的依赖通过 ~_effect.run()~ 执行。
+- [X] reactivity: ref-specific track/trigger and miscellaneous optimizations ([[https://github.com/vuejs/vue-next/issues/3995][#3995]]) ([[https://github.com/vuejs/vue-next/commit/64310405acaccabc24985ade95fb1b5c9c06ef76][6431040]])
+- [X] reactivity: use bitwise dep markers to optimize re-tracking ([[https://github.com/vuejs/vue-next/issues/4017][#4017]]) ([[https://github.com/vuejs/vue-next/commit/6cf2377cd49d24814bdff136bf78c77d50d5b41a][6cf2377]])
 
   #+begin_src js
 const url = process.env.VNEXT_PKG_RC +'/../reactivity/dist/reactivity.cjs.js'

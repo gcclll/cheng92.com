@@ -35,6 +35,22 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 
 而本文主要集中点在于 vue3 中哪里使用到了这个机制，执行顺序又是怎么样的❓❓❓
 
+* update log
+** 3.2
+
+perf(reactivity): improve reactive effect memory usage ([[https://github.com/vuejs/vue-next/pull/4001][#4001]])
+Based on [[https://github.com/vuejs/vue-next/pull/2345][#2345]] , but with smaller API change
+
+- Use class implementation for ~ReactiveEffect~
+- Switch internal creation of effects to use the class constructor
+- Avoid options object allocation
+- Avoid creating bound effect runner function (used in schedulers) when not necessary.
+- Consumes ~17% less memory compared to last commit
+- Introduces a very minor breaking change: the ~scheduler~ option passed to
+  ~effect~ no longer receives the runner function.
+
+https://github.com/vuejs/vue-next/commit/87f69fd0bb67508337fb95cb98135fd5d6ebca7d
+
 * scheduler Apis 回顾
 
 #+begin_quote
