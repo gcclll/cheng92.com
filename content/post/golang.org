@@ -1,10 +1,14 @@
-#+TITLE: Golang Go Go Go...
+#+TITLE: Golang 谁人不识君
 #+DATE: <2021-07-21 09:20:03>
 #+TAGS[]: golang
 #+CATEGORIES[]: golang
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+xmind: [[https://github.com/gcclll/dotfiles/blob/main/xminds/Golang.xmind][Golang]]
+
+* 完整脑图
+[[/img/go/Golang.svg]]
 * 问题
 ** go get i/o timeout ?
 
