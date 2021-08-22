@@ -257,12 +257,12 @@ run before main exit, reset a value, a = 0
 #+begin_src go
 import ("fmt")
 func main() {
-	fmt.Println("xx")
+	fmt.Println("xxxxx")
 }
 #+end_src
 
 #+RESULTS:
-: xx
+: xxxxx
 
 * 完整脑图
 下载地址: [[https://github.com/gcclll/dotfiles/blob/main/xminds/Golang.xmind][Golang]]
