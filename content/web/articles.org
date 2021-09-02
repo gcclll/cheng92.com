@@ -1,0 +1,22 @@
+#+TITLE: WEB 开发(JS/HTML/CSS)相关的文章链接(含博客内外)
+#+DATE: <2021-09-02 22:07:30>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: javascript
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+本文，目的只为收集本博客内与 JavaScript 有关的文章(也可能有外站的文章)。
+#+end_quote
+
+| 链接                              | 简述                               |
+|-----------------------------------+------------------------------------|
+| *DOM*                               |                                    |
+| [[/web/html-marquee-tag/][Marquee 标签详解和使用]]            | 工作中常用到                       |
+| [[/web/web-component/][[TODO] WEB 原生组件]]               | customElement 的使用               |
+|-----------------------------------+------------------------------------|
+| *JavaScript*                        |                                    |
+| [[/web/javascript-api-mutationobserver/][JavaScript API - MutationObserver]] | 监听 DOM 变化执行回调              |
+| [[/web/apis/js-api-number-parseint/][Number.parseInt 问题]]              | 比如：为什么 ~parseInt(2, 1)~ 是 ~NaN~ |
+| [[/web/javascript-ecma-promise/][0 ~ 1 实现一个 Promise]]            | -                                  |

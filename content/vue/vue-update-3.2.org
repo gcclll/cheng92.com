@@ -57,7 +57,7 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 
     #+begin_src js
 const url =
-      process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
+  process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
 const value = require(url.replace("stb-", ""));
 const { compileScript, parse } = value;
 

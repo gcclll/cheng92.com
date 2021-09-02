@@ -274,7 +274,34 @@ requires TS >= 4.1.
 ** Code Refactoring(代码重构) [0/1]
 - [-] remove deprecated scopeId codegen (f596e00)
 ** Bug Fixes [0/4]
-- [-] sfc/style-vars: properly re-apply style vars on component root elements change (49dc2dd), closes #3894
+- [-] sfc/style-vars: properly re-apply style vars on component root elements
+  change ([[https://github.com/vuejs/vue-next/commit/49dc2dd1e4a56d0d2ad28003240c99e99ef469e4][49dc2dd]]), closes [[https://github.com/vuejs/vue-next/issues/3894][#3894]]
+
+  在使用 ~<transition>~ 和 ~v-if~ 时， ~SFC <style>~ 中的 ~v-bind(color)~ 没起作用？
+
+  #+begin_src diff
+// packages/runtime-dom/src/helpers/useCssVars.ts
+// @@ -27,8 +27,12 @@ export function useCssVars(getter: (ctx: any) => Record<string, string>) {
+  const setVars = () =>
+    setVarsOnVNode(instance.subTree, getter(instance.proxy!))
+-  onMounted(() => watchEffect(setVars, { flush: 'post' }))
+-  onUpdated(setVars)
++  watchPostEffect(setVars)
++  onMounted(() => {
++    const ob = new MutationObserver(setVars)
++    ob.observe(instance.subTree.el!.parentNode, { childList: true })
++    onUnmounted(() => ob.disconnect())
++  })
+}
+  #+end_src
+
+  涉及函数： ~watchPostEffect(setVars)~ 和 ~MutationObserver(setVars)~ 的使用。
+
+  watchPostEffect 是监听 instance.subTree 状态的变化时执行 ~setVars -> setVarsOnVNode~
+
+  MutationObserver 是 JavaScript 的原生 API ，详情可查看此文。
+
+
 - [-] ensure customElements API ssr compatibility (de32cfa), closes #4129
 - [-] runtime-core: fix default shapeFlag for fragments (2a310df)
 - [-] ignore .prop/.attr modifiers in ssr (29732c2)

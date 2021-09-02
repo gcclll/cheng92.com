@@ -1,0 +1,102 @@
+#+TITLE: JavaScript API - MutationObserver
+#+DATE: <2021-09-02 21:16:19>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: javascript
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+[[https://dom.spec.whatwg.org/#mutationobserver][MutationObserver]] 接口提供了监听 DOM 树变化的能力，被设计出来用来替代旧的 [[https://devdocs.io/dom/mutationevent][Mutaion Events]]
+目前已经是 DOM3 事件标准的一部分。
+#+end_quote
+
+#+begin_export html
+<style>
+button.test {
+  margin: 1rem .5rem;
+}
+.debug {
+  color: white;
+  min-width: 100%;
+  min-height: 40px;
+  margin-bottom: .5rem;
+  padding: 0 .5rem;
+  max-height: 300px;
+  overflow: scroll;
+}
+.debug.red {
+  background: red;
+}
+.debug.blue {
+  background: blue;
+}
+</style>
+#+end_export
+
+* 构造函数
+
+~MutationObserver()~
+
+创建并返回实例，当 DOM 发生变化时去运行一个回调。
+
+#+begin_src cpp
+// [Exposed=Window]
+interface MutationObserver {
+  constructor(MutationCallback callback);
+
+  undefined observe(Node target, optional MutationObserverInit options = {});
+  undefined disconnect();
+  sequence<MutationRecord> takeRecords();
+};
+
+callback MutationCallback = undefined (sequence<MutationRecord> mutations, MutationObserver observer);
+
+dictionary MutationObserverInit {
+  boolean childList = false;
+  boolean attributes;
+  boolean characterData;
+  boolean subtree = false;
+  boolean attributeOldValue;
+  boolean characterDataOldValue;
+  sequence<DOMString> attributeFilter;
+};
+#+end_src
+
+* 方法
+
+
+| 方法名        | 说明                                                                             |
+|---------------+----------------------------------------------------------------------------------|
+| ~disconnect()~  | 停止监听，实例不会再接受到任何通知直到再次调用 ~observe()~                         |
+| ~observe()~     | 重启监听                                                                         |
+| ~takeRecords()~ | 移除 MutationObserver 的通知队列中所有挂起的通知, 并返回一个 ~MutationRecord~ 数组 |
+
+测试：
+
+#+begin_export html
+<p><a href="/js/tests/web/mutation-observer-001.js" target="_blank">测试源码链接</a></p>
+<div class="debug blue" id="test001"></div>
+<div class="debug red" id="test101"></div>
+<button class="test" onclick="stopObserve()">停止监听</button>
+<button class="test" onclick="startObserve()">开始监听</button>
+<button class="test" onclick="updateAttr()">set attribute "n"</button>
+<button class="test" onclick="stopUpdate()">停止更新</button>
+<button class="test" onclick="startUpdate()">开始更新</button>
+<script src="/js/tests/web/mutation-observer-001.js"></script>
+#+end_export
+
+可以被监听的属性：
+
+#+begin_src cpp
+
+dictionary MutationObserverInit {
+  boolean childList = false;
+  boolean attributes;
+  boolean characterData;
+  boolean subtree = false;
+  boolean attributeOldValue;
+  boolean characterDataOldValue;
+  sequence<DOMString> attributeFilter;
+};
+#+end_src
