@@ -1,0 +1,326 @@
+#+TITLE: Vue3 功能拆解⑯ .prop 和 ^attr 修饰符
+#+DATE: <2021-08-24 15:20:07>
+#+TAGS[]: vue3, vue-next
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<script src="/js/vue/vue-next.js"></script>
+<!--<script src="https://unpkg.com/vue@next"></script>-->
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="//unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+本文从源码角度讲述了 ~.prop~ 和 ~.attr~ 修饰符的原理和使用, [[https://github.com/vuejs/vue-next/commit/8610e1c9e23a4316f76fb35eebbab4ad48566fbf][1c7d737]]。
+#+end_quote
+
+本文涉及的源码包： [[https://github.com/vuejs/vue-next/tree/master/packages/compiler-core][compiler-core]], [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-dom][runtime-dom]]。
+
+强制一个属性是归为 props 还是 attrs。
+#+begin_src js
+h({
+  '.prop': 1, // force set as property
+  '^attr': 'foo' // force set as attribute
+})
+#+end_src
+
+比如：
+
+~<div .a="1" />~ 这里的 ~a~ 会被解析成 ~element.a == 1~
+
+~<div ^b="1" />~ 这里的 ~b~ 会被解析成 ~element.getAttribute('b') == 1~
+
+#+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../compiler-core/dist/compiler-core.cjs.js'
+const value = require(url.replace('stb-', ''))
+const pick = require('/usr/local/lib/node_modules/lodash/pick')
+const { generate, baseParse: parse, transform, transformExpression,
+        transformBind, transformElement } = value
+
+function parseWithVBind(
+  template,
+  options = {}
+){
+  const ast = parse(template)
+  transform(ast, {
+    nodeTransforms: [
+      ...(options.prefixIdentifiers ? [transformExpression] : []),
+      transformElement
+    ],
+    directiveTransforms: {
+      bind: transformBind
+    },
+    ...options
+  })
+  return ast.children[0]
+}
+
+function test(title, template, _) {
+  const node = parseWithVBind(template)
+  const codegen = node.codegenNode
+  console.log('> ' + title + '\n', _(codegen.props))
+}
+
+test('.prop 修饰符', `<div v-bind:fooBar.prop="id"/>`, props => pick(props.properties[0], ['key', 'value']))
+test('.prop 修饰符 + 动态属性',
+     `<div v-bind:[fooBar].prop="id"/>`,
+     props => ( pick(
+       props, ['type', 'callee', 'arguments']
+     ).arguments[0].properties[0]) )
+
+test('.attr 修饰符', `<div v-bind:foo-bar.attr="id"/>`,
+     props => pick( props.properties[0], ['key', 'value'] ))
+return 0
+#+end_src
+
+#+RESULTS:
+#+begin_example
+> .prop 修饰符
+{
+key: {
+    type: 4,
+    content: '.fooBar',
+    isStatic: true,
+    constType: 3,
+    loc: { start: [Object], end: [Object], source: 'fooBar' }
+},
+value: {
+    type: 4,
+    content: 'id',
+    isStatic: false,
+    constType: 0,
+    loc: { start: [Object], end: [Object], source: 'id' }
+}
+}
+> .prop 修饰符 + 动态属性
+{
+type: 16,
+loc: {
+    source: '',
+    start: { line: 1, column: 1, offset: 0 },
+    end: { line: 1, column: 1, offset: 0 }
+},
+key: {
+    type: 4,
+    content: '`.${fooBar || ""}`',
+    isStatic: false,
+    constType: 0,
+    loc: { start: [Object], end: [Object], source: '[fooBar]' }
+},
+value: {
+    type: 4,
+    content: 'id',
+    isStatic: false,
+    constType: 0,
+    loc: { start: [Object], end: [Object], source: 'id' }
+}
+}
+> .attr 修饰符
+{
+key: {
+    type: 4,
+    content: '^foo-bar',
+    isStatic: true,
+    constType: 3,
+    loc: { start: [Object], end: [Object], source: 'foo-bar' }
+},
+value: {
+    type: 4,
+    content: 'id',
+    isStatic: false,
+    constType: 0,
+    loc: { start: [Object], end: [Object], source: 'id' }
+}
+}
+0
+#+end_example
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+.prop, ^attr 最后解析到的结果就是 ~content: `.prop`~ 和 ~content: `^attr`~
+#+end_tip
+
+[[https://github.com/vuejs/vue-next/tree/master/packages/compiler-core/src/transforms/vBind.ts][compiler-core/src/transforms/vBind.ts]] 更新点：
+
+在 ast.ts 解析出了 modifiers 之后 transform 阶段的处理：
+
+#+begin_src typescript
+// start > 40
+if (modifiers.includes('prop')) {
+  injectPrefix(arg, '.')
+}
+
+if (modifiers.includes('attr')) {
+  injectPrefix(arg, '^')
+}
+// end > 46
+
+const injectPrefix = (arg: ExpressionNode, prefix: string) => {
+  if (arg.type === NodeTypes.SIMPLE_EXPRESSION) {
+    if (arg.isStatic) {
+      arg.content = prefix + arg.content
+    } else {
+      arg.content = `\`${prefix}\${${arg.content}}\``
+    }
+  } else {
+    arg.children.unshift(`'${prefix}' + (`)
+    arg.children.push(`)`)
+  }
+}
+#+end_src
+
+injectPrefix 会在 codgenNode 的 content 前面注入 ~.~ 或 ~^~ ，如上面的测试中显示一样：
+
+~<div :fooBar.prop="test"/>~
+
+~<div :[fooBar].prop="test"/>~
+
+结果： ~arg: { content: `.fooBar` }~ 和 ~arg: { content: '`.${fooBar || ""}`' }~
+
+[[https://github.com/vuejs/vue-next/tree/master/packages/runtime-dom/src/patchProp.ts][runtime-dom/src/patchProp.ts]] 更新点(~patchProp()~)：
+
+#+begin_src typescript
+// 增加分支处理 .prop, ^attr
+/*else*/ if (
+  key[0] === '.'
+    ? ((key = key.slice(1)), true)
+    : key[0] === '^'
+    ? ((key = key.slice(1)), false)
+    : shouldSetAsProp(el, key, nextValue, isSVG)
+) {
+  patchDOMProp(
+    el,
+    key,
+    nextValue,
+    prevChildren,
+    parentComponent,
+    parentSuspense,
+    unmountChildren
+  )
+}
+#+end_src
+
+如果是 ~.prop~ 去掉 ~.~ 变成 ~prop~ 直接进入 ~patchDOMProp(el, key, ...)~
+
+#+begin_src typescript
+// functions. The user is responsible for using them with only trusted content.
+export function patchDOMProp(
+  el: any,
+  key: string,
+  value: any,
+  // the following args are passed only due to potential innerHTML/textContent
+  // overriding existing VNodes, in which case the old tree must be properly
+  // unmounted.
+  prevChildren: any,
+  parentComponent: any,
+  parentSuspense: any,
+  unmountChildren: any
+) {
+  if (key === 'innerHTML' || key === 'textContent') {
+    if (prevChildren) {
+      unmountChildren(prevChildren, parentComponent, parentSuspense)
+    }
+    el[key] = value == null ? '' : value
+    return
+  }
+
+  if (key === 'value' && el.tagName !== 'PROGRESS') {
+    // store value as _value as well since
+    // non-string values will be stringified.
+    el._value = value
+    const newValue = value == null ? '' : value
+    if (el.value !== newValue) {
+      el.value = newValue
+    }
+    if (value == null) {
+      el.removeAttribute(key)
+    }
+    return
+  }
+
+  if (value === '' || value == null) {
+    const type = typeof el[key]
+    if (value === '' && type === 'boolean') {
+      // e.g. <select multiple> compiles to { multiple: '' }
+      el[key] = true
+      return
+    } else if (value == null && type === 'string') {
+      // e.g. <div :id="null">
+      el[key] = ''
+      el.removeAttribute(key)
+      return
+    } else if (type === 'number') {
+      // e.g. <img :width="null">
+      // the value of some IDL attr must be greater than 0, e.g. input.size = 0 -> error
+      try {
+        el[key] = 0
+      } catch {}
+      el.removeAttribute(key)
+      return
+    }
+  }
+
+  // ... 向后兼容的代码
+
+  // some properties perform value validation and throw
+  el[key] = value
+}
+#+end_src
+
+针对元素上不同类型的 key 给不同的默认值：
+
+1. innerHTML 和 textContent
+2. value 属性会保存到 ~el._value~ 上
+3. value 为空值的时候，根据该属性在原生元素上指定的类型给出值，如：
+
+   1) ~<select multiple>~ -> ~el.multiple = true~
+
+   2) ~<div id=""/>~ -> ~el.id = ''~
+
+   3) ~<img width="null" />~ -> ~el.width = 0~
+4. 最后其它的属性都设置到 ~el~ 上 ~el[key] = value~
+
+
+测试用例：
+
+#+begin_src typescript
+test('force patch as prop', () => {
+  const el = document.createElement('div') as any
+  patchProp(el, '.x', null, 1)
+  expect(el.x).toBe(1)
+})
+
+test('force patch as attribute', () => {
+  const el = document.createElement('div') as any
+  el.x = 1
+  patchProp(el, '^x', null, 2)
+  expect(el.x).toBe(1)
+  expect(el.getAttribute('x')).toBe('2')
+})
+#+end_src
+
+测试：
+
+#+begin_export html
+<div id="PuZtcU"></div>
+<script src="/js/vue/tests/PuZtcU.js"></script>
+#+end_export
