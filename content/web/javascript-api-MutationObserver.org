@@ -2,7 +2,7 @@
 #+DATE: <2021-09-02 21:16:19>
 #+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
 #+TAGS[]: javascript
-#+CATEGORIES[]: javascript, web
+#+CATEGORIES[]: javascript,web
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
@@ -34,9 +34,7 @@ button.test {
 </style>
 #+end_export
 
-* 构造函数
-
-~MutationObserver()~
+* 构造函数 ~MutationObserver()~
 
 创建并返回实例，当 DOM 发生变化时去运行一个回调。
 
@@ -63,14 +61,15 @@ dictionary MutationObserverInit {
 };
 #+end_src
 
-* 方法
+* 方法(observe, disconnect, takeRecords)
 
-
+|---------------+----------------------------------------------------------------------------------|
 | 方法名        | 说明                                                                             |
 |---------------+----------------------------------------------------------------------------------|
 | ~disconnect()~  | 停止监听，实例不会再接受到任何通知直到再次调用 ~observe()~                         |
 | ~observe()~     | 重启监听                                                                         |
 | ~takeRecords()~ | 移除 MutationObserver 的通知队列中所有挂起的通知, 并返回一个 ~MutationRecord~ 数组 |
+|---------------+----------------------------------------------------------------------------------|
 
 测试：
 
@@ -100,3 +99,308 @@ dictionary MutationObserverInit {
   sequence<DOMString> attributeFilter;
 };
 #+end_src
+
+创建实例： ~observer = new MutationObserver(callback)~
+
+** observer.observe(target<Node>, options)
+
+options 支持的各选项，可以用来指定监听哪些行为变化：
+
+| 名字                  | 说明                                     |
+|-----------------------+------------------------------------------|
+| ~childList~             | 监听目标节点的 children 变化             |
+| ~attributes~            | 监听目标节点的属性变化                   |
+| ~characterData~         | 监听目标节点的 ~data~                      |
+| ~subtree~               | 监听目标自身以及它的子孙节点             |
+| ~attributeOldValue~     | 记录 ~attributes=true~ 时变化之前的旧值    |
+| ~characterDataOldValue~ | 记录 ~characterData=true~ 时变化之前的旧值 |
+| ~attributeFilter~       | ~Array<string>~ 忽略监听哪些属性的变化     |
+
+实现伪码：
+
+#+begin_src js
+function observe(target, options = {}) {
+  const { attributeOldValue: aov, attributeFilter: af, attributes: as } = options
+
+  // 1. 当 attributeOldValue 或 attributeFilter 有一个设置了时，自动启用 attributes 监听
+  if (as === undefined && ( aov === true || af === true )) {
+    options.attributes = true
+  }
+
+  // 2. 当 characterDataOldValue 设置了会自动启用 characterData 监听
+  const { characterDataOldValue: cdov, characterData: cd } = options
+  if (cd === undefined && cdov === true) {
+    options.characterData = true
+  }
+
+  // 3. 如果 childList, attributes, characterData 一个都没启用，抛出异常
+  // 即：必须要指定至少一个监听项
+  const { childList: cl } = options
+
+  if (cl === undefined && as === undefined && cd === undefined) {
+    throw new TypeError('必须要指定至少一个监听项(attributes, characterData, 或 childList)')
+  }
+
+  // 4. 设置了 attributeOldValue 就必须启用 attributes 监听
+  if (aov === true && as === false) {
+    throw new TypeError('设置了 attributeOldValue 就必须启用 attributes 监听')
+  }
+
+  // 5. 设置了 characterDataOldValue 就必须启用 characterData 监听
+  if (cdov === true && cd === false) {
+    throw new TypeError('设置了 characterDataOldValue 就必须启用 characterData 监听')
+  }
+
+  // 6. 遍历 target 已经注册了的 observer list，如果 observer === this:
+  // 这里可能不太对，没怎么完全理解 7 & 8
+  const obList = target.observerList
+  for (let i = 0; i < obList.length; i++) {
+    const ob = obList[i]
+    if (ob === this) {
+      this.nodeList.forEach(node => {
+        // 移除所有的 transient registered observers
+        remove node.observers
+        // 将选项设置到各个节点上
+        node.options = options
+      })
+    } else {
+      // 追加新的 observer 和 options 到 target
+      this.append(new Observer())
+      this.nodeList.append(target)
+    }
+  }
+}
+#+end_src
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+*Transient registered observers* are used to track mutations within a given node’s
+descendants after node has been removed so they do not get lost when subtree is
+set to true on node’s parent.
+
+*临时注册的 observers* 用来在目标节点被移除之后，跟踪目标节点的子孙节点的变化，以
+ 防 在目标节点的父级节点上设置了 ~subtree:true~ 时丢失这些子孙节点的信息。
+#+end_tip
+** observer.disconnect()
+
+#+begin_src js
+function disconnect() {
+  // 1. 遍历 node 的 nodeList, 移除所有的 registered observer
+  this.nodeList.forEach(node => remove node.registeredObserver)
+  // 2. 清空 record queue
+  clear node.recordQueue
+}
+#+end_src
+
+** observer.takeRecords()
+
+#+begin_src js
+function takeRecords() {
+  // 1. 先备份队列
+  let records = clone(this.recordQueue)
+  // 2. 清空队列
+  this.recordQueue = []
+  // 3. 返回备份的队列
+  return records
+}
+#+end_src
+* 队列管理(Record Queue)
+
+当一个 mutation 入列时发生以下步骤(伪码形式展示):
+
+实现主要分三个部分：
+1. 遍历所有祖先节点，找到已注册了的 observer, 如果是 attributes 和 characterData
+   则需要记录下变化之前的旧值
+2. 遍历保存的所有旧值和对应的 observer，为其创建新的 ~MutationRecord~ 进行入列操作，
+   将来执行 callback 时传入的就是这些 record。
+
+#+begin_src js
+function queue(
+  type, target, attributeName, attributeNamespce,
+  oldValue ,addedNodes, removedNodes, previousSibling,
+  nextSibling
+) {
+  let interestedObservers = new Map()
+  // inclusive ancestors, 目标所有祖先元素
+  let nodes = target.ancestors
+  nodes.forEach(node => {
+    const observerList = node.observerList
+    observerList.forEach(ob => {
+      let options = registered.options // 来自 observe(target, options)
+      // 检查下面几个非法条件，如果都为 false
+      // 1. node === target 且 options.subtree = false
+      // 2. type === attributes && options.attributes 是 undefined 或 false
+      // 3. type === attributes && ( options.attributeFilter.contains(name) === false || namespace != null )
+      //    即： name 不在过滤范围
+      // 4. type === characterData && options.characterData 是 undefined 或 false
+      // 5. type === childList && options.childList === false
+      // 如果以上 5 个检查结果都为 false， 则属于正常使用情况，不然会报错
+      if ( $1 === false && $2 === false && $3 === false && $4 === false && $5 === false ) {
+        let mo = registered.obsrever
+        if (interestedObservers[mo] === undefined) {
+          interestedObservers[mo] = null
+        }
+
+        if (( type === 'attributes' && options.attributeOldValue === true ) ||
+            (type === 'characterData' && options.characterDataOldValue === true)) {
+          interestedObservers.set(mo, oldValue)
+        }
+      }
+    })
+  })
+
+  for (let (observed, mappedOldValue) of interestedObservers) {
+    let record = new MutationRecord()
+    record.type = type
+    record.target = target
+    record.attributeName = attributeName
+    record.attributeNamespace = namespace
+    record.oldValue = mappedOldValue
+    record.addedNodes = addedNodes
+    record.removedNodes = removedNodes
+    record.previousSibling = target.previousSibling
+    record.nextSibling = target.nextSibling
+
+    recordQueue.push(record)
+  }
+}
+#+end_src
+
+例如：入列一个 ~childList~ mutation
+
+~queue('childList', target, null, null, null, addedNodes, removedNodes,
+previousSibling, nextSibling)~
+
+此时的 ~attributeName~, ~attributeNamespace~, ~oldValue~ 都为 ~null~
+
+* callback(...)
+
+callback 会在指定的 DOM 树发生变化时被调用，调用时：
+
+~callback(mutationRecord: MutationRecord, mutationObserver: MutationObserver)~
+
+1. mutationRecord 是一个 ~MutationRecord~ 类型对象，包含了触发的 mutation 信息(比
+   如：类型)等。
+2. mutationObserver: 是 ~new MutationObserver(callback)~ 得到的那个实例对象。
+
+
+如：
+
+#+begin_export html
+<p><a href="/js/tests/web/mutation-observer-002.js" target="_blank">测试源码链接</a></p>
+<div class="debug blue" id="test002"></div>
+<div class="debug red" id="test102"></div>
+<button class="test" onclick="stopObserve2()">停止监听</button>
+<button class="test" onclick="startObserve2()">开始监听</button>
+<button class="test" onclick="updateAttr2()">set attribute "n"</button>
+<button class="test" onclick="stopUpdate2()">停止更新</button>
+<button class="test" onclick="startUpdate2()">开始更新</button>
+<script src="/js/tests/web/mutation-observer-002.js"></script>
+#+end_export
+
+* MutationRecord
+
+第一个参数 ~mutationsList<MutationRecord>~ 中 ~MutationRecord~ 的接口实现：
+
+#+begin_src cpp
+// [Exposed=Window]
+interface MutationRecord {
+  // 触发的 mutation 类型
+  readonly attribute DOMString type;
+  [SameObject] readonly attribute Node target;
+  [SameObject] readonly attribute NodeList addedNodes;
+  [SameObject] readonly attribute NodeList removedNodes;
+  readonly attribute Node? previousSibling;
+  readonly attribute Node? nextSibling;
+  readonly attribute DOMString? attributeName;
+  readonly attribute DOMString? attributeNamespace;
+  readonly attribute DOMString? oldValue;
+};
+#+end_src
+
+1. *type*: 有三个值
+
+   ~"attribute"~: DOM 元素属性的变化
+
+   ~"characterData"~:  CharacterData 节点的变化
+
+   ~"childList"~: DOM 树或节点的变化
+
+2. *target*: 根据 mutation 类型不同指向不同的目标，如果 ~type~ 是：
+
+   ~"attribute"~: 指向属性发生变化的那个元素本身
+
+   ~"characterData"~:  CharacterData 节点
+
+   ~"childList"~: 谁的子节点变化了就指向谁
+
+3. *addedNodes, removedNodes*: 当 ~type = childList~ 时，被添加或删除的节点列表
+
+4. *previousSibling, nextSibling*: 针对被添加或移除的节点而言的 preivous 和 next
+   兄弟节点。
+
+5. *attributeName*: 发生变化的属性名
+
+6. *attributeNamespace*: 发生变化的属性名的命名空间
+
+7. *oldValue*: 取决于 ~type~:
+
+   ~"attribute"~: 变化之前的属性值
+
+   ~"characterData"~:  CharacterData 节点变化之前的 data
+
+   ~"childList"~: null~~
+
+
+* 总结
+
+学习这个对象原因，是因为 vue3 3.2.0-beta.1 中有个 bug [[https://github.com/vuejs/vue-next/issues/3894][#3894]], 说是当使用
+~transition + v-if + cssVar(v-bind(var))~ 的时候，会导致 cssVar 不能正常使用，
+vue-next 解决这个问题的时候就用到了 ~MutationObserver~ 对象。
+
+添加的代码：
+
+#+begin_src typescript
+onMounted(() => {
+  const ob = new MutationObserver(setVars)
+  ob.observe(instance.subTree.el!.parentNode, { childList: true })
+  onUnmounted(() => ob.disconnect())
+})
+#+end_src
+
+等于是说，监听了当前组件的父级 DOM 节点，当它的 children 发生变化时候去执行
+setVars，设置 css 变量，从而解决这个问题。
+
+1. ~MutationObserver~ 使用步骤：
+
+   - 创建实例： ~var ob = new MutationObserver(callback)~
+
+   - 开启监听： ~ob.observe(target, options)~, options 指定监听类型(~attributes~,
+     ~characterData~, ~childList~)
+
+   - 停止监听： ~ob.disconnect()~
+
+   - 提取清空队列： ~ob.takeRecords()~
+
+2. ~MutationRecord~ 包含内容
+
+   *type*: attributs - 属性变化， characterData - data 变化， childList - 子孙节点
+   变化
+
+   *target*: 变化的目标节点
+
+   *addedNodes, removedNodes*: 当 ~type = childList~ 时被移除或添加的节点列表
+
+   *previousSibling, nextSibling*: 目标元素的兄弟节点
+
+   *attributeName*: 变化的属性名
+
+   *oldValue*: 变化之前的值
+
+3. ~callback(mutationsList, mutationObserver)~
+
+   mutationsList: ~Array<MutationRecord>~
+
+   mutationObserver: MutationObserver, 即通过 ~new MutationObserver(callback)~ 创
+   建的那个实例对象。

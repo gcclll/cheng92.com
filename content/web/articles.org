@@ -20,3 +20,8 @@
 | [[/web/javascript-api-mutationobserver/][JavaScript API - MutationObserver]] | 监听 DOM 变化执行回调              |
 | [[/web/apis/js-api-number-parseint/][Number.parseInt 问题]]              | 比如：为什么 ~parseInt(2, 1)~ 是 ~NaN~ |
 | [[/web/javascript-ecma-promise/][0 ~ 1 实现一个 Promise]]            | -                                  |
+|-----------------------------------+------------------------------------|
+| W3C 标准链接                      |                                    |
+| [[https://dom.spec.whatwg.org][DOM 标准入口]]                      | -                                  |
+| [[https://dom.spec.whatwg.org/#mutationobserver][MutationObserver]]                  | -                                  |
+|                                   |                                    |

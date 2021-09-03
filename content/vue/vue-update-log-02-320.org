@@ -29,16 +29,223 @@ insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 [[/img/bdx/yiyeshu-001.jpg]]
 
 #+begin_quote
-3.2.x 更新日志。
+3.2.x 更新日志 [[https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md][vue-next CHANGELOG]]
 #+end_quote
 
-https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md
+* 3.2 All Important Changes
+** deferredComputed
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: deferredComputed
+:END:
 
-* Important Changes
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+没有被暴露的 api ，只限 vue 内部 @vue/reactivity 使用。
+#+end_warn
+
+#+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../reactivity/dist/reactivity.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { reactive, effect, ref, deferredComputed } = value
+
+;(async function () {
+const tick = Promise.resolve()
+const src = ref(0)
+const c = deferredComputed(() => src.value)
+let i = 0
+const spy = (val) => {
+console.log("i = " + i++ + ', val = ' + val)
+}
+effect(() => spy(c.value))
+
+src.value = 1
+src.value = 2
+src.value = 3
+
+console.log('1: i = ' + i)
+await tick // to flush jobs
+console.log('2: i = ' + i)
+}())
+
+return ''
+#+end_src
+
+#+RESULTS:
+: i = 0, val = 0
+: 1: i = 1
+: ''i = 1, val = 3
+: 2: i = 2
+
+看个正常 computed 的例子:
+#+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../reactivity/dist/reactivity.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { reactive, effect, ref, computed } = value
+
+;(async function () {
+const tick = Promise.resolve()
+const src = ref(0)
+const c = computed(() => src.value)
+let i = 0
+const spy = (val) => {
+console.log("i = " + i++ + ', val = ' + val)
+}
+effect(() => spy(c.value))
+
+src.value = 1
+src.value = 2
+src.value = 3
+
+console.log('1: i = ' + i)
+await tick // to flush jobs
+console.log(': i = ' + i)
+}())
+
+return 2
+#+end_src
+
+#+RESULTS:
+: i = 0, val = 0
+: i = 1, val = 1
+: i = 2, val = 2
+: i = 3, val = 3
+: 1: i = 4
+: 2: i = 4
+
+对比两个结果会发现：
+
+正常的 computed 在 ~src.value~ 改变时每次都会执行 spy, 这是因为 ~computed(() =>
+src.value)~ 操作让 src track 了这个 ~() => src.value~ 因此只要值发生改变就会立即
+执行它，而对于计算属性 c 又依赖了 src.value 因此触发 c 重新计算，从而调用 spy。
+
+而在 deferredComputed 的实现中将 effect 加入到了 scheduler 异步队列中去执行，导
+致同步的代码没有执行结束之前是不会执行的，只要不重新计算 c.value 就不会改变。那
+么 effect spy 也就不会被执行，从而导致 spy 不会在 src.value 改变时被立即调用。
+
+但是在后面调用了 ~await nextTick()~ 之后会立即将 scheduler 的队列 flush 掉，此时才
+会去执行 compute 重新计算 c.value 的值，得到的也就是最后一次 src.value 的值(*要
+清楚一点 await 之前 src.value 是会发生改变的，只是不会触发重新计算*)，然后
+c.value 的改变会触发 ~effect(() => spy(c.value))~ 去执行。
+
+关于 scheduler 和 nextTick 可阅读这两文：
+
+[[/vue/vue-teardown-2-sheduler/][Vue3 功能拆解② Scheduler 渲染机制]]
+
+[[http://localhost:1313/vue/vue-mind-map-runtime-core-1/#scheduler][Vue3 源码头脑风暴之 7 ☞ runtime-core(1) - 若叶知秋 - scheduler 任务调度机制]]
+
+deferredComputed 源码如下：
+#+begin_src typescript
+// 只会将 effect 加入 job 队列，不会立即执行
+const scheduler = (fn: any) => {
+  queue.push(fn)
+  if (!queued) {
+    queued = true
+    tick.then(flush)
+  }
+}
+
+class DeferredComputedRefImpl<T> {
+  constructor(getter: ComputedGetter<T>) {
+    let compareTarget: any
+    let hasCompareTarget = false
+    let scheduled = false
+    this.effect = new ReactiveEffect(getter, (computedTrigger?: boolean) => {
+      if (this.dep) {
+        if (computedTrigger) {
+          compareTarget = this._value
+          hasCompareTarget = true
+        } else if (!scheduled) {
+          const valueToCompare = hasCompareTarget ? compareTarget : this._value
+          scheduled = true
+          hasCompareTarget = false
+          scheduler(() => {
+            if (this.effect.active && this._get() !== valueToCompare) {
+              triggerRefValue(this)
+            }
+            scheduled = false
+          })
+        }
+        // chained upstream computeds are notified synchronously to ensure
+        // value invalidation in case of sync access; normal effects are
+        // deferred to be triggered in scheduler.
+        for (const e of this.dep) {
+          if (e.computed) {
+            e.scheduler!(true /* computedTrigger */)
+          }
+        }
+      }
+      this._dirty = true
+    })
+    this.effect.computed = true
+  }
+
+  private _get() {
+    if (this._dirty) {
+      this._dirty = false
+      return (this._value = this.effect.run()!)
+    }
+    return this._value
+  }
+
+  get value() {
+    trackRefValue(this)
+    // the computed ref may get wrapped by other proxies e.g. readonly() #3376
+    return toRaw(this)._get()
+  }
+
+}
+#+end_src
+
+而对于 computed 就没那么多操作
+#+begin_src typescript
+class ComputedRefImpl<T> {
+  public dep?: Dep = undefined
+
+  private _value!: T
+  private _dirty = true
+  public readonly effect: ReactiveEffect<T>
+
+  public readonly __v_isRef = true
+  public readonly [ReactiveFlags.IS_READONLY]: boolean
+
+  constructor(
+    getter: ComputedGetter<T>,
+    private readonly _setter: ComputedSetter<T>,
+    isReadonly: boolean
+  ) {
+
+    this.effect = new ReactiveEffect(getter, () => { // scheduler
+      if (!this._dirty) {
+        this._dirty = true
+        triggerRefValue(this)
+      }
+    })
+    this[ReactiveFlags.IS_READONLY] = isReadonly
+  }
+
+  get value() {
+    // the computed ref may get wrapped by other proxies e.g. readonly() #3376
+    const self = toRaw(this)
+    trackRefValue(self)
+    if (self._dirty) {
+      self._dirty = false
+      self._value = self.effect.run()!
+    }
+    return self._value
+  }
+
+  set value(newValue: T) {
+    this._setter(newValue)
+  }
+}
+#+end_src
 ** ReactiveEffect 从函数变成了一个 class
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
-:CUSTOM_ID: ReactiveEffect2Object
+:CUSTOM_ID: ReactiveEffect2Class
 :END:
 
 #+begin_src typescript
@@ -133,6 +340,81 @@ export function effect<T = any>(
   return runner
 }
 #+end_src
+** 新增 ref 语法糖（$ref, $raw）
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: new-ref-sugar
+:END:
+
+新增 ref 语法糖：
+  1. ~$ref()~ 被解析成 ~_ref()~
+
+     如： ~let foo = $ref(1)~ => ~let foo = _ref(1)~
+
+    #+begin_src js
+const url =
+      process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
+
+const value = require(url.replace("stb-", ""));
+const { compileScript, parse } = value;
+
+function compileSFCScript(src, options) {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, {
+    ...options,
+    id: 'xxxxxxx'
+  })
+}
+
+function compileWithRefSugar(src) {
+  return compileSFCScript(src, { refSugar: true })
+}
+
+const _ = (title, src) => {
+  const { content } = compileWithRefSugar(src)
+  console.log(title, '\n', content)
+}
+
+_('$ref declarations > ', `<script setup>
+    let foo = $ref()
+    let a = $ref(1)
+    let b = $ref({
+      count: 0
+    })
+    let c = () => {}
+    let d
+    </script>`)
+
+return 0;
+
+  #+end_src
+
+    #+RESULTS:
+    #+begin_example
+    $ref declarations >
+    import { ref as _ref } from 'vue'
+
+    export default {
+        setup(__props, { expose }) {
+        expose()
+
+        let foo = _ref()
+        let a = _ref(1)
+        let b = _ref({
+            count: 0
+        })
+        let c = () => {}
+        let d
+
+    const __returned__ = { foo, a, b, c, d }
+    Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+    return __returned__
+    }
+
+    }
+    0
+    #+end_example
+
 * TODO 3.2.0 (2021-08-09)
 ** Compatibility Notes
 
@@ -236,46 +518,606 @@ requires TS >= 4.1.
 ** Performance Improvements [0/1]
 - [-] skip patch on same vnode (d13774b)
 * TODO 3.2.0-beta.3 (2021-07-20)
-** Important [0/0]
+** Important
+- *ADD* watchSyncEffect 同步 watch effect，回调会在值变更之前被调用
 ** Bug Fixes [0/4]
 - [-] reactivity: revert computed scheduler change (33c2fbf), closes #4157
 - [-] runtime-core: fix v-bind class/style merging regression (2bdee50), closes #4155
 - [-] sfc-playground: Transform named default exports without altering scope (#4154) (acb2a4d)
 - [-] watch: ensure watchers respect detached scope (bc7f976), closes #4158
-** Features [0/2]
-- [-] reactivity: deferredComputed (14ca881)
-- [-] runtime-core: watchSyncEffect (d87d059)
-* TODO 3.2.0-beta.2 (2021-07-19)
+** Features [2/2]
+- [X] [[#deferredComputed][reactivity: deferredComputed]] ([[https://github.com/vuejs/vue-next/commit/14ca881a1ba6ad887d5ffc6ce3b7f8461252afee][14ca881]])
+- [X] runtime-core: watchSyncEffect ([[https://github.com/vuejs/vue-next/commit/d87d059ac120ed0496f85474344ef76e40fa9bc7][d87d059]])
+  @@html:<span id="watchSyncEffect"></span>@@
+
+  watch options flush -> sync
+
+  #+begin_src typescript
+export function watchSyncEffect(
+  effect: WatchEffect,
+  options?: DebuggerOptions
+) {
+  return doWatch(
+    effect,
+    null,
+    (__DEV__
+      ? Object.assign(options || {}, { flush: 'sync' })
+      : { flush: 'sync' }) as WatchOptionsBase
+  )
+}
+  #+end_src
+
+  test:
+
+  #+begin_src js
+const url = process.env.VNEXT_PKG_RC +'/../runtime-test/dist/runtime-test.cjs.js'
+const value = require(url.replace('stb-', ''))
+const { nodeOps, render, nextTick, h, serializeInner: s, defineComponent, ref, watchSyncEffect } = value
+const count = ref(0)
+const count2 = ref(0)
+let result1, result2, callCount = 0
+const assertion = count => {
+  console.log('called ' + ++callCount)
+  // on mount, watch callback 应该在 DOM 渲染之前被调用
+  // on update, 应该在 count 更新之前被调用
+  // 因为是同步 effect
+  const expectedDOM = callCount === 1 ? '' : `${count - 1}`
+  result1 = s(root) === expectedDOM
+
+  // 在同步回调中，在第2次调用时，state mutation 还不会被执行，但是在第3次调用时被执行
+  const expectedState = callCount <3 ? 0 : 1
+  result2 = count2.value === expectedState
+}
+
+const Comp = {
+  setup() {
+    watchSyncEffect(() => {
+      assertion(count.value)
+    })
+    return () => count.value
+  }
+}
+
+const root = nodeOps.createElement('div')
+render(h(Comp), root)
+console.log('before set, result1 = ' + result1)
+console.log('before set, result2 = ' + result2)
+
+count.value++
+count2.value++
+nextTick().then(() => {
+  console.log('\nafter set, result1 = ' + result1)
+  console.log('after set, result2 = ' + result2)
+})
+
+  #+end_src
+
+  源码：
+  #+begin_src typescript
+// apiWatch.ts -> doWatch(...)
+let scheduler: EffectScheduler
+// 如果是 flush : 'sync', 这里会直接给 sheduler，这个
+// scheduler 会在值发生变更 trigger -> triggerEffect 中执行
+if (flush === 'sync') {
+  scheduler = job as any // the scheduler function gets called directly
+}
+
+// ...
+// getter 已经上面测试中的 watchSyncEffect(fn) 的 fn 函数
+const effect = new ReactiveEffect(getter, scheduler)
+
+// ...
+// initial run
+  if (cb) {
+    // ...
+  } else if (flush === 'post') {
+    // ...
+  } else {
+    // on mount 时执行,
+    // 会进入这里直接的执行 run, 即立即执行一次 watchSyncEffect(fn) 的 fn
+    effect.run()
+  }
+
+
+// effect.ts -> trigger -> triggerEffects
+// on update 执行的: trigger 的时候如果有 scheduler 会直接执行
+export function triggerEffects(
+  dep: Dep | ReactiveEffect[],
+  debuggerEventExtraInfo?: DebuggerEventExtraInfo
+) {
+  // spread into array for stabilization
+  for (const effect of isArray(dep) ? dep : [...dep]) {
+    if (effect !== activeEffect || effect.allowRecurse) {
+      if (__DEV__ && effect.onTrigger) {
+        effect.onTrigger(extend({ effect }, debuggerEventExtraInfo))
+      }
+      if (effect.scheduler) {
+        effect.scheduler()
+      } else {
+        effect.run()
+      }
+    }
+  }
+}
+
+  #+end_src
+* DONE 3.2.0-beta.2 (2021-07-19)
+CLOSED: [2021-09-03 Fri 16:33]
 ** Important [0/0]
-** Bug Fixes [0/11]
-- [-] compiler-core: fix self-closing tags with v-pre (a21ca3d)
-- [-] compiler-sfc: defineProps infer TSParenthesizedType (#4147) (f7607d3)
-- [-] compiler-sfc: expose correct range for empty blocks (b274b08)
-- [-] compiler-sfc: fix whitespace preservation when block contains single self-closing tag (ec6abe8)
-- [-] compiler-sfc: support const enum (93a950d)
-- [-] reactivity: computed should not trigger scheduler if stopped (6eb47f0), closes #4149
-- [-] runtime-core: fix null type in required + multi-type prop declarations (bbf6ca9), closes #4146 #4147
-- [-] scheduler: fix insertion for id-less job (d810a1a), closes #4148
-- [-] shared: normalizeStyle should handle strings (a8c3a8a), closes #4138
-- [-] ssr: update initial old value to watch callback in ssr usage (#4103) (20b6619)
-- [-] v-model: properly detect input type=number (3056e9b), closes #3813
-** Features [0/3]
-- [-] compiler: allow 'comments' option to affect comment inclusion in dev (#4115) (dd0f9d1), closes #3392 #3395
-- [-] compiler-sfc: add ignoreEmpty option for sfc parse method (8dbecfc)
-- [-] types: map declared emits to onXXX props in inferred prop types (#3926) (69344ff)
-** Performance Improvements [0/1]
-- [-] compiler-sfc: ignore empty blocks (#3520) (b771fdb)
-* TODO 3.2.0-beta.1 (2021-07-16)
+1. *ADD*: 支持 ~<script setup lang="ts">~ 中使用 ~const enum Foo { A: 100 }~, const
+   enum
+2. *FIX*: 支持 ~<div :style="color: `${value}`"/>~ 使用
+3. *FIX*: 修复 ~watch([a,b], ([newA, newB], [oldA, oldB]) => {})~ 中 ~undefined ->
+   [oldA, oldB]~ 解构问题
+
+** Bug Fixes [11/11]
+- [X] compiler-core: fix self-closing tags with v-pre ([[https://github.com/vuejs/vue-next/commit/a21ca3dccc6a0c3822d15b6b2b1d22a2d1a4dd67][a21ca3d]])
+- [X] compiler-sfc: defineProps infer TSParenthesizedType ([[https://github.com/vuejs/vue-next/issues/4147][#4147]]) ([[https://github.com/vuejs/vue-next/commit/f7607d3a15683745b21585baa18cf2871447580e][f7607d3]])
+- [X] compiler-sfc: expose correct range for empty blocks ([[https://github.com/vuejs/vue-next/commit/b274b08f5ff56d153d3dd46fa740dd6b156bf26f][b274b08]])
+- [X] compiler-sfc: fix whitespace preservation when block contains single self-closing tag ([[https://github.com/vuejs/vue-next/commit/ec6abe8d5e0c85e9c884e9c2525d5181213a8e64][ec6abe8]])
+- [X] compiler-sfc: support const enum ([[https://github.com/vuejs/vue-next/commit/93a950d60d347321df4196d22f64c4810840a3bb][93a950d]])
+
+  支持 ~<script setup lang="ts">~ 中使用 ~const enum Foo { A: 100 }~
+
+  #+begin_src js
+const url =
+      process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
+const value = require(url.replace("stb-", ""));
+const { compileScript, parse } = value;
+
+function compileSFCScript(src, options) {
+  const { descriptor } = parse(src)
+  return compileScript(descriptor, {
+    ...options,
+    id: 'xxxxxxx'
+  })
+}
+
+function compileWithRefSugar(src) {
+  return compileSFCScript(src, { refSugar: true })
+}
+
+const _ = (title, src) => {
+  const { content } = compileWithRefSugar(src)
+  console.log(title, '\n', content)
+}
+
+_('const enum >> ', `
+<script setup lang="ts">
+  const enum Foo { A = 123 }
+</script>`)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_example
+  const enum >>
+   import { defineComponent as _defineComponent } from 'vue'
+  const enum Foo { A = 123 }
+
+  export default _defineComponent({
+    setup(__props, { expose }) {
+    expose()
+
+
+  const __returned__ = { Foo }
+  Object.defineProperty(__returned__, '__isScriptSetup', { enumerable: false, value: true })
+  return __returned__
+  }
+
+  })
+  undefined
+  #+end_example
+
+  #+begin_src diff
+packages/compiler-sfc/src/compileScript.ts
+@@ -1008,7 +1008,7 @@ export function compileScript(
+
+    if (isTS) {
+      // runtime enum
+-      if (node.type === 'TSEnumDeclaration' && !node.const) {
++      if (node.type === 'TSEnumDeclaration') {
+        registerBinding(setupBindings, node.id, BindingTypes.SETUP_CONST)
+      }
+
+  #+end_src
+- [X] reactivity: computed should not trigger scheduler if stopped ([[https://github.com/vuejs/vue-next/commit/6eb47f000a1b54b2419c031979502d2793c5189d][6eb47f0]]), closes [[https://github.com/vuejs/vue-next/issues/4149][#4149]]
+
+  组件 deactivated 之后不应该再执行 compute 计算，3.2.1中好像又改回去了？
+
+  #+begin_src js
+(async function () {
+  const url = process.env.VNEXT_PKG_RC +'/../reactivity/dist/reactivity.cjs.js'
+  const value = require(url.replace('stb-', ''))
+  const { reactive, effect, computed, ref } = value
+  const tick = Promise.resolve()
+  const queue = []
+  let queued = false
+  const schedule = fn => {
+    queue.push(fn)
+    if (!queued) {
+      queued = true
+      tick.then(flush)
+    }
+  }
+
+  const flush = () => {
+    for (let i = 0; i < queue.length; i++) {
+      queue[i]()
+    }
+    queue.length = 0
+    queued = false
+  }
+
+  let i = 0
+  const c1Spy = () => {
+    i++
+    console.log('xxx');
+  }
+  const src = ref(0)
+  const c1 = computed(() => {
+    c1Spy()
+    return src.value % 2
+  })
+  effect(() => c1.value)
+  console.log(`c1Spy called ${i} times`)
+
+  schedule(() => {
+    console.log('\nstopped');
+    c1.effect.stop()
+  })
+
+  src.value++
+
+  await tick
+  console.log(`c1Spy called ${i} times`)
+
+}())
+
+  return
+  #+end_src
+
+  #+RESULTS:
+  : xxx
+  : c1Spy called 1 times
+  : xxx
+  : undefined
+  : stopped
+  : c1Spy called 2 times
+- [X] runtime-core: fix null type in required + multi-type prop declarations ([[https://github.com/vuejs/vue-next/commit/bbf6ca9bca942df639ff0357d713413c9a1c4c05][bbf6ca9]]), closes [[https://github.com/vuejs/vue-next/issues/4146][#4146]] [[https://github.com/vuejs/vue-next/issues/4147][#4147]]
+  支持多种类型时 null 声明。
+
+  test:
+  #+begin_src typescript
+  test('support null in required + multiple-type declarations', () => {
+    const Comp = {
+      props: {
+        foo: { type: [Function, null], required: true }
+      },
+      render() {}
+    }
+    const root = nodeOps.createElement('div')
+    expect(() => {
+      render(h(Comp, { foo: () => {} }), root)
+    }).not.toThrow()
+
+    expect(() => {
+      render(h(Comp, { foo: null }), root)
+    }).not.toThrow()
+  })
+  #+end_src
+
+  FIX:
+
+  #+begin_src diff
+packages/runtime-core/src/componentProps.ts
+@@ -529,7 +529,7 @@ function validatePropName(key: string) {
+// so that it works across vms / iframes.
+function getType(ctor: Prop<any>): string {
+  const match = ctor && ctor.toString().match(/^\s*function (\w+)/)
+-  return match ? match[1] : ''
++  return match ? match[1] : ctor === null ? 'null' : ''
+}
+
+function isSameType(a: Prop<any>, b: Prop<any>): boolean {
+@@ -637,6 +637,8 @@ function assertType(value: unknown, type: PropConstructor): AssertionResult {
+    valid = isObject(value)
+  } else if (expectedType === 'Array') {
+    valid = isArray(value)
++  } else if (expectedType === 'null') {
++    valid = value === null
+  } else {
+    valid = value instanceof type
+  }
+@@ -656,7 +658,7 @@ function getInvalidTypeMessage(
+): string {
+  let message =
+    `Invalid prop: type check failed for prop "${name}".` +
+-    ` Expected ${expectedTypes.map(capitalize).join(', ')}`
++    ` Expected ${expectedTypes.map(capitalize).join(' | ')}`
+  const expectedType = expectedTypes[0]
+  const receivedType = toRawType(value)
+  const expectedValue = styleValue(value, expectedType)
+
+  #+end_src
+- [X] scheduler: fix insertion for id-less job ([[https://github.com/vuejs/vue-next/commit/d810a1a56943aeba5160b42bc917187e99cdfb8e][d810a1a]]), closes [[https://github.com/vuejs/vue-next/issues/4148][#4148]]
+
+  scheduler 调试 job 过程中是按照 job.id 的大小来进行排序的，比如，队列中有三个
+  job: ~job1{id:5}, job4, job2{id:1}, job5, job3{id:3}~ 最后当前队列中会有：
+  ~[job2, job1, job3, job4, job5]~ 如果一个任务没有 id，会直接按照调用顺序逐个追加
+  到队列末尾,如 job4, job5。
+
+  #+begin_src diff
+ packages/runtime-core/src/scheduler.ts
+@@ -10,6 +10,7 @@ setComputedScheduler(queueJob)
+export interface SchedulerJob extends Function {
+  id?: number
+  active?: boolean
++  computed?: boolean
+  /**
+   * Indicates whether the effect is allowed to recursively trigger itself
+   * when managed by the scheduler.
+@@ -70,16 +71,15 @@ export function nextTick<T = void>(
+// Use binary-search to find a suitable position in the queue,
+// so that the queue maintains the increasing order of job's id,
+// which can prevent the job from being skipped and also can avoid repeated patching.
+- function findInsertionIndex(job: SchedulerJob) {
++ function findInsertionIndex(id: number) {
+  // the start index should be `flushIndex + 1`
+  let start = flushIndex + 1
+  let end = queue.length
+-  const jobId = getId(job)
+
+  while (start < end) {
+    const middle = (start + end) >>> 1
+    const middleJobId = getId(queue[middle])
+-    middleJobId < jobId ? (start = middle + 1) : (end = middle)
++    middleJobId < id ? (start = middle + 1) : (end = middle)
+  }
+
+  return start
+@@ -100,11 +100,10 @@ export function queueJob(job: SchedulerJob) {
+      )) &&
+    job !== currentPreFlushParentJob
+  ) {
+-    const pos = findInsertionIndex(job)
+-    if (pos > -1) {
+-      queue.splice(pos, 0, job)
+-    } else {
++    if (job.id == null) {
+      queue.push(job)
++    } else {
++      queue.splice(findInsertionIndex(job.id), 0, job)
+    }
+    queueFlush()
+  }
+@@ -253,6 +252,7 @@ function flushJobs(seen?: CountMap) {
+        if (__DEV__ && checkRecursiveUpdates(seen!, job)) {
+          continue
+        }
++        // console.log(`running:`, job.id)
+        callWithErrorHandling(job, null, ErrorCodes.SCHEDULER)
+      }
+    }
+  #+end_src
+- [X] shared: normalizeStyle should handle strings ([[https://github.com/vuejs/vue-next/commit/a8c3a8ad61b16a31f6754066838440a59ee9db8b][a8c3a8a]]), closes [[https://github.com/vuejs/vue-next/issues/4138][#4138]]
+
+  问题： ~<h1 :style="`color: ${x};`" style="">Hello World!</h1>~
+
+  修复：
+  #+begin_src diff
+packages/shared/src/normalizeProp.ts
+@@ -18,6 +18,8 @@ export function normalizeStyle(value: unknown): NormalizedStyle | undefined {
+      }
+    }
+    return res
++  } else if (isString(value)) {
++    return parseStringStyle(value)
+  } else if (isObject(value)) {
+    return value
+  }
+  #+end_src
+
+  源码：
+  #+begin_src typescript
+const listDelimiterRE = /;(?![^(]*\))/g
+const propertyDelimiterRE = /:(.+)/
+
+export function parseStringStyle(cssText: string): NormalizedStyle {
+  const ret: NormalizedStyle = {}
+  cssText.split(listDelimiterRE).forEach(item => {
+    if (item) {
+      const tmp = item.split(propertyDelimiterRE)
+      tmp.length > 1 && (ret[tmp[0].trim()] = tmp[1].trim())
+    }
+  })
+  return ret
+}
+  #+end_src
+- [X] ssr: update initial old value to watch callback in ssr usage ([[https://github.com/vuejs/vue-next/issues/4103][#4103]]) ([[https://github.com/vuejs/vue-next/commit/20b6619793702d265fcc3a7c099f5764fa9d8685][20b6619]])
+  问题： 指定 ~immediate: true~ 时候会立即执行一次，然而此时 oldValue 是 undefined
+  会导致 callback([...], [oldA, oldB]) 解构错误(~undefined -> [oldA, oldB]~)
+
+  #+begin_src js
+setup(){
+  const a = ref(1)
+  const b = ref(2)
+  watch([a, b], ([newA, newB], [oldA, oldB]) => {
+    // ...
+  }, { deep: true, immediate: true })
+}
+  #+end_src
+
+  修复： 检查被 watch 的源数据，如果是数据 oldValue 初始化成 ~[]~
+  #+begin_src diff
+ packages/runtime-core/src/apiWatch.ts
+@@ -265,7 +265,7 @@ function doWatch(
+    } else if (immediate) {
+      callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
+        getter(),
+-        undefined,
++        isMultiSource ? [] : undefined,
+        onInvalidate
+      ])
+    }
+  #+end_src
+- [X] v-model: properly detect input type=number ([[https://github.com/vuejs/vue-next/commit/3056e9b3dcb1ab0bd18227c6fa7bf283f98f6ef6][3056e9b]]), closes [[https://github.com/vuejs/vue-next/issues/3813][#3813]]
+
+  #+begin_src diff
+ packages/runtime-dom/src/directives/vModel.ts
+@@ -49,7 +49,8 @@ export const vModelText: ModelDirective<
+> = {
+  created(el, { modifiers: { lazy, trim, number } }, vnode) {
+    el._assign = getModelAssigner(vnode)
+-    const castToNumber = number || el.type === 'number'
++    const castToNumber =
++      number || (vnode.props && vnode.props.type === 'number')
+    addEventListener(el, lazy ? 'change' : 'input', e => {
+      if ((e.target as any).composing) return
+      let domValue: string | number = el.value
+  #+end_src
+** Features [3/3]
+- [X] compiler: allow 'comments' option to affect comment inclusion in dev ([[https://github.com/vuejs/vue-next/issues/4115][#4115]]) ([[https://github.com/vuejs/vue-next/commit/dd0f9d1ce6b0de59c84d334c7190fa9d2cc17a04][dd0f9d1]]), closes [[https://github.com/vuejs/vue-next/issues/3392][#3392]] [[https://github.com/vuejs/vue-next/issues/3395][#3395]]
+
+  由 ~__DEV__~ 值决定 comments 是否保留。
+- [X] compiler-sfc: add @@html:<a href="#ignore-empty-blocks">ignoreEmpty</a>@@ option for sfc parse method ([[https://github.com/vuejs/vue-next/commit/8dbecfcbb3d597a644d0f263dfd6d7fcfd23a9fb][8dbecfc]])
+
+  支持 sfc ~parse(src, { ignoreEmpty: true/false })~ 来决定是否忽略空的 script 和 style
+- [X] types: map declared emits to onXXX props in inferred prop types ([[https://github.com/vuejs/vue-next/issues/3926][#3926]]) ([[https://github.com/vuejs/vue-next/commit/69344ff1ae724beb648c34ede8050b3b70ddf4b7][69344ff]])
+
+  emits 事件绑定的函数类型推导。
+
+  #+begin_src diff
+packages/runtime-core/src/componentEmits.ts
++ export type EmitsToProps<T extends EmitsOptions> = T extends string[]
++  ? {
++      [K in string & `on${Capitalize<T[number]>}`]?: (...args: any[]) => any
++    }
++  : T extends ObjectEmitsOptions
++  ? {
++      [K in string &
++        `on${Capitalize<string & keyof T>}`]?: K extends `on${infer C}`
++        ? T[Uncapitalize<C>] extends null
++          ? (...args: any[]) => any
++          : T[Uncapitalize<C>]
++        : never
++    }
++  : {}
+  #+end_src
+
+  test:
+  #+begin_src diff
+  const MyComponent = defineComponent({
+    mixins: [MixinA, MixinB, MixinC, MixinD],
++    emits: ['click'],
+    props: {
+      // required should make property non-void
+      z: {
+@@ -552,6 +554,9 @@ describe('with mixins', () => {
+    setup(props) {
+      expectType<string>(props.z)
+      // props
++      expectType<((...args: any[]) => any) | undefined>(props.onClick)
+      // from Base
++      expectType<((...args: any[]) => any) | undefined>(props.onBar)
+      expectType<string>(props.aP1)
+      expectType<boolean | undefined>(props.aP2)
+      expectType<any>(props.bP1)
+  #+end_src
+** Performance Improvements [1/1]
+- [X] compiler-sfc: ignore empty blocks ([[https://github.com/vuejs/vue-next/issues/3520][#3520]]) ([[https://github.com/vuejs/vue-next/commit/b771fdbef9a8dadd4c9cc939cc104f7764e40373][b771fdb]])
+  @@html:<span id="ignore-empty-blocks"></span>@@
+
+  忽略 SFC 中的空标签。
+  #+begin_src diff
+packages/compiler-sfc/src/parse.ts
+@@ -162,7 +162,8 @@ export function parse(
+    if (node.type !== NodeTypes.ELEMENT) {
+      return
+    }
+-    if (!node.children.length && !hasSrc(node) && node.tag !== 'template') {
++    // we only want to keep the nodes that are not empty (when the tag is not a template)
++    if (node.tag !== 'template' && isEmpty(node) && !hasSrc(node)) {
+      return
+    }
+    switch (node.tag) {
+@@ -415,3 +416,15 @@ function hasSrc(node: ElementNode) {
+    return p.name === 'src'
+  })
+}
++
++ /**
++ * Returns true if the node has no children
++ * once the empty text nodes (trimmed content) have been filtered out.
++ */
++ function isEmpty(node: ElementNode) {
++  return (
++    node.children.filter(
++      child => child.type !== NodeTypes.TEXT || child.content.trim() !== ''
++    ).length === 0
++  )
++ }
+  #+end_src
+
+  测试：
+  #+begin_src js
+const url =
+      process.env.VNEXT_PKG_RC + "/../compiler-sfc/dist/compiler-sfc.cjs.js";
+const value = require(url.replace("stb-", ""));
+const { compileScript, parse } = value;
+
+const _ = (title, src) => {
+  const { descriptor: { script, styles, template } } = parse(src)
+  console.log(title, '\n', script, styles, template.content)
+}
+
+
+_('empty tag', `<template>
+  <h1>{{ msg }}</h1>
+</template>
+
+<script setup>
+
+</script>
+
+<style scoped>
+
+</style>`)
+  #+end_src
+
+  #+RESULTS:
+  : empty tag
+  :  null []
+  :   <h1>{{ msg }}</h1>
+  :
+  : undefined
+
+* DONE 3.2.0-beta.1 (2021-07-16)
+CLOSED: [2021-09-03 Fri 14:27]
 ** Important
 1. *ADD*: ~defineCustomElement~ 结合 ~window.customElements~ 来定义元素 @@html:<a href="#dce">:link: </a>@@
 2. *ADD*: ~v-memo~ 指令可以指定哪些条件下组件需要更新 @@html:<a href="#v-memo">:link: </a>@@
 3. *ADD*: ~watchPostEffect~ 等价于 ~doWatch(effect, null/*cb*/, { flush: 'post' })~ @@html:<a href="#wpe">:link: </a>@@
 4. *ADD*: ~effectScope~  @@html:<a href="/vue/vue-teardown-15-effect-scope">:link: </a>@@
-** Code Refactoring(代码重构) [0/1]
-- [-] remove deprecated scopeId codegen (f596e00)
-** Bug Fixes [0/4]
-- [-] sfc/style-vars: properly re-apply style vars on component root elements
-  change ([[https://github.com/vuejs/vue-next/commit/49dc2dd1e4a56d0d2ad28003240c99e99ef469e4][49dc2dd]]), closes [[https://github.com/vuejs/vue-next/issues/3894][#3894]]
+5. *ADD*: ref 新语法糖 ~$ref()~ 等价于 ~ref()~, 只是不再需要手动从 ~vue~ import 了
+
+   之前： ~<script setup>import { ref } from 'vue'; var val = ref(1);</script>~
+
+   之后： ~<script setup>var val = $ref(1);</script>~
+6. *FIX*: 使用了 [[/web/javascript-api-mutationobserver][MutationObserver]] 来解决 ~cssVar + transition + v-if~ 时 cssVar 不正
+   常生效问题
+7. *CHG*: ~ReactiveEffect~ 改成了 class 来实现，因此 effect 不再是函数，而是一个
+   ReactiveEffect 实例对象。
+** Code Refactoring(代码重构) [1/1]
+- [X] remove deprecated scopeId codegen ([[https://github.com/vuejs/vue-next/commit/f596e008efd97fe8f9b28f536fbb0fd48b9b6333][f596e00]])
+
+  生成的 render 没有 scope id 了 ?
+  #+begin_src diff
+- export const render = /*#__PURE__*/_withId((_ctx, _cache) => {
++ export function render(_ctx, _cache) {
+  #+end_src
+** Bug Fixes [4/4]
+- [X] sfc/style-vars: properly re-apply style vars on component root elements change ([[https://github.com/vuejs/vue-next/commit/49dc2dd1e4a56d0d2ad28003240c99e99ef469e4][49dc2dd]]), closes [[https://github.com/vuejs/vue-next/issues/3894][#3894]]
+  @@html:<span id="MutationObserver"></span>@@
 
   在使用 ~<transition>~ 和 ~v-if~ 时， ~SFC <style>~ 中的 ~v-bind(color)~ 没起作用？
 
@@ -299,12 +1141,56 @@ requires TS >= 4.1.
 
   watchPostEffect 是监听 instance.subTree 状态的变化时执行 ~setVars -> setVarsOnVNode~
 
-  MutationObserver 是 JavaScript 的原生 API ，详情可查看此文。
+  MutationObserver 是 JavaScript 的原生 API ，详情可查看[[http://localhost:1313/web/javascript-api-mutationobserver/][此文 JavaScript API -
+  MutationObserver]] 。
+- [X] ensure customElements API ssr compatibility ([[https://github.com/vuejs/vue-next/commit/de32cfa43e94276c60f93ac4c560cb7b84534cfe][de32cfa]]), closes [[https://github.com/vuejs/vue-next/issues/4129][#4129]]
 
+  解决 SSR 服务端渲染时不支持 ~HTMLElement~ 的问题。
 
-- [-] ensure customElements API ssr compatibility (de32cfa), closes #4129
-- [-] runtime-core: fix default shapeFlag for fragments (2a310df)
-- [-] ignore .prop/.attr modifiers in ssr (29732c2)
+  #+begin_src diff
+// packages/runtime-dom/src/apiCustomElement.ts
+@@ -157,7 +157,11 @@ export const defineSSRCustomElement = ((options: any) => {
+- export class VueElement extends HTMLElement {
++ const BaseClass = (typeof HTMLElement !== 'undefined'
++  ? HTMLElement
++  : class {}) as typeof HTMLElement
+
++ export class VueElement extends BaseClass {
+  /**
+   ,* @internal
+   ,*/
+  #+end_src
+- [X] runtime-core: fix default shapeFlag for fragments ([[https://github.com/vuejs/vue-next/commit/2a310df7531a693be706a96d4191a5bfbf24692d][2a310df]])
+
+  #+begin_src diff
+  dynamicProps: string[] | null = null,
+-  shapeFlag = ShapeFlags.ELEMENT,
++  shapeFlag = type === Fragment ? 0 : ShapeFlags.ELEMENT,
+  isBlockNode = false,
+  #+end_src
+- [X] ignore .prop/.attr modifiers in ssr ([[https://github.com/vuejs/vue-next/commit/29732c2c8681cc3e58251c19149ba3a0ce31cdaf][29732c2]])
+
+  忽略 SSR 中的 .prop/.attr 因为这两个的作用是决定该属性是做为 DOM 元素的
+  attribute 存在还是以 ~element.prop = value~ 元素对象的属性存在。不管是哪种情况都
+  和实际的 DOM 元素有关。
+
+  #+begin_src diff
+// packages/compiler-core/src/transforms/vBind.ts
+@@ -37,12 +37,13 @@ export const transformBind: DirectiveTransform = (dir, _node, context) => {
+-  if (modifiers.includes('prop')) {
+-    injectPrefix(arg, '.')
+-  }
+
+-  if (modifiers.includes('attr')) {
+-    injectPrefix(arg, '^')
++  if (!context.inSSR) {
++    if (modifiers.includes('prop')) {
++      injectPrefix(arg, '.')
++    }
++    if (modifiers.includes('attr')) {
++      injectPrefix(arg, '^')
++    }
+  #+end_src
 ** Features [10/10]
 - [X] [[/vue/vue-update-3.2/#new-ref-sugar][sfc: (experimental) new ref sugar]] ([[https://github.com/vuejs/vue-next/commit/562bddb3ce76a0e98e499e199e96fa4271e5d1b4][562bddb]])
   @@html:<span id="sfc-ref-sugar"></span>@@
@@ -963,11 +1849,14 @@ return 0
   0
   #+end_example
 
-** Breaking Changes [0/1]
-- [-] Output of SFC using <style scoped> generated by 3.2+ will be incompatible
-  w/ runtime < 3.2.
+** Breaking Changes [1/1]
+- [X] Output of SFC using <style scoped> generated by 3.2+ will be incompatible w/ runtime < 3.2.
 
- 
-* Something todos
+* 总结
 
-1. [[#custom-element-reflection][custom element reflection, casting and edge cases]] ([[https://github.com/vuejs/vue-next/commit/00f0b3c46552626cd7c5ec73ffd0a918c3e1a5fb][00f0b3c]])
+3.2 更新重点摘要：
+
+1. ~v-memo~ 组件更新条件设置。
+2. ~$ref()~ SFC setup 中的新语法糖。
+3. ~MutationObserver~ 解决 cssVar + transition + v-if 无效问题。
+4. ~ReactiveEffect~ 重构成了 class 实现，effect 不再是函数，而是其实例对象。

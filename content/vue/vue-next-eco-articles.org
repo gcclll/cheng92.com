@@ -34,21 +34,33 @@
 
 * vue-next 单个功能，特性源码分析
 
-- [[https://www.cheng92.com/vue/vue-teardown-1-patch-flags/][Vue3 功能拆解① PatchFlags]]
-- [[https://www.cheng92.com/vue/vue-teardown-2-sheduler/][Vue3 功能拆解② Scheduler 渲染机制]]
-- [[https://www.cheng92.com/vue/vue-teardown-3-update-flow/][Vue3 功能拆解③ 组件更新机制]]
-- [[https://www.cheng92.com/vue/vue-teardown-4-props-attrs/][Vue3 功能拆解④ 组件 props & attrs]]
-- [[https://www.cheng92.com/vue/vue-teardown-5-directives/][Vue3 功能拆解⑤ directives 指令系统]]
-- [[https://www.cheng92.com/vue/vue-teardown-6-event-listen/][Vue3 功能拆解⑥ directives 事件绑定机制]]
-- [[https://www.cheng92.com/vue/vue-teardown-7-asset-transform/][Vue3 功能拆解⑦ assets url 转换规则]]
-- [[https://www.cheng92.com/vue/vue-teardown-8-script-setup/][Vue3 功能拆解⑧ script setup 来龙去脉]]
-- [[https://www.cheng92.com/vue/vue-teardown-9-transition/][Vue3 功能拆解⑨ Transition 组件机制]]
-- [[https://www.cheng92.com/vue/vue-teardown-10-sfc-style/][Vue3 功能拆解⑩ SFC style]]
-- [[https://www.cheng92.com/vue/vue-teardown-11-expose/][Vue3 功能拆解⑪ expose options&api]]
-- [[https://www.cheng92.com/vue/vue-teardown-12-options/][Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)]]
-- [[https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/][Vue3 功能拆解⑬ style v-deep, v-slotted]]
-- [[https://www.cheng92.com/vue/vue-teardown-14-ast-node-types/][Vue3 功能拆解⑭ AST Node Types 各种节点类型详解]]
+** 3.2 大版本更新内容相关
+
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#deferredComputed][deferredComputed 异步计算属性]]
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#new-ref-sugar][<script setup> 新语法糖 $ref() => ref()]]
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#watchSyncEffect][watchSyncEffect api, 同步监听数据变化]]
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#v-memo][v-memo 指令给定组件更新条件]]
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#wpe][watchPostEffect api]]
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#MutationObserver][MutationObserver 在 vue-next 中的应用]]
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#ReactiveEffect2Class][ReativeEffect 从 function 实现改成了 class 实现]]
+
+** 功能拆解
+
 - [[https://www.cheng92.com/vue/vue-teardown-15-effect-scope/][Vue3 功能拆解⑮ effect scope]]
+- [[https://www.cheng92.com/vue/vue-teardown-14-ast-node-types/][Vue3 功能拆解⑭ AST Node Types 各种节点类型详解]]
+- [[https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/][Vue3 功能拆解⑬ style v-deep, v-slotted]]
+- [[https://www.cheng92.com/vue/vue-teardown-12-options/][Vue3 功能拆解⑫ 组件选项处理 options(如：methods, data, ...)]]
+- [[https://www.cheng92.com/vue/vue-teardown-11-expose/][Vue3 功能拆解⑪ expose options&api]]
+- [[https://www.cheng92.com/vue/vue-teardown-10-sfc-style/][Vue3 功能拆解⑩ SFC style]]
+- [[https://www.cheng92.com/vue/vue-teardown-9-transition/][Vue3 功能拆解⑨ Transition 组件机制]]
+- [[https://www.cheng92.com/vue/vue-teardown-8-script-setup/][Vue3 功能拆解⑧ script setup 来龙去脉]]
+- [[https://www.cheng92.com/vue/vue-teardown-7-asset-transform/][Vue3 功能拆解⑦ assets url 转换规则]]
+- [[https://www.cheng92.com/vue/vue-teardown-6-event-listen/][Vue3 功能拆解⑥ directives 事件绑定机制]]
+- [[https://www.cheng92.com/vue/vue-teardown-5-directives/][Vue3 功能拆解⑤ directives 指令系统]]
+- [[https://www.cheng92.com/vue/vue-teardown-4-props-attrs/][Vue3 功能拆解④ 组件 props & attrs]]
+- [[https://www.cheng92.com/vue/vue-teardown-3-update-flow/][Vue3 功能拆解③ 组件更新机制]]
+- [[https://www.cheng92.com/vue/vue-teardown-2-sheduler/][Vue3 功能拆解② Scheduler 渲染机制]]
+- [[https://www.cheng92.com/vue/vue-teardown-1-patch-flags/][Vue3 功能拆解① PatchFlags]]
 
 * vue-next 源码阅读(含脑图，流程图)
 
