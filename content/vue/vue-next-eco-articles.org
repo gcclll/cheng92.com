@@ -6,7 +6,23 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
-*持续更新中！！！！*
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_success
+@@html:<p><strong>持续更新中！！！！</strong></p>@@
+
+UP! UP! UP! :tea: :tea: :tea:
+#+end_success
+
 
 * 声明
 
@@ -32,8 +48,6 @@
 - [[https://www.cheng92.com/vue/vue-update-log-01/][Vue3 更新日志 01(3.0.5 ~ 3.1.5)]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/][Vue3 更新日志 02 - 3.2.x]]
 
-* vue-next 单个功能，特性源码分析
-
 ** 3.2 大版本更新内容相关
 
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#deferredComputed][deferredComputed 异步计算属性]]
@@ -44,7 +58,7 @@
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#MutationObserver][MutationObserver 在 vue-next 中的应用]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#ReactiveEffect2Class][ReativeEffect 从 function 实现改成了 class 实现]]
 
-** 功能拆解
+* vue-next 单个功能，特性专题源码分析
 
 - [[https://www.cheng92.com/vue/vue-teardown-15-effect-scope/][Vue3 功能拆解⑮ effect scope]]
 - [[https://www.cheng92.com/vue/vue-teardown-14-ast-node-types/][Vue3 功能拆解⑭ AST Node Types 各种节点类型详解]]
@@ -63,6 +77,11 @@
 - [[https://www.cheng92.com/vue/vue-teardown-1-patch-flags/][Vue3 功能拆解① PatchFlags]]
 
 * vue-next 源码阅读(含脑图，流程图)
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+以下文章没有特殊情况不会再更新，此章节之前的章节会随着 vue3 版本的更新不断更新。
+#+end_warn
 
 - [[https://www.cheng92.com/vue/vue-mind-map-reactivity/][Vue3 源码头脑风暴之 1 ☞reactivity]]
 - [[https://www.cheng92.com/vue/vue-mind-map-compiler-core-parser/][Vue3 源码头脑风暴之 2 ☞compiler-core - ast parser]]
