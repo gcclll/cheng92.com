@@ -50,6 +50,8 @@ UP! UP! UP! :tea: :tea: :tea:
 
 ** 3.2 大版本更新内容相关
 
+- [[https://www.cheng92.com/vue/vue-update-log-02-320/#fix-vbind-class][<button :class="{btn:true}" v-bind="{disabled:true}"/> 中的 class 被解析成了
+  [object Object] 的问题]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#deferredComputed][deferredComputed 异步计算属性]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#new-ref-sugar][<script setup> 新语法糖 $ref() => ref()]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#watchSyncEffect][watchSyncEffect api, 同步监听数据变化]]
@@ -60,6 +62,8 @@ UP! UP! UP! :tea: :tea: :tea:
 
 * vue-next 单个功能，特性专题源码分析
 
+- [[https://www.cheng92.com/vue/vue-teardown-17-async-component/][Vue3 功能拆解⑰ 异步组件 AsyncComopnent]]
+- [[https://www.cheng92.com/vue/vue-teardown-16-prop-and-attrs-modifiers/][Vue3 功能拆解⑯ .prop 和 ^attr 修饰符]]
 - [[https://www.cheng92.com/vue/vue-teardown-15-effect-scope/][Vue3 功能拆解⑮ effect scope]]
 - [[https://www.cheng92.com/vue/vue-teardown-14-ast-node-types/][Vue3 功能拆解⑭ AST Node Types 各种节点类型详解]]
 - [[https://www.cheng92.com/vue/vue-teardown-13-v-deep-in-style/][Vue3 功能拆解⑬ style v-deep, v-slotted]]

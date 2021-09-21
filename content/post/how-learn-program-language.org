@@ -31,6 +31,10 @@
 
 #+begin_quote
 Go 官方博客： https://go.dev/blog/all
+Go 官方文档： https://golang.org/doc/effective_go
+Go 官方标准： https://golang.org/ref/spec
+
+Go Demos: https://github.com/gcclll/golang-demos.git
 #+end_quote
 
 
@@ -272,10 +276,19 @@ console.log(dog1, dog2, dog3)
 ** 函数
 
 *** JavaScript
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: js-func
+:END:
 
 ~function name(a, b) {}~
 
 *** Golang
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-func
+:END:
+
 
 ~func name(a, b, int) int {}~
 
@@ -308,6 +321,10 @@ func main() {
 ** 方法
 
 *** JavaScript
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-method
+:END:
 
 原型上的函数可视为方法，如：
 
@@ -323,6 +340,10 @@ t.test()
 : undefined
 
 *** Golang
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-method
+:END:
 
 Go 中的方法使用在模块中的结构体中，且和函数的定义非常相似，保需要在函数名前面加
 上(~t *Test~)就会变成该结构体的方法，如：
@@ -335,23 +356,77 @@ type Test struct {
 }
 
 func (t *Test) test() {
-	fmt.Println(t.Name)
+	t.Name = "test1"
+}
+
+func (t Test) test2() {
+	t.Name = "test2"
 }
 
 func main() {
 	t := Test{Name: "test..."}
 	t.test()
+	fmt.Println("test1:", t.Name)
+	t.test2()
+	fmt.Println("test2:", t.Name)
 }
 #+end_src
 
 #+RESULTS:
-: test...
+: test1: test1
+: test2: test1
+
+#+begin_comment
+方法可能传递 ~Test~ 或者 ~*Test~ 指针类型，目的取决于是否需要修改原始数据的内容，
+~Test~ 是值传递， ~*Test~ 是引用传递，如上面的测试两个都是输出的 "test1", 因为
+~t.test2()~ 修改的是 ~t~ 的拷贝而不是它本身所指向的内存空间。
+#+end_comment
+
+为普通类型定义方法:
+@@html:<span id="go-method-prime"></span>@@
+
+#+begin_src go
+import (
+	"fmt"
+	"math"
+)
+
+type MyFloat float64
+
+func (f MyFloat) Abs() float64 {
+	if (f < 0) {
+		return float64(-f)
+	}
+	return float64(f)
+}
+
+func (f MyFloat) Tbs() float64 {
+	return f.Abs()
+}
+
+func main() {
+	f := MyFloat(-math.Sqrt2)
+	fmt.Println(f.Abs())
+	fmt.Println(f.Tbs())
+}
+#+end_src
+
+#+RESULTS:
+: 1.4142135623730951
+: 1.4142135623730951
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+1. 只能为同一个包中的类型声明一个方法（方法和类型必须在同一个包中）
+2. 不能为其它包里声明的类型声明方法(不能跨包)
+
+#+end_warn
 * 基础类型
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: basic-dt
 :END:
-
 
 JavaScript 为弱类型语言，声明时不需要指定变量类型。
 
@@ -539,7 +614,6 @@ for (; i < 5; ) {
 :CUSTOM_ID: for-go
 :END:
 
-
 #+begin_src go
 import ("fmt")
 func main() {
@@ -576,6 +650,42 @@ func main() {
 : 2
 : 3
 : 4
+
+*range* 在 for 循环中的使用：
+
+#+begin_src go
+import "fmt"
+
+var pow = []int{1,2,4,8,16,32,64,128}
+
+func main() {
+	for i, v := range pow {
+		fmt.Printf("2**%d = %d\n", i, v)
+	}
+}
+#+end_src
+
+#+RESULTS:
+: 2**0 = 1
+: 2**1 = 2
+: 2**2 = 4
+: 2**3 = 8
+: 2**4 = 16
+: 2**5 = 32
+: 2**6 = 64
+: 2**7 = 128
+
+还可以通过 ~_~ 下划线来忽略掉 key 或者 value, 比如：
+
+~for _, val := range pow {...}~ 当只用到值的时候可以这样。
+
+~for key, _ := range pow {...}~ 当只使用 key 的时候。
+
+如果只是使用索引，可以直拉使用一个就行 ：
+
+~for key := range pow {...}~
+
+根据实际情况而定。
 
 ** if, else if, else
 :PROPERTIES:
@@ -1253,6 +1363,45 @@ Returned normally from f.
 
 这部分描述的是非基础类型，而是一些对象类型的数据结构。
 
+** JavaScript
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hdt-js
+:END:
+
+*** Array
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: hdt-js-array
+:END:
+
+创建数组：
+
+字面量： ~var a = [1,2,3]~
+
+构造函数： ~var a = new Array(3)~ 这会创建三个 HOLE 元素， map 等函数去遍历的时候
+是遍历不到这些元素的。
+
+#+begin_src js
+var a = [1,2,3]
+var b = new Array(3)
+b.forEach((i, v) => console.log('forEach', i, v))
+var b1 = b.map((i, v) => {
+  console.log('map', i, v);
+  return v
+})
+console.log('>', b1, b.length, Array.from(b));
+#+end_src
+
+#+RESULTS:
+: > [ <3 empty items> ] 3 [ undefined, undefined, undefined ]
+: undefined
+
+可以看到上面什么什么输出都没有。
+
+可以用 ~Array.from(new Array(3))~ 让创建的数组元素可以被遍历出来，只不过值是
+~undefined~ 。
+
 ** Golang
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -1416,8 +1565,27 @@ func main() {
 : [张三 XXX] [XXX 王五]
 : [张三 XXX 王五 赵六]
 
-*切片字面量* ：
-@@html:<span id="test-slice-02"></span>@@
+#+begin_quote
+要理解切片，需要理解“切片只是对数组的一种描述”。含义是，一个切片创建之后，它只不
+是由 (一个指针 ptr + len int + cap int) 组成的一个结构， ptr 指向的是真实的数组，
+len 是这个切片所代表的区间在源数组中数组元素的个数， cap 则是这个切片指向数组的
+起始位置开始计算到数组末位这中间元素的个数。
+#+end_quote
+
+一个切片结构：
+
+[[/img/go/tests/slice-struct.png]]
+
+切片初始状态结构：
+
+[[/img/go/tests/slice-1.png]]
+
+**** 切片字面量
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-literal
+:END:
+
 #+begin_src go
 import "fmt"
 func main() {
@@ -1447,9 +1615,16 @@ func main() {
 : [true false true false]
 : [{2 true} {3 false} {5 true} {7 true} {11 false} {13 true}]
 
-*切片索引默认值*(~arr[start:end]~), start 默认是 0, end 默认是数组或切片的长度，切片时结果
+**** 切片索引(~arr[start:end]~)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-index
+:END:
+
+
+start 默认是 0, end 默认是数组或切片的长度(~cap(s)~)，切片时结果
+
 不含 end 索引位置的值。
-@@html:<span id="test-slice-03"></span>@@
 
 #+begin_src go
 import "fmt"
@@ -1491,3 +1666,997 @@ func main() {
 : [33 22 5 7 11 13]
 : [33 44 5 7 11 13]
 : [55 44 5 7 11 13]
+
+**** 切片长度和容量
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-len-cap
+:END:
+
+长度是指该切片所指区域内元素的个数，而切片的容量是从该切片第一个元素在源数组中的
+起始位置开始计算到源数组结束位置这中间能容纳元素的个数。
+
+如(~s = s[2:4]~)下图中深色区域代表的是 ~2:4~ 这个区间
+
+[[/img/go/tests/slice-2.png]]
+
+~len(s) = 2~ 表示深色的哪两个块个数。
+
+~cap(s) = 3~ 表示从第一个深色块位置开始数，一直到最后一个块(非深色)，所以是 3 个。
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	s := []int{2,3,5,7,11,13}
+	printSlice(s)
+
+	// 空的切片
+	s = s[:0]
+	printSlice(s)
+
+	// 扩展长度
+	s = s[:4]
+	printSlice(s)
+
+	// 切掉开头两个元素
+	s = s[2:]
+	printSlice(s)
+
+	s = s[0:]
+	printSlice(s)
+
+	// 空 Slice
+	var s1 []int
+	printSlice(s1)
+	fmt.Println("s1 = nil,", s1 == nil)
+}
+
+func printSlice(s []int) {
+	fmt.Printf("len=%d, cap=%d, addr=%p, %v\n", len(s), cap(s), &s, s)
+}
+#+end_src
+
+#+RESULTS:
+: len=6, cap=6, addr=0xc00000c0a0, [2 3 5 7 11 13]
+: len=0, cap=6, addr=0xc00000c0e0, []
+: len=4, cap=6, addr=0xc00000c120, [2 3 5 7]
+: len=2, cap=4, addr=0xc00000c160, [5 7]
+: len=2, cap=4, addr=0xc00000c1a0, [5 7]
+: len=0, cap=0, addr=0xc00000c1e0, []
+: s1 = nil, true
+
+**** make([]int, 5[, cap]) 创建切片
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-make
+:END:
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	// len = 5, cap = 5
+	a := make([]int, 5)
+	printSlice("a", a)
+
+	// len = 0, cap = 5
+	b := make([]int, 0, 5)
+	printSlice("b", b)
+
+	c := b[:2]
+	printSlice("c", c)
+
+	d := c[2:5]
+	printSlice("d", d)
+}
+
+func printSlice(s string, x []int) {
+	fmt.Printf("%s: len=%d, cap=%d, addr=%p, %v\n", s, len(x), cap(x), &x, x)
+}
+#+end_src
+
+#+RESULTS:
+: a: len=5, cap=5, addr=0xc0000a6040, [0 0 0 0 0]
+: b: len=0, cap=5, addr=0xc0000a6080, []
+: c: len=2, cap=5, addr=0xc0000a60c0, [0 0]
+: d: len=3, cap=3, addr=0xc0000a6100, [0 0 0]
+
+**** 多维切片
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-2d
+:END:
+
+切片的元素也可以是切片或其它任意结构。
+
+#+begin_src go
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	board := [][]string{
+		[]string{"_", "_", "_", "_"},
+		[]string{"_", "_", "_", "_"},
+		[]string{"_", "_", "_", "_"},
+		[]string{"_", "_", "_", "_"},
+	}
+
+	board[0][0] = "X"
+	board[2][2] = "O"
+	board[1][2] = "X"
+	board[1][0] = "O"
+	board[0][2] = "X"
+
+	for i := 0; i < len(board); i++ {
+		fmt.Printf("%s\n", strings.Join(board[i], " "))
+	}
+}
+
+#+end_src
+
+#+RESULTS:
+: X _ X _
+: O _ X _
+: _ _ O _
+: _ _ _ _
+**** 切片拷贝(~copy(dst, src []T) int~)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-copy
+:END:
+
+切片拷贝常用来对原有的切片进行扩展(不允许访问索引 ~<0~ 或 ~> cap(s)~ 的元素，这会导
+致溢出)。
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	p := []byte{2,3,5}
+	p = AppendByte(p, 7, 11, 13)
+	fmt.Printf("len = %d, cap = %d, addr = %p, %v", len(p), cap(p), &p, p)
+}
+
+func AppendByte(s []byte, data ...byte) []byte {
+	m := len(s)
+	n := m + len(data)
+	// 容量不够了，创建新的切片去容纳
+	if n > cap(s) {
+		s1 := make([]byte, (n + 1) * 2)
+		copy(s1, s)
+		s = s1
+	}
+	// 重新设置 s 的指向(源 s 的长度 + 将要追加的数据的个数)
+	s = s[0:n]
+	// 将新元素追加到源切片末尾元素后面
+	copy(s[m:n], data)
+	// 返回新的切片
+	return s
+}
+#+end_src
+
+#+RESULTS:
+: len = 6, cap = 14, addr = 0xc00000c0a0, [2 3 5 7 11 13]
+
+使用 copy 不免有些繁琐，可以用下一节的 append 来代替， append 可以同时追加多个元
+素，并且会根据切片的容量去自动扩展，如果容量不足会自动创建新的数组来容量更多的元
+素，而不用像上面一样去和技管理。
+
+但是并且不是说 copy 就不能用，要结合实际的场景去判断，比如：在一个函数中要去读取
+一个文件，并返回这个文件中的某些部分，如果直接返回读取的结果可能会造成内存的浪费。
+
+如：
+#+begin_src go
+var digitRegexp = regexp.MustCompile("[0-9]+")
+func FindDigits(filename string) []byte {
+	b, _ := ioutil.ReadFile(filename)
+	return digitRegexp.Find(b)
+}
+#+end_src
+
+上面的 ~FindDigits~ 就有这个问题，读取文件内容到 b，这个变量 b 会一直存在于内存中
+不得释放而它指向的是整个文件的内容，如果文件很大这就会造成很大的内存浪费，因为函
+数的返回值有引用到它，这明显是不合理的。
+
+可以将其进一步优化，在返回之前将查询到的结果拷贝出来，然后返回结果部分返回，这样
+b 会在函数返回之后被释放。
+
+#+begin_src go
+func CopyDigits(filename string) []byte {
+	b, _ := ioutil.ReadFile(filename)
+	b = digitRegexp.Find(b)
+	c := make([]byte, len(b))
+	// 或者用 append(c, b...)
+	copy(c, b)
+	return c
+}
+#+end_src
+
+这样被持久的内存空间就变成了范围较小的变量 ~c~ 而不是整个文件 ~b~, 在文件很的情况下
+可以大大的节约内存。
+
+**** 切片扩展(~append(s []T, vs ...T) []T~)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-slice-append
+:END:
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	var s []int
+
+	printSlice(s)
+
+	// 在 nil 切片上追加元素
+	s = append(s, 0)
+	printSlice(s)
+
+	// 继续添加
+	s = append(s, 1)
+	printSlice(s)
+
+	// 一次加多个
+	s = append(s, 2, 3, 4)
+	printSlice(s)
+
+	// 用展开符号直接添加一个 slice
+	s1 := []int{10, 11, 12}
+	s = append(s, s1...)
+	printSlice(s)
+}
+
+func printSlice(s []int) {
+	fmt.Printf("len=%d, cap=%d, addr=%p, %v\n", len(s), cap(s), &s, s)
+}
+#+end_src
+
+#+RESULTS:
+: len=0, cap=0, addr=0xc00000c0a0, []
+: len=1, cap=1, addr=0xc00000c0c0, [0]
+: len=2, cap=2, addr=0xc00000c100, [0 1]
+: len=5, cap=6, addr=0xc00000c140, [0 1 2 3 4]
+: len=8, cap=12, addr=0xc00000c180, [0 1 2 3 4 10 11 12]
+*** Map(映射)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dt-go-map
+:END:
+
+一组 key-value 的键值对的集合。
+
+#+begin_src go
+import "fmt"
+
+type Vertex struct {
+	Lat, Long float64
+}
+
+// map[keytype]valuetype
+var m map[string]Vertex
+
+func main() {
+	m = make(map[string]Vertex)
+	m["Bell Labs"] = Vertex{
+		40.68433, -74.39967,
+	}
+	fmt.Println(m, m["Bell Labs"])
+}
+#+end_src
+
+#+RESULTS:
+: map[Bell Labs:{40.68433 -74.39967}] {40.68433 -74.39967}
+
+**** 字面量表示
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-map-literal
+:END:
+
+Map 的字面量表达式和结构体差不多，只不过它必须要指定 key ，而不能像结构体一样可
+以省略。
+
+#+begin_src go
+import "fmt"
+
+type Vertex struct {
+	Lat, Long float64
+}
+
+// 声明同时进行初始化
+var m = map[string]Vertex{
+	"Bell Labs": Vertex{
+		40.68433, -74.39967,
+	},
+	"Google": Vertex{
+		37.42202, -122.08408,
+	},
+}
+
+func main() {
+	fmt.Println(m)
+}
+#+end_src
+
+#+RESULTS:
+: map[Bell Labs:{40.68433 -74.39967} Google:{37.42202 -122.08408}]
+
+省略初始化时值中的 ~Vertex~:
+
+#+begin_src go
+import "fmt"
+
+type Vertex struct {
+	Lat, Long float64
+}
+
+// 声明同时进行初始化
+var m = map[string]Vertex{
+	"Bell Labs": { 40.68433, -74.39967, },
+	"Google": { 37.42202, -122.08408, },
+}
+
+func main() {
+	fmt.Println(m)
+}
+#+end_src
+
+#+RESULTS:
+: map[Bell Labs:{40.68433 -74.39967} Google:{37.42202 -122.08408}]
+**** 添加或更新
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: go-map-add-update
+:END:
+
+通过 ~m[key] = value~ 来添加或更新已经存在的(~key~)的值。
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	m := make(map[string]int)
+
+	// 添加
+	m["a"] = 42
+	fmt.Println("add: ", m["a"])
+
+	// 更新
+	m["a"] = 48
+	fmt.Println("update: ", m["a"])
+
+	// 取值 + 检查存在与否
+	va, oka := m["a"]
+	fmt.Println("a present? ", oka, ", value = ", va)
+
+	// 删除
+	delete(m, "a")
+	fmt.Println("delete: ", m["a"])
+
+	vb, okb := m["b"]
+	fmt.Println("b present? ", okb, ", value = ", vb)
+}
+#+end_src
+
+#+RESULTS:
+: add:  42
+: update:  48
+: a present?  true , value =  48
+: delete:  0
+: b present?  false , value =  0
+*** Function(函数)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dt-go-func
+:END:
+
+函数作为另一个函数的参数传递。
+
+#+begin_src go
+import (
+	"fmt"
+	"math"
+)
+
+func compute(fn func(float64, float64) float64) float64 {
+	return fn(3, 4)
+}
+
+func main() {
+	hypot := func(x, y float64) float64 {
+		return math.Sqrt(x * x + y*y)
+	}
+	fmt.Println(hypot(5, 12))
+	fmt.Println(compute(hypot))
+	fmt.Println(compute(math.Pow))
+}
+#+end_src
+
+#+RESULTS:
+: 13
+: 5
+: 81
+
+函数闭包(func closure)
+@@html:<span id="go-func-closure"></span>@@
+
+#+begin_src go
+import "fmt"
+
+func adder() func(int) int {
+	sum := 0
+	return func(x int) int {
+		sum += x
+		return sum
+	}
+}
+
+func main() {
+	pos, neg := adder(), adder()
+	for i := 0; i < 10; i++ {
+		fmt.Println(pos(i), neg(-2*i))
+	}
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+0 0
+1 -2
+3 -6
+6 -12
+10 -20
+15 -30
+21 -42
+28 -56
+36 -72
+45 -90
+#+end_example
+
+闭包实例(Fibonacci):
+@@html:<span id="go-func-fib"></span>@@
+
+#+begin_src go
+import "fmt"
+
+func fibonacci() func(int) int {
+	var f, s int = 0, 0
+	return func(i int) int {
+		if i == 0 {
+			return 0
+		} else if i == 1 || i == 2 {
+			f = 1
+			s = 1
+			return f
+		} else {
+			f, s = s, f + s
+			return s
+		}
+	}
+}
+
+func main() {
+	f := fibonacci()
+	for i :=0; i < 10; i++ {
+		fmt.Println(f(i))
+	}
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+#+end_example
+*** Interface(接口)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface
+:END:
+
+接口：是一组方法声明的集合，只要结构体实现了接口中的方法，就说明这个结构体实现了
+这个接口。
+
+注意：实现方法时，区分接受参数指针类型和非指针类型。
+
+#+begin_src go
+type Abser interface {
+	Abs() float64
+}
+type Vertex struct {
+	X, Y float64
+}
+
+func (v *Vertex) Abs() float64 {
+	return v.X * v.Y
+}
+
+var v = Vertex{1.5, 2.5}
+var a = v // 结构体变量
+var b = &v // 结构体指针
+
+a.Abs() // error
+b.Abs() // ok
+#+end_src
+
+上面的使用当中 ~a.Abs()~ 会报错，因为在实现 ~Abs()~ 的时候接受者参数是一个指针，而不
+是普通的结构体变量，所以只能用 ~*Vertex~ 去调用 ~Abs()~ ，如同： ~b.Abs()~
+
+#+begin_src go
+import (
+	"fmt"
+	"math"
+)
+
+type Abser interface {
+	Abs() float64
+}
+
+func main() {
+	var a Abser
+	f := MyFloat(-math.Sqrt2)
+	v := Vertex{3, 4}
+
+	a = f 	// a MyFloat 实现了 Abser
+	fmt.Println(a.Abs())
+
+	a = &v // a *Vertex 实现了 Abser
+	fmt.Println(a.Abs())
+}
+
+type MyFloat float64
+
+func (f MyFloat) Abs() float64 {
+	if (f < 0) {
+		return float64(-f)
+	}
+	return float64(f)
+}
+
+type Vertex struct {
+	X,Y float64
+}
+
+func (v *Vertex) Abs() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y)
+}
+#+end_src
+
+#+RESULTS:
+: 1.4142135623730951
+: 5
+
+**** 接口类型
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-type
+:END:
+
+接口的实际类型，是根据实现它的结构类型而定，如果实现它的类型是什么它的类型就是什
+么，比如下面的 ~main.F~ 和 ~*main.T~
+
+#+begin_src go
+import "fmt"
+import "math"
+
+type I interface {
+	M()
+}
+
+type T struct {
+	S string
+}
+
+func (t *T)M() {
+	fmt.Println(t.S)
+}
+
+type F float64
+
+func (f F)M() {
+	fmt.Println(f)
+}
+
+func main() {
+	var i I
+
+	i = &T{"Hello"}
+	describe(i)
+	i.M()
+
+	i = F(math.Pi)
+	describe(i)
+	i.M()
+}
+
+func describe(i I) {
+	fmt.Printf("(%v, %T)\n", i, i)
+}
+#+end_src
+
+#+RESULTS:
+: (&{Hello}, *main.T)
+: Hello
+: (3.141592653589793, main.F)
+: 3.141592653589793
+
+**** 空接口
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-empty
+:END:
+
+空接口：没有任何方法声明的接口，一般用于未知类型的情况。
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	var i interface {}
+
+	i = 42
+	describe(i)
+
+	i = "hello"
+	describe(i)
+}
+
+func describe(i interface{}) {
+	fmt.Printf("(%v, %T)\n", i, i)
+}
+
+#+end_src
+
+#+RESULTS:
+: (42, int)
+: (hello, string)
+
+**** 类型断言
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-assert
+:END:
+
+断言格式： ~t := i.(T)~ , i 是一个接口，如： ~var i interface{}~, T 是要判断的类型。
+
+如果断言的时候发现接口中如果没有 ~T~ 类型，会触发 panic，如果包含这个类型的声明刚
+返回这个类型在接口中的值。
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	var i interface{} = "hello"
+
+	s := i.(string)
+	fmt.Println(s)
+}
+#+end_src
+
+#+RESULTS:
+: hello
+
+断言失败的情况：
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	var i interface{} = "hello"
+
+	s := i.(int)
+	fmt.Println(s)
+}
+#+end_src
+
+#+RESULTS:
+#+begin_example
+panic: interface conversion: interface {} is string, not int
+
+goroutine 1 [running]:
+#+end_example
+
+还可以使用 ~t, ok := i.(T)~ 两个值来接受断言的结果，如果断言成功返回 T 对应的值，
+~ok = true~, 如果断言失败 t 的值则是 T 的默认值， ~ok = false~
+
+#+begin_src go
+import "fmt"
+
+func main() {
+	var i interface{} = "hello"
+
+	s, ok := i.(string)
+	fmt.Println(s, ok)
+
+	f, ok := i.(float64)
+	fmt.Println(f, ok)
+
+	f = i.(float64) // 这里会触发 panic
+	fmt.Println(f)
+}
+#+end_src
+
+#+RESULTS:
+: hello true
+: 0 false
+
+#+begin_comment
+所以，如果不想在断言失败的时候触发 panic， 请使用 ~t, ok := i.(T)~  方式。
+#+end_comment
+**** 类型 Switches
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-switch
+:END:
+
+使用接口类型判断结合 switch...case 语句可以用来同时检测一个接口可能存在的多种类
+型情况。
+
+#+begin_src go
+import "fmt"
+
+func do(i interface{}) {
+	switch v := i.(type) {
+		case int: fmt.Printf("Twice %v is %v\n", v, v*2)
+		case string: fmt.Printf("%q is %v bytes long\n", v, len(v))
+		default: fmt.Printf("未知类型")
+	}
+}
+
+func main() {
+	do(20)
+	do("hello")
+	do(true)
+}
+#+end_src
+
+#+RESULTS:
+: Twice 20 is 40
+: "hello" is 5 bytes long
+: 未知类型
+
+可以通过这种方式来让一个函数接受一个空的接口来接受类型的值，然后在函数体内根据传
+入的值的类型做出相应的措施。
+**** Stringer
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-stringer
+:END:
+
+通过实现这个接口来实现 print 时候的自定义输出。
+
+这个接口在 ~fmt~ 包中。
+
+#+begin_src go
+import "fmt"
+
+type Person struct {
+	Name string
+	Age int
+}
+
+func (p Person) String() string {
+	return fmt.Sprintf("%v (%v years)", p.Name, p.Age)
+}
+
+func main() {
+	a := Person{"A", 42}
+	b := Person{"B", 30}
+	fmt.Println(a, b)
+}
+#+end_src
+
+#+RESULTS:
+: A (42 years) B (30 years)
+**** Errors
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-errors
+:END:
+
+#+begin_src go
+import (
+	"fmt"
+	"time"
+)
+
+type MyError struct {
+	When time.Time
+	What string
+}
+
+func (e *MyError) Error() string {
+	return fmt.Sprintf("at %v, %s", e.When, e.What)
+}
+
+func run() error {
+	return &MyError{
+		time.Now(),
+		"it didn't work",
+	}
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+	}
+}
+#+end_src
+
+#+RESULTS:
+: at 2021-09-09 15:10:18.214524 +0800 CST m=+0.000156083, it didn't work
+**** Reader
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-reader
+:END:
+
+~io~ 包中的 ~io.Reader~ 接口，很多标准库中都实现了这个接口，比如： files, network
+connections, compressors, ciphers 等等。
+
+~func (T) Read(b []byte) (n int, err error)~
+
+~Read~ 会使用数据去填充 b 切片，并且返回填充的数据大小和错误信息，比如：数据流读取
+结束时候会返回一个 ~io.EOF~ 错误。
+
+#+begin_src go
+import (
+	"fmt"
+	"io"
+	"strings"
+)
+
+func main() {
+	r := strings.NewReader("Hello, Reader!")
+
+	b := make([]byte, 8)
+	for {
+		n, err := r.Read(b)
+		fmt.Printf("n = %v, err = %v, b = %v\n", n, err, b)
+		fmt.Printf("b[:n] = %q\n", b[:n])
+		if err == io.EOF {
+			break
+		}
+	}
+
+}
+#+end_src
+
+#+RESULTS:
+: n = 8, err = <nil>, b = [72 101 108 108 111 44 32 82]
+: b[:n] = "Hello, R"
+: n = 6, err = <nil>, b = [101 97 100 101 114 33 32 82]
+: b[:n] = "eader!"
+: n = 0, err = EOF, b = [101 97 100 101 114 33 32 82]
+: b[:n] = ""
+**** Image
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: interface-image
+:END:
+
+[[https://pkg.go.dev/image/color][Package Image]]
+
+Image 接口：
+
+#+begin_src go
+package image
+
+type Image interface {
+    ColorModel() color.Model
+    Bounds() Rectangle
+    At(x, y int) color.Color
+}
+#+end_src
+
+测试：
+
+#+begin_src go
+import (
+	"fmt"
+	"image"
+)
+
+func main() {
+	m := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	fmt.Println(m.Bounds())
+	fmt.Println(m.At(0, 0).RGBA())
+}
+#+end_src
+
+#+RESULTS:
+: (0,0)-(100,100)
+: 0 0 0 0
+* 高级特性
+** Golang
+*** Goroutine(协程)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: goroutine
+:END:
+
+求素数
+
+#+begin_src go
+import (
+	"fmt"
+	"time"
+)
+
+var primeCount int = 40
+func putInt(intChan chan<- int) {
+	for i := 1; i < primeCount; i++ {
+		intChan<- i
+	}
+	fmt.Println("put done.")
+	close(intChan)
+}
+
+func findPrime(intChan <-chan int, primeChan chan<- int, exitChan chan<- bool) {
+	for {
+		n, ok := <-intChan
+		if !ok {
+			break
+		}
+		fmt.Println(isPrime(n), n)
+		if t := isPrime(n); t {
+			primeChan<- n
+		}
+	}
+
+	exitChan<- true
+	fmt.Println("find prime")
+}
+
+func isPrime(n int) bool {
+	for i := 2; i < n; i++ {
+		if n % i == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+var maxChan int = 4
+func main() {
+	intChan := make(chan int, primeCount)
+	primeChan := make(chan int, primeCount)
+	exitChan := make(chan bool, maxChan)
+	go putInt(intChan)
+
+	for i := 0; i < maxChan; i++ {
+		go findPrime(intChan, primeChan, exitChan)
+	}
+
+	go func() {
+		for i := 0; i < maxChan; i++ {
+			<-exitChan
+		}
+		// close(exitChan)
+		fmt.Println("exit")
+	}()
+
+	for {
+		time.Sleep(time.Second * 1)
+		n, ok := <-primeChan
+		if !ok {
+			fmt.Println("end")
+		}
+		fmt.Println("prime =", n, "ok =", ok)
+	}
+}
+#+end_src
+
+#+RESULTS:

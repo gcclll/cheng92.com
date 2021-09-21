@@ -1,0 +1,113 @@
+#+TITLE: JavaScript Api - 操作符(算术，位等)
+#+DATE: <2021-09-15 10:41:54>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: javascript, operator
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+本文是 JavaScript 中各操作符相关的内容(ECMA 标准)。
+#+end_quote
+
+* 位(&,|,^)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: bit
+:END:
+
+ECMA: [[https://tc39.es/ecma262/#sec-binary-bitwise-operators][13.12.1 Runtime Semantics: Evaluation]]
+
+*&* 位“与”操作。
+
+*|* 位“或”操作。
+
+*^* 位“异或”操作。
+
+#+begin_info
+@@html:<p><strong>INFO</strong></p>@@
+
+BitwiseANDExpression : ~BitwiseANDExpression & EqualityExpression~
+
+1. Return ? [[https://tc39.es/ecma262/#sec-evaluatestringornumericbinaryexpression][EvaluateStringOrNumericBinaryExpression]](BitwiseANDExpression, &, EqualityExpression).
+
+    BitwiseXORExpression : ~BitwiseXORExpression ^ BitwiseANDExpression~
+
+2. Return ? [[https://tc39.es/ecma262/#sec-evaluatestringornumericbinaryexpression][EvaluateStringOrNumericBinaryExpression]](BitwiseXORExpression, ^, BitwiseANDExpression).
+
+    BitwiseORExpression : ~BitwiseORExpression | BitwiseXORExpression~
+
+3. Return ? [[https://tc39.es/ecma262/#sec-evaluatestringornumericbinaryexpression][EvaluateStringOrNumericBinaryExpression]](BitwiseORExpression, |, BitwiseXORExpression).
+#+end_info
+
+~EvaluateStringOrNumericBinaryExpression(leftOperand, opText, rightOperand)~:
+
+#+begin_src js
+function EvaluateStringOrNumericBinaryExpression(leftOperand, opText, rightOperand) {
+  let lref = leftOperand()
+  let lval = GetValue(lref)
+  let rref = rightOperand()
+  let rval = GetValue(rref)
+  return ApplyStringOrNumericBinaryOperator(lval, opText, rval)
+}
+#+end_src
+
+[[https://tc39.es/ecma262/#sec-applystringornumericbinaryoperator][ApplyStringOrNumericBinaryOperator(lval, opText, rval)]]
+
+opText 支持的 操作符类型(table-1)：
+
+| opText  | operation             |
+|---------+-----------------------|
+| **      | T::exponentiate       |
+| *       | T::multiply           |
+| /       | T::divide             |
+| %       | T::remainder          |
+| +       | T::add                |
+| -       | T::subtract           |
+| <<      | T::leftShift          |
+| >>      | T::signedRightShift   |
+| >>>     | T::unsignedRightShift |
+| &(与)   | T::bitwiseAND         |
+| ^(异或) | T::bitwiseXOR         |
+| 或      | T::bitwiseOR          |
+
+#+begin_src  js
+function ApplyStringOrNumericBinaryOperator(lval, opText, rval) {
+  assert(opText in Table1)
+  if (opText === '+') {
+    let lprim = ToPrimitive(lval)
+    let rprim = ToPrimitive(rval)
+    if (isString(lprim) || isString(rprim)) {
+      let lstr = ToString(lprim)
+      let rstr = ToSring(rprim)
+      return concat(lstr, rstr)
+    }
+    lval = lprim
+    rval = rprim
+  }
+
+  // 到这里将只会是数字操作
+  let lnum = ToNumeric(lval)
+  let rnum = ToNumeric(rval)
+  if (Type(lnum) !== Type(rnum)) {
+    throw new TypeError('...')
+  }
+  let T = Type(lnum)
+  let operation = ({
+    '**': 'T::exponentiate',
+    '*' : 'T::multiply',
+    '/': 'T::divide',
+    '%': 'T::remainder',
+    '+': 'T::add',
+    '-': 'T::subtract',
+    '<<': 'T::leftShift',
+    '>>': 'T::signedRightShift',
+    '>>>': 'T::unsignedRightShift',
+    '&': 'T::bitwiseAnd',
+    '^': 'T::bitwiseXOR',
+    '|': 'T::bitwiseOR',
+  })[opText]
+
+  return operation(lnum, rnum)
+}
+#+end_src

@@ -1,0 +1,368 @@
+#+TITLE: JavaScript Api - Array
+#+DATE: <2021-09-09 16:40:09>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: javascript, array
+#+CATEGORIES[]: web, javascript
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+本文详细介绍了 Array 相关的知识，从伪码实现的角度去学习数组 API 使用和实现步骤。
+#+end_quote
+
+API 汇总表：
+
+| [[#ctor][A]]rra[[https://tc39.es/ecma262/#sec-array-objects][y]] | [[#Array.from][Array]].[[https://tc39.es/ecma262/#sec-array.from][from]] |
+
+* Array(构造函数)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ctor
+:END:
+
+~Array(...vals)~ 和 ~new Array(...vals)~ 都可以用来创建数组。
+
+使用方式都一样
+
+如果只有一个参数的时个会创建一个长度为 vals[0] 的数组，里面的元素值为空。
+
+如果有一个以上的参数时，会当做元素处理，创建一个长度为参数数量的数组，数组元素就
+是传进来的参数值。
+
+如： 一个长度为 1 的数组
+
+#+begin_src js
+console.log(Array(1))
+#+end_src
+
+#+RESULTS:
+: [<1 empty item>]
+
+一个长度为 2 的数组，元素有 [1,2]
+
+#+begin_src js
+console.log(Array(1, 2))
+#+end_src
+
+#+RESULTS:
+: [1 (\, 2)]
+
+构造函数：
+#+begin_src js
+console.log(new Array(1))
+#+end_src
+
+#+RESULTS:
+: [<1 empty item>]
+
+#+begin_src js
+console.log(new Array(1,2))
+#+end_src
+
+#+RESULTS:
+: [1 (\, 2)]
+
+第一个参数非数值类型时，当做元素处理，去创建长度为 1 的数组：
+#+begin_src js
+console.log(new Array([1,2]))
+#+end_src
+
+#+RESULTS:
+: [[1 (\, 2)]]
+
+如果是字符串数呢？
+#+begin_src js
+console.log(new Array('3').toString())
+#+end_src
+
+#+RESULTS:
+: 3
+: undefined
+
+还是当做元素了。
+
+[[https://tc39.es/ecma262/#sec-array][伪码实现]]：
+
+#+begin_src js
+function Array(...values) {
+  let o = this instanceof Array ? this : []
+
+  let proto = Array.prototype
+  let numbrOfArgs = values.length
+  if (numberOfArgs === 0) {
+    // 基于原型创建一个长度为 0 的数组
+    return ArrayCreate(0, proto)
+  } else if (numberOfArgs === 1) {
+    let len = values[0]
+    let intLen = 0
+    let array = ArrayCreate(0, proto)
+    if (typeof len !== 'number') {
+      array[0] = len
+      initLen = 1
+    } else {
+      intLen = ToUint32(len)
+      if (SameValueZero(intLen) === false) {
+        throw new RangeError()
+      }
+    }
+
+    Set(array, 'length', intLen, true)
+    return array
+  } else {
+    // 都当作元素处理
+    assert(numberOfArgs >= 2)
+    let array = ArrayCreate(numberOfArgs, proto)
+    let k = 0
+    while (k < numberOfArgs) {
+      let Pk = ToString(k)
+      // 取出元素的值
+      let itemK = values[k]
+      // 给 array 对象添加 Pk 属性和值，所以数组的索引其它是以字符串形式存在的
+      CreateDataPropertyOrThrow(array, Pk, itemK)
+      k++
+    }
+    assert(array.length === numberOfArgs)
+    return array
+  }
+}
+#+end_src
+
+从伪码实现中总结出，需要关注的两点：
+
+1. 索引值是一个 uint32 类型的值，所以如果超出这个范围会发生异常
+2. 数组的索引实际上是以字符串形式存在的
+
+
+无符号整型的范围是：
+#+begin_src js
+console.log({ min: 0, max: Math.pow(2, 32) })
+#+end_src
+
+#+RESULTS:
+: { min: 0, max: 4294967296 }
+: undefined
+
+测试 1, 2
+#+begin_src js
+var a = new Array(Math.pow(2, 32) - 1)
+console.log('max:', a.length);
+try {
+  new Array(Math.pow(2, 32))
+} catch(e) {
+  console.log(e.message)
+}
+
+var b = Array(1,2,3)
+console.log('a has key "0"', a.hasOwnProperty("0"))
+console.log('a has key 0', a.hasOwnProperty(0))
+console.log('b has key "0"', b.hasOwnProperty("0"))
+console.log('b has key 0', b.hasOwnProperty(0))
+#+end_src
+
+#+RESULTS:
+: max: 4294967295
+: Invalid array length
+: a has key "0" false
+: a has key 0 false
+: b has key "0" true
+: b has key 0 true
+: undefined
+
+事实上 ~hasOwnProperty~ 内部实现会先将参数转成字符串之后再去找。
+* 构造函数上的函数(Array.xxx)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ctor-fn
+:END:
+
+构造函数上的函数是只能通过构造函数去掉用的
+
+** Array.from(items[,mapfn[, thisArg]])
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Array.from
+:END:
+
+处理分为两步：
+
+1. 是不是集合类型，如果是可直接使用迭代器去遍历 items
+2. 如果不是集合类型，可能是类数组类型，类数组类型都会 length 属性，所以从这个入
+   手去取值
+
+
+@@html:<span id="array-pseudo-from"></span>@@
+#+begin_src js
+function from(items, mapfn, thisArg) {
+  let C = this
+  let mapping = true
+  if (mapfn === undefined) {
+    mapping = false
+  } else {
+    if (typeof mapfn !== 'function') {
+      throw new TypeError('...')
+    }
+    let mapping = true
+  }
+
+  let usingIterator = items[@@iterator]
+  if (usingIterator) {
+    let A
+    if (IsConstructor(C)) {
+      A = Construct(C)
+    } else {
+      A = ArrayCreate(0)
+    }
+    let iteratorRecord = GetIterator(items, sync, usingIterator)
+    let k = 0, error
+    while (true) {
+      if (k >= Math.pow(2, 53 - 1)) {
+        error = throw new TypeError('beyond')
+        return IteratorClose(iteratorRecord, error)
+      }
+      let Pk = String(k)
+      next = IteratorStep(iteratorRecord)
+      // 结束了，记录长度
+      if (next === false) {
+        Set(A, 'length', k, true)
+        return A
+      }
+      let nextValue = IteratorValue(next)
+      let mappedValue
+      // 有回调的时候
+      if (mapping) {
+        mappedValue = mapfn.call(thisArg, nextValue)
+        IfAbruptCloseIterator(mappedValue, iteratorRecord)
+      } else {
+        mappedValue = nextValue
+      }
+      let defineStatus = CreateDataPropertyOrThrow(A, Pk, mappedValue)
+      IfAbruptCloseIterator(defineStatus, iteratorRecord)
+      // 进入下次循环取下一个值
+      k++
+    }
+  }
+  // 到这里了说明， items 不是集合类型，当做类数组处理
+  let arrayLike = Object(items)
+  // 类数组对象都会一个 length 属性
+  let len = arrayLike.length, A
+  if (IsConstructor(C)) {
+    A = Construct(C, len)
+  } else {
+    A = ArrayCreate(len)
+  }
+  let k = 0, Pk, kValue
+  while (k < len) {
+    Pk = String(k)
+    kValue = arrayLike[Pk]
+    if (mapping) {
+      mappedValue = mapfn.call(thisArg, kValue, k)
+    } else {
+      mappedValue = kValue
+    }
+    CreateDataPropertyOrThrow(A, Pk, mappedValue)
+    k++
+  }
+  Set(A, 'length', len, true)
+  return A
+}
+#+end_src
+
+测试：
+
+#+begin_src js
+const _ = v => console.log('> ', v)
+_(Array.from(new Set([1,2,3,2])))
+_(Array.from([1,2,3,2]))
+_(Array.from(new Array(3)))
+_(Array.from({ length: 3 }))
+_(Array.from({ length: 3, 0: 0 }))
+_(Array.from({ length: 3, "1": 1 }))
+_(Array.from({ length: 3, "2": 2 }))
+_(Array.from({ length: 3, "2": 2, 0: 0, 1: "1" }))
+#+end_src
+
+#+RESULTS:
+: >  [ 1, 2, 3 ]
+: >  [ 1, 2, 3, 2 ]
+: >  [ undefined, undefined, undefined ]
+: >  [ undefined, undefined, undefined ]
+: >  [ 0, undefined, undefined ]
+: >  [ undefined, 1, undefined ]
+: >  [ undefined, undefined, 2 ]
+: >  [ 0, '1', 2 ]
+: undefined
+
+如果不想 new Array(3) 创建的数组在 map 等函数迭达不到可以使用 ~Array.form(new
+Array(3))~ 处理一层。
+
+#+begin_src js
+var a = new Array(3)
+a.forEach(v => console.log('forEach', v))
+Array.from(a).forEach(v => console.log('forEach with Array.form', v))
+#+end_src
+
+#+RESULTS:
+: forEach with Array.form undefined
+: forEach with Array.form undefined
+: forEach with Array.form undefined
+: undefined
+
+如 @@html:<a href="#array-from-pseudo">:link: 伪码</a>@@ 中实现，经过 Array.from
+之后会给 hole 元素创建索引，值变成 undefined，从而就可以被迭达出来。
+
+** Array.isArray(arg)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Array.isArray
+:END:
+
+** Array.of(...items)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Array.of
+:END:
+
+* 原型函数(方法, Array.prototype.xxx)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: proto-fn
+:END:
+
+原型上的函数只能通过实例去调用，如：
+
+~var a = new Array(); a.push(1);~
+
+** concat(...items)
+** constructor
+** copyWithin(target, start[, end])
+** entries()
+** every(callbackfn[, thisArg])
+** fill(value[, start[, end]])
+** filter(callbackfn[, thisArg])
+** find(predicate[, thisArg])
+** findIndex(predicate[, thisArg])
+** flat([depth])
+** flatMap(mapperFunction[, thisArg])
+** forEach(callbackfn[, thisArg])
+** includes(searchElement[, formIndex])
+** indexOf(searchElement[, fromIndex])
+** join(separator)
+** keys()
+** lastIndexOf(searchElement[, formIndex])
+** map(callbackfn[, thisArg])
+** pop()
+** push(...items)
+** reduce(callbackfn[, initialValue])
+** reduceRight(callbackFn[, initialValue])
+** reverse()
+** shift()
+** slice(start, end)
+** some(callbackfn[, thisArg])
+** sort(comparefn)
+** splice(start, deleteCount, ...items)
+** toLocalString([reversed1[, reversed2]])
+** toString()
+** unshift(...items)
+** values()
+** [@@iterator]()
+** [@@unscopables]

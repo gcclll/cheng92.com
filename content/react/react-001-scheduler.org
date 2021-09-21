@@ -1,0 +1,168 @@
+#+TITLE: React Packages 001 - Scheduler
+#+DATE: <2021-09-20 17:31:59>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: react, scheduler
+#+CATEGORIES[]: react
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：半神半圣亦半仙，全儒全道是全贤，脑中真书藏万卷，掌握文武半边天。
+</font>
+</kbd><br><br>
+<script src="/js/react/pkgs/scheduler.js"></script>
+<img  src="/img/bdx/shz-001.jpg"/>
+#+end_export
+
+#+begin_quote
+本文将从源码分析 React 中的 [[https://github.com/facebook/react/blob/main/packages/scheduler/][packages/scheduler]] 调度器的实现和应该([[/vue/vue-teardown-2-sheduler/][vue schduler]])。
+#+end_quote
+
+入局点： [[https://github.com/facebook/react/blob/main/packages/scheduler/src/__tests__/Scheduler-test.js][scheduler/src/__tests__/Scheduler-test.js]]
+
+先从官方测试看如何开始 scheduler.
+
+第一个 Scheduler-test.js  用到的函数： ~scheduleCallback(prioprity, callback, option)~
+
+任务调试的入口函数，找到了第一个目标接下来就是沿着这个引线一步步去展开，从而了解
+整个 Scheduler 实现过程。
+
+* 整体结构
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: init
+:END:
+
+在开始 scheduleCallback 之前，还是很有必要大致了解下 [[https://github.com/facebook/react/blob/main/packages/scheduler/][packages/scheduler]] 整个目录
+的结构以及各个文件的作用。
+
+#+begin_src shell
+╰─⠠⠵ tree -C .                                                                ~/github/react/react/packages/scheduler
+./src
+├── SchedulerFeatureFlags.js # 特性标记
+├── SchedulerMinHeap.js # 管理Heap(堆)节点内存(含,push,peek,pop等函数)
+├── SchedulerPriorities.js # 优先级的常量值
+├── SchedulerProfiling.js # 日志相关一内容
+├── __tests__ # Jest 测试用例
+│   ├── Scheduler-test.js # 测试 scheduleCallback 函数
+│   ├── SchedulerMock-test.js # SchedulerMock.js 中函数测试
+│   ├── SchedulerPostTask-test.js # SchedulerPostTask.js 测试
+│   ├── SchedulerProfiling-test.js # SchedulerProfiling.js 测试
+│   ├── SchedulerSetImmediate-test.js # setImmediate 测试
+│   ├── SchedulerSetTimeout-test.js # setTimeout 测试
+│   └── SchedulerUMDBundle-test.internal.js # umd bundle 测试
+└── forks
+    ├── Scheduler.js # 主入口，scheduleCallback 就在这个里面
+    ├── SchedulerFeatureFlags.www.js # scheduler 特性开头
+    ├── SchedulerMock.js # 任务控制类内容(如：flushWork, workLoop, next等重要函数)
+    └── SchedulerPostTask.js # runTask 在这里面
+
+2 directories, 15 files
+#+end_src
+
+对应 js 中的一些重要函数和简介(*此节过后会一个个来详细分析*):
+
+[[https://github.com/facebook/react/blob/main/packages/scheduler/src/SchedulerMinHeap.js][SchedulerMinHeap.js]] : 管理节点的存储，这里用的是栈的方式实现的，即节点会依据
+FILO(先进后出)规则实施管理，相关函数。
+
+- [[#siftUp][siftUp(heap, node, i)]], 找到比 i 大的 parent 交换，也就是 heap 要按照
+   (~node.sortIndex~ 或 ~node.id~)升序排序
+- [[#siftDown][siftDown(heap, node, i)]], 与 siftUp 相反，使用二分法升序排序
+- [[#push][push(heap, node)]], 入栈
+- [[#pop][pop(heap)]], 返回最后一个
+- [[#peek][peek(heap)]], 总是返回第一个
+
+
+[[https://github.com/facebook/react/blob/main/packages/scheduler/src/SchedulerPriorities.js][SchedulerPriorities.js]], 优先级常量
+
+#+begin_src js
+export const NoPriority = 0;
+export const ImmediatePriority = 1;
+export const UserBlockingPriority = 2;
+export const NormalPriority = 3;
+export const LowPriority = 4;
+export const IdlePriority = 5;
+#+end_src
+
+[[https://github.com/facebook/react/blob/main/packages/scheduler/src/SchedulerProfiling.js][SchedulerProfiling.js]], 日志相关函数，包含： ~markTaskStart~, ~markTaskCompleted~,
+~markTaskCanceled~, ~markTaskErrored~, ~markTaskRun~, ~markTaskYield~,
+~markSchedulerSuspended~, ~markSchedulerUnsuspended~, 这些 markXxx 最后都是调用了 ~logEvent(entries)~
+
+[[https://github.com/facebook/react/blob/main/packages/scheduler/src/forks/Scheduler.js][Scheduler.js]], scheduler 主要入口函数 ~scheduleCallback~ 就在这里以及其它的
+callback 等其它处理函数，比如一核心函数(~flushWork, workLoop,
+next,cancelCallBack~)等等。
+
+[[https://github.com/facebook/react/blob/main/packages/scheduler/src/forks/SchedulerPostTask.js][SchedulerPostTask.js]], runTask(priorityLevel, postTaskPriority, node, callback)
+函数实现。
+
+切入正题 -> [[https://github.com/facebook/react/blob/main/packages/scheduler/src/SchedulerMinHeap.js][SchedulerMinHeap.js]]
+
+* SchedulerMinHeap 节点栈管理(push,pop,peek)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: heap
+:END:
+
+** siftUp(heap,node,i)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: siftUp
+:END:
+
+sfitUp 会根据 node.sortIndex 和 node.id 将 heap 进行升序排序，先比
+较 ~node.sortIndex~, 如果 ~sortIndex~ 相同再比较 ~node.id~
+
+#+begin_src js :results output
+function siftUp(heap, node, i) {
+  let index = i;
+  while (index > 0) {
+    const parentIndex = (index - 1) >>> 1
+    const parent = heap[parentIndex]
+    if (compare(parent, node) > 0) {
+      // 找到比 node.id/sortIndex 更大的节点，然后交换
+      heap[parentIndex] = node
+      heap[index] = parent
+      index = parentIndex
+    } else {
+      // 排序完成，没有更大的了
+      return
+    }
+  }
+}
+
+function compare(a, b) {
+  // 先比较 sort index 然后比较 task id
+  const diff = a.sortIndex - b.sortIndex
+  return diff !== 0 ? diff : a.id - b.id
+}
+
+const heap = [
+  { sortIndex: 1 },
+  { sortIndex: 3 },
+  { sortIndex: 5 },
+  { sortIndex: 6 },
+  { sortIndex: 9 },
+]
+
+siftUp(heap, { sortIndex: 4 }, heap.length)
+console.log(heap);
+#+end_src
+
+#+RESULTS:
+: [
+:   { sortIndex: 1 },
+:   { sortIndex: 3 },
+:   { sortIndex: 4 },
+:   { sortIndex: 6 },
+:   { sortIndex: 9 },
+:   { sortIndex: 5 }
+: ]
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+为什么 parentIndex = (index-1) >>> 1 ?
+#+end_tip

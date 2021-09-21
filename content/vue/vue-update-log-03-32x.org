@@ -1,0 +1,115 @@
+#+TITLE: Vue3 更新日志 03 - 3.2.x
+#+DATE: <2021-09-08 16:04:44>
+#+TAGS[]: vue3, vue-next
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<link href="/js/vue/formatters-styles/style.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/annotated.css" rel="stylesheet">
+<link href="/js/vue/formatters-styles/html.css" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+<!-- <script src="/js/vue/vue-next.js"></script> -->
+<script src="https://unpkg.com/vue@next"></script>
+<script>
+insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
+</script>
+<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
+<script src="/js/vue/tests/common.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+#+begin_quote
+3.2.x 更新日志 [[https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md][vue-next CHANGELOG]]
+#+end_quote
+
+* 3.2.x All Important Changes
+* TODO 3.2.10 (2021-09-07)
+** Bug Fixes [0/0]
+- [-] build: build vue-compat in default exports mode (#4460) (7575733)
+- [-] compiler-core: avoid runtime dependency on @babel/types (1045589), closes #4531
+- [-] compiler-core: pick last char when dynamic directive doesn't close (#4507) (5d262e0)
+- [-] compiler: condense whitespaces in static class attributes (#4432) (b8653d3), closes #4251
+- [-] runtime-dom: style patching shoud always preserve v-show display property (d534515), closes #4424
+- [-] type: fix prop type infer (#4530) (4178d5d), closes #4525
+* TODO 3.2.9 (2021-09-05)
+** Bug Fixes [0/0]
+- [-] compile-sfc: generate setup prop type format error (#4506) (e6fe751), closes #4505
+- [-] compile-sfc: support Date prop type with defineProps (#4519) (fac9a29)
+- [-] compiler-sfc: fix script setup ref assignment codegen edge case (#4520) (5594643), closes #4514
+- [-] compiler-sfc: support using declared interface in normal script with defineProps() (#4522) (14d6518), closes #4423
+- [-] ref-transform: not transform the prototype attributes. (#4503) (0178f4e), closes #4502
+- [-] types/ref-transform: fix $$() type (5852cc8)
+- [-] types: fix ref macro types (815bfcf), closes #4499
+* TODO 3.2.8 (2021-09-02)
+** Bug Fixes [0/0]
+- [-] compiler-sfc: ensure script setup generates type-valid ts output (bacb201), closes #4455
+- [-] compiler-sfc: generate matching prop types when withDefaults is used (#4466) (8580796), closes #4455
+- [-] compiler: generate function ref for script setup if inline is ture. (#4492) (4cd282b)
+- [-] compiler: report invalid directive name error (#4494) (#4495) (c00925e)
+- [-] types: include ref-macros.d.ts in npm dist files (d7f1b77), closes #4433
+* TODO 3.2.7 (2021-09-01)
+** Bug Fixes [0/0]
+- [-] compiler-core: remove no longer necessary withScopeId import in generated code (935b4e2)
+- [-] compiler-sfc: ensure script setup lang=ts output is tree-shakable (b89ff92)
+- [-] compiler: only generate non-static ref for script setup if the binding exists (3628991), closes #4431
+- [-] ref-transform: should transform $ref when used with generic arguments (#4446) (33cf6c8), closes #4442
+- [-] runtime-core: properly merge unmounted and beforeUnmount options (#4447) (741d3b3)
+- [-] suspense: misusing DOM Comment element constructor as a vnode type (#4451) (ef5b731)
+* TODO 3.2.6 (2021-08-24)
+** Bug Fixes [0/0]
+- [-] build: avoid imports to @babel/types in client build of compiler-core (4c468eb)
+* TODO 3.2.5 (2021-08-24)
+** Bug Fixes [0/0]
+- [-] compiler-core: fix duplicated component identifier for names with non-ascii chars (#4429) (3282750), closes #4422
+- [-] compiler-sfc: fix 'export default' rewrite with extra whitespaces (#4375) (4792ebd)
+- [-] compiler-sfc: fix <script> and <script setup> co-usage ordering edge case (#4419) (9826382), closes #4395 #4376
+- [-] compiler-sfc: should also expose regular script block bindings when <script setup> is used (872b3f7), closes #4369
+- [-] types: improve the type of createElementBlock (#4406) (ebd0bac), closes #4391
+** Features [0/0]
+- [-] experimental: expose ref macro types using separate d.ts file (b408451)
+- [-] experimental: shouldTransform for ref-transform (e565831)
+- [-] experimental: standalone ref transform (db8dc75)
+- [-] experimental: support ref transform for sfc normal <script> (06051c4)
+- [-] ref-transform: auto infer parser plugins (6453359)
+* TODO 3.2.4 (2021-08-17)
+** Bug Fixes [0/0]
+- [-] compiler-sfc: fix import usage check for lowercase imported components (57f1081), closes #4358
+- [-] runtime-core: ensure consistent arguments for tempalte and render funtion slot usage (644971e), closes #4367
+- [-] runtime-core: fix child component double update on props change (c1f564e), closes #4365
+** Reverts [0/0]
+- [-] Revert "chore: add missing space in warning message (#4359) [ci skip]" (951fbb1), closes #4359
+* TODO 3.2.3 (2021-08-16)
+** Bug Fixes [0/0]
+- [-] compiler-core: fix hoisting logic for elements with cached handlers + other bindings ([[https://github.com/vuejs/vue-next/commit/a6c1db2728cd3c72b897cb7b245d532e63485b07][a6c1db2]]), closes [[https://github.com/vuejs/vue-next/issues/4327][#4327]]
+- [-] compiler-core: fix style binding edge case ([[https://github.com/vuejs/vue-next/issues/4319][#4319]]) ([[https://github.com/vuejs/vue-next/commit/092bdcdf58643d77da8d564fbc3c5c6647f6bfc5][092bdcd]]), closes [[https://github.com/vuejs/vue-next/issues/4317][#4317]]
+- [-] compiler-sfc: bail on import usage check when template has custom lang ([[https://github.com/vuejs/vue-next/commit/aae3725e574e0182a1b41aa3dc38b11e596570ad][aae3725]]), closes [[https://github.com/vuejs/vue-next/issues/4312][#4312]]
+- [-] compiler-sfc: fix import usage check in template strings in expressions ([[https://github.com/vuejs/vue-next/commit/f855ccb2c1a8ea05ae71cfab92f5a18be31a1f14][f855ccb]]), closes [[https://github.com/vuejs/vue-next/issues/4340][#4340]]
+- [-] defineProps: defineProps generates unnecessary array of same types ([[https://github.com/vuejs/vue-next/issues/4353][#4353]]) ([[https://github.com/vuejs/vue-next/commit/ad66295cb363f6409b8321f258aaf29b3758c53c][ad66295]]), closes [[https://github.com/vuejs/vue-next/issues/4352][#4352]]
+- [-] runtime-core: patchChildren first in patchElement ([[https://github.com/vuejs/vue-next/issues/4313][#4313]]) ([[https://github.com/vuejs/vue-next/commit/5b3f1e8424d40d2b7b1e07f53ec11570dd546d66][5b3f1e8]])
+- [-] runtime-core: vnode hooks should not be called on async wrapper ([[https://github.com/vuejs/vue-next/issues/4349][#4349]]) ([[https://github.com/vuejs/vue-next/commit/cd2d98499ed646c85f81faa1f9241b0585654b86][cd2d984]]), closes [[https://github.com/vuejs/vue-next/issues/4346][#4346]]
+- [-] runtime-dom: consistently remove boolean attributes for falsy values ([[https://github.com/vuejs/vue-next/issues/4348][#4348]]) ([[https://github.com/vuejs/vue-next/commit/620a69b871a017dfe0ba81d380fd933d997c8a00][620a69b]])
+- [-] shared: fix toDisplayString on object with null prototype ([[https://github.com/vuejs/vue-next/issues/4335][#4335]]) ([[https://github.com/vuejs/vue-next/commit/42a334e12ee1462ccefc73fd7f24dc6b4ae48403][42a334e]]), closes [[https://github.com/vuejs/vue-next/issues/4334][#4334]]
+- [-] types: fix tsx ref component instance type ([[https://github.com/vuejs/vue-next/issues/2486][#2486]]) ([[https://github.com/vuejs/vue-next/commit/84d4357f6f2b2eb03ca56abfb3cac17fa7dfa85e][84d4357]])
+* TODO 3.2.2 (2021-08-11)
+** Bug Fixes [0/0]
+- [-] runtime-dom: patch textContent on svg properly ([[https://github.com/vuejs/vue-next/issues/4301][#4301]]) ([[https://github.com/vuejs/vue-next/commit/e7b0a9d3cffc938d3add7dcde02d0991f60c6ec9][e7b0a9d]]), closes [[https://github.com/vuejs/vue-next/issues/4296][#4296]]
+- [-] server-renderer: pipeToWebWritable CF worker compat ([[https://github.com/vuejs/vue-next/commit/2224610b0b390d82d7b5436df1f78b0569a199a9][2224610]]), closes [[https://github.com/vuejs/vue-next/issues/4287][#4287]]
+- [-] types: allow symbol in JSX ReservedProps.key ([[https://github.com/vuejs/vue-next/issues/4306][#4306]]) ([[https://github.com/vuejs/vue-next/commit/6e5801f8a8cc23d05817ee94fd98cb1889cc8413][6e5801f]])
+- [-] types: fix forceUpdate type ([[https://github.com/vuejs/vue-next/issues/4302][#4302]]) ([[https://github.com/vuejs/vue-next/commit/380608bd44eb385ec085eec4355e6fdc01ca09cd][380608b]])
+- [-] types: fix tsx emit-mapped handler return type ([[https://github.com/vuejs/vue-next/issues/4290][#4290]]) ([[https://github.com/vuejs/vue-next/commit/1ce34e25d56e73591acc5bbe6e52ec8ef026cc6c][1ce34e2]]), closes [[https://github.com/vuejs/vue-next/issues/4288][#4288]]
+** Features [0/0]
+- [-] sfc: support $shallowRef ref sugar ([[https://github.com/vuejs/vue-next/commit/00b76d3dc192138514ae6464ded34be5b0c730bb][00b76d3]])
+* TODO 3.2.1 (2021-08-09)
+** Bug Fixes
+- [-] compiler-sfc: fix import usage check for last expression ([[https://github.com/vuejs/vue-next/commit/1e1682f060883ee11e802834adb273159d8e84cc][1e1682f]])
+
