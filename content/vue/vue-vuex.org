@@ -14,13 +14,6 @@
 </font>
 </kbd><br><br>
 <script src="/js/utils.js"></script>
-<script src="https://unpkg.com/vue@next"></script>
-<script src="https://unpkg.com/vuex@next"></script>
-<script>
-insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
-// insertCssLink("/js/vue/tables/index.css");
-</script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 #+end_export
 
 [[/img/bdx/yiyeshu-001.jpg]]

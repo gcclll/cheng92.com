@@ -17,7 +17,6 @@
 </kbd><br><br>
 <script type='text/javascript' src="https://cdn.jsdelivr.net/npm/jsondiffpatch/dist/jsondiffpatch.umd.min.js"></script>
 <script src="/js/vue/vue-next.js"></script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/utils.js"></script>
 #+end_export
 

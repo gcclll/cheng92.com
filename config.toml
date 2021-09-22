@@ -220,6 +220,9 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     wechat = "/path/to/your/wechat-qr-code.png"           # 微信二维码
     alipay = "/path/to/your/alipay-qr-code.png"           # 支付宝二维码
 
+  [params.vue]
+    enable = true
+
   [params.social]                                         # 社交链接
     a-email = "mailto:gccll.love@email.com"
     b-stack-overflow = "https://stackoverflow.com/users/6062239/simon"
@@ -236,6 +239,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     # m-instagram = "https://www.cheng92.com"
     # n-gitlab = "https://www.cheng92.com"
     o-bilibili = "https://space.bilibili.com/384410681"
+
 
 # See https://gohugo.io/about/hugo-and-gdpr/
 [privacy]

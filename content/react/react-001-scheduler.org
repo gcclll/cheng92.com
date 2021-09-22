@@ -13,7 +13,6 @@
   诗号：半神半圣亦半仙，全儒全道是全贤，脑中真书藏万卷，掌握文武半边天。
 </font>
 </kbd><br><br>
-<script src="/js/react/pkgs/scheduler.js"></script>
 <img  src="/img/bdx/shz-001.jpg"/>
 #+end_export
 
@@ -29,6 +28,8 @@
 
 任务调试的入口函数，找到了第一个目标接下来就是沿着这个引线一步步去展开，从而了解
 整个 Scheduler 实现过程。
+
+[[/img/react/scheduler.svg]]
 
 * 整体结构
 :PROPERTIES:
@@ -68,11 +69,11 @@
 [[https://github.com/facebook/react/blob/main/packages/scheduler/src/SchedulerMinHeap.js][SchedulerMinHeap.js]] : 管理节点的存储，这里用的是栈的方式实现的，即节点会依据
 FILO(先进后出)规则实施管理，相关函数。
 
-- [[#siftUp][siftUp(heap, node, i)]], 找到比 i 大的 parent 交换，也就是 heap 要按照
-   (~node.sortIndex~ 或 ~node.id~)升序排序
-- [[#siftDown][siftDown(heap, node, i)]], 与 siftUp 相反，使用二分法升序排序
-- [[#push][push(heap, node)]], 入栈
-- [[#pop][pop(heap)]], 返回最后一个
+- [[#siftUp][siftUp(heap, node, i)]], 总是找前面集合的中间元素做参考元素来判断然后替换
+- [[#siftDown][siftDown(heap, node, i)]], 与 siftUp 相反，在 ~pop(heap, node)~ 且被调用，当取出第
+  一个(heap[0])之后，让 last 变成第一个然后执行 siftDown()
+- [[#push][push(heap, node)]], 入栈，之后执行 ~siftUp(heap,node,oldLen)~
+- [[#pop][pop(heap)]], 返回的是第一个节点(heap[0])，然后执行 ~siftDown(heap,node,0)~,
 - [[#peek][peek(heap)]], 总是返回第一个
 
 
@@ -100,11 +101,42 @@ next,cancelCallBack~)等等。
 
 切入正题 -> [[https://github.com/facebook/react/blob/main/packages/scheduler/src/SchedulerMinHeap.js][SchedulerMinHeap.js]]
 
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+siftUp, siftDown 不是简单的排序操作，但是它们完成之后总是能保证 heap 的第一个任
+务的 sortIndex 是最小的(时间戳, sortIndex 里保存的是当前任务被加入到队列时的时间
+戳+它的delay)。
+#+end_warn
+
 * SchedulerMinHeap 节点栈管理(push,pop,peek)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: heap
 :END:
+
+_SchedulerMinHeap.js_ 里面有六个函数：
+
+~push(heap, node)~ -> ~siftUp(heap, node, heapOldLength)~
+
+~pop(heap)~ -> ~heap[0]~ -> ~siftDown(heap, node, 0)~
+
+~peek(heap)~ -> ~heap[0]~
+
+~compare(a, b)~ 比较两个节点，优先 ~node.sortIndex~ 然后 ~node.id~
+
+~node.sortIndex~ 是任务入列时的时间戳(+delay, 如果有)。
+
+#+begin_success
+@@html:<p><strong>Success</strong></p>@@
+
+siftUp: 让新 push 的节点从队尾尽量的上浮，直到前面的数比它小就行。
+
+siftDown: pop 之后，让heap中最后一个节点从第一个位置开始下沉，直到前面的数都比它
+小就行。
+
+好像这样也讲不通!!!
+#+end_success
 
 ** siftUp(heap,node,i)
 :PROPERTIES:
@@ -139,30 +171,368 @@ function compare(a, b) {
   return diff !== 0 ? diff : a.id - b.id
 }
 
-const heap = [
-  { sortIndex: 1 },
-  { sortIndex: 3 },
-  { sortIndex: 5 },
-  { sortIndex: 6 },
-  { sortIndex: 9 },
-]
+function push(heap, node) {
+  const index = heap.length
+  heap.push(node)
+  siftUp(heap, node, index)
+}
 
-siftUp(heap, { sortIndex: 4 }, heap.length)
-console.log(heap);
+const heap = [], vals = []
+
+for (let i = 0 ; i < 10; i++) {
+  const index = Math.floor(Math.random() * 10)
+  if (!heap.find((val) => val.sortIndex === index)) {
+    vals.push(index)
+    push(heap, { sortIndex: index})
+  }
+}
+console.log(vals, heap);
 #+end_src
 
 #+RESULTS:
-: [
-:   { sortIndex: 1 },
-:   { sortIndex: 3 },
-:   { sortIndex: 4 },
-:   { sortIndex: 6 },
-:   { sortIndex: 9 },
-:   { sortIndex: 5 }
-: ]
+#+begin_example
+[
+  9, 3, 1, 7,
+  6, 5, 0, 8
+] [
+  { sortIndex: 0 },
+  { sortIndex: 6 },
+  { sortIndex: 1 },
+  { sortIndex: 8 },
+  { sortIndex: 7 },
+  { sortIndex: 5 },
+  { sortIndex: 3 },
+  { sortIndex: 9 }
+]
+#+end_example
 
-#+begin_tip
-@@html:<p><strong>TIP</strong></p>@@
+结果并不是按照一定顺序排列的，执行结果表:
 
-为什么 parentIndex = (index-1) >>> 1 ?
-#+end_tip
+~parentIndex = (index - 1) >>> 2~ 等于是 ~Math.floor( index - 1 / 2 )~
+
+| i | val | index/len  | parentIndex | compare | heap(省略对象)    |
+|---+-----+------------+-------------+---------+-------------------|
+| 0 |   9 |          0 | -           | -       | [9]               |
+|---+-----+------------+-------------+---------+-------------------|
+| 1 |   3 |          1 | 0,9         | 9 > 3   | [3,9]             |
+|---+-----+------------+-------------+---------+-------------------|
+| 2 |   1 |          2 | 0,3         | 3 > 1   | [1,9,3]           |
+|---+-----+------------+-------------+---------+-------------------|
+| 3 |   7 |          3 | 1,9         | 9 > 7   | [1,7,3,9]         |
+|   |     |          1 | 0,1         | 1 < 7   | [1,7,3,9]         |
+|---+-----+------------+-------------+---------+-------------------|
+| 4 |   6 |          4 | 1,7         | 7 > 6   | [1,6,3,9,7]       |
+|   |     |          1 | 0,1         | 1 < 6   | [1,6,3,9,7]       |
+|---+-----+------------+-------------+---------+-------------------|
+| 5 |   5 |          5 | 2,3         | 3 < 5   | [1,6,3,9,7,5]     |
+|   |     |          2 | 0,1         | 1 < 5   | [1,6,3,9,7,5]     |
+|---+-----+------------+-------------+---------+-------------------|
+| 6 |   0 |          6 | 2,3         | 3 > 0   | [1,6,0,9,7,5,3]   |
+|   |     |          2 | 0,1         | 1 > 0   | [0,6,1,9,7,5,3]   |
+|---+-----+------------+-------------+---------+-------------------|
+| 7 |   8 |          7 | 3,9         | 9 > 8   | [0,6,1,8,7,5,3,9] |
+|   |     |          3 | 1,6         | 6 < 8   | [0,6,1,8,7,5,3,9] |
+
+也就是说它总是会根据 index 去找其前面的所有元素的中间位置的元素来和新的 node 进
+行比较，如果值比新的节点大就进行替换。
+
+比如
+
+i=1,val=3,heap=[9,3],target-heap=[9],target=9,替换之后=[3,9]
+
+i=2,val=1,heap=[3,9,1],target-heap=[3,9],target=3,替换之后=[1,9,3]
+
+i=3,val=7,heap=[1,9,3,7],target-heap=[1,9,3],target=9,替换之后=[1,7,3,9]
+
+i=4,val=6,heap=[1,7,3,9,6],target-heap=[1,7,3,9],target=7,替换之后=[1,6,3,9,7]
+
+依次类推到最后得到 [0,6,1,8,7,5,3,9]
+
+** siftDown(heap, node, i)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: siftDown
+:END:
+
+#+begin_src js
+function pop(heap) {
+  if (heap.length === 0) {
+    return null
+  }
+
+  const first = heap[0]
+  const last = heap.pop()
+  if (last !== first) {
+    heap[0] = last
+    siftDown(heap, last, 0)
+  }
+  return first
+}
+
+function siftDown(heap, node, i) {
+  let index = i
+  const length = heap.length
+  const halfLength = length >>> 1
+  while (index < halfLength) {
+    const leftIndex = (index + 1) * 2 - 1
+    const left = heap[leftIndex]
+    const rightIndex = leftIndex + 1
+    const right = heap[rightIndex]
+
+    if (compare(left, node) < 0) {
+      if (rightIndex < length && compare(right, left) < 0) {
+        heap[index] = right
+        heap[rightIndex] = node
+        index = rightIndex
+      } else {
+        heap[index] = left
+        heap[leftIndex] = node
+        index = leftIndex
+      }
+    } else if (rightIndex < length && compare(right, node) < 0) {
+      heap[index] = right;
+      heap[rightIndex] = node;
+      index = rightIndex;
+
+    } else {
+      // Neither child is smaller. Exit.
+      return
+    }
+  }
+}
+
+#+end_src
+
+结合 sitUp 和 push 来测试：
+#+begin_src js :results output
+const {siftUp, push, siftDown, pop} = require(process.env.BLOG_JS + '/react/pkgs/scheduler.js')
+
+// 先塞一些节点到 heap
+const heap = [],vals = []
+
+for (let i = 0 ; i < 10; i++) {
+  const index = Math.floor(Math.random() * 10)
+  if (!heap.find((val) => val.sortIndex === index)) {
+    vals.push(index)
+    push(heap, { sortIndex: index})
+  }
+}
+console.log(vals)
+console.log('push', heap);
+
+// 然后用 pop 取第一个
+const node = pop(heap)
+
+console.log('pop', node, '\n', heap)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[
+  9, 5, 4, 2,
+  0, 1, 3
+]
+push [
+  { sortIndex: 0 },
+  { sortIndex: 2 },
+  { sortIndex: 1 },
+  { sortIndex: 9 },
+  { sortIndex: 4 },
+  { sortIndex: 5 },
+  { sortIndex: 3 }
+]
+pop >>  { first: { sortIndex: 0 }, last: { sortIndex: 3 } }
+pop { sortIndex: 0 }
+ [
+  { sortIndex: 1 },
+  { sortIndex: 2 },
+  { sortIndex: 3 },
+  { sortIndex: 9 },
+  { sortIndex: 4 },
+  { sortIndex: 5 }
+]
+#+end_example
+
+根据上面的示例来分析下整个过程：
+
+pop(heap, node) -> heap[0] -> heap[0] = last -> siftDown(heap, node, 0)
+
+当前 heap = ~[0, 2, 1, 9, 4, 5, 3]~,
+
+pop first = 0,
+
+last=3 -> first
+
+-> ~heap=[3,2,1,9,4,5], node=3~
+
+| index | half | left[Index] | right[Index] | left<node    | right<left | right<node | heap          |
+|-------+------+-------------+--------------+--------------+------------+------------+---------------|
+|     0 |    3 | 1,2         | 2,1          | 2 < 3, true  | 1<2, true  | -          | [1,2,3,9,4,5] |
+|     1 |    3 | 3,9         | 4,4          | 3 < 3, false | -          | 4<3,false  | [1,2,3,9,4,5] |
+|-------+------+-------------+--------------+--------------+------------+------------+---------------|
+
+经过两次 ~while(index < halfLength)~ 后结束，得到 ~[1,2,3,9,4,5]~
+
+1. left, right 是两个相邻的节点(right=left+1)
+2. 先比较 left<node ? right<node -> right与node替换 : left与node替换
+3. 如果 left>node 比较 right<node -> right与node替换
+* scheduleCallback(priorityLevel,callback,options)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: scheduleCallback
+:END:
+
+1. startTime, 入列起始时间戳，如果 options.delay > 0 用当前时间戳加上delay
+2. timeout, 根据 priorityLevel 设置对应的优先级值，共有五种优先级
+
+   ImmediatePriority, timeout=-1
+
+   UserBlockingPriority, timeout=250
+
+   IdlePriority, timeout=Math.pow(2,30)-1=1073741823
+
+   LowPriority, timeout=10000
+
+   NormalPriority, timeout=5000
+3. 过期时间 expirationTime = startTime + timeout
+4. 封装 newTask = {id, callback, priorityLevel, startTime, expirationTime, sortIndex}
+5. 检查 startTime > currentTime ，是不是入列的时间已经过了当下时间，如果过了要做延时处理，
+   使用 expirationTime 做 sortIndex，否则直接用 startTime 做 sortIndex
+
+#+begin_src js
+function scheduleCallback(priorityLevel, callback, options) {
+  var currentTime = getCurrentTime()
+
+  var startTime // 任务执行的开始时间
+  if (typeof options === 'object' && options !== null) {
+    var delay = options.delay
+    if (typeof delay === 'number' && delay > 0) {
+      startTime = currentTime + delay
+    } else {
+      startTime = currentTime
+    }
+  } else {
+    startTime = currentTime
+  }
+
+  var timeout // 根据优化级设置超时时间
+  switch (priorityLevel) {
+    case ImmediatePriority:
+      timeout = -1
+      break
+    case UserBlockingPriority:
+      timeout = 250
+      break
+    case IdlePriority:
+      // Max 31 bit integer. The max integer size in V8 for 32-bit systems.
+      // Math.pow(2, 30) - 1
+      // 0b111111111111111111111111111111
+      timeout = 1073741823
+      break
+    case LowPriority:
+      timeout = 10000
+      break
+    case NormalPriority:
+      timeout = 5000
+      break
+  }
+
+  // 过期时间
+  var expirationTime = startTime + timeout
+
+  // 封装新任务
+  var newTask = {
+    id: taskIdCounter++,
+    callback,
+    priorityLevel,
+    startTime,
+    expirationTime,
+    sortIndex: -1
+  }
+
+  if (startTime > currentTime) {
+    // 延迟的任务，应该进入队列排队，用肇始时间做索引
+    newTask.sortIndex = startTime
+    push(timerQueue, newTask)
+    // peek 取队列中第一个任务 queue[0]
+    if (peek(taskQueue) === null && newTask === peek(timerQueue)) {
+      // queue: [null, newTask] 情况
+      // 所有的任务还在排队中，且当前的 newTask 就是最早过期的那个
+      if (isHostTimeoutScheduled) {
+        cancelHostTimeout()
+      } else {
+        isHostTimeoutScheduled = true
+      }
+      requestHostTimeout(handleTimeout, startTime - currentTime)
+    }
+  } else {
+    newTask.sortIndex = expirationTime
+    push(taskQueue, newTask)
+    // Schedule a host callback, if needed. If we're already performing work,
+    // wait until the next time we yield.
+    if (!isHostCallbackScheduled && !isPerformingWork) {
+      isHostCallbackScheduled = true
+      requestHostCallback(flushWork)
+    }
+  }
+
+  return newTask
+}
+#+end_src
+
+这里用到了几个函数： cancelHostTimeout, requestHostCallback, requestHostTimeout，
+它们又分别是是做什么了？
+
+** cancelHostTimeout()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: cancelHostTimeout
+:END:
+
+scheduleCallback 中执行这个时机是， startTime > currentTime 时，且 taskQueue 中
+没有了任务，且 newTask 正好是 timerQueue 中最早的那个。
+
+#+begin_src js
+// peek 取队列中第一个任务 queue[0]
+if (peek(taskQueue) === null && newTask === peek(timerQueue)) {
+  // queue: [null, newTask] 情况
+  // 所有的任务还在排队中，且当前的 newTask 就是最早过期的那个
+  if (isHostTimeoutScheduled) {
+    cancelHostTimeout()
+  } else {
+    isHostTimeoutScheduled = true
+  }
+  requestHostTimeout(handleTimeout, startTime - currentTime)
+}
+#+end_src
+
+清除计时器：
+
+#+begin_src js
+let taskTimeoutID = -1;
+
+function cancelHostTimeout() {
+  clearTimeout(taskTimeoutID)
+  taskTimeoutID = -1
+}
+#+end_src
+
+taskTimeoutID 这个又是哪里用了？
+
+正是 [[#requestHostTimeout][requestHostTimeout]] 中的计时器 ID。
+
+** requestHostTimeout()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: requestHostTimeout
+:END:
+
+启动一个计时器去执行 callback
+
+#+begin_src js
+function requestHostTimeout(callback, ms) {
+  taskTimeoutID = setTimeout(() => {
+    callback(getCurrentTime());
+  }, ms);
+}
+#+end_src

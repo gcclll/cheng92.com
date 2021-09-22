@@ -15,10 +15,8 @@ MacOS 系统相关的东西
 <script src="/js/utils.js"></script>
 <script src="/js/vue/vue-next.js"></script>
 <script>
-insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 insertCssLink("/js/vue/css/awesome.css");
 </script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/vue/awesome/common.js"></script>
 #+end_export
 

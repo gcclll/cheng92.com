@@ -18,12 +18,7 @@
 <div id="table-plan">
 </div>
 <script src="/js/utils.js"></script>
-<script src="https://unpkg.com/vue@next"></script>
-<script>
-insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
-insertCssLink("/js/vue/tables/index.css");
-</script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+<script>insertCssLink("/js/vue/tables/index.css");</script>
 <script src="/js/vue/tables/plan.js"></script>
 #+end_export
 

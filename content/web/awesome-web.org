@@ -7,12 +7,9 @@
 
 #+begin_export html
 <script src="/js/utils.js"></script>
-<script src="https://unpkg.com/vue@next"></script>
 <script>
-insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
 insertCssLink("/js/vue/css/awesome.css");
 </script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/vue/awesome/common.js"></script>
 #+end_export
 
@@ -31,6 +28,10 @@ insertCssLink("/js/vue/css/awesome.css");
 
 5. 描述前面如果有一个链接说明这个库有自己的文档网站
 #+end_quote
+
+* 博客内文章链接
+
+[[/web/javascript-api-MessageChannel][MessageChannel 消息通道，数据传输]]
 
 * Tools
 :PROPERTIES:

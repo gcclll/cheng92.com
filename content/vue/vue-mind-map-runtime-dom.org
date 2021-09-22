@@ -14,11 +14,6 @@
 </kbd><br><br>
 <script src="/js/utils.js"></script>
 <script src="/js/vue/vue-next.js"></script>
-<!--<script src="https://unpkg.com/vue@next"></script>-->
-<script>
-insertCssLink("https://unpkg.com/element-plus/lib/theme-chalk/index.css");
-</script>
-<script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
 <script src="/js/vue/runtime-dom.global.js"></script>
 #+end_export
 

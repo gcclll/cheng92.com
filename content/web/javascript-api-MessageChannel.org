@@ -1,0 +1,12 @@
+#+TITLE: JavaScript API - MessageChannel
+#+DATE: <2021-09-22 15:14:23>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: javascript, MessageChannel
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+
+#+begin_quote
+[[https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels][MessageChannel]]，用来构建消息通道，通过它的两个 MessagePort 来进行数据传递。
+#+end_quote

@@ -85,12 +85,32 @@ try {
   console.warn(e.message, "no module.");
 }
 
-function insertCssLink(url) {
+var elementPlusCssLink = 'https://unpkg.com/element-plus/lib/theme-chalk/index.css'
+function insertCssLink(url = elementPlusCssLink) {
   var head = document.head;
   var link = document.createElement("link");
   link.href = url;
   link.rel = "stylesheet";
   head.appendChild(link);
+
+  if (url === elementPlusCssLink) {
+    insertVueAndElementPlus()
+  }
+}
+
+function insertScript(url, id) {
+  var ref = document.getElementById(id)
+  var s = document.createElement('script')
+  s.src = url
+  if (ref) {
+    ref.parentNode.insertBefore(s, ref)
+  } else {
+    document.head.appendChild(s)
+  }
+}
+
+function insertVueAndElementPlus() {
+  ;["https://unpkg.com/vue@next", "https://unpkg.com/element-plus"].forEach(insertScript)
 }
 
 function insertPreCode(selector) {
