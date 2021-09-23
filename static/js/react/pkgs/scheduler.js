@@ -96,12 +96,116 @@ var taskIdCounter = 1;
 var taskQueue = [];
 var timerQueue = [];
 
+// 当前正在执行的任务及其优先级
+var currentTask = null;
+var currentPriorityLevel = NormalPriority;
+
+
 // This is set while performing work, to prevent re-entrancy.
 var isPerformingWork = false;
 
+// 已经过期的任务是不是正在被执行
 var isHostCallbackScheduled = false;
+// 还没过期的任务是不是正在被执行
 var isHostTimeoutScheduled = false;
 
+function advanceTimers(currentTime) {
+  // 检查 timerQueue 中是不是有已经过期了的任务，将它们加入到 taskQueue 中
+  // 去优先执行
+  let timer = peek(timerQueue)
+  while (timer !== null) {
+    if (timer.callback === null) {
+      // Timer was cancelled
+      pop(timerQueue)
+    } else if (timer.startTime <= currentTime) {
+      // 时间到了，将它加入到 taskQueue
+      pop(timerQueue)
+      timer.sortIndex = timer.expirationTime
+      push(taskQueue, timer)
+    } else {
+      // 还没过期，依旧等待
+      return
+    }
+    timer = peek(timerQueue)
+  }
+}
+
+function flushWork(hasTimeRemaining, initialTime) {
+
+  isHostCallbackScheduled = false
+  if (isHostTimeoutScheduled) {
+    // 如果此时有一个未来时间的任务存在计时中，要取消它，先执行 host callback
+    isHostTimeoutScheduled = false
+    cancelHostTimeout()
+  }
+
+  isPerformingWork = true
+  const previousPriorityLevel = currentPriorityLevel
+  try {
+    return workLoop(hasTimeRemaining, initialTime)
+  } finally {
+    // 清理工作
+    currentTask = null
+    currentPriorityLevel = previousPriorityLevel
+    isPerformingWork = false
+  }
+}
+
+function workLoop(hasTimeRemaining, initialTime) {
+  let currentTime = initialTime
+  advanceTimers(currentTime)
+  // 取出队列中第一个任务 taskQueue[0]
+  currentTask = peek(taskQueue)
+  while (currentTask !== null/*省略debug的条件*/) {
+    if (currentTask.expirationTime > currentTime && (
+      !hasTimeRemaining || shouldYieldToHost()
+    )) {
+      // 任务还没过期且没有多余的时间去执行它了，所以要退出等下次有充足的时间再说
+      break
+    }
+
+    // 时间充足
+    const callback = currentTask.callback
+    if (typeof callback === 'function') {
+      currentTask.callback = null
+      currentPriorityLevel = currentTask.priorityLevel
+      // 已经过期了
+      const didUserCallbackTimeout = currentTask.expirationTime <= currentTime
+      // 执行任务函数
+      const continuationCallback = callback(didUserCallbackTimeout)
+      // 重新取一次时间， callback 调用可能比较耗时
+      currentTime = getCurrentTime()
+      if (typeof continuationCallback === 'function') {
+        // 如果任务函数本身返回了一个函数，当作下一个任务处理，即 callback 返回的
+        // 函数会在它执行退出之后立即被执行
+        currentTask.callback = continuationCallback
+      } else {
+        if (currentTask === peek(taskQueue)) {
+          // 执行完之后丢掉
+          pop(taskQueue)
+        }
+      }
+      advanceTimers(currentTime)
+    } else {
+      // 不是函数丢弃掉，pop 就是取第一个出来，然后最后一个放到 heap[0]
+      // 进行 siftDown(heap, node, 0)
+      pop(taskQueue)
+    }
+    // 取下一个
+    currentTask = peek(taskQueue)
+  }
+  // 不管有没任务都退出
+  if (currentTask !== null) {
+    return true
+  } else {
+    // 到这里说明 taskQueue 清空了，该到 timerQueue 中的任务了
+    const firstTimer = peek(timerQueue)
+    if (firstTime !== null) {
+      requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime)
+    }
+    return false
+  }
+}
 
 function scheduleCallback(priorityLevel, callback, options) {
   var currentTime = getCurrentTime()
@@ -198,7 +302,7 @@ let deadline = 0;
 const maxYieldInterval = 300;
 let needsPaint = false;
 
-const perfomrWorkUntilDeadline = () => {
+const performWorkUntilDeadline = () => {
   if (scheduledHostCallback !== null) {
     const currentTime = getCurrentTime()
     deadline = currentTime + yieldInterval
@@ -235,7 +339,7 @@ const perfomrWorkUntilDeadline = () => {
 let schedulePerformWorkUntilDeadline = (() => {
   const channel = new MessageChannel()
   const port = channel.port2
-  channel.port1.onmessage = performWorkUntilDealine
+  channel.port1.onmessage = performWorkUntilDeadline
   return () => port.postMessage(null)
 })()
 

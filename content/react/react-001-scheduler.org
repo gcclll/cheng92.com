@@ -31,6 +31,76 @@
 
 [[/img/react/scheduler.svg]]
 
+#+begin_quote
+声明：
+
+1. 本文都是从 MessageChannel 角度去分析任务执行，通过管道信号给
+   performWorkUntilDeadline 执行 flushWork
+#+end_quote
+
+* 重要知识点
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: important
+:END:
+
+** 任务队列
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queue
+:END:
+
+Scheduler 涉及到两个任务队列： ~taskQueue~, ~timerQueue~, 从目前来看，前者是已经过期
+了的任务队列，后者是有延迟的(将来的)任务队列。
+
+当任务的 startTime > currentTime 的时候会被加入到 timerQueue，等待延迟处理，否则
+会被加入到 taskQueue，一旦有空闲就会优先被处理的任务。
+
+配套的函数：
+
+[[#requestHostTimeout][requestHostTimeout]] <-> [[#cancelHostTimeout][cancelHostTimeout]]: 用来执行延迟任务的函数，request 发起执
+行，cancel 取消执行，request 发起之后 callback 不一定就会被执行，有可能会被新进
+来的且任务优先级更高或更早的任务插队，因为在 scheduleCallback 中会在检测有任务已
+经发起执行的时候，先调用 cancel 取消计时器，阻止上一个任务的执行(前提是这个新任
+务必须要比这个正在执行的更早: ~peek(timerQueue)~, 且 taskQueue 里面还不能有其它任
+务，因为它的时间是比 currentTime 还小的时间(过期了都，还不让我先走？？？))。
+
+[[#requestHostCallback][requestHostCallback:]] 用来发起 taskQueue 执行的函数。
+
+** 相关标记表
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flags
+:END:
+
+下表，列出了 Scheduler 中用到的所以关键的全局变量(包括一些重要函数)，以及它们用
+途，用在了哪个函数中。
+
+| 标记(全局变量)          | 类型        | 用途             | 所在/关联函数                                |
+|-------------------------+-------------+------------------+----------------------------------------------|
+| ~timerQueue~              | Array<Task> | 任务队列(延迟)   | [[#scheduleCallback][scheduleCallback]]                             |
+| ~taskQueue~               | Array<Task> | 任务队列(非延迟) | [[#scheduleCallback][scheduleCallback]]                             |
+| ~isHostTimeoutScheduled~  | boolean     | 是否有任务在执行 | [[#scheduleCallback][scheduleCallback]],[[#requestHostTimeout][requestHostTimeout]]          |
+| ~isHostCallbackScheduled~ | boolean     | 正在执行？       | [[#scheduleCallback][scheduleCallback]],[[#requestHostCallback][requestHostCallback]]         |
+| ~isPerformingWork~        | boolean     | 正在flush work?  | [[#scheduleCallback][scheduleCallback]],[[#requestHostCallback][requestHostCallback]]         |
+| ~isMessageLoopRunning~    | boolean     | 管道开关         | ]] |
+| ~needsPaint~              | boolean     | ?                | ?                                            |
+|                         |             |                  |                                              |
+|                         |             |                  |                                              |
+
+1. ~isMessageLoopRunning~: 用来控制管道是不是能继续接受信号，这决定了
+ performWorkUntilDeadline 能不能被执行(flushWork)。
+
+   关联函数： [[performWorkUntilDeadline][performWorkUntilDeadline]],[[requestHostCallback][requestHostCallback]]
+
+2. ~taskIdCounter~: /number/, 任务的唯一 ID ，每个 callback 都会被封装一层，里面就包
+   含一个 id 由这个 ~taskIdCounter++~ 得到
+
+   关联函数： [[#scheduleCallback][scheduleCallback]]
+3. ~taskQueue~, /Array<Task>/, 已经过了当前时间还有没被执行的任务，它们会在下一个空
+   闲时间优先执行
+
+   关联函数： [[#scheduleCallback][scheduleCallback]]
 * 整体结构
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -534,5 +604,472 @@ function requestHostTimeout(callback, ms) {
   taskTimeoutID = setTimeout(() => {
     callback(getCurrentTime());
   }, ms);
+}
+#+end_src
+
+** requestHostCallback()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: requestHostCallback
+:END:
+
+-> [[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline()]]
+
+#+begin_src js
+function requestHostCallback(callback) {
+  scheduledHostCallback = callback;
+  if (!isMessageLoopRunning) {
+    isMessageLoopRunning = true;
+    schedulePerformWorkUntilDeadline();
+  }
+}
+#+end_src
+
+用 scheduledHostCallback 来保存当前正在执行的任务(work)，它实际是一个对
+~flushWork()~ 函数的引用，因为 ~requestHostCallback(flushWork)~ 传入的参数是
+[[#flushWork][flushWork]] 这个函数，它是用来 flush 当前队列中任务的(work)，后面会讲到。
+
+*isMessageLoopRunning*: 标记正在 flush 队列中的任务。
+
+* schedulePerformWorkUntilDeadline
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: schedulePerformWorkUntilDeadline
+:END:
+
+这是个发起任务执行的函数，并且这个函数根据环境的不同，使用的方案不一，主要有三种
+情况(这里直接使用 [[/web/javascript-api-messagechannel/][MessageChannel]] 方案，这也是为何要先去简要的学习了下它的原因)。
+
+1. Node.js 和 IE 环境：使用 ~setImmediate~
+2. [[/web/javascript-api-messagechannel/][MessageChannel]], 消息通道
+3. 最后方案是 setTimeout，由于 4ms 问题所以比 MessageChannel 优先级低
+
+
+下面的实现做了简化：
+
+#+begin_src js
+// 省略环境的检查，直接使用 DOM 和 Worker 环境，注释中说更
+// 偏向用 MessageChannel 是因为 setTimeout 4ms 的问题
+// 原本的检查优化级： setImmediate > MessageChannel > setTimeout
+let schedulePerformWorkUntilDeadline = (() => {
+  const channel = new MessageChannel()
+  const port = channel.port2
+  channel.port1.onmessage = performWorkUntilDealine
+  return () => port.postMessage(null)
+})()
+#+end_src
+
+这等于是说 [[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline]] 其实是一个管道的一个端口 port2，每次
+调用都会往 port1 发送一条含 ~null~ 信息的消息，其目的就是去触发
+~performWorkUntilDealine~ 函数执行(更多有关 [[/web/javascript-api-messagechannel/][MessageChannel]])。
+
+管道特征是你发送一条它就会接受一条，是一个典型的 FIFO 的队列模型，下面可以做个简
+单的测试：
+
+#+begin_export html
+<div id="SMbKgI">
+<el-button @click="send" type="primary">PORT2->PORT1发送消息 {{i}}</el-button>
+<el-button @click="clear" type="primary">清空消息</el-button>
+<div><p v-for="msg in msgs" v-html="msg"/></div>
+</div>
+<script>
+Vue.createApp({
+  setup() {
+    const mc = new MessageChannel()
+    const msgs = Vue.reactive([])
+    const i = Vue.ref(0)
+    mc.port1.onmessage = function(e) {
+      msgs.push(`<font color="red" size="3">${e.data}</font>`)
+    }
+    function send() {
+      mc.port2.postMessage(++i.value + ' hello from port2')
+    }
+    const clear = () => {
+      msgs.splice(0)
+      i.value = 0
+    }
+    return { send, i, clear, msgs }
+  }
+}).use(ElementPlus).mount('#SMbKgI')
+</script>
+#+end_export
+
+完整版本:
+
+localSetImmediate 就是 setImmediate
+
+localSetTimeout 就是 setTimeout
+
+#+begin_src js
+let schedulePerformWorkUntilDeadline;
+if (typeof localSetImmediate === 'function') {
+  // Node.js and old IE.
+  // There's a few reasons for why we prefer setImmediate.
+  //
+  // Unlike MessageChannel, it doesn't prevent a Node.js process from exiting.
+  // (Even though this is a DOM fork of the Scheduler, you could get here
+  // with a mix of Node.js 15+, which has a MessageChannel, and jsdom.)
+  // https://github.com/facebook/react/issues/20756
+  //
+  // But also, it runs earlier which is the semantic we want.
+  // If other browsers ever implement it, it's better to use it.
+  // Although both of these would be inferior to native scheduling.
+  schedulePerformWorkUntilDeadline = () => {
+    localSetImmediate(performWorkUntilDeadline);
+  };
+} else if (typeof MessageChannel !== 'undefined') {
+  // DOM and Worker environments.
+  // We prefer MessageChannel because of the 4ms setTimeout clamping.
+  const channel = new MessageChannel();
+  const port = channel.port2;
+  channel.port1.onmessage = performWorkUntilDeadline;
+  schedulePerformWorkUntilDeadline = () => {
+    port.postMessage(null);
+  };
+} else {
+  // We should only fallback here in non-browser environments.
+  schedulePerformWorkUntilDeadline = () => {
+    localSetTimeout(performWorkUntilDeadline, 0);
+  };
+}
+#+end_src
+
+** performWorkUntilDeadline
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: performWorkUntilDeadline
+:END:
+
+这个函数是管道方式， schedulePerformWorkUntilDeadline 做为 channel.port2 发出信
+号给做为另一端 channel.port1 的 performWorkUntilDeadline 去执行。
+
+而这个函数里面的工作其实已经执行 scheduledHostCallback 也就是传递给
+[[#requestHostCallback][requestHostCallback(flushWork)]] 的 [[#flushWork][flushWork]] 这个函数，而这个函数里又做了什么？
+
+即 ~scheduledHostCallback ===  flushWork~
+
+#+begin_src js
+const performWorkUntilDeadline = () => {
+  if (scheduledHostCallback !== null) {
+    const currentTime = getCurrentTime();
+    // Yield after `yieldInterval` ms, regardless of where we are in the vsync
+    // cycle. This means there's always time remaining at the beginning of
+    // the message event.
+    deadline = currentTime + yieldInterval;
+    const hasTimeRemaining = true;
+
+    // If a scheduler task throws, exit the current browser task so the
+    // error can be observed.
+    //
+    // Intentionally not using a try-catch, since that makes some debugging
+    // techniques harder. Instead, if `scheduledHostCallback` errors, then
+    // `hasMoreWork` will remain true, and we'll continue the work loop.
+    let hasMoreWork = true;
+    try {
+      hasMoreWork = scheduledHostCallback(hasTimeRemaining, currentTime);
+    } finally {
+      if (hasMoreWork) {
+        // If there's more work, schedule the next message event at the end
+        // of the preceding one.
+        schedulePerformWorkUntilDeadline();
+      } else {
+        isMessageLoopRunning = false;
+        scheduledHostCallback = null;
+      }
+    }
+  } else {
+    isMessageLoopRunning = false;
+  }
+  // Yielding to the browser will give it a chance to paint, so we can
+  // reset this.
+  needsPaint = false;
+}
+#+end_src
+
+这个函数里有几个要点：
+
+1. deadline, 这个用来标记截止时间，时间一到会停止管道消息，这是个时间戳值(~deadline = currentTime + yieldInterval;~)
+
+   ~let yieldInterval = 5;~ 初始值是 5ms，也就是在这 5ms 时间内能做的尽量去做？
+
+2. 注意这里使用的是 try...finally 而不是 try...catch 因为它不仅仅只是处理错误情
+   况
+
+   而是不论当前的 work 执行结果是正常还是异常都要做一些后续或者清理工作，比如：
+   重置 ~isMessageLoopRunning=false~ 好让管道能继续接受信号，否则管道等于是
+   channel.port1 端永远不会有新的信号进来。
+
+   即 ~isMessageLoopRunning~ 是管道能否继续接受信号的开关。
+* flushWork(hasTimeRemaining, initialTime)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flushWork
+:END:
+
+flushWork 工作：
+
+1. 调用 [[#workLoop][workLoop(hasTimeRemaining, initialTime)]] flush taskQueue 队列中的任务
+2. 重置 ~isHostCallbackScheduled=false~ 标记，让 scheduleCallback 中在 taskQueue
+   入列的同时能启动 flushWork 执行去 flush tasks
+3. 检查 ~isHostTimeoutScheduled~ 是不是有 timerQueue 中的任务已经启动了，如果是则
+   取消它的执行，让当前的 taskQueue 先执行
+4. 在执行之前设置 ~isPerformingWork=true~ 标记已经有任务在执行了，阻止
+   scheduleCallback 中 taskQueue 的任务启动(结合 ~isHostCallbackScheduled~)
+5. try...finally 去执行 [[#workLoop][workLoop(hasTimeRemaining, initialTime)]] 同样要做清理工作，
+   重置 ~isPerformingWork=false~ 标记当前工作已经完成了，可以触发新的 taskQueue 执
+   行了。
+
+
+
+#+begin_src js
+function flushWork(hasTimeRemaining, initialTime) {
+
+  isHostCallbackScheduled = false
+  if (isHostTimeoutScheduled) {
+    // 如果此时有一个未来时间的任务存在计时中，要取消它，先执行 host callback
+    isHostTimeoutScheduled = false
+    cancelHostTimeout()
+  }
+
+  isPerformingWork = true
+  const previousPriorityLevel = currentPriorityLevel
+  try {
+    return workLoop(hasTimeRemaining, initialTime)
+  } finally {
+    // 清理工作
+    currentTask = null
+    currentPriorityLevel = previousPriorityLevel
+    isPerformingWork = false
+  }
+}
+#+end_src
+
+这里还分别用 ~currentTask~ 和 ~currentPriorityLevel~ 记录了当前任务及其优先级。
+
+workLoop 执行完了 finally 里面做些清理工作。
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+flushWork 执行的是 taskQueue 中的任务，timerQueue 中的任务在 scheduleCallback 中
+push 的时候有条件时就会触发(计时器延时方式触发)。
+#+end_tip
+* workLoop(hasTimeRemaining, initialTime)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: workLoop
+:END:
+
+简化版本(省略 while 循环中的代码)：
+
+1. 通过一个 while 循环去处理 taskQueue 中的任务
+2. 如果 while 退出之后，发现还有任务(currentTask !== null) 直接返回 ~false~ 重新走
+   管道消息的流程，回到这里的 while 去处理该 task
+3. 如果 taskQueue 中没有了任务，那接下来要去触发 timerQueue 中的任务了
+   (setTimeout方式触发)，同时返回 false 标记当次已经完成。
+
+#+begin_src js
+function workLoop(hasTimeRemaining, initialTime) {
+  let currentTime = initialTime
+  advanceTimers(currentTime)
+  // 取出队列中第一个任务 taskQueue[0]
+  currentTask = peek(taskQueue)
+  while (currentTask !== null/*省略debug的条件*/) {
+    // TODO
+  }
+  // 不管有没任务都退出
+  if (currentTask !== null) {
+    return true
+  } else {
+    // 到这里说明 taskQueue 清空了，该到 timerQueue 中的任务了
+    const firstTimer = peek(timerQueue)
+    if (firstTime !== null) {
+      requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime)
+    }
+    return false
+  }
+}
+#+end_src
+
+注意 workLoop 的返回值标示着当前空闲时间内有没有更多的任务需要去执行，这个体现在
+[[#performWorkUntilDeadline][performWorkUntilDeadline]] 函数中：
+
+#+begin_src js
+let hasMoreWork = true
+try {
+  hasMoreWork = scheduledHostCallback(hasTimeRemaining, currentTime)
+} finally {
+  if (hasMoreWork) {
+    // 无论如何都要执行，看是不是有更多的任务待处理
+    schedulePerformWorkUntilDeadline()
+  } else {
+    // 完成了一轮
+    isMessageLoopRunning = false
+    // 准备接受下一个 flushWork
+    scheduledHostCallback = null
+  }
+}
+#+end_src
+
+如果有会重新调用 [[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline()]] 即 PORT1 向 PORT2 发送一个
+~null~ 信号，重新走 [[#performWorkUntilDeadline][performWorkUntilDeadline()]] 流程，直到 [[#workLoop][workLoop]] 中返回 ~false~ 为
+至。
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+也就是说管道一旦接受到了信号开始就会一直重复接受信号的流程，直到没有要处理的任务之后
+结束，也就是 [[#workLoop][workLoop]] 返回 false, hasMoreWork 为 false 的时候。
+#+end_tip
+
+那为什么 while 循环结束了后面的 ~currentTask~ 值不会是 ~null~ ?
+
+workLoop 完整版本(while循环)：
+
+1. while 中限制了只有 ~currentTask.expirationTime > currentTime~ 且有足够的时间执
+   行的时候才会继续下去，否则直接退出 while(/这里就是上面问题的答案/)
+2. 当时间充足时， callback 不是函数会直接被丢弃掉(~pop(taskQueue)~)
+3. 当 callback 是函数时会被执行得到其结果，也就是 ~callback()~ 执行后的返回值 ~continuationCallback~
+4. 当 continuationCallback 也是一个函数时会继续 while 循环来执行这个
+   ~continuationCallback~, 注意这个时候的任务 currentTask 还在 taskQueue 中，并且
+   依旧是在 currentTask 这个任务循环中
+5. 经过 4 之后此时的 task 还是最开始 callback 对应的 currentTask， 只不过它的此
+   时 currentTask.callback 已经是 continuationCallback 了，所以这一步执行的
+   ~currentTask.callback()~ 实际上已经是 ~continuationCallback()~ 直到 callback() 返
+   回值不是函数为止
+
+   例如：
+   #+begin_src js
+   var fn1 = () => {/*1*/}, fn2 = () => fn1, fn3 = () => fn2
+   var callback = () => {/*...*/ return fn3}
+
+   newTask = { ..., callback, ... }
+
+   // 进入 while
+   currentTask = newTask
+   c = currentTask.callback() // -> fn3 -> fn2 -> fn1
+   // -> 继续 while 循环, c 的值会是, currentTask 此时依旧是那个 newTask
+   // c = fn3
+   // c = fn2
+   // c = fn1
+   // c = undefined
+   // 到此结束 currentTask
+   // pop currentTask
+   // 取下一个 task -> while
+   #+end_src
+6. 当 continuationCallback 不是函数说明 currentTask 已经完成了，需要将它从队列中
+   移除(~(currentTask === peek(taskQueue)) -> pop(taskQueue)~)
+
+#+begin_src js
+function workLoop(hasTimeRemaining, initialTime) {
+  let currentTime = initialTime
+  advanceTimers(currentTime)
+  // 取出队列中第一个任务 taskQueue[0]
+  currentTask = peek(taskQueue)
+  while (currentTask !== null/*省略debug的条件*/) {
+    if (currentTask.expirationTime > currentTime && (
+      !hasTimeRemaining || shouldYieldToHost()
+    )) {
+      // 任务还没过期且没有多余的时间去执行它了，所以要退出等下次有充足的时间再说
+      break
+    }
+
+    // 时间充足
+    const callback = currentTask.callback
+    if (typeof callback === 'function') {
+      currentTask.callback = null
+      currentPriorityLevel = currentTask.priorityLevel
+      // 已经过期了
+      const didUserCallbackTimeout = currentTask.expirationTime <= currentTime
+      // 执行任务函数
+      const continuationCallback = callback(didUserCallbackTimeout)
+      // 重新取一次时间， callback 调用可能比较耗时
+      currentTime = getCurrentTime()
+      if (typeof continuationCallback === 'function') {
+        // 如果任务函数本身返回了一个函数，当作下一个任务处理，即 callback 返回的
+        // 函数会在它执行退出之后立即被执行
+        currentTask.callback = continuationCallback
+      } else {
+        if (currentTask === peek(taskQueue)) {
+          // 执行完之后丢掉
+          pop(taskQueue)
+        }
+      }
+      advanceTimers(currentTime)
+    } else {
+      // 不是函数丢弃掉，pop 就是取第一个出来，然后最后一个放到 heap[0]
+      // 进行 siftDown(heap, node, 0)
+      pop(taskQueue)
+    }
+    // 取下一个
+    currentTask = peek(taskQueue)
+  }
+  // 不管有没任务都退出
+  if (currentTask !== null) {
+    return true
+  } else {
+    // 到这里说明 taskQueue 清空了，该到 timerQueue 中的任务了
+    const firstTimer = peek(timerQueue)
+    if (firstTime !== null) {
+      requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime)
+    }
+    return false
+  }
+}
+#+end_src
+
+workLoop while 中关键点:
+
+1. 必须是已经过期了的任务且当前要有足够的空闲时间才会去执行当前的任务
+   currentTask，否则直接退出 while
+2. callback() 的返回值是不是一个函数，如果是会在当前 while->currentTask 中一次都
+   执行完之后 currentTask 才算结束
+3. 结束后用 pop(taskQueue) 移除 currentTask，继续下一个任务
+4. while 退出后，即使当前任务还在也要重新走一遍管道机制，即 workLoop 直接返回
+   ~true~, 会导致 ~hasMoreWork=true~ 从而重新调用 [[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline()]]
+   向 PORT1 发信号重新走 [[#performWorkUntilDeadline][performWorkUntilDeadline()]] -> [[#flushWork][flushWork()]] -> [[#workLoop][workLoop()]]
+   流程。
+5. 当 taskQueue 中已经没有任务了的时候，此时就该启动 timerQueue 中的任务执行了，
+   调用 [[#requestHostTimeout][requestHostTimeout()]] 其实就是 ~setTimeout~, 返回 ~false~ 表示一个 taskQueue
+   处理阶段完成了。
+
+
+#+begin_warn
+@@html:<p><strong>QUESTION</strong></p>@@
+
+
+:question::question::question: 这个 ~hasTimeRemaining~ 依据是什么，空闲时间又是多久？
+#+end_warn
+* advanceTimers(currentTime)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: advanceTimers
+:END:
+
+这个函数是用来检查 timerQueue 里面的任务有没有到了时间的，能到这个队列来说明入列
+时它的 startTime > currentTime，到执行的时候 currentTime 已经更新了，此时
+timerQueue 里面的任务肯定有些已经过期了，此时过期了的就需要放到 taskQueue 中去在
+wookLoop 中有空隙的时间去立即执行。
+
+#+begin_src js
+function advanceTimers(currentTime) {
+  // 检查 timerQueue 中是不是有已经过期了的任务，将它们加入到 taskQueue 中
+  // 去优先执行
+  let timer = peek(timerQueue)
+  while (timer !== null) {
+    if (timer.callback === null) {
+      // Timer was cancelled
+      pop(timerQueue)
+    } else if (timer.startTime <= currentTime) {
+      // 时间到了，将它加入到 taskQueue
+      pop(timerQueue)
+      timer.sortIndex = timer.expirationTime
+      push(taskQueue, timer)
+    } else {
+      // 还没过期，依旧等待
+      return
+    }
+    timer = peek(timerQueue)
+  }
 }
 #+end_src

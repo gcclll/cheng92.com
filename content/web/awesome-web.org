@@ -6,7 +6,6 @@
 #+STARTUP: indent
 
 #+begin_export html
-<script>console.log(Vue, 'xx')</script>
 <script src="/js/utils.js"></script>
 <script>
 insertCssLink("/js/vue/css/awesome.css");
@@ -32,7 +31,7 @@ insertCssLink("/js/vue/css/awesome.css");
 
 * 博客内文章链接
 
-[[/web/javascript-api-MessageChannel][MessageChannel 消息通道，数据传输]]
+[[/web/javascript-api-messagechannel/][MessageChannel 消息通道，数据传输]]
 
 * Tools
 :PROPERTIES:

@@ -10,3 +10,129 @@
 #+begin_quote
 [[https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels][MessageChannel]]，用来构建消息通道，通过它的两个 MessagePort 来进行数据传递。
 #+end_quote
+
+* 简介
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: introduce
+:END:
+
+消息通道的机制：由一个双向管道组成，管道的两各有一个端口，消息从一端发出然后会在
+另一端被接受。消息传递过程如同 DOM 事件，不能中断也不会阻塞。
+
+#+begin_export html
+创建通道: <a href="/js/tests/web/x77w0JV.js" target="_blank">TEST CODE LINK</a>
+<br/><br/>
+<div id="x77w0JV"></div>
+<script src="/js/tests/web/x77w0JV.js"></script>
+#+end_export
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+当使用 ~addEventListener~ 来实现监听 ~message~ 事件时，需要手动调用 ~port.start()~ 才
+可以。
+#+end_warn
+
+经过上面测试，会发现，在不点击按钮 5,6 的情况下，点击 3,4 不会有任何输出，因为它
+们两的 port 是通过 addEventListener 监听的 message 事件，不会手动 start()。
+
+所以，如果要使 3,4 点击生效，需先点击 5,6 来启动 ~port.start()~ 。
+
+close 之后再 start() 都不会再重启，并且同时会让另一端也失效(如：close port1之后，
+就算再点击 5,6 start，点击 3,4也不会有输出)
+
+** TODO iframe 之间跨域传递消息(window.postMessage)
+** TODO WebSocket 长连接通信机制
+* MessageChannel
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: ctor
+:END:
+
+定义：
+
+#+begin_src c++
+[Exposed=(Window,Worker)]
+interface MessageChannel {
+  constructor();
+
+  readonly attribute MessagePort port1;
+  readonly attribute MessagePort port2;
+};
+#+end_src
+
+port1, port2 分别代表管道两端的端口对象。
+
+~new MessageChannel()~ 做的事情：
+
+1. 创建端口1, ~this.port1 = new MessagePort()~
+2. 创建端口2, ~this.port2 = new MessagePort()~
+
+
+* MessagePort
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: MessagePort
+:END:
+
+#+begin_src cpp
+[Exposed=(Window,Worker,AudioWorklet), Transferable]
+interface MessagePort : EventTarget {
+  undefined postMessage(any message, sequence<object> transfer);
+  undefined postMessage(any message, optional StructuredSerializeOptions options = {});
+  undefined start();
+  undefined close();
+
+  // event handlers
+  attribute EventHandler onmessage;
+  attribute EventHandler onmessageerror;
+};
+
+dictionary StructuredSerializeOptions {
+  sequence<object> transfer = [];
+};
+#+end_src
+
+调用：
+
+~port.postMessage(message[, transfer]~ 或
+
+~port.postMessage(message[, { transfer }]~
+
+传递消息，transfer 被发送之后将在发送端不再可用(发送的是其拷贝)。
+
+如果发送了一个重复的对象或端口或发送的 message 不能被克隆都会抛出
+~DataCloneError~ DOMException 。
+
+~port.start()~ 开始发送消息，如果使用的是 ~addEventListener~ 需要手动调用 start() 来
+开始发送消息，并且值得注意的是，在调用 ~port.start()~ 之前依旧是可以调用
+~port.postMessage()~ 的，只不过发送的 message 会进入消息队列不会立即被另一端接受，
+这些被缓冲的消息会在调用 ~port.start()~ 之后一并被接受。
+
+#+begin_comment
+可通过 [[#introduce][最开始的测试]] 来验证，验证步骤:
+
+1. 点击 5 开启 channel2 的 port1
+2. 点击 3 若干次(假设5次)
+3. 然后点击 6 开启 channel2 的 port2(观察输出多少条"hello channel2 port2")
+#+end_comment
+
+这就相当于，port1 一直在发送，但是port2 没有 start，它的端口处被堵死了， port1
+发送的那些消息其实已经在管道中了，当 port2.start() 之后，等于是被堵死的口突然一
+下畅通了，这些消息自然都会被 port2 给接受到。
+
+所以，上面的操作 123 完成之后，会看到正好输出了 5 条来自 channel2.port1 发送的
+"hello channel2 port2"
+
+~port.close()~ 会断开端口的连接，等于是将管道斩断了，因此之后无论怎么做都发不出也
+接受不了消息(这也是为何点击 7或8 中任何一个之后，再点击 3,4,5,6 都没有任何反应)。
+
+* TODO STOP
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+先到这里吧，至此 react 中 [[/react/react-001-scheduler/#schedulePerformWorkUntilDeadline][MessageChannel]] 的应用应该已经够用了，剩下的待有时间再
+来研究。
+#+end_warn
