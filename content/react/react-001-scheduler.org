@@ -29,6 +29,7 @@
 任务调试的入口函数，找到了第一个目标接下来就是沿着这个引线一步步去展开，从而了解
 整个 Scheduler 实现过程。
 
+@@html:<span id="fullmap"></span>@@
 [[/img/react/scheduler.svg]]
 
 #+begin_quote
@@ -67,7 +68,7 @@ Scheduler 涉及到两个任务队列： ~taskQueue~, ~timerQueue~, 从目前来
 
 [[#requestHostCallback][requestHostCallback:]] 用来发起 taskQueue 执行的函数。
 
-** 相关标记表
+** 重要标记(全局变量)
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: flags
@@ -76,19 +77,7 @@ Scheduler 涉及到两个任务队列： ~taskQueue~, ~timerQueue~, 从目前来
 下表，列出了 Scheduler 中用到的所以关键的全局变量(包括一些重要函数)，以及它们用
 途，用在了哪个函数中。
 
-| 标记(全局变量)          | 类型        | 用途             | 所在/关联函数                                |
-|-------------------------+-------------+------------------+----------------------------------------------|
-| ~timerQueue~              | Array<Task> | 任务队列(延迟)   | [[#scheduleCallback][scheduleCallback]]                             |
-| ~taskQueue~               | Array<Task> | 任务队列(非延迟) | [[#scheduleCallback][scheduleCallback]]                             |
-| ~isHostTimeoutScheduled~  | boolean     | 是否有任务在执行 | [[#scheduleCallback][scheduleCallback]],[[#requestHostTimeout][requestHostTimeout]]          |
-| ~isHostCallbackScheduled~ | boolean     | 正在执行？       | [[#scheduleCallback][scheduleCallback]],[[#requestHostCallback][requestHostCallback]]         |
-| ~isPerformingWork~        | boolean     | 正在flush work?  | [[#scheduleCallback][scheduleCallback]],[[#requestHostCallback][requestHostCallback]]         |
-| ~isMessageLoopRunning~    | boolean     | 管道开关         | ]] |
-| ~needsPaint~              | boolean     | ?                | ?                                            |
-|                         |             |                  |                                              |
-|                         |             |                  |                                              |
-
-1. ~isMessageLoopRunning~: 用来控制管道是不是能继续接受信号，这决定了
+1. ~isMessageLoopRunning~, /boolean/: 用来控制管道是不是能继续接受信号，这决定了
  performWorkUntilDeadline 能不能被执行(flushWork)。
 
    关联函数： [[performWorkUntilDeadline][performWorkUntilDeadline]],[[requestHostCallback][requestHostCallback]]
@@ -101,6 +90,55 @@ Scheduler 涉及到两个任务队列： ~taskQueue~, ~timerQueue~, 从目前来
    闲时间优先执行
 
    关联函数： [[#scheduleCallback][scheduleCallback]]
+4. ~timerQueue~, /Array<Task>/, 还末过期的任务，将会以 ~setTimeout~([[#requestHostTimeout][requestHostTimeout]]) 方式触发
+5. ~isHostTimeoutScheduled~: 是不是有 timerQueue 中的任务计时器已经启动了，在
+   [[#flushWork][flushWork]] 中检测，如果有需要将其实取消(停止计时器)，让 taskQueue 中的任务先行
+
+   关联函数： [[#scheduleCallback][scheduleCallback]], [[#requestHostTimeout][requestHostTimeout]], [[#flushWork][flushWork]]
+6. ~isHostCallbackScheduled~, /boolean/: 是不是存在执行 taskQueue 中的任务，这将阻止
+   [[#scheduleCallback][scheduleCallback]] 中 taskQueue 在 push 入列之后是不是可以直接触发任务执行(结合
+   [[#isPerformingWork][isPerformingWork]])
+
+   关联函数： [[#scheduleCallback][scheduleCallback]], [[#flushWork][flushWork]]
+7. ~isMessageLoopRunning~, /boolean/: 消息管道的开头，这个决定了
+   PORT2([[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline]]) 是不是可以继续向
+   PORT1([[#performWorkUntilDeadline][performWorkUntilDeadline]]) 发送 ~null~ 消息去触发 [[#performWorkUntilDeadline][performWorkUntilDeadline]]
+   -> [[#flushWork][flushWork]] -> [[#workLoop][workLoop]]
+
+   关联函数： [[#requestHostCallback][requestHostCallback]], [[#performWorkUntilDeadline][performWorkUntilDeadline]]
+8. ~needsPaint~, /boolean/: TODO
+9. ~scheduledHostCallback~, /function/: 正在被处理的 callback, 其实就是 [[#flushWork][flushWork]] 函
+   数(调用 [[#requestHostCallback][requestHostCallback(callback)]] 的 callback)，在 [[#scheduledHostCallback][scheduledHostCallback]]
+   中被调用之后重置为 ~null~ 去重新接受新的使命。
+
+   关联函数： [[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline]], [[#requestHostCallback][requestHostCallback]]
+10. ~currentTask~, /object/: 记录当前正在被处理的任务对象, 在 [[#workLoop][workLoop]] 中通过
+    ~peek(taskQueue)~ 得到，while 循环中会不断的 flush taskQueue。
+
+    结构：
+    #+begin_src js
+    {
+      "id": taskIdCounter++,
+      callback, // 任务函数
+      startTime, // callback 被入列时的时间戳
+      expirationTime, // 过期时间=startTime + (delay||0)
+      // 任务优先级，总共有5种：
+      // ImmediatePriority,
+      // UserBlockingPriority,
+      // IdlePriority,
+      // LowPriority,
+      // NormalPriority
+      priorityLevel,
+      sortIndex // 排序索引，值就是当前的 startTime(timerQueue) 或 expirationTime(taskQueue)
+    }
+    #+end_src
+11. ~currentPriorityLevel~, /number/: 当前任务的优先级，默认是 ~NormalPriority~,
+    [[#flushWork][flushWork]] 的时候实时更新它的值。
+
+    关联函数： [[#flushWork][flushWork]], [[#workLoop][workLoop]]
+12. ~yieldInterval~, /number, 5/: TODO
+13. ~deadline~, /number, 5/: TODO
+14. ~maxYieldInterval~, /number, 300/: TODO
 * 整体结构
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -1074,3 +1112,23 @@ function advanceTimers(currentTime) {
   }
 }
 #+end_src
+* 小结 1
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: summary-1
+:END:
+
+到这里一个基本完整的 Scheduler 就已经完成了，下面是整个过程的简要流程图(
+@@html:<a href="#fullmap">完整图</a>@@)
+
+[[/img/react/scheduler-brief.svg]]
+
+这里最主要的关键点在于 *通过管道衔接了任务启动(requestHostCallback)和执行
+(flushWork)*, 然后在 flushWork->workLoop 过程中通过空余时间决定任务是不是应该立即
+执行，还是等到下次空隙去执行，且通过 startTime 和 expirationTime 来控制任务执行
+的先后顺序，用两个队列来承载了两种不同类型的任务(taskQueue代表已经过期的任务，
+timerQueue 代表未过期的任务)。
+
+taskQueue 在 workLoop 中通过 while 不断的在当前空隙时间内去 flush 掉，只有当
+当前 taskQueue 中的所有任务都完成了之后，再去重启 timerQueue 的计时器延迟方式去
+触发任务执行。
