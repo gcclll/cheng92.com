@@ -1,0 +1,164 @@
+#+TITLE: JavaScript API - performance
+#+DATE: <2021-09-24 11:53:12>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: javascript, performance
+#+CATEGORIES[]: javascript, web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_quote
+本方讲述的是 [[https://w3c.github.io/hr-time/#sotd][performance]] api. 本文所有内容都来自 w3c 标准，英语不好翻译的很蹩脚 ;(。
+#+end_quote
+
+* 简介
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: introduce
+:END:
+
+在 [[https://w3c.github.io/hr-time/#bib-ecma-262][ECMA-262]] 标准中定义了 [[https://tc39.es/ecma262/multipage/#sec-date-objects][Date]] 对象做为时间值，代表着从 1970-01-01(UTC) 开始的
+毫秒数。从 1970-01-01 开始大约 285,616 年的时间内毫秒数在大部分情况下是足够用
+了。[[https://heycam.github.io/webidl/#DOMTimeStamp][DOMTimeStamp]] 有相同的定义[[[https://w3c.github.io/hr-time/#bib-webidl][WEBIDl]]]。
+
+在实际的实践和使用当中，这些时间的定义都受制于时钟偏移(clock skew)和系统时钟的调
+整。时间的值并不总是单调递增的并且随后的值可能递增或保持原值。
+
+比如，下面的代码中 ~duration~ 的值有可能是一个正数，负数或零：
+
+#+begin_src js
+function doSth() {
+  let i = 0
+  while (true) {
+    if (++i>100) break
+  }
+}
+var mark_start = Date.now()
+doSth()
+var duration = Date.now() - mark_start
+console.log(duration)
+#+end_src
+
+#+RESULTS:
+: 0
+: undefined
+
+在特定的情况下时间的定义明显不能够满足实际情况：
+
+1. 没有一个稳定的单调时钟，更何况还要依赖系统时钟偏移
+2. 没有提供亚毫秒级(sub-millisecond)的时间精度
+
+
+Date.now() 就存在上面的问题，但是它依旧在大部分情况下可以使用。
+
+只不过如果需要精确到亚毫秒级可能就不太合适，此时可以考虑使用 [[https://w3c.github.io/hr-time/#dom-domhighrestimestamp][DOMHighResTimeStamp]]
+类型， [[https://w3c.github.io/hr-time/#dom-performance][Performance]].[[https://w3c.github.io/hr-time/#dom-performance-now][now()]] 和 [[https://w3c.github.io/hr-time/#dom-performance][Performance]] 接口的属性 [[https://w3c.github.io/hr-time/#dom-performance][Performance]].[[https://w3c.github.io/hr-time/#dom-performance-timeorigin][timeOrigin]] 去解决
+这这些问题，因为它们提供了 *亚毫秒级精度* 的 *单调递增* 的时间值 。
+
+#+begin_tip
+@@html:<p><strong>NOTE</strong></p>@@
+
+亚毫秒级精度并非标准的一部分。实现方可以依据它们的隐私和安全性理由选择性的去暴露
+对时间的精度的限制，以及是否要公开亚毫秒级时间。所以当用户使用依赖亚毫秒级时间的特
+性的时候可能并不总能如愿以偿(不是标准，效果不一定好)。
+#+end_tip
+
+** 可能使用情况(use-cases)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: use-cases
+:END:
+
+在有关性能度量的应用方面对于亚毫秒级精度是非常有必要的，例如：试图精准的测量
+Document 操作消耗的时间，资源请求或脚本执行的时间的时候。
+
+当在主线程和一个 [[https://html.spec.whatwg.org/multipage/workers.html#worker][Worker]] 之间同步工作的时候或者是为了创建一个统一的事件时间表去测
+量这些工作时候，在不同的上下文之间比较时间戳是必不可少的。
+
+最后，对于亚毫秒级时间的应用主要是围绕下面几种情况：
+
+Ability to schedule work in sub-millisecond intervals. That is particularly
+important on the main thread, where work can interfere with frame rendering
+which needs to happen in short and regular intervals, to avoid user-visible
+jank.
+
+- 要求亚毫秒级的间隔中调试工作的能力。这在主线程中尤为重要，对于有些事情需要做到
+  直接干涉帧渲染，且需要在很短且有规律的时间间隙中不断触发还不能造成用户视图阻塞
+
+  比如： react 中的 scheduler 对 [[https://w3c.github.io/hr-time/#dom-performance][Performance]].[[https://w3c.github.io/hr-time/#dom-performance-now][now()]] 的应用，因为它要求在一帧渲染
+  时间内找出多余的空隙去执行 taskQueue 中的任务。
+
+- 当计算基于脚本动画的帧率的时候，开发者会需要亚毫秒级的精度来决定这个动画是不是
+  60FPS。在没有来毫秒级精度的情况下，开发者只能判断动画帧率是 58.8FPS(1000ms/16)
+  还是 62.6FPS(1000ms/17)，也就是说要做到 60FPS 的动画必需要用 sub-millisecond。
+
+- JS 代码执行时间统计？
+
+  #+begin_comment
+  When collecting in-the-wild measurements of JS code (e.g. using User-Timing),
+  developers may be interested in gathering sub-milliseconds timing of their
+  functions, to catch regressions early.
+  #+end_comment
+
+- 在试图在指定时间点听音乐或为了确认音频和动画能完美同步的时候，开发者将需要精准
+  的测量已经播放的时间。
+** 示例
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: examples
+:END:
+
+开发者可能希望组织整个应用的时间轴的，包括来自拥有不同[[https://w3c.github.io/hr-time/#dfn-time-origin][时间域]]的 [[https://html.spec.whatwg.org/multipage/workers.html#worker][Workder]] 和
+[[https://html.spec.whatwg.org/multipage/workers.html#sharedworker][SharedWorkder]]。为了能在同一时间轴上显示这些事件，应该可以借助
+[[https://w3c.github.io/hr-time/#dom-performance][Performance]].[[https://w3c.github.io/hr-time/#dom-performance-timeorigin][timeOrigin]] 属性来翻译 [[https://w3c.github.io/hr-time/#dom-domhighrestimestamp][DOMHighResTimeStamps]]。
+
+#+begin_export html
+<div id="x8jExKG"></div>
+<script src="/js/tests/x8jExKG.js"></script>
+#+end_export
+
+#+begin_src js
+// ---- worker.js -----------------------------
+// Shared worker script
+onconnect = function(e) {
+  var port = e.ports[0];
+  port.onmessage = function(e) {
+    // Time execution in worker
+    var task_start = performance.now();
+    result = runSomeWorkerTask();
+    var task_end = performance.now();
+  }
+
+  // Send results and epoch-relative timestamps to another context
+  port.postMessage({
+    'task': 'Some worker task',
+    'start_time': task_start + performance.timeOrigin,
+    'end_time': task_end + performance.timeOrigin,
+    'result': result
+  });
+}
+
+// ---- application.js ------------------------
+// Timing tasks in the document
+var task_start = performance.now();
+runSomeApplicationTask();
+var task_end = performance.now();
+
+// developer provided method to upload runtime performance data
+reportEventToAnalytics({
+  'task': 'Some document task',
+  'start_time': task_start,
+  'duration': task_end - task_start
+});
+
+// Translating worker timestamps into document's time origin
+var worker = new SharedWorker('worker.js');
+worker.port.onmessage = function (event) {
+  var msg = event.data;
+
+  // translate epoch-relative timestamps into document's time origin
+  msg.start_time = msg.start_time - performance.timeOrigin;
+  msg.end_time = msg.end_time - performance.timeOrigin;
+
+  reportEventToAnalytics(msg);
+}
+#+end_src

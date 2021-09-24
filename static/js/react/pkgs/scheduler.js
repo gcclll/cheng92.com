@@ -302,6 +302,39 @@ let deadline = 0;
 const maxYieldInterval = 300;
 let needsPaint = false;
 
+// flags
+let enableIsInputPending = false
+
+function shouldYieldToHost() {
+  if (enableIsInputPending &&
+    navigator?.scheduling?.isInputPending !== undefined) {
+    const scheduling = navigator.scheduling
+    const currentTime = getCurrentTime()
+    if (currentTime >= deadline) {
+      // 没时间了。我们可能想暂停对主要线程的控制，以便浏览器可以执行高优先级任务。
+      // 主要的是渲染和用户输入。如果有悬而未决的渲染或悬而未决的输入，我们就应该暂停。
+      // 但如果两者都没有，那么我们可以在保持响应性的同时减少暂停。不管怎样我们最终都
+      // 需要暂停，因为可能有一个悬而未决的渲染不是伴随着对“requestPaint”或其他
+      // 主线程任务的调用比如网络事件。
+      if (needsPaint || scheduling.isInputPending()) {
+        // 有一个 pending 的渲染或用户输入，应该暂停等待完成
+        return true
+      }
+
+      // 没有 pending 输入，仅仅暂停 maxYieldInterval 时长
+      return currentTime >= maxYieldInterval
+    } else {
+      // 在当前帧还有多余的时间，就不该暂停
+      return false
+    }
+  } else {
+    // isInputPending = false.
+    // 因为没有什么其它的方式可以知道是不是有 pending input，
+    // 所以这里要保证在 frame 的最后总是要暂停一下
+    return getCurrentTime() >= deadline
+  }
+}
+
 const performWorkUntilDeadline = () => {
   if (scheduledHostCallback !== null) {
     const currentTime = getCurrentTime()
