@@ -1132,3 +1132,6 @@ timerQueue 代表未过期的任务)。
 taskQueue 在 workLoop 中通过 while 不断的在当前空隙时间内去 flush 掉，只有当
 当前 taskQueue 中的所有任务都完成了之后，再去重启 timerQueue 的计时器延迟方式去
 触发任务执行。
+
+这里使用了 [[/web/javascript-api-performance/][performance.now()]] 来取当前的时间戳，因为需要亚毫秒级的时间，相关的知
+识点 [[https://w3c.github.io/hr-time/#sotd][Performance]]。

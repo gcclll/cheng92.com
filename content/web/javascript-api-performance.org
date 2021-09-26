@@ -6,8 +6,14 @@
 #+LANGUAGE: zh-cn
 #+STARTUP: indent
 
+#+begin_export html
+<script src="/js/utils.js"></script>
+<script src="/js/performance.js"></script>
+#+end_export
+
 #+begin_quote
-本方讲述的是 [[https://w3c.github.io/hr-time/#sotd][performance]] api. 本文所有内容都来自 w3c 标准，英语不好翻译的很蹩脚 ;(。
+本方讲述的是 [[https://w3c.github.io/hr-time/#sotd][performance]] api. 本文所有内容都来自 w3c 标准，英语不好翻译的很蹩脚
+;(，如果不关心概念性东西可直接跳转到 [[#performance][Performance API]] 或 [[https://developer.mozilla.org/en-US/docs/Web/API/Performance][MDN API Doc]]。
 #+end_quote
 
 * 简介
@@ -162,3 +168,161 @@ worker.port.onmessage = function (event) {
   reportEventToAnalytics(msg);
 }
 #+end_src
+
+Worker 在这不进行展开了，想了解更多可前往 [[/web/javascript-api-worker][JavaScript API - Worker]] 或 [[https://html.spec.whatwg.org/multipage/workers.html][标准文档
+Worder]]。
+* 时间域(Time Origin)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: time-origin
+:END:
+
+时间域的值：
+
+1. 如果全局对象是 Window， time origin 必须等于：
+
+   @@html:<span id="code-time-origin"></span>@@
+   #+begin_src js
+   let timeOrigin
+   if (previousDocument == null) {
+     timeOrigin = context.firstCreated.time
+   } else if (previousDocument && confirmDialogDisplayed) {
+     when promptUnload { // 提示 unload 事件的时候
+       timeOrigin = user.confirm.time
+     }
+   } else if (window.document.newest.loading) {
+     if (navigation.responsible) { // 开始可以响应了
+       timeOrigin = performance.now()
+     }
+   }
+   #+end_src
+
+   - 如果没有前一个 document 情况下，它等于[[https://html.spec.whatwg.org/multipage/browsers.html#creating-a-new-browsing-context][浏览器上下文首次被创建]]的时间
+
+   - 否则，离开上一个 document [[https://html.spec.whatwg.org/multipage/browsing-the-web.html#prompt-to-unload-a-document][触发 unload 算法]]时候弹窗被确认的时间点(上一个document必须存在且弹
+     窗已经显示了)
+
+   - 否则，等于[[https://html.spec.whatwg.org/multipage/window-object.html#concept-document-window][加载最新 document 对象]]的时间点
+
+2. 如果全局对象是  Workder 环境下的  [[https://html.spec.whatwg.org/multipage/workers.html#workerglobalscope][WorkderGlobalScope]] 对象时， time origin 的
+   值是 workder 创建时的 [[https://html.spec.whatwg.org/multipage/workers.html#official-moment-of-creation][official moment of creation]]
+
+3. 最后 timeOrigin = undefined
+
+
+所以， timeOrigin 与具体的环境有关，[[https://html.spec.whatwg.org/multipage/window-object.html#window][Window]] 或 [[https://html.spec.whatwg.org/multipage/workers.html#workerglobalscope][Worker]]
+
+Window 环境下受到 unload 和 document 加载时间有关
+
+Workder 是当前 workder 上下文创建的时间有关。
+
+time origin 时间戳的获取步骤(伪码)：
+
+#+begin_src js
+function getTimeOrigin() {
+  let globalScope = typeof window !== undefined ? window : workderScope
+  assert(globalScope !== undefined)
+
+  // 代表高精度时间，共享的单调时钟值为 0
+  let t1 = DOMHighResTimeStamp
+  // 代表高精度时间，共享的单调时钟值为 0(在全局的 time origin 下)
+  let t2 = DOMHighResTimeStamp
+  let total = t1 + t2
+
+  return CoarsenTime(
+    total,
+    globalScope.relevantSettingsObject.crossOriginIsolatedCapability
+  )
+}
+#+end_src
+
+关键词：
+
+1. [[https://w3c.github.io/hr-time/#dom-domhighrestimestamp][DOMHighResTimeStamp]] DOM 中高精度的时间戳
+
+2. [[https://w3c.github.io/hr-time/#dfn-shared-monotonic-clock][shared monotonic clock]] 共享单调时钟
+
+3. [[https://w3c.github.io/hr-time/#dfn-coarsen-time][coarsen time]]
+
+   一种时间算法，提供了一个 [[https://w3c.github.io/hr-time/#dom-domhighrestimestamp][DOMHighResTimeStamp]] 时间戳和一个可选的布尔类型值
+   ~crossOriginIsolatedCapability~ 默认值 ~false~ 。
+
+   - [[https://html.spec.whatwg.org/multipage/webappapis.html#relevant-settings-object][relevant settings object]]
+
+   - [[https://html.spec.whatwg.org/multipage/webappapis.html#concept-settings-object-cross-origin-isolated-capability][cross-origin isolated capability]] 跨域调用 api 能力
+* [[https://w3c.github.io/hr-time/#sec-domhighrestimestamp][DOMHighResTimeStamp]] 类型定义
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: DOMHighResTimeStamp
+:END:
+
+[[https://w3c.github.io/hr-time/#dom-domhighrestimestamp][DOMHighResTimeStamp]] 用来存储一个 milliseconds 值，一个 [[https://w3c.github.io/hr-time/#dfn-time-origin][time origin]], [[https://w3c.github.io/hr-time/#dfn-shared-monotonic-clock][shared
+monotonic clock]] 或两个 [[https://w3c.github.io/hr-time/#dom-domhighrestimestamp][DOMHighResTimeStamp]]s 之间时长的时间值
+
+#+begin_src cpp
+typedef double DOMHighResTimeStamp
+#+end_src
+* [[https://w3c.github.io/hr-time/#sec-performance][Performance]] 接口
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: performance
+:END:
+
+接口定义：
+
+#+begin_src c++
+[Exposed=(Window,Worker)]
+interface Performance : EventTarget {
+    DOMHighResTimeStamp now();
+    readonly attribute DOMHighResTimeStamp timeOrigin;
+    [Default] object toJSON();
+};
+#+end_src
+
+1. ~now()~, 返回当前的[[https://w3c.github.io/hr-time/#dfn-current-high-resolution-time][高精度的时间]]
+2. ~timeOrigin~, 值如 [[#code-time-origin][Time Origin 伪码]]所示
+3. ~toJSON()~
+
+
+
+测试：
+#+begin_export html
+<div id="I9Wmow"></div>
+<script src="/js/tests/web/xI9Wmow.js"></script>
+#+end_export
+
+#+begin_src js
+var start_hrt = performance.now()
+var start_date = Date.now()
+setInterval(() => {
+  var end_hrt = performance.now()
+  var end_date = Date.now()
+  log('...')
+}, 2000)
+
+// test event, performance 继承了 EventTarget
+var didHandle = false
+performance.addEventListener('testEvent', () => ( didHandle = true ), { once: true })
+performnace.dispatchEvent(new Event('testEvent'))
+#+end_src
+
+performance.timing 中属性表:
+
+| name                                       | desc                                        |
+|--------------------------------------------+---------------------------------------------|
+| redirectEnd - redirectStart                | 重定向耗时                                  |
+| domainLookupEnd - domainLookupStart        | DNS查询耗时                                 |
+| connectEnd - connectStart                  | TCP链接耗时                                 |
+| connectEnd - connectStart                  | HTTP请求耗时                                |
+| responseEnd - responseStart                | HTTP请求耗时                                |
+| domComplete - domInteractive               | 解析dom树耗时                               |
+| responseStart - navigationStart            | 白屏时间                                    |
+| domContentLoadedEventEnd - navigationStart | DOMready时间                                |
+| loadEventEnd - navigationStart             | onload时间,也即是onload回调函数执行的时间。 |
+
+[[https://developer.mozilla.org/en-US/docs/Web/API/Performance][MDN:Performance]]
+
+#+begin_export html
+<div id="xmyqUZ5"></div>
+<script src="/js/tests/web/xmyqUZ5.js"></script>
+#+end_export

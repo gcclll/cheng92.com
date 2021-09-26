@@ -283,3 +283,18 @@ function showCode(id, lang = "javascript") {
   </code>
 </pre>`
 }
+var hasOwn = (v, p) => Object.prototype.hasOwnProperty.call(v, p)
+function jsonToTreeData(json, result = []) {
+  for (let label in json) {
+    const value = json[label]
+    if (typeof value !== 'function') {
+      result.push({
+        label,
+        children: typeof value === 'object'
+          ? jsonToTreeData(value, []) : [],
+        value: typeof value !== 'object' ? value : null
+      })
+    }
+  }
+  return result
+}
