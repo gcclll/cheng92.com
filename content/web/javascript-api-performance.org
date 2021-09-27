@@ -279,11 +279,37 @@ interface Performance : EventTarget {
 };
 #+end_src
 
-1. ~now()~, 返回当前的[[https://w3c.github.io/hr-time/#dfn-current-high-resolution-time][高精度的时间]]
-2. ~timeOrigin~, 值如 [[#code-time-origin][Time Origin 伪码]]所示
-3. ~toJSON()~
+方法：
+
+1. ~performance.now()~, 返回当前的[[https://w3c.github.io/hr-time/#dfn-current-high-resolution-time][高精度的时间]]
+2. ~performance.toJSON()~
+3. ~performance.mark(name)~
+4. ~performance.clearMarks()~
+5. ~performance.measure(name, [startMark|undefined], endMark)~
+6. ~performance.clearMeasures()~
+7. ~performance.getEntries()~
+8. ~performance.getEntriesByName(name)~
+9. ~performance.getEntriesByType(type)~, type: 'mark' 或 'measure'
+10. ~performance.setResourceTimingBufferSize(maxSize)~ 设置 timing buffer 的大小，
+    如果满了会触发 [[#resoucetimeingbufferfull][resoucetimeingbufferfull]] 事件
+11. ~performance.clearResourceTimings()~
 
 
+属性：
+
+1. ~performance.timing~, 当前性能数据对象
+2. ~performance.timeOrigin~, 值如 [[#code-time-origin][Time Origin 伪码]]所示
+
+
+事件：
+
+1. ~resoucetimeingbufferfull~, timing buffer 满了之后触发的事件
+
+
+相关构造函数：
+
+1. [[https://developer.mozilla.org/en-US/docs/Web/API/PerformanceEntry][PerformanceEntry]]
+2. [[https://developer.mozilla.org/en-US/docs/Web/API/PerformanceResourceTiming][PerformanceResourceTiming]]
 
 测试：
 #+begin_export html
