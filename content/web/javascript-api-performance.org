@@ -529,3 +529,44 @@ performance.timing 中属性表:
   }).use(ElementPlus).mount("#I9Wmow")
 }())
 #+end_src
+
+* 总结
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: summary
+:END:
+
+对于 performance 感觉还是对有些概念上的理解会有些因难， api 倒是不多也不复杂。
+
+比如： 什么是单调时钟(monotonic clock)？什么是时钟偏移及其有关的限制(如系统时间
+等)？什么是时间域(timeOrigin)？ performance.timeOrigin 又是以什么为基准？还有在
+Worker 中的应用？
+
+其次是 API 上的应用，主要有：
+
+1. mark: ~performance.mark(name)~ 和 ~performance.clearMarks()~ 配套
+2. measure: ~performance.measure(name, startMark, endMark)~ 和
+   ~performance.clearMeasures()~ ，这个可以用来通过名字获取成对 mark 之间的 timing
+   数据。
+3. get: 一些 timing 结构获取函数，比如： ~getEntries()~ 取所有，
+   ~getEntriesByName(name)~ 通过 ~PerformanceTiming{ name }~ 名称取记录，
+   ~getEntriesByType(type)~ 根据 *mark* 或 *measure* 类型取记录。
+
+
+对于 ~performance.measure(name, startMark, endMark)~ 的后两个参数，可以省略，也可
+以只给 endMark
+
+startMark: mark 标记起始标记，可以是 undefined 则表示是从 navigator 开始计时。
+
+endMark: mark 标记结束标记，如果没有传则记录以 ~performance.now()~ 时间点结束。
+
+所以，如果都不传，只有 measure name 则表示从 navigator 到 ~performance.now()~ 这中
+间的所有 PerformanceTiming 记录都会收集。
+
+#+begin_success
+@@html:<p><strong>Wow!</strong></p>@@
+
+最后，应该能理解为何 [[/react/react-001-scheduler/][React Scheduler]] 包中使用的是 ~performance.now()~ 来获取当前的
+时间戳了，就因为它能精准到亚毫秒级，可以精准的在 frame 空隙执行 react 的 fiber
+树渲染任务。
+#+end_success
