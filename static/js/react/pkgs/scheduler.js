@@ -5,6 +5,8 @@ const NormalPriority = 3;
 const LowPriority = 4;
 const IdlePriority = 5;
 
+window.__log = window.__log || function() { }
+
 // Node Heap //////////////////////////////////////////////////////////////////
 function push(heap, node) {
   const index = heap.length
@@ -23,7 +25,7 @@ function pop(heap) {
 
   const first = heap[0]
   const last = heap.pop()
-  console.log('pop >> ', { first, last });
+  window.__log('scheduler:pop', first)
   if (last !== first) {
     heap[0] = last
     siftDown(heap, last, 0)
@@ -110,6 +112,7 @@ var isHostCallbackScheduled = false;
 var isHostTimeoutScheduled = false;
 
 function advanceTimers(currentTime) {
+  window.__log('advanceTimers', { currentTime })
   // 检查 timerQueue 中是不是有已经过期了的任务，将它们加入到 taskQueue 中
   // 去优先执行
   let timer = peek(timerQueue)
@@ -118,6 +121,7 @@ function advanceTimers(currentTime) {
       // Timer was cancelled
       pop(timerQueue)
     } else if (timer.startTime <= currentTime) {
+      window.__log({ title: 'timer 过期，进入 taskQueue', ...timer })
       // 时间到了，将它加入到 taskQueue
       pop(timerQueue)
       timer.sortIndex = timer.expirationTime
@@ -130,7 +134,31 @@ function advanceTimers(currentTime) {
   }
 }
 
+function handleTimeout(currentTime) {
+  isHostTimeoutScheduled = false
+  advanceTimers(currentTime)
+
+  window.__log('handleTimeout', { currentTime })
+  // host callback 优先级更高，如果它还没完，这里就不该启动 host timeout
+  if (!isHostCallbackScheduled) {
+    if (peek(taskQueue) !== null) {
+      // 在做之前先看下老大还有没其它指示，有的话就先做老大的任务
+      isHostCallbackScheduled = true
+      window.__log('flush taskQueue')
+      requestHostCallback(flushWork)
+    } else {
+      // taskQueue 清空了，才轮到 timerQueue
+      const firstTimer = peek(timerQueue)
+      if (firstTimer !== null) {
+        window.__log('flush timerQueue')
+        requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime)
+      }
+    }
+  }
+}
+
 function flushWork(hasTimeRemaining, initialTime) {
+  window.__log('flushWork', { hasTimeRemaining, initialTime, isHostTimeoutScheduled })
 
   isHostCallbackScheduled = false
   if (isHostTimeoutScheduled) {
@@ -145,6 +173,7 @@ function flushWork(hasTimeRemaining, initialTime) {
     return workLoop(hasTimeRemaining, initialTime)
   } finally {
     // 清理工作
+    window.__log('flushWork', 'finally clean work')
     currentTask = null
     currentPriorityLevel = previousPriorityLevel
     isPerformingWork = false
@@ -156,9 +185,13 @@ function workLoop(hasTimeRemaining, initialTime) {
   advanceTimers(currentTime)
   // 取出队列中第一个任务 taskQueue[0]
   currentTask = peek(taskQueue)
+  window.__log('workLoop', { currentTime, hasTimeRemaining, initialTime }, currentTask)
+
   while (currentTask !== null/*省略debug的条件*/) {
+    const shouldYield = shouldYieldToHost() // for log
+    window.__log('workLoop', { shouldYield })
     if (currentTask.expirationTime > currentTime && (
-      !hasTimeRemaining || shouldYieldToHost()
+      !hasTimeRemaining || shouldYield /*shouldYieldToHost()*/
     )) {
       // 任务还没过期且没有多余的时间去执行它了，所以要退出等下次有充足的时间再说
       break
@@ -167,6 +200,7 @@ function workLoop(hasTimeRemaining, initialTime) {
     // 时间充足
     const callback = currentTask.callback
     if (typeof callback === 'function') {
+      window.__log('workLoop', `callback: ${callback.name} || anonymous`)
       currentTask.callback = null
       currentPriorityLevel = currentTask.priorityLevel
       // 已经过期了
@@ -194,13 +228,17 @@ function workLoop(hasTimeRemaining, initialTime) {
     // 取下一个
     currentTask = peek(taskQueue)
   }
+
+  window.__log('workLoop', 'exit while...')
+
   // 不管有没任务都退出
   if (currentTask !== null) {
     return true
   } else {
     // 到这里说明 taskQueue 清空了，该到 timerQueue 中的任务了
     const firstTimer = peek(timerQueue)
-    if (firstTime !== null) {
+    window.__log('workLoop', { t: 'first timeQueue task', firstTimer })
+    if (firstTimer !== null) {
       requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime)
     }
     return false
@@ -244,6 +282,8 @@ function scheduleCallback(priorityLevel, callback, options) {
       break
   }
 
+  window.__log('scheduleCallback', { priorityLevel, currentTime, startTime })
+
   // 过期时间
   var expirationTime = startTime + timeout
 
@@ -257,6 +297,7 @@ function scheduleCallback(priorityLevel, callback, options) {
     sortIndex: -1
   }
 
+  window.__log(newTask)
   if (startTime > currentTime) {
     // 延迟的任务，应该进入队列排队，用肇始时间做索引
     newTask.sortIndex = startTime
@@ -277,6 +318,7 @@ function scheduleCallback(priorityLevel, callback, options) {
     push(taskQueue, newTask)
     // Schedule a host callback, if needed. If we're already performing work,
     // wait until the next time we yield.
+    window.__log('taskQueue pushed', { isHostCallbackScheduled, isPerformingWork })
     if (!isHostCallbackScheduled && !isPerformingWork) {
       isHostCallbackScheduled = true
       requestHostCallback(flushWork)
@@ -306,11 +348,17 @@ let needsPaint = false;
 let enableIsInputPending = false
 
 function shouldYieldToHost() {
+  window.__log('shouldYieldToHost', {
+    enableIsInputPending, maxYieldInterval, deadline
+  })
+
   if (enableIsInputPending &&
     navigator?.scheduling?.isInputPending !== undefined) {
     const scheduling = navigator.scheduling
     const currentTime = getCurrentTime()
     if (currentTime >= deadline) {
+      window.__log({ currentTime, deadline, needsPaint })
+      window.__log(scheduling)
       // 没时间了。我们可能想暂停对主要线程的控制，以便浏览器可以执行高优先级任务。
       // 主要的是渲染和用户输入。如果有悬而未决的渲染或悬而未决的输入，我们就应该暂停。
       // 但如果两者都没有，那么我们可以在保持响应性的同时减少暂停。不管怎样我们最终都
@@ -328,14 +376,19 @@ function shouldYieldToHost() {
       return false
     }
   } else {
+    const currentTime = getCurrentTime()
+    window.__log({ currentTime, deadline })
     // isInputPending = false.
     // 因为没有什么其它的方式可以知道是不是有 pending input，
     // 所以这里要保证在 frame 的最后总是要暂停一下
-    return getCurrentTime() >= deadline
+    return currentTime >= deadline
   }
 }
 
 const performWorkUntilDeadline = () => {
+  window.__log('performWorkUntilDeadline:flushWork', {
+    yieldInterval, deadline, isMessageLoopRunning
+  })
   if (scheduledHostCallback !== null) {
     const currentTime = getCurrentTime()
     deadline = currentTime + yieldInterval
@@ -347,6 +400,7 @@ const performWorkUntilDeadline = () => {
     let hasMoreWork = true
     try {
       hasMoreWork = scheduledHostCallback(hasTimeRemaining, currentTime)
+      window.__log({ hasMoreWork })
     } finally {
       if (hasMoreWork) {
         // 无论如何都要执行，看是不是有更多的任务待处理
@@ -373,12 +427,17 @@ let schedulePerformWorkUntilDeadline = (() => {
   const channel = new MessageChannel()
   const port = channel.port2
   channel.port1.onmessage = performWorkUntilDeadline
-  return () => port.postMessage(null)
+  return () => {
+    window.__log('schedulePerformWorkUntilDeadline', {
+      message: 'PORT2: send message `null` -> PORT1'
+    })
+    port.postMessage(null)
+  }
 })()
 
 function requestHostCallback(callback/*flushWork*/) {
-  // 保存将来恢复用?
   scheduledHostCallback = callback
+  window.__log('requestHostCallback', { isMessageLoopRunning })
   if (!isMessageLoopRunning) {
     isMessageLoopRunning = true
     schedulePerformWorkUntilDeadline()
@@ -386,6 +445,7 @@ function requestHostCallback(callback/*flushWork*/) {
 }
 
 function cancelHostTimeout() {
+  window.__log('cancelHostTimeout')
   clearTimeout(taskTimeoutID)
   taskTimeoutID = -1
 }

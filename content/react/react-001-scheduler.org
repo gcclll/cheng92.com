@@ -1135,3 +1135,137 @@ taskQueue 在 workLoop 中通过 while 不断的在当前空隙时间内去 flus
 
 这里使用了 [[/web/javascript-api-performance/][performance.now()]] 来取当前的时间戳，因为需要亚毫秒级的时间，相关的知
 识点 [[https://w3c.github.io/hr-time/#sotd][Performance]]。
+* shouldYieldToHost()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: shouldYieldToHost
+:END:
+
+用来检测是不是应该暂停 taskQueue 的 flush 工作，这里有几个条件可以阻止 taskQueue
+。
+
+1. 开启了 input pending 的话，这个时间不仅和 ~currentTime>=deadline~ 有关，还和
+   input pending 和 needsPaint 有关
+
+   needsPaint 是在 requestPaint() 中才会被设置成 ~true~ 的全局变量，在
+   [[#performWorkUntilDeadline][performWorkUntilDeadline]] 执行完成之后会被设置成 ~false~ 。
+
+   总的下来应该暂停的条件是： 已经过了 deadline 且 needsPaint 或 有 input pending。
+
+   如果两者都没有，很有可能此时还是有空隙时间，这个时间需要
+   用 ~currentTime>=maxYieldInterval(默认：300ms)~ 来看看是不是应该暂停，如果没超过
+   最大的暂停间隙，还是可以继续 flush task 的。
+
+2. 没有开启时，只需要检测当前时间是不是过了 deadline
+
+
+deadline 是当 [[#scheduleCallback][scheduleCallback]] 时有条件进入 [[#requestHostCallback][requestHostCallback]] 去触发管理一端
+PORT2 [[#schedulePerformWorkUntilDeadline][schedulePerformWorkUntilDeadline]] 向另一端 PORT1 [[#performWorkUntilDeadline][performWorkUntilDeadline]]
+发送信号，去开启 [[#flushWork][flushWork]] -> [[#flushWork][workLoop]] flush taskQueue 的时候，在 PORT1 执行端设
+置的一个截止时间(~deadline = currentTime + yieldInterval~)
+
+~yieldInterval~ 默认是 5ms 的时间，也就是说在这时间内如果 taskQueue 队列还没有
+flush 完就得暂停了，因为不能阻碍主线程的工作。
+
+#+begin_src js
+function shouldYieldToHost() {
+  if (enableIsInputPending &&
+    navigator?.scheduling?.isInputPending !== undefined) {
+    const scheduling = navigator.scheduling
+    const currentTime = getCurrentTime()
+    if (currentTime >= deadline) {
+      // 没时间了。我们可能想暂停对主要线程的控制，以便浏览器可以执行高优先级任务。
+      // 主要的是渲染和用户输入。如果有悬而未决的渲染或悬而未决的输入，我们就应该暂停。
+      // 但如果两者都没有，那么我们可以在保持响应性的同时减少暂停。不管怎样我们最终都
+      // 需要暂停，因为可能有一个悬而未决的渲染不是伴随着对“requestPaint”或其他
+      // 主线程任务的调用比如网络事件。
+      if (needsPaint || scheduling.isInputPending()) {
+        // 有一个 pending 的渲染或用户输入，应该暂停等待完成
+        return true
+      }
+
+      // 没有 pending 输入，仅仅暂停 maxYieldInterval 时长
+      return currentTime >= maxYieldInterval
+    } else {
+      // 在当前帧还有多余的时间，就不该暂停
+      return false
+    }
+  } else {
+    // isInputPending = false.
+    // 因为没有什么其它的方式可以知道是不是有 pending input，
+    // 所以这里要保证在 frame 的最后总是要暂停一下
+    return getCurrentTime() >= deadline
+  }
+}
+#+end_src
+
+所以，这个函数检测的关键条件是 needsPaint 和 isInputPending，前置条件是有没超过
+截止时间或最大间隙(~maxYieldInterval:300ms~)
+* handleTimeout(currentTime)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: handleTimeout
+:END:
+
+这个函数是和 [[#requestHostTimeout][requestHostTimeout]] 以及 timerQueue 应该滞后的任务有关的处理函数，在
+调用 [[#requestHostTimeout][requestHostTimeout(handleTimeout, ms)]] 时间做为第一个参数传递的，所以要了解
+下它是怎么处理 timerQueue 中的任务的(~callback~)
+
+#+begin_src js
+function handleTimeout(currentTime) {
+  isHostTimeoutScheduled = false
+  advanceTimers(currentTime)
+
+  // host callback 优先级更高，如果它还没完，这里就不该启动 host timeout
+  if (!isHostCallbackScheduled) {
+    if (peek(taskQueue) !== null) {
+      // 在做之前先看下老大还有没其它指示，有的话就先做老大的任务
+      isHostCallbackScheduled = true
+      requestHostCallback(flushWork)
+    } else {
+      // taskQueue 清空了，才轮到 timerQueue
+      const firstTimer = peek(timerQueue)
+      if (firstTimer !== null) {
+        requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime)
+      }
+    }
+  }
+}
+#+end_src
+
+
+[[/img/react/scheduler-request-timeout.svg]]
+
+从图中可知，当 ~requestHostTimeout(handleTimeout, ms)~ 一旦开始执行之后，就会一直
+在用计时器不断的在 ~handleTimeout(currentTime)~ 和 ~requestHostTimeout~ 之间来回递归，
+中间如果 taskQueue 不空，则中断去 flush taskQueue，否则一直刷完 timerQueue 为止。
+
+
+#+begin_info
+@@html:<p><strong>INFO</strong></p>@@
+
+其实到这里，Scheduler 已经基本完成了，从 [[#scheduleCallback][scheduleCallback]] 到对 ~taskQueue~
+和 ~timerQueue~ 的入列，再到检测启动。然后使用 [[/web/javascript-api-messagechannel/][MessageChannel]] 管道机制实现任务启动
+和执行，再到具体的 [[#flushWork][flushWork]] 触发 [[#workLoop][workLoop]] 去循环 flush ~taskQueue~ 中已经过期应该
+且有执行时机(一帧的空闲时间)的任务，最后不断的重复管道机制 [[#flushWork][flushWork]] -> [[#workLoop][workLoop]]
+-> port1-2 -> [[#flushWork][flushWork]] -> ... 在当前时间片内去 flush 掉所有能处理的任务。这其中
+有一个很重要的关键点就是所有的任务都必须走管道机制去执行 ~callback~ (只此一条路),
+虽然 ~timerQueque~ 走的是 [[#requestHostTimeout][requestHostTimeout]] 路线，但是最终会在 [[#handleTimeout][handleTimeout]] 中被
+过滤出来到 ~taskQueue~ 中以 ~taskQueue~ 方式去完成，使用 [[#requestHostTimeout][requestHostTimeout]] 延迟方式
+无非是用 ~setTimeout~ 中去异步执行罢了。
+#+end_info
+* 测试
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: test
+:END:
+
+测试基于官方的用例： [[https://github.com/facebook/react/blob/main/packages/scheduler/src/__tests__/Scheduler-test.js][scheduler/src/__tests__/Scheduler-test.js]]
+
+结合浏览器测试(*日志请从下往上看*)：
+
+#+begin_export html
+<div id="xGUn4jG"></div>
+<script src="/js/react/pkgs/scheduler.js"></script>
+<script src="/js/tests/xGUn4jG.js"></script>
+#+end_export
