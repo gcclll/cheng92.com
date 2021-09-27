@@ -1112,7 +1112,7 @@ function advanceTimers(currentTime) {
   }
 }
 #+end_src
-* 小结 1
+* 小结
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: summary-1
