@@ -98,6 +98,9 @@ var taskIdCounter = 1;
 var taskQueue = [];
 var timerQueue = [];
 
+// Pausing the scheduler is useful for debugging.
+var isSchedulerPaused = false;
+
 // 当前正在执行的任务及其优先级
 var currentTask = null;
 var currentPriorityLevel = NormalPriority;
@@ -187,7 +190,7 @@ function workLoop(hasTimeRemaining, initialTime) {
   currentTask = peek(taskQueue)
   window.__log('workLoop', { currentTime, hasTimeRemaining, initialTime }, currentTask)
 
-  while (currentTask !== null/*省略debug的条件*/) {
+  while (currentTask !== null && !((enableSchedulerDebugging && isSchedulerPaused))/*省略debug的条件*/) {
     const shouldYield = shouldYieldToHost() // for log
     window.__log('workLoop', { shouldYield })
     if (currentTask.expirationTime > currentTime && (
@@ -346,6 +349,7 @@ let needsPaint = false;
 
 // flags
 let enableIsInputPending = false
+let enableSchedulerDebugging = false
 
 function shouldYieldToHost() {
   window.__log('shouldYieldToHost', {
@@ -456,6 +460,93 @@ function requestHostTimeout(callback, ms) {
   }, ms)
 }
 
+
+// 其它函数
+function runWithPriority(priorityLevel, eventHandler) {
+  switch (priorityLevel) {
+    case ImmediatePriority:
+    case UserBlockingPriority:
+    case NormalPriority:
+    case LowPriority:
+    case IdlePriority:
+      break;
+    default:
+      priorityLevel = NormalPriority;
+  }
+
+  var previousPriorityLevel = currentPriorityLevel;
+  currentPriorityLevel = priorityLevel;
+
+  try {
+    return eventHandler();
+  } finally {
+    currentPriorityLevel = previousPriorityLevel;
+  }
+}
+
+function next(eventHandler) {
+  var priorityLevel;
+  switch (currentPriorityLevel) {
+    case ImmediatePriority:
+    case UserBlockingPriority:
+    case NormalPriority:
+      // Shift down to normal priority
+      priorityLevel = NormalPriority;
+      break;
+    default:
+      // Anything lower than normal priority should remain at the current level.
+      priorityLevel = currentPriorityLevel;
+      break;
+  }
+
+  var previousPriorityLevel = currentPriorityLevel;
+  currentPriorityLevel = priorityLevel;
+
+  try {
+    return eventHandler();
+  } finally {
+    currentPriorityLevel = previousPriorityLevel;
+  }
+}
+
+function wrapCallback(callback) {
+  var parentPriorityLevel = currentPriorityLevel;
+  return function() {
+    // This is a fork of runWithPriority, inlined for performance.
+    var previousPriorityLevel = currentPriorityLevel;
+    currentPriorityLevel = parentPriorityLevel;
+
+    try {
+      return callback.apply(this, arguments);
+    } finally {
+      currentPriorityLevel = previousPriorityLevel;
+    }
+  };
+}
+
+function continueExecution() {
+  isSchedulerPaused = false;
+  if (!isHostCallbackScheduled && !isPerformingWork) {
+    isHostCallbackScheduled = true;
+    requestHostCallback(flushWork);
+  }
+}
+
+
+function pauseExecution() {
+  isSchedulerPaused = true;
+}
+
+function getCurrentPriorityLevel() {
+  return currentPriorityLevel;
+}
+
+function getFirstCallbackNode() {
+  return peek(taskQueue);
+}
+
+
+
 // SchedulerPostTask.js ///////////////////////////////////////////////////////
 function shouldYield() {
   const current = getCurrentTime()
@@ -470,6 +561,13 @@ try {
 
     // Scheduler.js
     scheduleCallback,
+    runWithPriority,
+    next,
+    continueExecution,
+    wrapCallback,
+    pauseExecution,
+    getFirstCallbackNode,
+    getCurrentPriorityLevel,
 
     // heap
     siftUp,
