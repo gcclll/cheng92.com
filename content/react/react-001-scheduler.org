@@ -1269,3 +1269,275 @@ function handleTimeout(currentTime) {
 <script src="/js/react/pkgs/scheduler.js"></script>
 <script src="/js/tests/xGUn4jG.js"></script>
 #+end_export
+
+测试代码：
+#+begin_src js
+Vue.createApp({
+  template: `
+<div class="mark" style="max-height:500px;overflow:scroll;margin-bottom:10px">
+  <p v-for="log in logs" v-html="log"/>
+</div>`,
+  setup() {
+    log.info(`start --------->`)
+
+    Vue.onMounted(() => {
+      // 在 deadline 之前就结束的任务
+      test(`task that finishes before deadline`, NormalPriority, () => {
+        log.event('Task1')
+      })
+      test('task with continuation', NormalPriority, () => {
+        log.event('Task2')
+        let i = 0
+        while (shouldYield()) {
+          log.event(`${i}: should yield ?`)
+          if (++i >= 4) break
+        }
+        log.info(`Yield at ${performance.now()}ms`)
+        return () => log.event('Continuation')
+      })
+
+    })
+
+    return {
+      log, logs
+    }
+  }
+}).use(ElementPlus).mount('#xGUn4jG')
+
+function test(mark, priority, callback) {
+  log.se(`>>>>>>>>> start: ${mark}`)
+  scheduleCallback(priority, () => {
+    var continuation = callback()
+    log.se(`<<<<<<<<< end: ${mark}`)
+    return continuation
+  })
+}
+#+end_src
+
+结果分析(嫌罗嗦直接看上面流程图)：
+
+*Stage1:*
+
+>>>>>>>>> start: task that finishes before deadline 对应第一个 test()
+
+*Stage2:[scheduleCallback]*
+
+#+begin_example
+3719.9000000059605: {"isMessageLoopRunning":false}
+
+[requestHostCallback]
+
+3719.300000011921: {"isHostCallbackScheduled":false,"isPerformingWork":false}
+
+[taskQueue pushed]
+
+3717.0999999940395: {"id":1,"priorityLevel":3,"startTime":3690.300000011921,"expirationTime":8690.300000011921,"sortIndex":-1}
+
+3707.5: {"priorityLevel":3,"currentTime":3690.300000011921,"startTime":3690.300000011921}
+
+[scheduleCallback]
+#+end_example
+
+执行 scheduleCallback -> 因为
+~"startTime":3690.300000011921<now:3717.0999999940395~ 最终加入到 taskQueue 然后执
+行 [[#requestHostCallback][requestHostCallback()]]
+
+*Stage3:* requestHostCallback -> schedulePerformWorkUntilDeadline 最后执行
+~port.postMessage(null)~ 给 PORT1 发消息，此时 requestHostCallback 已经完成了，但
+是 PORT1 接受消息的过程并不影响 requestHostCallback() 后面的代码执行(也就是说同
+步代码优先)
+
+#+begin_example
+3623.4000000059605: {"yieldInterval":5,"deadline":0,"isMessageLoopRunning":true}
+
+[performWorkUntilDeadline:flushWork]
+
+3332.5999999940395: {"isHostCallbackScheduled":true,"isPerformingWork":false}
+
+[taskQueue pushed]
+
+3332.4000000059605: {"id":2,"priorityLevel":3,"startTime":3332.199999988079,"expirationTime":8332.199999988079,"sortIndex":-1}
+
+3332.2999999821186: {"priorityLevel":3,"currentTime":3332.199999988079,"startTime":3332.199999988079}
+
+[scheduleCallback]
+
+>>>>>>>>> start: task with continuation
+
+3331.9000000059605: {"message":"PORT2: send message `null` -> PORT1"}
+
+[schedulePerformWorkUntilDeadline]
+
+3331.699999988079: {"isMessageLoopRunning":false}
+
+[requestHostCallback]
+#+end_example
+
+*Stage4:* 继续 task1 的 流程，PORT1 收到消息执行 performWorkUntilDeadline 一直到
+workLoop 结束
+
+#+begin_example
+3630.0999999940395: {"hasMoreWork":true}
+
+[flushWork]
+
+[workLoop]
+
+3629.5: {"shouldYield":true}
+
+[workLoop]
+
+3629.2999999821186: {"currentTime":3629.2999999821186,"deadline":3628.5}
+
+3629.0999999940395: {"enableIsInputPending":false,"maxYieldInterval":300,"deadline":3628.5}
+
+[shouldYieldToHost]
+
+3628.699999988079: {"id":1,"priorityLevel":3,"startTime":3329.2999999821186,"expirationTime":8329.299999982119,"sortIndex":8329.299999982119}
+
+3628.699999988079: {"currentTime":3623.5,"hasTimeRemaining":true,"initialTime":3623.5}
+
+[workLoop]
+
+3628.199999988079: {"currentTime":3623.5}
+
+[advanceTimers]
+
+3623.699999988079: {"hasTimeRemaining":true,"initialTime":3623.5,"isHostTimeoutScheduled":false}
+
+[flushWork]
+
+3623.4000000059605: {"yieldInterval":5,"deadline":0,"isMessageLoopRunning":true}
+
+[performWorkUntilDeadline:flushWork]
+#+end_example
+
+注意看上面的第一行，表示 taskQueue 中还有任务，其实就是第二个 test() 的 task2，因
+为入列的时候 task1 正在处理，所以它只是单纯的做了入列并没有启动。
+
+*Stage5:* 开始轮到 task2 执行了，直到下面 task2 callback 执行
+
+#+begin_example
+[scheduler:pop]
+
+<<<<<<<<< end: task that finishes before deadline
+
+7257.9000000059605: task callback called: Task1
+
+...
+#+end_example
+
+*Stage6*: 注意看最后的输出，经过 *Stage5* 之后并没结束，因为 test2 中的 callback 返
+回值是一个函数 ~return () => log.event('Continuation')~ 这个函数会在下一次 while
+循环中被处理，之后才结束。
+
+
+对应的函数：
+
+#+begin_src js
+function requestHostCallback(callback/*flushWork*/) {
+  scheduledHostCallback = callback
+  window.__log('requestHostCallback', { isMessageLoopRunning })
+  if (!isMessageLoopRunning) {
+    isMessageLoopRunning = true
+    schedulePerformWorkUntilDeadline()
+  }
+}
+
+let schedulePerformWorkUntilDeadline = (() => {
+  const channel = new MessageChannel()
+  const port = channel.port2
+  channel.port1.onmessage = performWorkUntilDeadline
+  return () => {
+    window.__log('schedulePerformWorkUntilDeadline', {
+      message: 'PORT2: send message `null` -> PORT1'
+    })
+    port.postMessage(null)
+  }
+})()
+#+end_src
+
+即 task2 scheduleCallback -> taskQueue pushed -> 此时检测到
+~"isMessageLoopRunning":true~ 不会直接触发 [[#requestHostCallback][requestHostCallback()]]
+而是让 task1 的流程继续：PORT1 接受到消息执行 performWorkUntilDeadline
+
+#+begin_example
+
+[workLoop]
+
+3629.5: {"shouldYield":true}
+
+[workLoop]
+
+3629.2999999821186: {"currentTime":3629.2999999821186,"deadline":3628.5}
+
+3629.0999999940395: {"enableIsInputPending":false,"maxYieldInterval":300,"deadline":3628.5}
+
+[shouldYieldToHost]
+
+3628.699999988079: {"id":1,"priorityLevel":3,"startTime":3329.2999999821186,"expirationTime":8329.299999982119,"sortIndex":8329.299999982119}
+
+3628.699999988079: {"currentTime":3623.5,"hasTimeRemaining":true,"initialTime":3623.5}
+
+[workLoop]
+
+3628.199999988079: {"currentTime":3623.5}
+
+[advanceTimers]
+
+3623.699999988079: {"hasTimeRemaining":true,"initialTime":3623.5,"isHostTimeoutScheduled":false}
+
+[flushWork]
+
+3623.4000000059605: {"yieldInterval":5,"deadline":0,"isMessageLoopRunning":true}
+
+[performWorkUntilDeadline:flushWork]
+#+end_example
+
+MessageChannel 执行先后问题测试：
+
+/>>>>>>>>> start: task with continuation/ 输出发生在
+~schedulePerformWorkUntilDeadline~ 之后，并不是直接调用 [[#performWorkUntilDeadline][performWorkUntilDeadline]] 因
+为 ~MessageChannel~ 发送消息时并不会阻碍后面同步代码的执行，如下点击“发送”按钮可测
+试日志输出顺序。
+
+#+begin_export html
+<div id="xqoc5YN"></div>
+<script src="/js/tests/message-chennel.js"></script>
+#+end_export
+
+测试代码：
+#+begin_src js
+(function() {
+Vue.createApp({
+template: `
+<el-button @click="start" plain type="primary">发送</el-button>
+<div class="mark">
+<p v-for="log in logs" v-html="log"/>
+</div>
+`,
+setup() {
+    const logs = Vue.reactive(['--- begin ---'])
+
+    const channel = new MessageChannel()
+    const i = Vue.ref(0)
+    channel.port2.onmessage = () => logs.push(`${i.value}: message from PORT1...`)
+
+    return {
+    logs,
+    start() {
+        const val = ++i.value
+        channel.port1.postMessage(`${val}: message to PORT2`)
+        logs.push(`${val}: should this log before channel ?`)
+        setTimeout(() => logs.push(`${val}: should timeout before channel ?`))
+    }
+    }
+}
+
+}).use(ElementPlus).mount('#xqoc5YN')
+}())
+#+end_src
+
+#+begin_warn
+@@html:<p><strong>结论：</strong></p>@@ 同步代码 > channel receiver > setTimeout
+#+end_warn

@@ -200,7 +200,7 @@ function workLoop(hasTimeRemaining, initialTime) {
     // 时间充足
     const callback = currentTask.callback
     if (typeof callback === 'function') {
-      window.__log('workLoop', `callback: ${callback.name} || anonymous`)
+      window.__log('workLoop', `callback: ${callback} || anonymous`)
       currentTask.callback = null
       currentPriorityLevel = currentTask.priorityLevel
       // 已经过期了
@@ -456,8 +456,19 @@ function requestHostTimeout(callback, ms) {
   }, ms)
 }
 
+// SchedulerPostTask.js ///////////////////////////////////////////////////////
+function shouldYield() {
+  const current = getCurrentTime()
+  window.__log('shouldYield', { current, deadline })
+  return current >= deadline
+}
+
 try {
   module.exports = {
+    // SchedulerPostTask.js
+    shouldYield,
+
+    // Scheduler.js
     scheduleCallback,
 
     // heap

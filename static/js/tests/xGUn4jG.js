@@ -25,7 +25,7 @@
 
   Vue.createApp({
     template: `
-<div class="mark">
+<div class="mark" style="max-height:500px;overflow:scroll;margin-bottom:10px">
   <p v-for="log in logs" v-html="log"/>
 </div>`,
     setup() {
@@ -34,7 +34,17 @@
       Vue.onMounted(() => {
         // 在 deadline 之前就结束的任务
         test(`task that finishes before deadline`, NormalPriority, () => {
-          log.event('Task')
+          log.event('Task1')
+        })
+        test('task with continuation', NormalPriority, () => {
+          log.event('Task2')
+          let i = 0
+          while (shouldYield()) {
+            log.event(`${i}: should yield ?`)
+            if (++i >= 4) break
+          }
+          log.info(`Yield at ${performance.now()}ms`)
+          return () => log.event('Continuation')
         })
 
       })
@@ -48,8 +58,9 @@
   function test(mark, priority, callback) {
     log.se(`>>>>>>>>> start: ${mark}`)
     scheduleCallback(priority, () => {
-      callback()
+      var continuation = callback()
       log.se(`<<<<<<<<< end: ${mark}`)
+      return continuation
     })
   }
 
