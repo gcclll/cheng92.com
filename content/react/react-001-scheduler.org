@@ -35,8 +35,10 @@
 #+begin_quote
 声明：
 
-1. 本文都是从 MessageChannel 角度去分析任务执行，通过管道信号给
+1. 本文都是从 [[/web/javascript-api-messagechannel/][MessageChannel]] 角度去分析任务执行，通过管道信号给
    performWorkUntilDeadline 执行 flushWork
+2. 只针对 Scheduler.js 和 ScheduleMinHeap.js 去了分析，因为最主要的代码都在这两
+   个里面，其它的要么是测试要么是已经废弃的。
 #+end_quote
 
 * 重要知识点
