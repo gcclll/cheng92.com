@@ -1,0 +1,257 @@
+#+TITLE: React Packages 00N - 辅助性的包(shared,...)
+#+DATE: <2021-08-20 17:31:59>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: react, scheduler
+#+CATEGORIES[]: react
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：半神半圣亦半仙，全儒全道是全贤，脑中真书藏万卷，掌握文武半边天。
+</font>
+</kbd><br><br>
+<img  src="/img/bdx/shz-001.jpg"/>
+#+end_export
+
+#+begin_quote
+本文是对 React 源码中一些辅助性的包的记录，在开始 react 和 react-dom 之前做个简
+单的阅读。
+#+end_quote
+
+相关的包(+删除线表示不在本文探讨范围+)：
+
+1. +react+
+2. +react-dom+
+3. react-art
+4. react-cache
+5. react-client
+6. react-devtools-*
+7. react-fetch
+8. react-fs
+9. react-interactions
+10. react-is
+11. +react-native-renderer+
+12. react-noop-renderer
+13. react-pg(Postgres)
+14. +react-reconciler+
+15. react-refresh
+16. react-server-*
+17. react-transport-*
+18. share
+19. use-subscription
+
+
+* TODO react-art
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-art
+:END:
+
+React ART 是一个用来绘制向量图库，它提供了对 [[https://github.com/sebmarkbage/art/][ART Library]] 变量声明式和响应式绑定
+
+使用相同的声明式 API 可以渲染成 Canvas, SVG 或 VML(IE8) 。
+
+ART [[https://github.com/sebmarkbage/art/tree/master/demos][测试代码]](morph, opacity, paths, gradients, images, objectmodel, svgviewer,
+codegen, svgconverter, apidump)
+* TODO react-cache
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-cache
+:END:
+* TODO react-client
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-client
+:END:
+* TODO react-devtools-*
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: devtools
+:END:
+* TODO react-fetch
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-fetch
+:END:
+* TODO react-fs
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-fs
+:END:
+
+* TODO react-interactions
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-interactions
+:END:
+
+* TODO react-is
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-is
+:END:
+
+#+begin_src js
+import {
+  REACT_CONTEXT_TYPE,
+  REACT_ELEMENT_TYPE,
+  REACT_FORWARD_REF_TYPE,
+  REACT_FRAGMENT_TYPE,
+  REACT_LAZY_TYPE,
+  REACT_MEMO_TYPE,
+  REACT_PORTAL_TYPE,
+  REACT_PROFILER_TYPE,
+  REACT_PROVIDER_TYPE,
+  REACT_STRICT_MODE_TYPE,
+  REACT_SUSPENSE_TYPE,
+  REACT_SUSPENSE_LIST_TYPE,
+} from 'shared/ReactSymbols';
+#+end_src
+* TODO react-refresh
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-refresh
+:END:
+* TODO react-server-*
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-server
+:END:
+* TODO react-transport-*
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-transport
+:END:
+* TODO share
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: share
+:END:
+* use-subscription
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: use-subscription
+:END:
+
+#+begin_src js
+import {useDebugValue, useEffect, useState} from 'react';
+
+// Hook used for safely managing subscriptions in concurrent mode.
+//
+// In order to avoid removing and re-adding subscriptions each time this hook is called,
+// the parameters passed to this hook should be memoized in some way–
+// either by wrapping the entire params object with useMemo()
+// or by wrapping the individual callbacks with useCallback().
+export function useSubscription<Value>({
+  // (Synchronously) returns the current value of our subscription.
+  getCurrentValue,
+
+  // This function is passed an event handler to attach to the subscription.
+  // It should return an unsubscribe function that removes the handler.
+  subscribe,
+}: {|
+  getCurrentValue: () => Value,
+  subscribe: (callback: Function) => () => void,
+|}): Value {
+  // Read the current value from our subscription.
+  // When this value changes, we'll schedule an update with React.
+  // It's important to also store the hook params so that we can check for staleness.
+  // (See the comment in checkForUpdates() below for more info.)
+  const [state, setState] = useState(() => ({
+    getCurrentValue,
+    subscribe,
+    value: getCurrentValue(),
+  }));
+
+  let valueToReturn = state.value;
+
+  // If parameters have changed since our last render, schedule an update with its current value.
+  if (
+    state.getCurrentValue !== getCurrentValue ||
+    state.subscribe !== subscribe
+  ) {
+    // If the subscription has been updated, we'll schedule another update with React.
+    // React will process this update immediately, so the old subscription value won't be committed.
+    // It is still nice to avoid returning a mismatched value though, so let's override the return value.
+    valueToReturn = getCurrentValue();
+
+    setState({
+      getCurrentValue,
+      subscribe,
+      value: valueToReturn,
+    });
+  }
+
+  // Display the current value for this hook in React DevTools.
+  useDebugValue(valueToReturn);
+
+  // It is important not to subscribe while rendering because this can lead to memory leaks.
+  // (Learn more at reactjs.org/docs/strict-mode.html#detecting-unexpected-side-effects)
+  // Instead, we wait until the commit phase to attach our handler.
+  //
+  // We intentionally use a passive effect (useEffect) rather than a synchronous one (useLayoutEffect)
+  // so that we don't stretch the commit phase.
+  // This also has an added benefit when multiple components are subscribed to the same source:
+  // It allows each of the event handlers to safely schedule work without potentially removing an another handler.
+  // (Learn more at https://codesandbox.io/s/k0yvr5970o)
+  useEffect(() => {
+    let didUnsubscribe = false;
+
+    const checkForUpdates = () => {
+      // It's possible that this callback will be invoked even after being unsubscribed,
+      // if it's removed as a result of a subscription event/update.
+      // In this case, React will log a DEV warning about an update from an unmounted component.
+      // We can avoid triggering that warning with this check.
+      if (didUnsubscribe) {
+        return;
+      }
+
+      // We use a state updater function to avoid scheduling work for a stale source.
+      // However it's important to eagerly read the currently value,
+      // so that all scheduled work shares the same value (in the event of multiple subscriptions).
+      // This avoids visual "tearing" when a mutation happens during a (concurrent) render.
+      const value = getCurrentValue();
+
+      setState(prevState => {
+        // Ignore values from stale sources!
+        // Since we subscribe an unsubscribe in a passive effect,
+        // it's possible that this callback will be invoked for a stale (previous) subscription.
+        // This check avoids scheduling an update for that stale subscription.
+        if (
+          prevState.getCurrentValue !== getCurrentValue ||
+          prevState.subscribe !== subscribe
+        ) {
+          return prevState;
+        }
+
+        // Some subscriptions will auto-invoke the handler, even if the value hasn't changed.
+        // If the value hasn't changed, no update is needed.
+        // Return state as-is so React can bail out and avoid an unnecessary render.
+        if (prevState.value === value) {
+          return prevState;
+        }
+
+        return {...prevState, value};
+      });
+    };
+    const unsubscribe = subscribe(checkForUpdates);
+
+    // Because we're subscribing in a passive effect,
+    // it's possible that an update has occurred between render and our effect handler.
+    // Check for this and schedule an update if work has occurred.
+    checkForUpdates();
+
+    return () => {
+      didUnsubscribe = true;
+      unsubscribe();
+    };
+  }, [getCurrentValue, subscribe]);
+
+  // Return the current value for our caller to use while rendering.
+  return valueToReturn;
+}
+
+#+end_src

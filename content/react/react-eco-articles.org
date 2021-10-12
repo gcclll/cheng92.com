@@ -1,0 +1,53 @@
+#+TITLE: React 生态相关的文章收集
+#+DATE: <2021-10-12 11:30:37>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: react
+#+CATEGORIES[]: react
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：半神半圣亦半仙，全儒全道是全贤，脑中真书藏万卷，掌握文武半边天。
+</font>
+</kbd><br><br>
+<img  src="/img/bdx/shz-001.jpg"/>
+<script src="/js/utils.js"></script>
+#+end_export
+
+#+begin_success
+@@html:<p><strong>持续更新中！！！！</strong></p>@@
+
+UP! UP! UP! :tea: :tea: :tea:
+#+end_success
+
+
+* 声明
+
+1. 以下所有文章，均为原创，是在阅读(抄)源码过程中的点滴记录，文笔有限，只是个人
+   记录，分享出来希望有所用处。
+2. 所有流程图，脑图仓库链接：
+
+   [[https://github.com/gcclll/cheng92.com/tree/master/public/img/react][https://github.com/gcclll/cheng92.com/tree/master/public/img/react]]
+
+   且可直接通过 [[https://www.cheng92.com/img/react/react.svg][https://www.cheng92.com/img/react/ + 文件名直接访问]], 图绝大部分是
+   svg 格式，建议新标签页打开很清晰，因为用的是 [[https://app.diagrams.net/][draw.io]] 画的。
+
+3. *React* 及其生态有关的会持续更新，学无止境，互勉！！！
+
+4. 更多可进入本人博客 [[https://www.cheng92.com/react/][https://www.cheng92.com/react/]]，水平有限(前端白菜一枚，若有
+   幸得访还请轻踩轻喷，感激不尽!!)
+
+* React 每次大更新记录、分析
+* React 单个功能，特性专题源码分析
+
+* React 源码阅读(含脑图，流程图)
+
+* React 周边源码阅读(含脑图，流程图)
+
+#+begin_quote
+这部分均是在研究 React 源码时候，顺带着做了点浅显的研究
+#+end_quote
+* 其它相关文章

@@ -113,6 +113,11 @@ function insertVueAndElementPlus() {
   ;["https://unpkg.com/vue@next", "https://unpkg.com/element-plus"].forEach(insertScript)
 }
 
+function insertReactLib() {
+  ;['https://unpkg.com/react@17/umd/react.development.js',
+    'https://unpkg.com/react-dom@17/umd/react-dom.development.js'].forEach(insertScript)
+}
+
 function insertPreCode(selector) {
   const script = document.querySelector(`script.${selector}`);
   const div = document.querySelector(`div.${selector}`);

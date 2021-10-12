@@ -1,0 +1,980 @@
+#+TITLE: React Packages 002 - react + react-dom
+#+DATE: <2021-10-11 10:17:11>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: react
+#+CATEGORIES[]: react
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：半神半圣亦半仙，全儒全道是全贤，脑中真书藏万卷，掌握文武半边天。
+</font>
+</kbd><br><br>
+<img  src="/img/bdx/shz-001.jpg"/>
+<script src="/js/utils.js"></script>
+#+end_export
+
+React 使用示例：
+
+#+begin_export html
+<div id="xLeSiDO"></div>
+<p id="pLeSiDO">i = 0</p>
+<script>
+(function() {
+  const c = document.getElementById('xLeSiDO')
+  const p = document.getElementById('pLeSiDO')
+  const e = React.createElement
+  let i = 0
+  ReactDOM.render(e('button', {
+    onClick: () => p.textContent = `i = ${++i}`,
+  }, 'increment'), c)
+}())
+</script>
+#+end_export
+
+#+begin_src js
+const c = document.getElementById('xLeSiDO')
+const p = document.getElementById('pLeSiDO')
+const e = React.createElement
+let i = 0
+ReactDOM.render(e('button', {
+  onClick: () => p.textContent = `i = ${++i}`,
+}, 'increment'), c)
+#+end_src
+
+#+begin_quote
+声明：此文包含 React 的主要两个包 [[https://github.com/facebook/react/tree/main/packages/react/][react/]] 和 [[https://github.com/facebook/react/tree/main/packages/react-dom/][react-dom/]] 的分析，两者精简之后的源
+码分别是对应是 [[/js/react/pkgs/react.js]] 和 [[/js/react/pkgs/react-dom.js]]
+#+end_quote
+
+
+* packages/react
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: toc
+:END:
+
+去掉 tests 和其它不是很重要的部分：
+
+#+begin_example
+$ tree -C .                                 ~/github/react/react/packages/react
+.
+├── index.js
+├── jsx-dev-runtime.js
+├── jsx-runtime.js
+├── src
+│   ├── BadMapPolyfill.js
+│   ├── React.js
+│   ├── ReactAct.js
+│   ├── ReactBaseClasses.js
+│   ├── ReactChildren.js
+│   ├── ReactContext.js
+│   ├── ReactCreateRef.js
+│   ├── ReactCurrentActQueue.js
+│   ├── ReactCurrentBatchConfig.js
+│   ├── ReactCurrentDispatcher.js
+│   ├── ReactCurrentOwner.js
+│   ├── ReactDebugCurrentFrame.js
+│   ├── ReactElement.js
+│   ├── ReactElementValidator.js
+│   ├── ReactForwardRef.js
+│   ├── ReactHooks.js
+│   ├── ReactLazy.js
+│   ├── ReactMemo.js
+│   ├── ReactMutableSource.js
+│   ├── ReactNoopUpdateQueue.js
+│   ├── ReactSharedInternals.js
+│   ├── ReactStartTransition.js
+│   ├── forks
+│   │   ├── ReactCurrentDispatcher.www.js
+│   │   ├── ReactCurrentOwner.www.js
+│   │   └── ReactSharedInternals.umd.js
+│   └── jsx
+│       ├── ReactJSX.js
+│       ├── ReactJSXElement.js
+│       └── ReactJSXElementValidator.js
+
+8 directories, 72 files
+#+end_example
+
+react/src/index.js 中导出内容：
+
+主要分三个部分：
+
+1. 内置组件(Children, Component, Fragment, ...)
+
+2. VNode 相关的函数 (cloneElement, createElement, ...)
+
+3. 和一些钩子函数（useState, useMemo, ...）
+
+#+begin_src js
+// Export all exports so that they're available in tests.
+// We can't use export * from in Flow for some reason.
+export {
+  // 组件
+  Children,
+  Component,
+  Fragment,
+  Profiler,
+  PureComponent,
+  StrictMode,
+  Suspense,
+  SuspenseList,
+
+  // vnode 相关函数
+  cloneElement,
+  createContext,
+  createElement,
+  createFactory,
+  createMutableSource,
+  createRef,
+  forwardRef,
+  isValidElement,
+  lazy,
+  memo,
+  startTransition,
+
+  // use hooks
+  useCallback,
+  useContext,
+  useDebugValue,
+  useDeferredValue,
+  useEffect,
+  useImperativeHandle,
+  unstable_useInsertionEffect,
+  useLayoutEffect,
+  useMemo,
+  useMutableSource,
+  useSyncExternalStore,
+  useSyncExternalStore as unstable_useSyncExternalStore,
+  useReducer,
+  useRef,
+  useState,
+  useTransition,
+  version,
+} from './src/React';
+#+end_src
+
+* Component, PureComponent(ReactBaseClasses.js)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: component
+:END:
+
+这个 JS 中声明了 React 中最基本组件对象， Component, PureComponent
+
+#+begin_src js
+function Component(props, context, updater) {
+  this.props = props;
+  this.context = context;
+  // If a component has string refs, we will assign a different object later.
+  this.refs = emptyObject;
+  // We initialize the default updater but the real one gets injected by the
+  // renderer.
+  this.updater = updater || ReactNoopUpdateQueue;
+}
+
+Component.prototype.isReactComponent = {};
+
+Component.prototype.setState = function(partialState, callback) {
+  invariant(
+    typeof partialState === 'object' ||
+      typeof partialState === 'function' ||
+      partialState == null,
+    'setState(...): takes an object of state variables to update or a ' +
+      'function which returns an object of state variables.',
+  );
+  this.updater.enqueueSetState(this, partialState, callback, 'setState');
+};
+
+Component.prototype.forceUpdate = function(callback) {
+  this.updater.enqueueForceUpdate(this, callback, 'forceUpdate');
+};
+#+end_src
+
+dummy Component: PureComponent 和 Component 原型链上的一个中间对象
+
+#+begin_src js
+function ComponentDummy() {}
+ComponentDummy.prototype = Component.prototype;
+#+end_src
+
+pure Component:
+#+begin_src js
+/**
+ * Convenience component with default shallow equality check for sCU.
+ */
+function PureComponent(props, context, updater) {
+  this.props = props;
+  this.context = context;
+  // If a component has string refs, we will assign a different object later.
+  this.refs = emptyObject;
+  this.updater = updater || ReactNoopUpdateQueue;
+}
+
+const pureComponentPrototype = (PureComponent.prototype = new ComponentDummy());
+pureComponentPrototype.constructor = PureComponent;
+// Avoid an extra prototype jump for these methods.
+Object.assign(pureComponentPrototype, Component.prototype);
+pureComponentPrototype.isPureReactComponent = true;
+#+end_src
+
+继承关系： PureComponent -> ComponentDummy -> Component
+
+* Context(ReactContext.js)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: context
+:END:
+
+#+begin_src js
+// ReactContext.js
+function createContext(defaultValue) {
+  const context = {
+    $$typeof: REACT_CONTEXT_TYPE,
+    // 支持多并发的 renderers, 将它们区分出 primary 和 secondary，如：
+    // React Native(primary), Fabric(secondary)
+    // React DOM(primary), React ART(secondary)
+    // secondary renderers 将单独存储它们的 context values
+    _currentValue: defaultValue,
+    _currentValue2: defaultValue,
+    // 用下跟踪当前 context 有多少并发 renderers
+    _threadCount: 0,
+    // 循环引用
+    Provider: null,
+    Consumer: null
+  }
+
+  context.Provider = {
+    $$typeof: REACT_PROFILER_TYPE,
+    _context: context
+  }
+
+  context.Consumer = context
+
+  return context
+}
+#+end_src
+
+* Children(ReactChildren.js)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: children
+:END:
+
+FILE: [[https://github.com/facebook/react/tree/main/packages/react/src/ReactChildren.js][react/src/ReactChildren.js]]
+
+这个文件里面包含了 children 的遍历和统计函数，重点函数： ~mapIntoArray~ ，会对
+props.children 进行深层遍历，并可对每一个经过的 child 执行 callback，比如：
+mapChildren 用来收集所有的 child，和 countChildren 用来统计 child 数量。
+
+~escape(key: string): string~ 函数：
+
+#+begin_src js
+function escape(key) {
+  const escapeRegex = /[=:]/g;
+  const escaperLookup = {
+    '=': '=0',
+    ':': '=2',
+  };
+  const escapedString = key.replace(escapeRegex, match => escaperLookup[match]);
+
+  return '$' + escapedString;
+}
+
+console.log(escape('xx=xx=xx'), escape('yy:yy:yy'))
+#+end_src
+
+#+RESULTS:
+: $xx=0xx=0xx $yy=2yy=2yy
+: undefined
+
+~mapIntoArray(children, array, escapedPrefix, nameSoFar, callback)~ 统计子树数量:
+
+#+begin_src js
+function mapIntoArray(
+  children,
+  array,
+  escapedPrefix,
+  nameSoFar,
+  callback
+) {
+  const type = typeof children
+
+  if (type === 'undefined' || type === 'boolean') {
+    children = null
+  }
+
+  let invokeCallback = false
+
+  if (children === null) {
+    invokeCallback = true;
+  } else {
+    switch (type) {
+      case 'string':
+      case 'number':
+        invokeCallback = true;
+        break;
+      case 'object':
+        switch (children.$$typeof) {
+          case REACT_ELEMENT_TYPE:
+          case REACT_PORTAL_TYPE:
+            invokeCallback = true;
+        }
+    }
+  }
+
+  if (invokeCallback) {
+    const child = children
+    let mappedChild = callback(child)
+
+    const childKey =
+      nameSoFar === '' ? SEPARATOR + getElementKey(child, 0) : nameSoFar;
+
+    if (isArray(mappedChild)) { // 数组递归处理
+      let escapedChildKey = '';
+      if (childKey != null) {
+        escapedChildKey = escapeUserProvidedKey(childKey) + '/';
+      }
+      mapIntoArray(mappedChild, array, escapedChildKey, '', c => c);
+    } else if (mappedChild != null) {
+      if (isValidElement(mappedChild)) {
+        mappedChild = cloneAndReplaceKey(
+          mappedChild,
+          // Keep both the (mapped) and old keys if they differ, just as
+          // traverseAllChildren used to do for objects as children
+          escapedPrefix +
+          // $FlowFixMe Flow incorrectly thinks React.Portal doesn't have a key
+          (mappedChild.key && (!child || child.key !== mappedChild.key)
+            ? // $FlowFixMe Flow incorrectly thinks existing element's key can be a number
+            // eslint-disable-next-line react-internal/safe-string-coercion
+            escapeUserProvidedKey('' + mappedChild.key) + '/'
+            : '') +
+          childKey,
+        );
+      }
+      array.push(mappedChild);
+    }
+
+    return 1
+  }
+
+  let child;
+  let nextName;
+  // 当前子树下发现的 child 数量
+  let subtreeCount = 0;
+  const nextNamePrefix =
+    nameSoFar === '' ? SEPARATOR : nameSoFar + SUBSEPARATOR;
+
+  if (isArray(children)) {
+    for (let i = 0; i < children.length; i++) {
+      child = children[i];
+      nextName = nextNamePrefix + getElementKey(child, i);
+      subtreeCount += mapIntoArray(
+        child,
+        array,
+        escapedPrefix,
+        nextName,
+        callback,
+      );
+    }
+  } else {
+    const iteratorFn = getIteratorFn(children);
+    if (typeof iteratorFn === 'function') {
+      const iterableChildren = children;
+
+      // 迭达器, Generator 函数？
+      const iterator = iteratorFn.call(iterableChildren);
+      let step;
+      let ii = 0;
+      while (!(step = iterator.next()).done) {
+        child = step.value;
+        nextName = nextNamePrefix + getElementKey(child, ii++);
+        subtreeCount += mapIntoArray(
+          child,
+          array,
+          escapedPrefix,
+          nextName,
+          callback,
+        );
+      }
+    } else if (type === 'object') {
+      throw new Error('Objects 不是有效的 React child, 必须是函数或数组')
+    }
+  }
+
+  return subtreeCount
+}
+#+end_src
+
+测试 @@html:<span id="test-children"></span>@@ ：
+#+begin_src js
+global.__log = console.log
+const { REACT_ELEMENT_TYPE, Children } = require(process.env.BLOG_JS + '/react/pkgs/react.js')
+const context = {}
+const simpleKid = {
+  $$typeof: REACT_ELEMENT_TYPE,
+  type: 'span',
+  key: "simple",
+}
+const instance = {
+  $$typeof: REACT_ELEMENT_TYPE,
+  type: 'div',
+  props: {
+    children: [simpleKid]
+  }
+}
+
+function callback(kid, index) {
+  console.log("this === context: %s, kid: %s, index: %s", this === context, kid, index)
+  // kid: child node
+  return kid
+}
+
+Children.forEach(instance.props.children, callback, context)
+
+const mappedChildren = Children.map(
+  instance.props.children,
+  callback,
+  context
+)
+console.log('mappedChildren[0]:\n', mappedChildren[0])
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Function:forEachChildren
+Function:mapChildren
+this === context: true, kid: { '$$typeof': Symbol(react.element), type: 'span', key: 'simple' }, index: 0
+children count: 0
+Function:mapChildren
+this === context: true, kid: { '$$typeof': Symbol(react.element), type: 'span', key: 'simple' }, index: 0
+children count: 1
+mappedChildren[0]:
+ {
+  '$$typeof': Symbol(react.element),
+  type: 'span',
+  key: '.$simple',
+  ref: undefined,
+  props: undefined,
+  _owner: undefined
+}
+undefined
+#+end_example
+
+上面的测试中使用的是 REACT_ELEMENT_TYPE， 在调用 mapChildren -> mapIntoArray 里
+面检测到 children 是对象且是 REACT_ELEMENT_TYPE 类型，最后 ~invokeCallback=true~
+
+#+begin_src js
+case 'object':
+    switch (children.$$typeof) {
+    case REACT_ELEMENT_TYPE:
+    case REACT_PORTAL_TYPE:
+        invokeCallback = true;
+    }
+#+end_src
+
+然后 key: simple 被
+
+~const childKey = nameSoFar === '' ? SEPARATOR + getElementKey(child, 0) : nameSoFar;~
+
+转成了 ~.$simple~, ~SEPARATOR="."~
+
+~getElementKey(child, 0)~ 会 在 ~escape()~ 中将 key 转换，加上 ~$~ 变成 ~$simple~
+
+#+begin_src js
+function getElementKey(element, index) {
+  if (typeof element === 'object' && element !== null && element.key != null) {
+    return escape('' + element.key);
+  }
+  // Implicit key determined by the index in the set
+  return index.toString(36);
+}
+#+end_src
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+key(如： simple) 属性经过 ~mapChildren~ 之后会被转成 ~.$simple~, 点(~.~)是在 mapIntoArray
+中加的， ~$~ 是在 escape 中加的。
+#+end_tip
+
+
+更多测试可参数上面的[[#test-children][例子]] + 官方测试用例([[https://github.com/facebook/react/tree/main/packages/react/src/__tests__/ReactChildren-test.js][react/src/__tests__/ReactChildren-test.js]]) + [[/js/react/pkgs/react.js][react.js]] 完成。
+* memo(type, compare)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: memo
+:END:
+
+FILE: [[https://github.com/facebook/react/tree/main/packages/react/src/ReactMemo.js][react/src/ReactMemo.js]]
+
+#+begin_src js
+// ReactMemo.js
+function memo(type, compare) {
+  const elementType = {
+    $$typeof: REACT_MEMO_TYPE,
+    type,
+    compare: compare ?? null
+  }
+  return elementType
+}
+#+end_src
+
+* React.createElement(type, config, children)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createElement
+:END:
+
+FILE: [[https://github.com/facebook/react/tree/main/packages/react/src/ReactElement.js][react/src/ReactElement.js]]
+
+createElement(type, config, children) 内部实现分为三个步骤：
+
+1. config 处理，比如：事件，其它 props 等 ~React.createElement('button',{onClick:
+   xxx})~
+2. 合并 children, 因为 createElement 支持 3 个以上的参数，从第 3 个参数开始都被
+   视为 children, 如： ~e('div', null, child1, child2, ..., childn)~, 那么
+   ~children = [child1, child2, ..., childn]~
+3. 使用 ReactElement 构建组件结构
+
+   #+begin_src js
+const ReactElement = function(type, key, ref, self, source, owner, props) {
+  const element = {
+    // This tag allows us to uniquely identify this as a React Element
+    $$typeof: REACT_ELEMENT_TYPE,
+
+    // Built-in properties that belong on the element
+    type: type,
+    key: key,
+    ref: ref,
+    props: props,
+
+    // Record the component responsible for creating this element.
+    _owner: owner,
+  };
+
+  return element;
+};
+   #+end_src
+
+#+begin_src js
+function createElement(type, config, children) {
+  let propName
+  const props = {}
+
+  let key = null
+  let ref = null
+  let self = null
+  let source = null
+
+  // 比如：事件，其它 props 等
+  if (config != null) {
+    // TODO
+  }
+
+  // children 可能不止一个参数，支持这么调用
+  // React.createElement('div', {...}, child1, child2, ..., childN)
+  // 最后 children = [child1, child2, ..., childN]
+  const childrenLength = arguments.length - 2
+
+  // 解析默认的 props
+  if (type && type.defaultProps) {
+    // TODO
+  }
+
+  return ReactElement(type, key, ref, self, source, ReactCurrentOwner.current, props)
+}
+#+end_src
+
+config 处理主要是剥离出 ~ref~, ~key~, ~__self~, ~__source~ 保留属性，其它属性用新对象来
+保存：
+#+begin_src js
+if (config != null) {
+  if (hasValidRef(config)) {
+    ref = config.ref
+  }
+
+  if (hasValidKey(config)) {
+    key = '' + config.key
+  }
+
+  self = config.__self ?? null
+  source = config.__source ?? null
+
+  // 保留属性保存到新的 props 对象中
+  for (propName in config) {
+    if (
+      hasOwnProperty.call(config, propName) &&
+        !RESERVED_PROPS.hasOwnProperty(propName)
+    ) {
+      // 非 key, ref, __self, __source 的属性
+      props[propName] = config[propName]
+    }
+  }
+}
+#+end_src
+
+children 的合并：
+#+begin_src js
+// children 可能不止一个参数，支持这么调用
+// React.createElement('div', {...}, child1, child2, ..., childN)
+// 最后 children = [child1, child2, ..., childN]
+const childrenLength = arguments.length - 2
+if (childrenLength === 1) {
+  props.children = children
+} else if (childrenLength > 1) {
+  // 这里源码是用 Array(arguments.length - 2) for 遍历剥离 children
+  props.children = slice.call(arguments, 2)
+}
+#+end_src
+
+默认属性处理：
+#+begin_src js
+// 解析默认的 props
+if (type && type.defaultProps) {
+  const defaultProps = type.defaultProps
+  for (propName in defaultProps) {
+    if (props[propName] === undefined) {
+      props[propName] = defaultProps[propName]
+    }
+  }
+}
+#+end_src
+
+测试：
+#+begin_src js
+const React = require(process.env.BLOG_JS + '/react/pkgs/react.js')
+const e = React.createElement
+function handleClick() {}
+console.log("Bare>>>\n", e('div'))
+console.log("With event prop>>>\n", e('span', { onClick: handleClick }, 'children'))
+console.log("With Children>>>\n", e('p', null, 'child1', 'child2'))
+console.log("With Props>>>\n", e('p', { key: 1, ref: null, id: 'pid' }, 'child1'))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Bare>>>
+ {
+  '$$typeof': Symbol(react.element),
+  type: 'div',
+  key: null,
+  ref: null,
+  props: {},
+  _owner: null
+}
+With event prop>>>
+ {
+  '$$typeof': Symbol(react.element),
+  type: 'span',
+  key: null,
+  ref: null,
+  props: { onClick: [Function: handleClick], children: 'children' },
+  _owner: null
+}
+With Children>>>
+ {
+  '$$typeof': Symbol(react.element),
+  type: 'p',
+  key: null,
+  ref: null,
+  props: { children: [ 'child1', 'child2' ] },
+  _owner: null
+}
+With Props>>>
+ {
+  '$$typeof': Symbol(react.element),
+  type: 'p',
+  key: '1',
+  ref: null,
+  props: { id: 'pid', children: 'child1' },
+  _owner: null
+}
+undefined
+#+end_example
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+~key~, ~ref~, ~__self~, ~__source~ 是 react 内部保留属性不会进入 instance.props
+#+end_tip
+* packages/react-dom
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-dom
+:END:
+
+目录 [[https://github.com/facebook/react/tree/main/packages/react-dom/src][react-dom/src]] ：
+
+#+begin_example
+$ tree -L 1                         ~/github/react/react/packages/react-dom/src
+.
+├── __tests__
+├── client
+├── events
+├── server
+├── shared
+└── test-utils
+
+6 directories, 0 files
+#+end_example
+
+1. ~client/~ 和浏览器有关的函数(render, createRoot就在这里面)
+2. ~events/~ 事件相关的东西
+3. ~server/~ SSR 相关东西
+4. ~shared/~ 一些共用的工具函数
+5. ~test-utils/~ 测试用的工具函数
+6. ~__tests__~ 测试用例
+
+FILE: [[https://github.com/facebook/react/tree/main/packages/react-dom/index.js][react-dom/index.js]] 导出内容：
+
+#+begin_src js
+export {
+  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED,
+  createPortal,
+  createRoot,
+  hydrateRoot,
+  findDOMNode,
+  flushSync,
+  hydrate,
+  render,
+  unmountComponentAtNode,
+  unstable_batchedUpdates,
+  unstable_createEventHandle,
+  unstable_flushControlled,
+  unstable_isNewReconciler,
+  unstable_renderSubtreeIntoContainer,
+  unstable_runWithPriority, // DO NOT USE: Temporarily exposed to migrate off of Scheduler.runWithPriority.
+  unstable_scheduleHydration,
+  version,
+} from './src/client/ReactDOM';
+#+end_src
+
+
+[[https://github.com/facebook/react/tree/main/packages/react-dom/src/client/ReactDOM.js][react-dom/src/client/ReactDOM.js]] 中几个重要函数
+
+1. ~createPortal(children, container, key)~
+
+   #+begin_src js
+function createPortal(
+  children: ReactNodeList,
+  container: Container,
+  key: ?string = null,
+): React$Portal {
+  if (!isValidContainer(container)) {
+    throw new Error('Target container is not a DOM element.');
+  }
+
+  // TODO: pass ReactDOM portal implementation as third argument
+  // $FlowFixMe The Flow type is opaque but there's no way to actually create it.
+  return createPortalImpl(children, container, null, key);
+}
+   #+end_src
+
+2. ~flushSync(fn)~
+
+   #+begin_src js
+function flushSync(fn) {
+  if (__DEV__) {
+    if (isAlreadyRendering()) {
+      console.error(
+        'flushSync was called from inside a lifecycle method. React cannot ' +
+          'flush when React is already rendering. Consider moving this call to ' +
+          'a scheduler task or micro task.',
+      );
+    }
+  }
+  return flushSyncWithoutWarningIfAlreadyRendering(fn);
+}
+   #+end_src
+
+
+导出的内容：
+
+#+begin_src js
+export {
+  createPortal,
+  batchedUpdates as unstable_batchedUpdates,
+  flushSync,
+  Internals as __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED,
+  ReactVersion as version,
+  // Disabled behind disableLegacyReactDOMAPIs
+  findDOMNode,
+  hydrate,
+  render,
+  unmountComponentAtNode,
+  // exposeConcurrentModeAPIs
+  createRoot,
+  hydrateRoot,
+  flushControlled as unstable_flushControlled,
+  scheduleHydration as unstable_scheduleHydration,
+  // Disabled behind disableUnstableRenderSubtreeIntoContainer
+  renderSubtreeIntoContainer as unstable_renderSubtreeIntoContainer,
+  // enableCreateEventHandleAPI
+  createEventHandle as unstable_createEventHandle,
+  // TODO: Remove this once callers migrate to alternatives.
+  // This should only be used by React internals.
+  runWithPriority as unstable_runWithPriority,
+};
+#+end_src
+
+几个重点关注的函数：
+
+1. createPortal
+2. flushSync
+3. render
+4. createRoot
+
+尤其是 ~ReactDOM.render~ 来自 [[https://github.com/facebook/react/tree/main/packages/react-dom/src/ReactDomLegacy.js][react-dom/src/ReactDomLegacy.js]] 。
+* ReactDOM.render(element, container, callback)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: render
+:END:
+
+在经过 [[#createElement][React.createElement()]] 之后，会得到一个 ReactElement 结构对象，这个即最初
+的 VNode 结构，将会被传给 ~ReatDOM.render(node, ...)~ 进行渲染，
+~React.createElement(type, config, children)~ 的处理也比较简单，主要是处理了
+config 中的普通属性和内部属性，合并 children, 合并 defaultProps 。
+
+所以，接下来的重点就在 ReactDOM 中，下面将以 ~ReactDOM.render()~ 作为切入点来一步
+步分析其实现原理。
+
+#+begin_warn
+@@html:<p><strong>WARNING</strong></p>@@
+
+ReactDOM.render 在 [[https://github.com/reactwg/react-18][React 18]] 中将会被 [[https://reactjs.org/link/switch-to-createroot][React.createRoot]] 替代，但这里还是以 React17
+为主。
+#+end_warn
+
+使用方式变更：
+
+#+begin_src js
+import * as ReactDOM from 'react-dom';
+import App from 'App';
+
+const container = document.getElementById('app');
+
+// -------> render
+function App() {
+  return (
+    <div>
+      <h1>Hello World</h1>
+    </div>
+  );
+}
+// Initial render.
+ReactDOM.render(<App tab="home" />, container);
+
+// During an update, React would access
+// the root of the DOM element.
+ReactDOM.render(<App tab="profile" />, container, function() {
+  // Called after inital render or any update.
+  console.log('rendered').
+});
+
+
+// -------> createRoot
+// Create a root.
+const root = ReactDOM.createRoot(container);
+
+// Initial render: Render an element to the root.
+root.render(<App tab="home" />);
+
+// During an update, there's no need to pass the container again.
+root.render(<App tab="profile" />);
+
+// callback
+
+function App({ callback }) {
+  // Callback will be called when the div is first created.
+  return (
+    <div ref={callback}>
+      <h1>Hello World</h1>
+    </div>
+  );
+}
+
+root.render(<App callback={() => console.log("renderered")} />);
+#+end_src
+
+* events(事件处理)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: events
+:END:
+
+DIR: [[https://github.com/facebook/react/tree/main/packages/react-dom/src/events][react-dom/src/events]]
+
+#+begin_example
+3:31] C:130
+$ tree ./events -I "__tests__"      ~/github/react/react/packages/react-dom/src
+./events
+├── DOMEventNames.js
+├── DOMEventProperties.js
+├── DOMPluginEventSystem.js
+├── EventListener.js
+├── EventRegistry.js
+├── EventSystemFlags.js
+├── FallbackCompositionState.js
+├── PluginModuleType.js
+├── ReactDOMControlledComponent.js
+├── ReactDOMEventListener.js
+├── ReactDOMEventReplaying.js
+├── ReactDOMUpdateBatching.js
+├── ReactSyntheticEventType.js
+├── SyntheticEvent.js
+├── TopLevelEventTypes.js
+├── checkPassiveEvents.js
+├── forks
+│   └── EventListener-www.js
+├── getEventCharCode.js
+├── getEventTarget.js
+├── getListener.js
+├── getVendorPrefixedEventName.js
+├── isEventSupported.js
+├── isTextInputElement.js
+└── plugins
+    ├── BeforeInputEventPlugin.js
+    ├── ChangeEventPlugin.js
+    ├── EnterLeaveEventPlugin.js
+    ├── SelectEventPlugin.js
+    └── SimpleEventPlugin.js
+
+2 directories, 28 files
+#+end_example
+
+** plugins(事件插件)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: events-plugins
+:END:
+
+
+
+** DOMPluginEventSystem.js
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: DOMPluginEventSystem
+:END:
+
+该文件开发会执行如下，注册各种事件，这些都是[[#events-plugins][做什么的]]？
+
+#+begin_src js
+SimpleEventPlugin.registerEvents();
+EnterLeaveEventPlugin.registerEvents();
+ChangeEventPlugin.registerEvents();
+SelectEventPlugin.registerEvents();
+BeforeInputEventPlugin.registerEvents();
+#+end_src
+
+
+* TODO React18的 ReactDOM.createRoot
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createRoot
+:END:

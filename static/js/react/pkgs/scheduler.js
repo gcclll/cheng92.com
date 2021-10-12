@@ -5,6 +5,10 @@ const NormalPriority = 3;
 const LowPriority = 4;
 const IdlePriority = 5;
 
+if (typeof window === 'undefined' && typeof global !== 'undefined') {
+  window = global
+}
+
 window.__log = window.__log || function() { }
 
 // Node Heap //////////////////////////////////////////////////////////////////
@@ -585,5 +589,5 @@ try {
     IdlePriority
   }
 } catch (e) {
-  console.warn('not in node environment.')
+  console.warn('[scheduler.js] not in node environment.')
 }

@@ -223,6 +223,9 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
   [params.vue]
     enable = true
 
+  [params.react]
+    enable = true
+
   [params.social]                                         # 社交链接
     a-email = "mailto:gccll.love@email.com"
     b-stack-overflow = "https://stackoverflow.com/users/6062239/simon"
