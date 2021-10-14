@@ -50,6 +50,7 @@ ReactDOM.render(e('button', {
 码分别是对应是 [[/js/react/pkgs/react.js]] 和 [[/js/react/pkgs/react-dom.js]]
 #+end_quote
 
+[[/img/react/package-react-dom.svg]]
 
 * packages/react
 :PROPERTIES:
@@ -902,8 +903,2774 @@ function App({ callback }) {
 root.render(<App callback={() => console.log("renderered")} />);
 #+end_src
 
-* TODO React18的 ReactDOM.createRoot
+render:
+
+#+begin_src typescript
+function render(
+  element: React$Element<any>,
+  container: Container,
+  callback: ?Function,
+)  {
+  // ...
+
+  return legacyRenderSubtreeIntoContainer(
+    null,
+    element,
+    container,
+    false,
+    callback,
+  );
+}
+#+end_src
+
+所以 render 只不是 legacyRenderSubtreeIntoContainer 函数的一层封装。
+
+这个函数里面主要有三个步骤：
+
+1. ~root = container._reactRootContainer~ 根树存在这个属性上
+2. 如果是第一次 mount 需要 [[#legacyCreateRootFromDOMContainer][legacyCreateRootFromDOMContainer()]] 去创建它
+
+   #+begin_warn
+   @@html:<p><strong>IMPORTANT</strong></p>@@
+
+   这个函数里面会调用 [[#listenToAllSupportedEvents][listenToAllSupportedEvents(rootContainerElement)]] 去启动
+   React 中的事件系统，大致就是将原生事件转成 React 中的合成(~SyntheticEvent~)事件。
+   #+end_warn
+3. 如果不是第一次，说明是 update，则直接调用 [[#updateContainer][updateContainer()]] 进行更新
+
+   所以， mount 会比 update 多出一个 create root 的过程([[#legacyCreateRootFromDOMContainer][legacyCreateRootFromDOMContainer()]])。
+
+4. 最后返回 root 实例，也就是 [[#FiberRoot][FiberRoot]], ~getPublicRootInstance(fiberRoot)~ 这个函
+   数最后返回是的 ~fiberRoot.child.stateNode~ 它们之间的关系如下图：
+
+   [[/img/react/fiber-current-stateNode.png]]
+
+   ~root:~ [[#FiberRoot][FiberRoot]] 是根树， ~root.current~ 指向一个 [[#Fiber][Fiber]] 节点(当前激活的节
+   点)， ~root.current.stateNode~ 又指回了 root，从而形成一个环。
+
+
+在 *2*, *3* 中不管是 mount 还是 update 最后者最会走到 [[#updateContainer][updateContainer(children,
+fiberRoot, parentComponent, callback)]] 中
+
+render 简图：
+
+[[/img/react/react-dom-render-simple.svg]]
+
+** legacyCreateRootFromDOMContainer(container,forceHydrate)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: legacyCreateRootFromDOMContainer
+:END:
+
+在 render 中当检测到是第一次加载组件时调用，创建 rootFiber 树的根节点，也就是说
+每个节点其实本身也是一个 [[#FiberRoot][FiberRoot]] 创建之后的结果会挂在
+~container._ReactRootContainer~ 引用上。
+
+参数：
+
+|--------------+--------------------+---|
+| 参数名       | 含义               |   |
+|--------------+--------------------+---|
+| container    | 当前节点 root 元素 |   |
+|--------------+--------------------+---|
+| forceHydrate | -                  |   |
+|--------------+--------------------+---|
+
+#+begin_src typescript
+function legacyCreateRootFromDOMContainer(
+  container: Container,
+  forceHydrate: boolean,
+): FiberRoot {
+  // First clear any existing content.
+  if (!forceHydrate) {
+    let rootSibling;
+    while ((rootSibling = container.lastChild)) {
+      container.removeChild(rootSibling);
+    }
+  }
+
+  const root = createContainer(
+    container,
+    LegacyRoot,
+    forceHydrate,
+    null, // hydrationCallbacks
+    false, // isStrictMode
+    false, // concurrentUpdatesByDefaultOverride,
+  );
+  markContainerAsRoot(root.current, container);
+
+  const rootContainerElement =
+    container.nodeType === COMMENT_NODE ? container.parentNode : container;
+  listenToAllSupportedEvents(rootContainerElement);
+
+  return root;
+}
+#+end_src
+
+1. 首先清空 container 下的 children
+2. createContainer() 创建 root, 一个 [[#FiberRoot][FiberRoot]] 结构
+3. 标记 container 做为 root 节点
+4. 启动事件系统([[#listenToAllSupportedEvents][listenToAllSupportedEvents]])
+5. 返回 root 根节点
+
+
+#+begin_src typescript
+export function createContainer(
+  containerInfo: Container,
+  tag: RootTag,
+  hydrate: boolean,
+  hydrationCallbacks: null | SuspenseHydrationCallbacks,
+  isStrictMode: boolean,
+  concurrentUpdatesByDefaultOverride: null | boolean,
+): OpaqueRoot {
+  return createFiberRoot(
+    containerInfo,
+    tag,
+    hydrate,
+    hydrationCallbacks,
+    isStrictMode,
+    concurrentUpdatesByDefaultOverride,
+  );
+}
+#+end_src
+
+OpaqueRoot: [[#FiberRoot][FiberRoot]]
+
+createFiberRoot 创建根节点对象:
+
+#+begin_src typescript
+export function createFiberRoot(
+  containerInfo: any,
+  tag: RootTag,
+  hydrate: boolean,
+  hydrationCallbacks: null | SuspenseHydrationCallbacks,
+  isStrictMode: boolean,
+  concurrentUpdatesByDefaultOverride: null | boolean,
+): FiberRoot {
+  const root: FiberRoot = (new FiberRootNode(containerInfo, tag, hydrate): any);
+  if (enableSuspenseCallback) {
+    root.hydrationCallbacks = hydrationCallbacks;
+  }
+
+  // Cyclic construction. This cheats the type system right now because
+  // stateNode is any.
+  const uninitializedFiber = createHostRootFiber(
+    tag,
+    isStrictMode,
+    concurrentUpdatesByDefaultOverride,
+  );
+  root.current = uninitializedFiber;
+  uninitializedFiber.stateNode = root;
+
+  if (enableCache) {
+    const initialCache = new Map();
+    root.pooledCache = initialCache;
+    const initialState = {
+      element: null,
+      cache: initialCache,
+    };
+    uninitializedFiber.memoizedState = initialState;
+  } else {
+    const initialState = {
+      element: null,
+    };
+    uninitializedFiber.memoizedState = initialState;
+  }
+
+  initializeUpdateQueue(uninitializedFiber);
+
+  return root;
+}
+#+end_src
+
+1. new [[#FiberRootNode][FiberRootNode]] 实例
+2. 构建循环引用 root.current -> [[#Fiber][Fiber]] -> stateNode -> [[#FiberRoot][root]]
+3. 缓存机制， ~root.pooledCache = new Map()~
+4. 初始化状态 ~initialState={element:null, cache: initialCache}~
+
+   等于是 ~root.current.memoizedState=initialState~
+5. 初始化更新队列 ~initializeUpdateQueue(uninitializedFiber)~
+
+   其实就是初始化 ~root.current:updateQueue={baseState,...}~
+
+6. 最后返回 root
+
+
+创建 root -> 构建循环 -> 初始化状态 -> 初始化更新队列
+
+#+begin_src typescript
+export function initializeUpdateQueue<State>(fiber: Fiber): void {
+  const queue: UpdateQueue<State> = {
+    baseState: fiber.memoizedState,
+    firstBaseUpdate: null,
+    lastBaseUpdate: null,
+    shared: {
+      pending: null,
+      interleaved: null,
+      lanes: NoLanes,
+    },
+    effects: null,
+  };
+  fiber.updateQueue = queue;
+}
+#+end_src
+** listenToAllSupportedEvents(rootContainerElement: EventTarget)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: listenToAllSupportedEvents
+:END:
+
+#+begin_src typescript
+export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
+  if (!(rootContainerElement: any)[listeningMarker]) {
+    (rootContainerElement: any)[listeningMarker] = true;
+    allNativeEvents.forEach(domEventName => {
+      // We handle selectionchange separately because it
+      // doesn't bubble and needs to be on the document.
+      if (domEventName !== 'selectionchange') {
+        if (!nonDelegatedEvents.has(domEventName)) {
+          listenToNativeEvent(domEventName, false, rootContainerElement);
+        }
+        listenToNativeEvent(domEventName, true, rootContainerElement);
+      }
+    });
+    const ownerDocument =
+      (rootContainerElement: any).nodeType === DOCUMENT_NODE
+        ? rootContainerElement
+        : (rootContainerElement: any).ownerDocument;
+    if (ownerDocument !== null) {
+      // The selectionchange event also needs deduplication
+      // but it is attached to the document.
+      if (!(ownerDocument: any)[listeningMarker]) {
+        (ownerDocument: any)[listeningMarker] = true;
+        listenToNativeEvent('selectionchange', false, ownerDocument);
+      }
+    }
+  }
+}
+#+end_src
+
+1. 保证这个函数只会执行一次(~(rootContainerElement: any)[listeningMarker]~)
+2. 对 ~allNativeEvents~ 所有的原生事件执行 [[#listenToNativeEvent][listenToNativeEvent(domEventName,
+   false, rootContainerElement)]]
+
+   这里有对可以被代理的事件做了特殊处理，主要是让其成为冒泡事件，即
+   ~isCapturePhaseListener=false~
+
+   并且这里不处理 ~selectionchange~ 事件，它将会被特殊处理。
+3. 取 document 对象，每个元素上都会有个 ~ownerDocument~ 属性指向了当前的
+   ~document~ 对象
+4. 然后将 ~selectionchange~ 事件绑到 document 上。
+
+
+整体流程：
+
+处理所有原生事件 allNativeEvents
+
+- > [[#listenToNativeEvent][listenToNativeEvent()]]
+
+- > [[#addTrappedEventListener][addTrappedEventListener()]]
+
+- > [[#createEventListenerWrapperWithPriority][createEventListenerWrapperWithPriority()]] 创建带优先级的 listener 最终调用什
+  么 dispatchXxxEvent 由这里确定的优先级来确定。
+
+  + >> ~DiscreteEventPriority~: [[#dispatchDiscreteEvent][dispatchDiscreteEvent]]
+
+  + >> ~ContinuousEventPriority~: [[#dispatchDiscreteEvent][dispatchContinuousEvent]]
+
+  + >> ~DefaultEventPriority~: [[#dispatchDiscreteEvent][dispatchEvent]]
+
+   而前两者最后都会调用 [[dispatchEvent][dispatchEvent]] -> [[#dispatchEventForPluginEventSystem][dispatchEventForPluginEventSystem]] ->
+    [[#batchedUpdates][batchedUpdates]] -> [[#dispatchEventsForPlugins][dispatchEventsForPlugins]] -> [[#extractEvents][extractEvents]] ->
+    [[#processDispatchQueue][processDispatchQueue]] -> [[#processDispatchQueueItemsInOrder][processDispatchQueueItemsInOrder]] -> [[#executeDispatch][executeDispatch]]
+    -> 一直到最后 [[#invokeGuardedCallbackProd][invokeGuardedCallbackProd]]，其实就是在 ~try{}~ 中执行 listener
+
+- > 对 [[#capture-bubble][冒泡/捕获+pasive 不同组合]]添加事件监听程序，最后调用
+  ~target.addEventListener(eventType, listener, option)~ option 根据不同组合有不同
+  的值。
+
+
+#+begin_tip
+@@html:<p><strong>TIP</strong></p>@@
+
+总结： [[#listenToAllSupportedEvents][listenToAllSupportedEvents]] 就干了两件事：
+
+1. 找到 listener = dispatchXxxEvent
+2. addEventListener 添加事件程序
+#+end_tip
+
+*** listenToNativeEvent()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: listenToNativeEvent
+:END:
+
+对所有原生事件添加监听器。
+
+#+begin_src typescript
+export function listenToNativeEvent(
+  domEventName: DOMEventName,
+  isCapturePhaseListener: boolean,
+  target: EventTarget,
+): void {
+  if (__DEV__) {
+    if (nonDelegatedEvents.has(domEventName) && !isCapturePhaseListener) {
+      console.error(
+        'Did not expect a listenToNativeEvent() call for "%s" in the bubble phase. ' +
+          'This is a bug in React. Please file an issue.',
+        domEventName,
+      );
+    }
+  }
+
+  let eventSystemFlags = 0;
+  if (isCapturePhaseListener) {
+    eventSystemFlags |= IS_CAPTURE_PHASE;
+  }
+  addTrappedEventListener(
+    target,
+    domEventName,
+    eventSystemFlags,
+    isCapturePhaseListener,
+  );
+}
+#+end_src
+*** addTrappedEventListener()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: addTrappedEventListener
+:END:
+
+1. [[#createEventListenerWrapperWithPriority][createEventListenerWrapperWithPriority()]] 创建带优先级的 listener
+2. 检测是不是需要 passive 特性的事件(~touchstart, touchmove, wheel~)
+3. 找到 targetContainer 目标容器，事件的宿主元素
+4. 再次封装 listener, 再调用它之前先执行 remove 删除事件
+5. 区分是捕获还是冒泡，支不支持 passive 属性，所以这里有四种组合，分别调用四个方法
+   @@html:<span id="capture-bubble"></span>@@
+
+   | 组合类型       | 调用函数                               |
+   |----------------+----------------------------------------|
+   | 捕获 + passive | ~addEventCaptureListenerWithPassiveFlag~ |
+   | 捕获 - passive | ~addEventCaptureListener~                |
+   | 冒泡 + passive | ~addEventBubbleListenerWithPassiveFlag~  |
+   | 冒泡 - passive | ~addEventBubbleListener~               |
+
+   ~+~: 支持 passive, =-=: 不支持 passive
+
+   不管是调用哪个方法，最后都是调用了 ~target.addEventListener()~ 原生方法，只不是
+   传入的第三个参数不同。
+
+   *冒泡-passive*: ~target.addEventListener(eventType, listener, false)~
+
+   *冒泡+passive*: ~target.addEventListener(eventType, listener, {passive})~, 因为默
+   认是冒泡，所以这里可以省略 ~capture:false~
+
+   *捕获-passive*: ~target.addEventListener(eventType, listener, true)~
+
+   *捕获+passive*: ~target.addEventListener(eventType, listener, {passive, capture:true})~
+6. 另外，注意每个函数调用之后返回的 ~unsubscribeListener~ 是在 *4* 步中使用的，其实
+   就是 listener 本身。
+
+
+#+begin_src typescript
+function addTrappedEventListener(
+  targetContainer: EventTarget,
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  isCapturePhaseListener: boolean,
+  isDeferredListenerForLegacyFBSupport?: boolean,
+) {
+  let listener = createEventListenerWrapperWithPriority(
+    targetContainer,
+    domEventName,
+    eventSystemFlags,
+  );
+  // If passive option is not supported, then the event will be
+  // active and not passive.
+  let isPassiveListener = undefined;
+  if (passiveBrowserEventsSupported) {
+    // Browsers introduced an intervention, making these events
+    // passive by default on document. React doesn't bind them
+    // to document anymore, but changing this now would undo
+    // the performance wins from the change. So we emulate
+    // the existing behavior manually on the roots now.
+    // https://github.com/facebook/react/issues/19651
+    if (
+      domEventName === 'touchstart' ||
+      domEventName === 'touchmove' ||
+      domEventName === 'wheel'
+    ) {
+      isPassiveListener = true;
+    }
+  }
+
+  targetContainer =
+    enableLegacyFBSupport && isDeferredListenerForLegacyFBSupport
+      ? (targetContainer: any).ownerDocument
+      : targetContainer;
+
+  let unsubscribeListener;
+  // When legacyFBSupport is enabled, it's for when we
+  // want to add a one time event listener to a container.
+  // This should only be used with enableLegacyFBSupport
+  // due to requirement to provide compatibility with
+  // internal FB www event tooling. This works by removing
+  // the event listener as soon as it is invoked. We could
+  // also attempt to use the {once: true} param on
+  // addEventListener, but that requires support and some
+  // browsers do not support this today, and given this is
+  // to support legacy code patterns, it's likely they'll
+  // need support for such browsers.
+  if (enableLegacyFBSupport && isDeferredListenerForLegacyFBSupport) {
+    const originalListener = listener;
+    listener = function(...p) {
+      removeEventListener(
+        targetContainer,
+        domEventName,
+        unsubscribeListener,
+        isCapturePhaseListener,
+      );
+      return originalListener.apply(this, p);
+    };
+  }
+  // TODO: There are too many combinations here. Consolidate them.
+  if (isCapturePhaseListener) {
+    if (isPassiveListener !== undefined) {
+      unsubscribeListener = addEventCaptureListenerWithPassiveFlag(
+        targetContainer,
+        domEventName,
+        listener,
+        isPassiveListener,
+      );
+    } else {
+      unsubscribeListener = addEventCaptureListener(
+        targetContainer,
+        domEventName,
+        listener,
+      );
+    }
+  } else {
+    if (isPassiveListener !== undefined) {
+      unsubscribeListener = addEventBubbleListenerWithPassiveFlag(
+        targetContainer,
+        domEventName,
+        listener,
+        isPassiveListener,
+      );
+    } else {
+      unsubscribeListener = addEventBubbleListener(
+        targetContainer,
+        domEventName,
+        listener,
+      );
+    }
+  }
+}
+#+end_src
+
+**** createEventListenerWrapperWithPriority()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createEventListenerWrapperWithPriority
+:END:
+
+这里创建所有事件的监听函数(listener)，它根据事件类型不同，使用不同类型的事件和
+React 合成(~SyntheticEvent~)事件
+
+#+begin_src typescript
+export function createEventListenerWrapperWithPriority(
+  targetContainer: EventTarget,
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+): Function {
+  const eventPriority = getEventPriority(domEventName);
+  let listenerWrapper;
+  switch (eventPriority) {
+    case DiscreteEventPriority:
+      listenerWrapper = dispatchDiscreteEvent;
+      break;
+    case ContinuousEventPriority:
+      listenerWrapper = dispatchContinuousEvent;
+      break;
+    case DefaultEventPriority:
+    default:
+      listenerWrapper = dispatchEvent;
+      break;
+  }
+  return listenerWrapper.bind(
+    null,
+    domEventName,
+    eventSystemFlags,
+    targetContainer,
+  );
+}
+#+end_src
+
+这里主要有几个优先级以及对应的 dispatch event 函数：
+
+| 优先级                  | 对应 listener           |
+|-------------------------+-------------------------|
+| ~DiscreteEventPriority~   | dispatchDiscreteEvent   |
+| ~ContinuousEventPriority~ | dispatchContinuousEvent |
+| ~DefaultEventPriority~    | dispatchEvent           |
+
+
+事件优先级定义(定义死的值):
+#+begin_src typescript
+export function getEventPriority(domEventName: DOMEventName): * {
+  switch (domEventName) {
+    // Used by SimpleEventPlugin:
+    case 'cancel':
+    case 'click':
+    case 'close':
+    case 'contextmenu':
+    case 'copy':
+    case 'cut':
+    case 'auxclick':
+    case 'dblclick':
+    case 'dragend':
+    case 'dragstart':
+    case 'drop':
+    case 'focusin':
+    case 'focusout':
+    case 'input':
+    case 'invalid':
+    case 'keydown':
+    case 'keypress':
+    case 'keyup':
+    case 'mousedown':
+    case 'mouseup':
+    case 'paste':
+    case 'pause':
+    case 'play':
+    case 'pointercancel':
+    case 'pointerdown':
+    case 'pointerup':
+    case 'ratechange':
+    case 'reset':
+    case 'resize':
+    case 'seeked':
+    case 'submit':
+    case 'touchcancel':
+    case 'touchend':
+    case 'touchstart':
+    case 'volumechange':
+    // Used by polyfills:
+    // eslint-disable-next-line no-fallthrough
+    case 'change':
+    case 'selectionchange':
+    case 'textInput':
+    case 'compositionstart':
+    case 'compositionend':
+    case 'compositionupdate':
+    // Only enableCreateEventHandleAPI:
+    // eslint-disable-next-line no-fallthrough
+    case 'beforeblur':
+    case 'afterblur':
+    // Not used by React but could be by user code:
+    // eslint-disable-next-line no-fallthrough
+    case 'beforeinput':
+    case 'blur':
+    case 'fullscreenchange':
+    case 'focus':
+    case 'hashchange':
+    case 'popstate':
+    case 'select':
+    case 'selectstart':
+      return DiscreteEventPriority;
+    case 'drag':
+    case 'dragenter':
+    case 'dragexit':
+    case 'dragleave':
+    case 'dragover':
+    case 'mousemove':
+    case 'mouseout':
+    case 'mouseover':
+    case 'pointermove':
+    case 'pointerout':
+    case 'pointerover':
+    case 'scroll':
+    case 'toggle':
+    case 'touchmove':
+    case 'wheel':
+    // Not used by React but could be by user code:
+    // eslint-disable-next-line no-fallthrough
+    case 'mouseenter':
+    case 'mouseleave':
+    case 'pointerenter':
+    case 'pointerleave':
+      return ContinuousEventPriority;
+    case 'message': {
+      // We might be in the Scheduler callback.
+      // Eventually this mechanism will be replaced by a check
+      // of the current priority on the native scheduler.
+      const schedulerPriority = getCurrentSchedulerPriorityLevel();
+      switch (schedulerPriority) {
+        case ImmediateSchedulerPriority:
+          return DiscreteEventPriority;
+        case UserBlockingSchedulerPriority:
+          return ContinuousEventPriority;
+        case NormalSchedulerPriority:
+        case LowSchedulerPriority:
+          // TODO: Handle LowSchedulerPriority, somehow. Maybe the same lane as hydration.
+          return DefaultEventPriority;
+        case IdleSchedulerPriority:
+          return IdleEventPriority;
+        default:
+          return DefaultEventPriority;
+      }
+    }
+    default:
+      return DefaultEventPriority;
+  }
+}
+#+end_src
+
+1. ~DiscreteEventPriority~ 的事件有
+
+   a. SimpleEventPlugin 中的普通事件
+
+      cancel,close,contextmenu,copy,cut,paste,
+
+      click,auxclick,dblclick,
+
+      dragend,dragstart,drop,
+
+      focusin,focusout,input,invliad,
+
+      keydown,keypress,keyup,keydown,
+
+      mousedown,mouseup,
+
+      pointercancel,pointerdown,pointerup,
+
+      pause,play,ratechange,reset,resize,seeked,submit,volumechange
+
+      touchcancel,touchend,touchstart,
+
+   b. polyfills
+
+       change,selectionchange,textinput,
+
+       compositionstart,compositionend,compositionupdate
+
+   c. enableCreateEventHandleAPI
+
+       beforeblur,afterblur
+
+   d. user code not in react
+
+       beforeinput,blur,fullscreenchange,focus,hashchange,popstate,select,selectstart
+
+2. ~ContinuousEventPriority~, 持续性的事件
+
+   a. 拖拽，指针，鼠标等事件
+
+      drag,dragenter,dragexit,dragleave,dragover,
+
+      mousemove,mouseout,mouseover,
+
+      pointermove,pointerout,pointerover,
+
+      scroll,toggle,touchmove,wheel
+
+   b. user code not in react
+
+      mouseenter,mouseleave,pointerenter,pointerleave
+
+3. ~message~ 事件，react 内部的消息事件，与 scheduler 有关
+
+   它的优先级是依据当前的 scheduler 而定:
+
+   | schedulerPriority             | eventPriority           |
+   |-------------------------------+-------------------------|
+   | ~ImmediateSchedulerPriority~    | ~DiscreteEventPriority~   |
+   | ~UserBlockingSchedulerPriority~ | ~ContinuousEventPriority~ |
+   | ~NormalSchedulerPriority~       | ~DefaultEventPriority~    |
+   | ~LowSchedulerPriority~          | ~DefaultEventPriority~    |
+   | ~IdleSchedulerPriority~         | ~IdleEventPriority~       |
+   | 其它                          | ~DefaultEventPriority~    |
+
+*** dispatchDiscreteEvent(...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dispatchDiscreteEvent
+:END:
+
+#+begin_src typescript
+function dispatchDiscreteEvent(
+  domEventName,
+  eventSystemFlags,
+  container,
+  nativeEvent,
+) {
+  const previousPriority = getCurrentUpdatePriority();
+  const prevTransition = ReactCurrentBatchConfig.transition;
+  ReactCurrentBatchConfig.transition = 0;
+  try {
+    setCurrentUpdatePriority(DiscreteEventPriority);
+    dispatchEvent(domEventName, eventSystemFlags, container, nativeEvent);
+  } finally {
+    setCurrentUpdatePriority(previousPriority);
+    ReactCurrentBatchConfig.transition = prevTransition;
+  }
+}
+#+end_src
+
+*** dispatchContinuousEvent(...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dispatchContinuousEvent
+:END:
+
+#+begin_src typescript
+function dispatchContinuousEvent(
+  domEventName,
+  eventSystemFlags,
+  container,
+  nativeEvent,
+) {
+  const previousPriority = getCurrentUpdatePriority();
+  const prevTransition = ReactCurrentBatchConfig.transition;
+  ReactCurrentBatchConfig.transition = 0;
+  try {
+    setCurrentUpdatePriority(ContinuousEventPriority);
+    dispatchEvent(domEventName, eventSystemFlags, container, nativeEvent);
+  } finally {
+    setCurrentUpdatePriority(previousPriority);
+    ReactCurrentBatchConfig.transition = prevTransition;
+  }
+}
+#+end_src
+*** dispatchEvent(...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dispatchEvent
+:END:
+
+
+#+begin_src typescript
+export function dispatchEvent(
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  targetContainer: EventTarget,
+  nativeEvent: AnyNativeEvent,
+): void {
+  if (!_enabled) {
+    return;
+  }
+
+  // TODO: replaying capture phase events is currently broken
+  // because we used to do it during top-level native bubble handlers
+  // but now we use different bubble and capture handlers.
+  // In eager mode, we attach capture listeners early, so we need
+  // to filter them out until we fix the logic to handle them correctly.
+  const allowReplay = (eventSystemFlags & IS_CAPTURE_PHASE) === 0;
+
+  if (
+    allowReplay &&
+    hasQueuedDiscreteEvents() &&
+    isDiscreteEventThatRequiresHydration(domEventName)
+  ) {
+    // If we already have a queue of discrete events, and this is another discrete
+    // event, then we can't dispatch it regardless of its target, since they
+    // need to dispatch in order.
+    queueDiscreteEvent(
+      null, // Flags that we're not actually blocked on anything as far as we know.
+      domEventName,
+      eventSystemFlags,
+      targetContainer,
+      nativeEvent,
+    );
+    return;
+  }
+
+  let blockedOn = attemptToDispatchEvent(
+    domEventName,
+    eventSystemFlags,
+    targetContainer,
+    nativeEvent,
+  );
+
+  if (blockedOn === null) {
+    // We successfully dispatched this event.
+    if (allowReplay) {
+      clearIfContinuousEvent(domEventName, nativeEvent);
+    }
+    return;
+  }
+
+  if (allowReplay) {
+    if (
+      !enableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay &&
+      isDiscreteEventThatRequiresHydration(domEventName)
+    ) {
+      // This this to be replayed later once the target is available.
+      queueDiscreteEvent(
+        blockedOn,
+        domEventName,
+        eventSystemFlags,
+        targetContainer,
+        nativeEvent,
+      );
+      return;
+    }
+    if (
+      queueIfContinuousEvent(
+        blockedOn,
+        domEventName,
+        eventSystemFlags,
+        targetContainer,
+        nativeEvent,
+      )
+    ) {
+      return;
+    }
+    // We need to clear only if we didn't queue because
+    // queueing is accumulative.
+    clearIfContinuousEvent(domEventName, nativeEvent);
+  }
+
+  if (
+    enableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay &&
+    eventSystemFlags & IS_CAPTURE_PHASE &&
+    isDiscreteEventThatRequiresHydration(domEventName)
+  ) {
+    while (blockedOn !== null) {
+      const fiber = getInstanceFromNode(blockedOn);
+      if (fiber !== null) {
+        // 这里最后是调用了 flushRoot/flushSync -> schedule update
+        attemptSynchronousHydration(fiber);
+      }
+      const nextBlockedOn = attemptToDispatchEvent(
+        domEventName,
+        eventSystemFlags,
+        targetContainer,
+        nativeEvent,
+      );
+      if (nextBlockedOn === blockedOn) {
+        break;
+      }
+      blockedOn = nextBlockedOn;
+    }
+    if (blockedOn) {
+      nativeEvent.stopPropagation();
+      return;
+    }
+  }
+
+  // This is not replayable so we'll invoke it but without a target,
+  // in case the event system needs to trace it.
+  dispatchEventForPluginEventSystem(
+    domEventName,
+    eventSystemFlags,
+    nativeEvent,
+    null,
+    targetContainer,
+  );
+}
+#+end_src
+**** queueDiscreteEvent()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queueDiscreteEvent
+:END:
+
+#+begin_src typescript
+export function queueDiscreteEvent(
+  blockedOn: null | Container | SuspenseInstance,
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  targetContainer: EventTarget,
+  nativeEvent: AnyNativeEvent,
+): void {
+  if (enableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay) {
+    return;
+  }
+  const queuedEvent = createQueuedReplayableEvent(
+    blockedOn,
+    domEventName,
+    eventSystemFlags,
+    targetContainer,
+    nativeEvent,
+  );
+  queuedDiscreteEvents.push(queuedEvent);
+  if (enableSelectiveHydration) {
+    if (queuedDiscreteEvents.length === 1) {
+      // If this was the first discrete event, we might be able to
+      // synchronously unblock it so that preventDefault still works.
+      while (queuedEvent.blockedOn !== null) {
+        const fiber = getInstanceFromNode(queuedEvent.blockedOn);
+        if (fiber === null) {
+          break;
+        }
+        attemptSynchronousHydration(fiber);
+        if (queuedEvent.blockedOn === null) {
+          // We got unblocked by hydration. Let's try again.
+          replayUnblockedEvents();
+          // If we're reblocked, on an inner boundary, we might need
+          // to attempt hydrating that one.
+          continue;
+        } else {
+          // We're still blocked from hydration, we have to give up
+          // and replay later.
+          break;
+        }
+      }
+    }
+  }
+}
+#+end_src
+
+**** attemptToDispatchEvent(...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: attemptToDispatchEvent
+:END:
+
+#+begin_src typescript
+// Attempt dispatching an event. Returns a SuspenseInstance or Container if it's blocked.
+export function attemptToDispatchEvent(
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  targetContainer: EventTarget,
+  nativeEvent: AnyNativeEvent,
+): null | Container | SuspenseInstance {
+  // TODO: Warn if _enabled is false.
+
+  const nativeEventTarget = getEventTarget(nativeEvent);
+  let targetInst = getClosestInstanceFromNode(nativeEventTarget);
+
+  if (targetInst !== null) {
+    const nearestMounted = getNearestMountedFiber(targetInst);
+    if (nearestMounted === null) {
+      // This tree has been unmounted already. Dispatch without a target.
+      targetInst = null;
+    } else {
+      const tag = nearestMounted.tag;
+      if (tag === SuspenseComponent) {
+        const instance = getSuspenseInstanceFromFiber(nearestMounted);
+        if (instance !== null) {
+          // Queue the event to be replayed later. Abort dispatching since we
+          // don't want this event dispatched twice through the event system.
+          // TODO: If this is the first discrete event in the queue. Schedule an increased
+          // priority for this boundary.
+          return instance;
+        }
+        // This shouldn't happen, something went wrong but to avoid blocking
+        // the whole system, dispatch the event without a target.
+        // TODO: Warn.
+        targetInst = null;
+      } else if (tag === HostRoot) {
+        const root: FiberRoot = nearestMounted.stateNode;
+        if (root.isDehydrated) {
+          // If this happens during a replay something went wrong and it might block
+          // the whole system.
+          return getContainerFromFiber(nearestMounted);
+        }
+        targetInst = null;
+      } else if (nearestMounted !== targetInst) {
+        // If we get an event (ex: img onload) before committing that
+        // component's mount, ignore it for now (that is, treat it as if it was an
+        // event on a non-React tree). We might also consider queueing events and
+        // dispatching them after the mount.
+        targetInst = null;
+      }
+    }
+  }
+  dispatchEventForPluginEventSystem(
+    domEventName,
+    eventSystemFlags,
+    nativeEvent,
+    targetInst,
+    targetContainer,
+  );
+  // We're not blocked on anything.
+  return null;
+}
+#+end_src
+**** clearIfContinuousEvent()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: clearIfContinuousEvent
+:END:
+
+
+#+begin_src typescript
+// Resets the replaying for this type of continuous event to no event.
+export function clearIfContinuousEvent(
+  domEventName: DOMEventName,
+  nativeEvent: AnyNativeEvent,
+): void {
+  switch (domEventName) {
+    case 'focusin':
+    case 'focusout':
+      queuedFocus = null;
+      break;
+    case 'dragenter':
+    case 'dragleave':
+      queuedDrag = null;
+      break;
+    case 'mouseover':
+    case 'mouseout':
+      queuedMouse = null;
+      break;
+    case 'pointerover':
+    case 'pointerout': {
+      const pointerId = ((nativeEvent: any): PointerEvent).pointerId;
+      queuedPointers.delete(pointerId);
+      break;
+    }
+    case 'gotpointercapture':
+    case 'lostpointercapture': {
+      const pointerId = ((nativeEvent: any): PointerEvent).pointerId;
+      queuedPointerCaptures.delete(pointerId);
+      break;
+    }
+  }
+}
+#+end_src
+**** queueIfContinuousEvent()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: queueIfContinuousEvent
+:END:
+
+#+begin_src typescript
+export function queueIfContinuousEvent(
+  blockedOn: null | Container | SuspenseInstance,
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  targetContainer: EventTarget,
+  nativeEvent: AnyNativeEvent,
+): boolean {
+  // These set relatedTarget to null because the replayed event will be treated as if we
+  // moved from outside the window (no target) onto the target once it hydrates.
+  // Instead of mutating we could clone the event.
+  switch (domEventName) {
+    case 'focusin': {
+      const focusEvent = ((nativeEvent: any): FocusEvent);
+      queuedFocus = accumulateOrCreateContinuousQueuedReplayableEvent(
+        queuedFocus,
+        blockedOn,
+        domEventName,
+        eventSystemFlags,
+        targetContainer,
+        focusEvent,
+      );
+      return true;
+    }
+    case 'dragenter': {
+      const dragEvent = ((nativeEvent: any): DragEvent);
+      queuedDrag = accumulateOrCreateContinuousQueuedReplayableEvent(
+        queuedDrag,
+        blockedOn,
+        domEventName,
+        eventSystemFlags,
+        targetContainer,
+        dragEvent,
+      );
+      return true;
+    }
+    case 'mouseover': {
+      const mouseEvent = ((nativeEvent: any): MouseEvent);
+      queuedMouse = accumulateOrCreateContinuousQueuedReplayableEvent(
+        queuedMouse,
+        blockedOn,
+        domEventName,
+        eventSystemFlags,
+        targetContainer,
+        mouseEvent,
+      );
+      return true;
+    }
+    case 'pointerover': {
+      const pointerEvent = ((nativeEvent: any): PointerEvent);
+      const pointerId = pointerEvent.pointerId;
+      queuedPointers.set(
+        pointerId,
+        accumulateOrCreateContinuousQueuedReplayableEvent(
+          queuedPointers.get(pointerId) || null,
+          blockedOn,
+          domEventName,
+          eventSystemFlags,
+          targetContainer,
+          pointerEvent,
+        ),
+      );
+      return true;
+    }
+    case 'gotpointercapture': {
+      const pointerEvent = ((nativeEvent: any): PointerEvent);
+      const pointerId = pointerEvent.pointerId;
+      queuedPointerCaptures.set(
+        pointerId,
+        accumulateOrCreateContinuousQueuedReplayableEvent(
+          queuedPointerCaptures.get(pointerId) || null,
+          blockedOn,
+          domEventName,
+          eventSystemFlags,
+          targetContainer,
+          pointerEvent,
+        ),
+      );
+      return true;
+    }
+  }
+  return false;
+}
+#+end_src
+**** attemptSynchronousHydration()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: attemptSynchronousHydration
+:END:
+
+#+begin_src typescript
+let _attemptSynchronousHydration: (fiber: Object) => void;
+
+export function setAttemptSynchronousHydration(fn: (fiber: Object) => void) {
+  _attemptSynchronousHydration = fn;
+}
+
+export function attemptSynchronousHydration(fiber: Object) {
+  _attemptSynchronousHydration(fiber);
+}
+#+end_src
+
+[[https://github.com/facebook/react/tree/main/packages/react-dom/src/client/ReactDOM.js][react-dom/src/client/ReactDOM.js]] 开头有调用：
+
+#+begin_src typescript
+setAttemptSynchronousHydration(attemptSynchronousHydration);
+
+setAttemptDiscreteHydration(attemptDiscreteHydration);
+setAttemptContinuousHydration(attemptContinuousHydration);
+setAttemptHydrationAtCurrentPriority(attemptHydrationAtCurrentPriority);
+setGetCurrentUpdatePriority(getCurrentUpdatePriority);
+setAttemptHydrationAtPriority(runWithPriority);
+#+end_src
+
+[[https://github.com/facebook/react/tree/main/packages/react-reconciler/src/ReactFiberReconciler.js][react-reconciler/src/ReactFiberReconciler.js:attemptSynchronousHydration(fiber:Fiber)]]:
+
+#+begin_src typescript
+export function attemptSynchronousHydration(fiber: Fiber): void {
+  switch (fiber.tag) {
+    case HostRoot:
+      const root: FiberRoot = fiber.stateNode;
+      if (root.isDehydrated) {
+        // Flush the first scheduled "update".
+        const lanes = getHighestPriorityPendingLanes(root);
+        flushRoot(root, lanes);
+      }
+      break;
+    case SuspenseComponent:
+      const eventTime = requestEventTime();
+      flushSync(() => scheduleUpdateOnFiber(fiber, SyncLane, eventTime));
+      // If we're still blocked after this, we need to increase
+      // the priority of any promises resolving within this
+      // boundary so that they next attempt also has higher pri.
+      const retryLane = SyncLane;
+      markRetryLaneIfNotHydrated(fiber, retryLane);
+      break;
+  }
+}
+#+end_src
+
+最后调用 [[#flushRoot][flushRoot]] / [[#flushSync][flushSync]] 去触发 schedule update 。
+*** dispatchEventForPluginEventSystem()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dispatchEventForPluginEventSystem
+:END:
+
+ 一个 ~mainLoop: while(true)~ 无限循环干了什么？
+
+#+begin_src typescript
+export function dispatchEventForPluginEventSystem(
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  nativeEvent: AnyNativeEvent,
+  targetInst: null | Fiber,
+  targetContainer: EventTarget,
+): void {
+  let ancestorInst = targetInst;
+  if (
+    (eventSystemFlags & IS_EVENT_HANDLE_NON_MANAGED_NODE) === 0 &&
+    (eventSystemFlags & IS_NON_DELEGATED) === 0
+  ) {
+    const targetContainerNode = ((targetContainer: any): Node);
+
+    // If we are using the legacy FB support flag, we
+    // defer the event to the null with a one
+    // time event listener so we can defer the event.
+    if (
+      enableLegacyFBSupport &&
+      // If our event flags match the required flags for entering
+      // FB legacy mode and we are processing the "click" event,
+      // then we can defer the event to the "document", to allow
+      // for legacy FB support, where the expected behavior was to
+      // match React < 16 behavior of delegated clicks to the doc.
+      domEventName === 'click' &&
+      (eventSystemFlags & SHOULD_NOT_DEFER_CLICK_FOR_FB_SUPPORT_MODE) === 0
+    ) {
+      deferClickToDocumentForLegacyFBSupport(domEventName, targetContainer);
+      return;
+    }
+    if (targetInst !== null) {
+      // The below logic attempts to work out if we need to change
+      // the target fiber to a different ancestor. We had similar logic
+      // in the legacy event system, except the big difference between
+      // systems is that the modern event system now has an event listener
+      // attached to each React Root and React Portal Root. Together,
+      // the DOM nodes representing these roots are the "rootContainer".
+      // To figure out which ancestor instance we should use, we traverse
+      // up the fiber tree from the target instance and attempt to find
+      // root boundaries that match that of our current "rootContainer".
+      // If we find that "rootContainer", we find the parent fiber
+      // sub-tree for that root and make that our ancestor instance.
+      let node = targetInst;
+
+      mainLoop: while (true) {
+        if (node === null) {
+          return;
+        }
+        const nodeTag = node.tag;
+        if (nodeTag === HostRoot || nodeTag === HostPortal) {
+          let container = node.stateNode.containerInfo;
+          if (isMatchingRootContainer(container, targetContainerNode)) {
+            break;
+          }
+          if (nodeTag === HostPortal) {
+            // The target is a portal, but it's not the rootContainer we're looking for.
+            // Normally portals handle their own events all the way down to the root.
+            // So we should be able to stop now. However, we don't know if this portal
+            // was part of *our* root.
+            let grandNode = node.return;
+            while (grandNode !== null) {
+              const grandTag = grandNode.tag;
+              if (grandTag === HostRoot || grandTag === HostPortal) {
+                const grandContainer = grandNode.stateNode.containerInfo;
+                if (
+                  isMatchingRootContainer(grandContainer, targetContainerNode)
+                ) {
+                  // This is the rootContainer we're looking for and we found it as
+                  // a parent of the Portal. That means we can ignore it because the
+                  // Portal will bubble through to us.
+                  return;
+                }
+              }
+              grandNode = grandNode.return;
+            }
+          }
+          // Now we need to find it's corresponding host fiber in the other
+          // tree. To do this we can use getClosestInstanceFromNode, but we
+          // need to validate that the fiber is a host instance, otherwise
+          // we need to traverse up through the DOM till we find the correct
+          // node that is from the other tree.
+          while (container !== null) {
+            const parentNode = getClosestInstanceFromNode(container);
+            if (parentNode === null) {
+              return;
+            }
+            const parentTag = parentNode.tag;
+            if (parentTag === HostComponent || parentTag === HostText) {
+              node = ancestorInst = parentNode;
+              continue mainLoop;
+            }
+            container = container.parentNode;
+          }
+        }
+        node = node.return;
+      }
+    }
+  }
+
+  batchedUpdates(() =>
+    dispatchEventsForPlugins(
+      domEventName,
+      eventSystemFlags,
+      nativeEvent,
+      ancestorInst,
+      targetContainer,
+    ),
+  );
+}
+#+end_src
+
+一直找到 root container 为止？
+
+#+begin_src typescript
+function isMatchingRootContainer(
+  grandContainer: Element,
+  targetContainer: EventTarget,
+): boolean {
+  return (
+    grandContainer === targetContainer ||
+    (grandContainer.nodeType === COMMENT_NODE &&
+      grandContainer.parentNode === targetContainer)
+  );
+}
+#+end_src
+**** deferClickToDocumentForLegacyFBSupport()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: deferClickToDocumentForLegacyFBSupport
+:END:
+
+一次添加，延迟触发。
+
+#+begin_src typescript
+function deferClickToDocumentForLegacyFBSupport(
+  domEventName: DOMEventName,
+  targetContainer: EventTarget,
+): void {
+  // We defer all click events with legacy FB support mode on.
+  // This means we add a one time event listener to trigger
+  // after the FB delegated listeners fire.
+  const isDeferredListenerForLegacyFBSupport = true;
+  addTrappedEventListener(
+    targetContainer,
+    domEventName,
+    IS_LEGACY_FB_SUPPORT_MODE,
+    false,
+    isDeferredListenerForLegacyFBSupport,
+  );
+}
+#+end_src
+**** batchedUpdates()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: batchedUpdates
+:END:
+
+[[https://github.com/facebook/react/tree/main/packages/react-dom/src/events/ReactDOMUpdateBatching.js][react-dom/src/events/ReactDOMUpdateBatching.js]]
+
+
+#+begin_src typescript
+export function batchedUpdates(fn, a, b) {
+  if (isInsideEventHandler) {
+    // If we are currently inside another batch, we need to wait until it
+    // fully completes before restoring state.
+    return fn(a, b);
+  }
+  isInsideEventHandler = true;
+  try {
+    return batchedUpdatesImpl(fn, a, b);
+  } finally {
+    isInsideEventHandler = false;
+    finishEventHandler();
+  }
+}
+#+end_src
+
+batchedUpdatesImpl:
+
+#+begin_src typescript
+// Defaults
+let batchedUpdatesImpl = function(fn, bookkeeping) {
+  return fn(bookkeeping);
+};
+#+end_src
+**** dispatchEventsForPlugins()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: dispatchEventsForPlugins
+:END:
+
+
+#+begin_src typescript
+function dispatchEventsForPlugins(
+  domEventName: DOMEventName,
+  eventSystemFlags: EventSystemFlags,
+  nativeEvent: AnyNativeEvent,
+  targetInst: null | Fiber,
+  targetContainer: EventTarget,
+): void {
+  const nativeEventTarget = getEventTarget(nativeEvent);
+  const dispatchQueue: DispatchQueue = [];
+  extractEvents(
+    dispatchQueue,
+    domEventName,
+    targetInst,
+    nativeEvent,
+    nativeEventTarget,
+    eventSystemFlags,
+    targetContainer,
+  );
+  processDispatchQueue(dispatchQueue, eventSystemFlags);
+}
+#+end_src
+
+extractEvents:五种类型事件插件
+
+注册事件类型映射， click -> onClick, focusin -> onFocusIn, ...
+#+begin_src typescript
+SimpleEventPlugin.registerEvents();
+EnterLeaveEventPlugin.registerEvents();
+ChangeEventPlugin.registerEvents();
+SelectEventPlugin.registerEvents();
+BeforeInputEventPlugin.registerEvents();
+#+end_src
+
+同样 extract 五种类型:
+#+begin_src typescript
+const args = [
+  dispatchQueue,
+  domEventName,
+  targetInst,
+  nativeEvent,
+  nativeEventTarget,
+  eventSystemFlags,
+  targetContainer
+]
+SimpleEventPlugin.extractEvents(...args)
+EnterLeaveEventPlugin.extractEvents(...args)
+ChangeEventPlugin.extractEvents(...args)
+SelectEventPlugin.extractEvents(...args)
+BeforeInputEventPlugin.extractEvents(...args)
+#+end_src
+
+extractEvent 的主要过程：
+
+1. ~event = new SyntheticXxxEvent()~
+2. ~dispatchQueue.push({event, listeners})~
+
+
+SyntheticXxxEvent 对应表：
+
+SimpleEventPlugin:
+
+[[/img/react/simple-event-plugin-synthetic-table.png]]
+
+其它 plugin:
+
+[[/img/react/other-event-plugin-synthetic-table.png]]
+***** processDispatchQueue()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: processDispatchQueue
+:END:
+
+#+begin_src typescript
+export function processDispatchQueue(
+  dispatchQueue: DispatchQueue,
+  eventSystemFlags: EventSystemFlags,
+): void {
+  const inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
+  for (let i = 0; i < dispatchQueue.length; i++) {
+    const {event, listeners} = dispatchQueue[i];
+    processDispatchQueueItemsInOrder(event, listeners, inCapturePhase);
+    //  event system doesn't use pooling.
+  }
+  // This would be a good time to rethrow if any of the event handlers threw.
+  rethrowCaughtError();
+}
+#+end_src
+***** processDispatchQueueItemsInOrder()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: processDispatchQueueItemsInOrder
+:END:
+
+按照顺序处理 dispatch queue
+
+#+begin_src typescript
+function processDispatchQueueItemsInOrder(
+  event: ReactSyntheticEvent,
+  dispatchListeners: Array<DispatchListener>,
+  inCapturePhase: boolean,
+): void {
+  let previousInstance;
+  if (inCapturePhase) {
+    for (let i = dispatchListeners.length - 1; i >= 0; i--) {
+      const {instance, currentTarget, listener} = dispatchListeners[i];
+      if (instance !== previousInstance && event.isPropagationStopped()) {
+        return;
+      }
+      executeDispatch(event, listener, currentTarget);
+      previousInstance = instance;
+    }
+  } else {
+    for (let i = 0; i < dispatchListeners.length; i++) {
+      const {instance, currentTarget, listener} = dispatchListeners[i];
+      if (instance !== previousInstance && event.isPropagationStopped()) {
+        return;
+      }
+      executeDispatch(event, listener, currentTarget);
+      previousInstance = instance;
+    }
+  }
+}
+#+end_src
+***** executeDispatch()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: executeDispatch
+:END:
+
+#+begin_src typescript
+function executeDispatch(
+  event: ReactSyntheticEvent,
+  listener: Function,
+  currentTarget: EventTarget,
+): void {
+  const type = event.type || 'unknown-event';
+  event.currentTarget = currentTarget;
+  invokeGuardedCallbackAndCatchFirstError(type, listener, undefined, event);
+  event.currentTarget = null;
+}
+#+end_src
+
+***** invokeGuardedCallbackAndCatchFirstError()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: invokeGuardedCallbackAndCatchFirstError
+:END:
+
+#+begin_src typescript
+/**
+ * Same as invokeGuardedCallback, but instead of returning an error, it stores
+ * it in a global so it can be rethrown by `rethrowCaughtError` later.
+ * TODO: See if caughtError and rethrowError can be unified.
+ *
+ * @param {String} name of the guard to use for logging or debugging
+ * @param {Function} func The function to invoke
+ * @param {*} context The context to use when calling the function
+ * @param {...*} args Arguments for function
+ */
+export function invokeGuardedCallbackAndCatchFirstError<
+  A,
+  B,
+  C,
+  D,
+  E,
+  F,
+  Context,
+>(
+  name: string | null,
+  func: (a: A, b: B, c: C, d: D, e: E, f: F) => void,
+  context: Context,
+  a: A,
+  b: B,
+  c: C,
+  d: D,
+  e: E,
+  f: F,
+): void {
+  invokeGuardedCallback.apply(this, arguments);
+  if (hasError) {
+    const error = clearCaughtError();
+    if (!hasRethrowError) {
+      hasRethrowError = true;
+      rethrowError = error;
+    }
+  }
+}
+#+end_src
+***** invokeGuardedCallback()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: invokeGuardedCallback
+:END:
+
+#+begin_src typescript
+
+/**
+ * Call a function while guarding against errors that happens within it.
+ * Returns an error if it throws, otherwise null.
+ *
+ * In production, this is implemented using a try-catch. The reason we don't
+ * use a try-catch directly is so that we can swap out a different
+ * implementation in DEV mode.
+ *
+ * @param {String} name of the guard to use for logging or debugging
+ * @param {Function} func The function to invoke
+ * @param {*} context The context to use when calling the function
+ * @param {...*} args Arguments for function
+ */
+export function invokeGuardedCallback<A, B, C, D, E, F, Context>(
+  name: string | null,
+  func: (a: A, b: B, c: C, d: D, e: E, f: F) => mixed,
+  context: Context,
+  a: A,
+  b: B,
+  c: C,
+  d: D,
+  e: E,
+  f: F,
+): void {
+  hasError = false;
+  caughtError = null;
+  invokeGuardedCallbackImpl.apply(reporter, arguments);
+}
+#+end_src
+
+***** invokeGuardedCallbackProd()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: invokeGuardedCallbackProd
+:END:
+
+#+begin_src typescript
+function invokeGuardedCallbackProd<A, B, C, D, E, F, Context>(
+  name: string | null,
+  func: (a: A, b: B, c: C, d: D, e: E, f: F) => mixed,
+  context: Context,
+  a: A,
+  b: B,
+  c: C,
+  d: D,
+  e: E,
+  f: F,
+) {
+  const funcArgs = Array.prototype.slice.call(arguments, 3);
+  try {
+    func.apply(context, funcArgs);
+  } catch (error) {
+    this.onError(error);
+  }
+}
+#+end_src
+*** finishEventHandler()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: finishEventHandler
+:END:
+
+#+begin_src typescript
+function finishEventHandler() {
+  // Here we wait until all updates have propagated, which is important
+  // when using controlled components within layers:
+  // https://github.com/facebook/react/issues/1698
+  // Then we restore state of any controlled component.
+  const controlledComponentsHavePendingUpdates = needsStateRestore();
+  if (controlledComponentsHavePendingUpdates) {
+    // If a controlled event was fired, we may need to restore the state of
+    // the DOM node back to the controlled value. This is necessary when React
+    // bails out of the update without touching the DOM.
+    // TODO: Restore state in the microtask, after the discrete updates flush,
+    // instead of early flushing them here.
+    flushSyncImpl();
+    restoreStateIfNeeded();
+  }
+}
+#+end_src
+*** needsStateRestore()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: needsStateRestore
+:END:
+
+#+begin_src typescript
+export function needsStateRestore(): boolean {
+  return restoreTarget !== null || restoreQueue !== null;
+}
+#+end_src
+*** flushSyncImpl()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flushSyncImpl
+:END:
+
+
+#+begin_src typescript
+export function setBatchingImplementation(
+  _batchedUpdatesImpl,
+  _discreteUpdatesImpl,
+  _flushSyncImpl,
+) {
+  batchedUpdatesImpl = _batchedUpdatesImpl;
+  discreteUpdatesImpl = _discreteUpdatesImpl;
+  flushSyncImpl = _flushSyncImpl;
+}
+#+end_src
+
+[[https://github.com/facebook/react/tree/main/packages/react-dom/src/client/ReactDOM.js][react-dom/src/client/ReactDOM.js]] 中设置的函数：
+
+#+begin_src typescript
+setRestoreImplementation(restoreControlledState);
+setBatchingImplementation(
+  batchedUpdates,
+  discreteUpdates,
+  flushSyncWithoutWarningIfAlreadyRendering,
+);
+#+end_src
+
+所以 ~flushSyncImpl~ 其实是 ~flushSyncWithoutWarningIfAlreadyRendering~ 也就是
+[[#flushSync][flushSync]] 同步执行 callback -> [[/react/react-001-scheduler/#scheduleCallback][scheduleCallback]]
+*** restoreStateIfNeeded()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: restoreStateIfNeeded
+:END:
+
+#+begin_src typescript
+export function restoreStateIfNeeded() {
+  if (!restoreTarget) {
+    return;
+  }
+  const target = restoreTarget;
+  const queuedTargets = restoreQueue;
+  restoreTarget = null;
+  restoreQueue = null;
+
+  restoreStateOfTarget(target);
+  if (queuedTargets) {
+    for (let i = 0; i < queuedTargets.length; i++) {
+      restoreStateOfTarget(queuedTargets[i]);
+    }
+  }
+}
+#+end_src
+*** restoreStateOfTarget(target:Node)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: restoreStateOfTarget
+:END:
+
+#+begin_src typescript
+let restoreImpl = null;
+let restoreTarget = null;
+let restoreQueue = null;
+
+function restoreStateOfTarget(target: Node) {
+  // We perform this translation at the end of the event loop so that we
+  // always receive the correct fiber here
+  const internalInstance = getInstanceFromNode(target);
+  if (!internalInstance) {
+    // Unmounted
+    return;
+  }
+
+  if (typeof restoreImpl !== 'function') {
+    throw new Error(
+      'setRestoreImplementation() needs to be called to handle a target for controlled ' +
+        'events. This error is likely caused by a bug in React. Please file an issue.',
+    );
+  }
+
+  const stateNode = internalInstance.stateNode;
+  // Guard against Fiber being unmounted.
+  if (stateNode) {
+    const props = getFiberCurrentPropsFromNode(stateNode);
+    restoreImpl(internalInstance.stateNode, internalInstance.type, props);
+  }
+}
+#+end_src
+
+restoreImpl:
+
+#+begin_src typescript
+export function setRestoreImplementation(
+  impl: (domElement: Element, tag: string, props: Object) => void,
+): void {
+  restoreImpl = impl;
+}
+#+end_src
+
+[[https://github.com/facebook/react/tree/main/packages/react-dom/src/client/ReactDOM.js][react-dom/src/client/ReactDOM.js]]:[[#restoreControlledState][restoreControlledState()]]
+
+#+begin_src typescript
+setRestoreImplementation(restoreControlledState);
+#+end_src
+
+恢复 input, select 的状态。
+
+** restoreControlledState()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: restoreControlledState
+:END:
+
+#+begin_src typescript
+export function restoreControlledState(
+  domElement: Element,
+  tag: string,
+  props: Object,
+): void {
+  switch (tag) {
+    case 'input':
+      ReactDOMInputRestoreControlledState(domElement, props);
+      return;
+    case 'textarea':
+      ReactDOMTextareaRestoreControlledState(domElement, props);
+      return;
+    case 'select':
+      ReactDOMSelectRestoreControlledState(domElement, props);
+      return;
+  }
+}
+#+end_src
+
+ReactDOMInputRestoreControlledState:
+
+#+begin_src typescript
+export function restoreControlledState(element: Element, props: Object) {
+  const node = ((element: any): InputWithWrapperState);
+  updateWrapper(node, props);
+  updateNamedCousins(node, props);
+}
+#+end_src
+
+ReactDOMTextareaRestoreControlledState:
+#+begin_src typescript
+export function restoreControlledState(element: Element, props: Object) {
+  // DOM component is still mounted; update
+  updateWrapper(element, props);
+}
+#+end_src
+
+ReactDOMSelectRestoreControlledState:
+#+begin_src typescript
+export function restoreControlledState(element: Element, props: Object) {
+  const node = ((element: any): SelectWithWrapperState);
+  const value = props.value;
+
+  if (value != null) {
+    updateOptions(node, !!props.multiple, value, false);
+  }
+}
+#+end_src
+
+*** updateWrapper(element,props)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: updateWrapper
+:END:
+
+#+begin_src typescript
+export function updateWrapper(element: Element, props: Object) {
+  const node = ((element: any): InputWithWrapperState);
+
+  // ... sth in dev
+  updateChecked(element, props);
+
+  const value = getToStringValue(props.value);
+  const type = props.type;
+
+  if (value != null) {
+    if (type === 'number') {
+      if (
+        (value === 0 && node.value === '') ||
+        // We explicitly want to coerce to number here if possible.
+        // eslint-disable-next-line
+        node.value != (value: any)
+      ) {
+        node.value = toString((value: any));
+      }
+    } else if (node.value !== toString((value: any))) {
+      node.value = toString((value: any));
+    }
+  } else if (type === 'submit' || type === 'reset') {
+    // Submit/reset inputs need the attribute removed completely to avoid
+    // blank-text buttons.
+    node.removeAttribute('value');
+    return;
+  }
+
+  if (disableInputAttributeSyncing) {
+    // When not syncing the value attribute, React only assigns a new value
+    // whenever the defaultValue React prop has changed. When not present,
+    // React does nothing
+    if (props.hasOwnProperty('defaultValue')) {
+      setDefaultValue(node, props.type, getToStringValue(props.defaultValue));
+    }
+  } else {
+    // When syncing the value attribute, the value comes from a cascade of
+    // properties:
+    //  1. The value React property
+    //  2. The defaultValue React property
+    //  3. Otherwise there should be no change
+    if (props.hasOwnProperty('value')) {
+      setDefaultValue(node, props.type, value);
+    } else if (props.hasOwnProperty('defaultValue')) {
+      setDefaultValue(node, props.type, getToStringValue(props.defaultValue));
+    }
+  }
+
+  if (disableInputAttributeSyncing) {
+    // When not syncing the checked attribute, the attribute is directly
+    // controllable from the defaultValue React property. It needs to be
+    // updated as new props come in.
+    if (props.defaultChecked == null) {
+      node.removeAttribute('checked');
+    } else {
+      node.defaultChecked = !!props.defaultChecked;
+    }
+  } else {
+    // When syncing the checked attribute, it only changes when it needs
+    // to be removed, such as transitioning from a checkbox into a text input
+    if (props.checked == null && props.defaultChecked != null) {
+      node.defaultChecked = !!props.defaultChecked;
+    }
+  }
+}
+#+end_src
+*** updateNamedCousins()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: updateNamedCousins
+:END:
+
+#+begin_src typescript
+function updateNamedCousins(rootNode, props) {
+  const name = props.name;
+  if (props.type === 'radio' && name != null) {
+    let queryRoot: Element = rootNode;
+
+    while (queryRoot.parentNode) {
+      queryRoot = ((queryRoot.parentNode: any): Element);
+    }
+
+    // If `rootNode.form` was non-null, then we could try `form.elements`,
+    // but that sometimes behaves strangely in IE8. We could also try using
+    // `form.getElementsByName`, but that will only return direct children
+    // and won't include inputs that use the HTML5 `form=` attribute. Since
+    // the input might not even be in a form. It might not even be in the
+    // document. Let's just use the local `querySelectorAll` to ensure we don't
+    // miss anything.
+    if (__DEV__) {
+      checkAttributeStringCoercion(name, 'name');
+    }
+    const group = queryRoot.querySelectorAll(
+      'input[name=' + JSON.stringify('' + name) + '][type="radio"]',
+    );
+
+    for (let i = 0; i < group.length; i++) {
+      const otherNode = ((group[i]: any): HTMLInputElement);
+      if (otherNode === rootNode || otherNode.form !== rootNode.form) {
+        continue;
+      }
+      // This will throw if radio buttons rendered by different copies of React
+      // and the same name are rendered into the same form (same as #1939).
+      // That's probably okay; we don't support it just as we don't support
+      // mixing React radio buttons with non-React ones.
+      const otherProps = getFiberCurrentPropsFromNode(otherNode);
+
+      if (!otherProps) {
+        throw new Error(
+          'ReactDOMInput: Mixing React and non-React radio inputs with the ' +
+            'same `name` is not supported.',
+        );
+      }
+
+      // We need update the tracked value on the named cousin since the value
+      // was changed but the input saw no event or value set
+      updateValueIfChanged(otherNode);
+
+      // If this is a controlled radio button group, forcing the input that
+      // was previously checked to update will cause it to be come re-checked
+      // as appropriate.
+      updateWrapper(otherNode, otherProps);
+    }
+  }
+}
+#+end_src
+*** updateOptions()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: updateOptions
+:END:
+
+#+begin_src typescript
+function updateOptions(
+  node: HTMLSelectElement,
+  multiple: boolean,
+  propValue: any,
+  setDefaultSelected: boolean,
+) {
+  type IndexableHTMLOptionsCollection = HTMLOptionsCollection & {
+    [key: number]: HTMLOptionElement,
+    ...,
+  };
+  const options: IndexableHTMLOptionsCollection = node.options;
+
+  if (multiple) {
+    const selectedValues = (propValue: Array<string>);
+    const selectedValue = {};
+    for (let i = 0; i < selectedValues.length; i++) {
+      // Prefix to avoid chaos with special keys.
+      selectedValue['$' + selectedValues[i]] = true;
+    }
+    for (let i = 0; i < options.length; i++) {
+      const selected = selectedValue.hasOwnProperty('$' + options[i].value);
+      if (options[i].selected !== selected) {
+        options[i].selected = selected;
+      }
+      if (selected && setDefaultSelected) {
+        options[i].defaultSelected = true;
+      }
+    }
+  } else {
+    // Do not set `select.value` as exact behavior isn't consistent across all
+    // browsers for all cases.
+    const selectedValue = toString(getToStringValue((propValue: any)));
+    let defaultSelected = null;
+    for (let i = 0; i < options.length; i++) {
+      if (options[i].value === selectedValue) {
+        options[i].selected = true;
+        if (setDefaultSelected) {
+          options[i].defaultSelected = true;
+        }
+        return;
+      }
+      if (defaultSelected === null && !options[i].disabled) {
+        defaultSelected = options[i];
+      }
+    }
+    if (defaultSelected !== null) {
+      defaultSelected.selected = true;
+    }
+  }
+}
+#+end_src
+
+** updateContainer(fiberRoot,parentComponent,callback)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: updateContainer
+:END:
+
+** FiberRootNode(containerInfo, tag, hydrate)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: FiberRootNode
+:END:
+
+对应属性说明：
+
+| 实例属性                        | 说明                  |
+|---------------------------------+-----------------------|
+| ~tag~                             | -                     |
+| ~containerInfo~                   | -                     |
+| ~pendingChildren~                 | -                     |
+| ~current:Fiber~                   | 当前激活的 Fiber 节点 |
+| ~pingCache~                       | -                     |
+| ~finishedWork~                    | -                     |
+| ~timeoutHandle~                   | -                     |
+| ~context~                         | 上下文                |
+| ~pendingContext~                  | -                     |
+| ~isDehydrated~                    | -                     |
+| ~callbackNode~                    | -                     |
+| ~callbackPriority~                | -                     |
+| ~eventTimes~                      | ~Array<NoLanes>~        |
+| ~expirationTImes~                 | ~Array<NoTimestamp>~    |
+|---------------------------------+-----------------------|
+| ~pendingLanes~                    | -                     |
+| ~suspendedLanes~                  | -                     |
+| ~pingedLanes~                     | -                     |
+| ~expiredLanes~                    | -                     |
+| ~mutableReadLanes~                | -                     |
+| ~finishedLanes~                   | -                     |
+|---------------------------------+-----------------------|
+| ~entangledLanes~                  | -                     |
+| ~entanglements~                   | ~Array<NoLanes>~        |
+|---------------------------------+-----------------------|
+| cache                           | 缓存                  |
+| ~pooledCache~                     | -                     |
+| ~pooledCacheLanes~                | -                     |
+|---------------------------------+-----------------------|
+| supportsHydration               |                       |
+| ~mutableSourceEagerHydrationData~ | -                     |
+|---------------------------------+-----------------------|
+| enableSuspenseCallback          |                       |
+| ~hydrationCallbacks~              | -                     |
+|---------------------------------+-----------------------|
+| enableUpdaterTracking           |                       |
+| ~memoizedUpdaters~                | ~new Set()~             |
+| ~pendingUpdatersLaneMap~          | ~Array<Set>~            |
+
+#+begin_src typescript
+function FiberRootNode(containerInfo, tag, hydrate) {
+  this.tag = tag;
+  this.containerInfo = containerInfo;
+  this.pendingChildren = null;
+  this.current = null;
+  this.pingCache = null;
+  this.finishedWork = null;
+  this.timeoutHandle = noTimeout;
+  this.context = null;
+  this.pendingContext = null;
+  this.isDehydrated = hydrate;
+  this.callbackNode = null;
+  this.callbackPriority = NoLane;
+  this.eventTimes = createLaneMap(NoLanes);
+  this.expirationTimes = createLaneMap(NoTimestamp);
+
+  this.pendingLanes = NoLanes;
+  this.suspendedLanes = NoLanes;
+  this.pingedLanes = NoLanes;
+  this.expiredLanes = NoLanes;
+  this.mutableReadLanes = NoLanes;
+  this.finishedLanes = NoLanes;
+
+  this.entangledLanes = NoLanes;
+  this.entanglements = createLaneMap(NoLanes);
+
+  if (enableCache) {
+    this.pooledCache = null;
+    this.pooledCacheLanes = NoLanes;
+  }
+
+  if (supportsHydration) {
+    this.mutableSourceEagerHydrationData = null;
+  }
+
+  if (enableSuspenseCallback) {
+    this.hydrationCallbacks = null;
+  }
+
+  if (enableProfilerTimer && enableProfilerCommitHooks) {
+    this.effectDuration = 0;
+    this.passiveEffectDuration = 0;
+  }
+
+  if (enableUpdaterTracking) {
+    this.memoizedUpdaters = new Set();
+    const pendingUpdatersLaneMap = (this.pendingUpdatersLaneMap = []);
+    for (let i = 0; i < TotalLanes; i++) {
+      pendingUpdatersLaneMap.push(new Set());
+    }
+  }
+
+  if (__DEV__) {
+    switch (tag) {
+      case ConcurrentRoot:
+        this._debugRootType = hydrate ? 'hydrateRoot()' : 'createRoot()';
+        break;
+      case LegacyRoot:
+        this._debugRootType = hydrate ? 'hydrate()' : 'render()';
+        break;
+    }
+  }
+}
+#+end_src
+** createHostRootFiber(tag, isStrictMode, ...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createHostRootFiber
+:END:
+
+mode 值处理。
+
+@@html:<span id="mode"></span>@@
+#+begin_src typescript
+export type RootTag = 0 | 1;
+
+export const LegacyRoot = 0;
+export const ConcurrentRoot = 1;
+
+// ReactTypeOfMode.js
+export type TypeOfMode = number;
+
+export const NoMode = /*                         */ 0b000000;
+// TODO: Remove ConcurrentMode by reading from the root tag instead
+export const ConcurrentMode = /*                 */ 0b000001;
+export const ProfileMode = /*                    */ 0b000010;
+export const DebugTracingMode = /*               */ 0b000100;
+export const StrictLegacyMode = /*               */ 0b001000;
+export const StrictEffectsMode = /*              */ 0b010000;
+export const ConcurrentUpdatesByDefaultMode = /* */ 0b100000;
+#+end_src
+
+~createHostRootFiber(tag, isStrictMode, concurrentUpdatesByDefaultOverride)~:
+
+创建一个 FiberNode:Fiber 结构挂到 ~root.current~ 上，与 ~stateNode=root~ 形成环。
+
+#+begin_src typescript
+export function createHostRootFiber(
+  tag: RootTag,
+  isStrictMode: boolean,
+  concurrentUpdatesByDefaultOverride: null | boolean,
+): Fiber {
+  let mode;
+  if (tag === ConcurrentRoot) {
+    mode = ConcurrentMode;
+    if (isStrictMode === true) {
+      mode |= StrictLegacyMode;
+
+      if (enableStrictEffects) {
+        mode |= StrictEffectsMode;
+      }
+    } else if (enableStrictEffects && createRootStrictEffectsByDefault) {
+      mode |= StrictLegacyMode | StrictEffectsMode;
+    }
+    if (
+      // We only use this flag for our repo tests to check both behaviors.
+      // TODO: Flip this flag and rename it something like "forceConcurrentByDefaultForTesting"
+      !enableSyncDefaultUpdates ||
+      // Only for internal experiments.
+      (allowConcurrentByDefault && concurrentUpdatesByDefaultOverride)
+    ) {
+      mode |= ConcurrentUpdatesByDefaultMode;
+    }
+  } else {
+    mode = NoMode;
+  }
+
+  if (enableProfilerTimer && isDevToolsPresent) {
+    // Always collect profile timings when DevTools are present.
+    // This enables DevTools to start capturing timing at any point–
+    // Without some nodes in the tree having empty base times.
+    mode |= ProfileMode;
+  }
+
+  return createFiber(HostRoot, null, null, mode);
+}
+#+end_src
+** createFiber(...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createFiber
+:END:
+
+#+begin_src typescript
+// This is a constructor function, rather than a POJO constructor, still
+// please ensure we do the following:
+// 1) Nobody should add any instance methods on this. Instance methods can be
+//    more difficult to predict when they get optimized and they are almost
+//    never inlined properly in static compilers.
+// 2) Nobody should rely on `instanceof Fiber` for type testing. We should
+//    always know when it is a fiber.
+// 3) We might want to experiment with using numeric keys since they are easier
+//    to optimize in a non-JIT environment.
+// 4) We can easily go from a constructor to a createFiber object literal if that
+//    is faster.
+// 5) It should be easy to port this to a C struct and keep a C implementation
+//    compatible.
+const createFiber = function(
+  tag: WorkTag,
+  pendingProps: mixed,
+  key: null | string,
+  mode: TypeOfMode,
+): Fiber {
+  // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
+  return new FiberNode(tag, pendingProps, key, mode);
+};
+#+end_src
+
+1. 不该添加实例方法到它上面，实例方法可以是更难预测它们何时得到优化，而且它们几
+   乎从未在静态编译器中正确内联
+2. 在做类型测试时不能使用 ~instanceof Fiber~, 而是在使用的是时候问题就方知道它就是
+   个 [[#Fiber][Fiber]]
+3. 我们可能想尝试使用数字做属性 key，因为它们在非 JIT 环境中更容易优化。
+4. 如果速度更快，我们可以轻松地从构造函数转到 [[#createFiber][createFiber]] 对象字面量
+5. 将其移植成 C 结构体并保持 C 实现兼容应该很容易
+
+** FiberNode(tag, ...)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: FiberNode
+:END:
+
+#+begin_src typescript
+function FiberNode(
+  tag: WorkTag,
+  pendingProps: mixed,
+  key: null | string,
+  mode: TypeOfMode,
+) {
+  // Instance
+  this.tag = tag;
+  this.key = key;
+  this.elementType = null;
+  this.type = null;
+  this.stateNode = null;
+
+  // Fiber
+  this.return = null;
+  this.child = null;
+  this.sibling = null;
+  this.index = 0;
+
+  this.ref = null;
+
+  this.pendingProps = pendingProps;
+  this.memoizedProps = null;
+  this.updateQueue = null;
+  this.memoizedState = null;
+  this.dependencies = null;
+
+  this.mode = mode;
+
+  // Effects
+  this.flags = NoFlags;
+  this.subtreeFlags = NoFlags;
+  this.deletions = null;
+
+  this.lanes = NoLanes;
+  this.childLanes = NoLanes;
+
+  this.alternate = null;
+
+  if (enableProfilerTimer) {
+    // Note: The following is done to avoid a v8 performance cliff.
+    //
+    // Initializing the fields below to smis and later updating them with
+    // double values will cause Fibers to end up having separate shapes.
+    // This behavior/bug has something to do with Object.preventExtension().
+    // Fortunately this only impacts DEV builds.
+    // Unfortunately it makes React unusably slow for some applications.
+    // To work around this, initialize the fields below with doubles.
+    //
+    // Learn more about this here:
+    // https://github.com/facebook/react/issues/14365
+    // https://bugs.chromium.org/p/v8/issues/detail?id=8538
+    this.actualDuration = Number.NaN;
+    this.actualStartTime = Number.NaN;
+    this.selfBaseDuration = Number.NaN;
+    this.treeBaseDuration = Number.NaN;
+
+    // It's okay to replace the initial doubles with smis after initialization.
+    // This won't trigger the performance cliff mentioned above,
+    // and it simplifies other profiler code (including DevTools).
+    this.actualDuration = 0;
+    this.actualStartTime = -1;
+    this.selfBaseDuration = 0;
+    this.treeBaseDuration = 0;
+  }
+
+  if (__DEV__) {
+    // This isn't directly used but is handy for debugging internals:
+
+    this._debugSource = null;
+    this._debugOwner = null;
+    this._debugNeedsRemount = false;
+    this._debugHookTypes = null;
+    if (!hasBadMapPolyfill && typeof Object.preventExtensions === 'function') {
+      Object.preventExtensions(this);
+    }
+  }
+}
+#+end_src
+* TODO React18 的 ReactDOM.createRoot
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: createRoot
 :END:
+* react-reconciler
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: react-reconciler
+:END:
+
+** flushSync()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flushSync
+:END:
+
+
+#+begin_src typescript
+// Overload the definition to the two valid signatures.
+// Warning, this opts-out of checking the function body.
+declare function flushSync<R>(fn: () => R): R;
+// eslint-disable-next-line no-redeclare
+declare function flushSync(): void;
+// eslint-disable-next-line no-redeclare
+export function flushSync(fn) {
+  // In legacy mode, we flush pending passive effects at the beginning of the
+  // next event, not at the end of the previous one.
+  if (
+    rootWithPendingPassiveEffects !== null &&
+    rootWithPendingPassiveEffects.tag === LegacyRoot &&
+    (executionContext & (RenderContext | CommitContext)) === NoContext
+  ) {
+    flushPassiveEffects();
+  }
+
+  const prevExecutionContext = executionContext;
+  executionContext |= BatchedContext;
+
+  const prevTransition = ReactCurrentBatchConfig.transition;
+  const previousPriority = getCurrentUpdatePriority();
+  try {
+    ReactCurrentBatchConfig.transition = 0;
+    setCurrentUpdatePriority(DiscreteEventPriority);
+    if (fn) {
+      return fn();
+    } else {
+      return undefined;
+    }
+  } finally {
+    setCurrentUpdatePriority(previousPriority);
+    ReactCurrentBatchConfig.transition = prevTransition;
+    executionContext = prevExecutionContext;
+    // Flush the immediate callbacks that were scheduled during this batch.
+    // Note that this will happen even if batchedUpdates is higher up
+    // the stack.
+    if ((executionContext & (RenderContext | CommitContext)) === NoContext) {
+      flushSyncCallbacks();
+    }
+  }
+}
+#+end_src
+** flushPassiveEffects()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flushPassiveEffects
+:END:
+
+#+begin_src typescript
+export function flushPassiveEffects(): boolean {
+  // Returns whether passive effects were flushed.
+  // TODO: Combine this check with the one in flushPassiveEFfectsImpl. We should
+  // probably just combine the two functions. I believe they were only separate
+  // in the first place because we used to wrap it with
+  // `Scheduler.runWithPriority`, which accepts a function. But now we track the
+  // priority within React itself, so we can mutate the variable directly.
+  if (rootWithPendingPassiveEffects !== null) {
+    const renderPriority = lanesToEventPriority(pendingPassiveEffectsLanes);
+    const priority = lowerEventPriority(DefaultEventPriority, renderPriority);
+    const prevTransition = ReactCurrentBatchConfig.transition;
+    const previousPriority = getCurrentUpdatePriority();
+    try {
+      ReactCurrentBatchConfig.transition = 0;
+      setCurrentUpdatePriority(priority);
+      return flushPassiveEffectsImpl();
+    } finally {
+      setCurrentUpdatePriority(previousPriority);
+      ReactCurrentBatchConfig.transition = prevTransition;
+    }
+  }
+  return false;
+}
+#+end_src
+** flushSyncCallbacks()
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: flushSyncCallbacks
+:END:
+
+[[/react/react-001-scheduler/#scheduleCallback][scheduleCallback()]]
+
+#+begin_src typescript
+export function flushSyncCallbacks() {
+  if (!isFlushingSyncQueue && syncQueue !== null) {
+    // Prevent re-entrance.
+    isFlushingSyncQueue = true;
+    let i = 0;
+    const previousUpdatePriority = getCurrentUpdatePriority();
+    try {
+      const isSync = true;
+      const queue = syncQueue;
+      // TODO: Is this necessary anymore? The only user code that runs in this
+      // queue is in the render or commit phases.
+      setCurrentUpdatePriority(DiscreteEventPriority);
+      for (; i < queue.length; i++) {
+        let callback = queue[i];
+        do {
+          callback = callback(isSync);
+        } while (callback !== null);
+      }
+      syncQueue = null;
+      includesLegacySyncCallbacks = false;
+    } catch (error) {
+      // If something throws, leave the remaining callbacks on the queue.
+      if (syncQueue !== null) {
+        syncQueue = syncQueue.slice(i + 1);
+      }
+      // Resume flushing in the next tick
+      scheduleCallback(ImmediatePriority, flushSyncCallbacks);
+      throw error;
+    } finally {
+      setCurrentUpdatePriority(previousUpdatePriority);
+      isFlushingSyncQueue = false;
+    }
+  }
+  return null;
+}
+#+end_src
+
+* 类型定义
+** Fiber
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: Fiber
+:END:
+
+#+begin_src typescript
+// A Fiber is work on a Component that needs to be done or was done. There can
+// be more than one per component.
+export type Fiber = {
+  // These first fields are conceptually members of an Instance. This used to
+  // be split into a separate type and intersected with the other Fiber fields,
+  // but until Flow fixes its intersection bugs, we've merged them into a
+  // single type.
+
+  // An Instance is shared between all versions of a component. We can easily
+  // break this out into a separate object to avoid copying so much to the
+  // alternate versions of the tree. We put this on a single object for now to
+  // minimize the number of objects created during the initial render.
+
+  // Tag identifying the type of fiber.
+  tag: WorkTag,
+
+  // Unique identifier of this child.
+  key: null | string,
+
+  // The value of element.type which is used to preserve the identity during
+  // reconciliation of this child.
+  elementType: any,
+
+  // The resolved function/class/ associated with this fiber.
+  type: any,
+
+  // The local state associated with this fiber.
+  stateNode: any,
+
+  // Conceptual aliases
+  // parent : Instance -> return The parent happens to be the same as the
+  // return fiber since we've merged the fiber and instance.
+
+  // Remaining fields belong to Fiber
+
+  // The Fiber to return to after finishing processing this one.
+  // This is effectively the parent, but there can be multiple parents (two)
+  // so this is only the parent of the thing we're currently processing.
+  // It is conceptually the same as the return address of a stack frame.
+  return: Fiber | null,
+
+  // Singly Linked List Tree Structure.
+  child: Fiber | null,
+  sibling: Fiber | null,
+  index: number,
+
+  // The ref last used to attach this node.
+  // I'll avoid adding an owner field for prod and model that as functions.
+  ref:
+    | null
+    | (((handle: mixed) => void) & {_stringRef: ?string, ...})
+    | RefObject,
+
+  // Input is the data coming into process this fiber. Arguments. Props.
+  pendingProps: any, // This type will be more specific once we overload the tag.
+  memoizedProps: any, // The props used to create the output.
+
+  // A queue of state updates and callbacks.
+  updateQueue: mixed,
+
+  // The state used to create the output
+  memoizedState: any,
+
+  // Dependencies (contexts, events) for this fiber, if it has any
+  dependencies: Dependencies | null,
+
+  // Bitfield that describes properties about the fiber and its subtree. E.g.
+  // the ConcurrentMode flag indicates whether the subtree should be async-by-
+  // default. When a fiber is created, it inherits the mode of its
+  // parent. Additional flags can be set at creation time, but after that the
+  // value should remain unchanged throughout the fiber's lifetime, particularly
+  // before its child fibers are created.
+  mode: TypeOfMode,
+
+  // Effect
+  flags: Flags,
+  subtreeFlags: Flags,
+  deletions: Array<Fiber> | null,
+
+  // Singly linked list fast path to the next fiber with side-effects.
+  nextEffect: Fiber | null,
+
+  // The first and last fiber with side-effect within this subtree. This allows
+  // us to reuse a slice of the linked list when we reuse the work done within
+  // this fiber.
+  firstEffect: Fiber | null,
+  lastEffect: Fiber | null,
+
+  lanes: Lanes,
+  childLanes: Lanes,
+
+  // This is a pooled version of a Fiber. Every fiber that gets updated will
+  // eventually have a pair. There are cases when we can clean up pairs to save
+  // memory if we need to.
+  alternate: Fiber | null,
+
+  // Time spent rendering this Fiber and its descendants for the current update.
+  // This tells us how well the tree makes use of sCU for memoization.
+  // It is reset to 0 each time we render and only updated when we don't bailout.
+  // This field is only set when the enableProfilerTimer flag is enabled.
+  actualDuration?: number,
+
+  // If the Fiber is currently active in the "render" phase,
+  // This marks the time at which the work began.
+  // This field is only set when the enableProfilerTimer flag is enabled.
+  actualStartTime?: number,
+
+  // Duration of the most recent render time for this Fiber.
+  // This value is not updated when we bailout for memoization purposes.
+  // This field is only set when the enableProfilerTimer flag is enabled.
+  selfBaseDuration?: number,
+
+  // Sum of base times for all descendants of this Fiber.
+  // This value bubbles up during the "complete" phase.
+  // This field is only set when the enableProfilerTimer flag is enabled.
+  treeBaseDuration?: number,
+
+  // Conceptual aliases
+  // workInProgress : Fiber ->  alternate The alternate used for reuse happens
+  // to be the same as work in progress.
+  // __DEV__ only
+
+  _debugSource?: Source | null,
+  _debugOwner?: Fiber | null,
+  _debugIsCurrentlyTiming?: boolean,
+  _debugNeedsRemount?: boolean,
+
+  // Used to verify that the order of hooks does not change between renders.
+  _debugHookTypes?: Array<HookType> | null,
+};
+#+end_src
+** FiberRoot
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: FiberRoot
+:END:
+
+#+begin_src typescript
+// packages/react-reconciler/src/ReactInternalTypes.js
+// Exported FiberRoot type includes all properties,
+// To avoid requiring potentially error-prone :any casts throughout the project.
+// The types are defined separately within this file to ensure they stay in sync.
+export type FiberRoot = {
+  ...BaseFiberRootProperties,
+  ...SuspenseCallbackOnlyFiberRootProperties,
+  ...UpdaterTrackingOnlyFiberRootProperties,
+  ...
+};
+#+end_src
+
+BaseFiberRootProperties:
+
+#+begin_src typescript
+type BaseFiberRootProperties = {
+  // The type of root (legacy, batched, concurrent, etc.)
+  tag: RootTag,
+
+  // Any additional information from the host associated with this root.
+  containerInfo: any,
+  // Used only by persistent updates.
+  pendingChildren: any,
+  // The currently active root fiber. This is the mutable root of the tree.
+  current: Fiber,
+
+  pingCache: WeakMap<Wakeable, Set<mixed>> | Map<Wakeable, Set<mixed>> | null,
+
+  // A finished work-in-progress HostRoot that's ready to be committed.
+  finishedWork: Fiber | null,
+  // Timeout handle returned by setTimeout. Used to cancel a pending timeout, if
+  // it's superseded by a new one.
+  timeoutHandle: TimeoutHandle | NoTimeout,
+  // Top context object, used by renderSubtreeIntoContainer
+  context: Object | null,
+  pendingContext: Object | null,
+  // Determines if we should attempt to hydrate on the initial mount
+  +isDehydrated: boolean,
+
+  // Used by useMutableSource hook to avoid tearing during hydration.
+  mutableSourceEagerHydrationData?: Array<
+    MutableSource<any> | MutableSourceVersion,
+  > | null,
+
+  // Node returned by Scheduler.scheduleCallback. Represents the next rendering
+  // task that the root will work on.
+  callbackNode: *,
+  callbackPriority: Lane,
+  eventTimes: LaneMap<number>,
+  expirationTimes: LaneMap<number>,
+
+  pendingLanes: Lanes,
+  suspendedLanes: Lanes,
+  pingedLanes: Lanes,
+  expiredLanes: Lanes,
+  mutableReadLanes: Lanes,
+
+  finishedLanes: Lanes,
+
+  entangledLanes: Lanes,
+  entanglements: LaneMap<Lanes>,
+
+  pooledCache: Cache | null,
+  pooledCacheLanes: Lanes,
+};
+#+end_src
+
+SuspenseCallbackOnlyFiberRootProperties:
+
+#+begin_src typescript
+// The follow fields are only used by enableSuspenseCallback for hydration.
+type SuspenseCallbackOnlyFiberRootProperties = {
+  hydrationCallbacks: null | SuspenseHydrationCallbacks,
+};
+#+end_src
+
+UpdaterTrackingOnlyFiberRootProperties:
+
+#+begin_src typescript
+// The following attributes are only used by DevTools and are only present in DEV builds.
+// They enable DevTools Profiler UI to show which Fiber(s) scheduled a given commit.
+type UpdaterTrackingOnlyFiberRootProperties = {
+  memoizedUpdaters: Set<Fiber>,
+  pendingUpdatersLaneMap: LaneMap<Set<Fiber>>,
+};
+#+end_src
+** WorkTags
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: WorkTags
+:END:
+
+
+#+begin_src typescript
+export type WorkTag =
+  | 0
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 13
+  | 14
+  | 15
+  | 16
+  | 17
+  | 18
+  | 19
+  | 20
+  | 21
+  | 22
+  | 23
+  | 24;
+
+export const FunctionComponent = 0;
+export const ClassComponent = 1;
+export const IndeterminateComponent = 2; // Before we know whether it is function or class
+export const HostRoot = 3; // Root of a host tree. Could be nested inside another node.
+export const HostPortal = 4; // A subtree. Could be an entry point to a different renderer.
+export const HostComponent = 5;
+export const HostText = 6;
+export const Fragment = 7;
+export const Mode = 8;
+export const ContextConsumer = 9;
+export const ContextProvider = 10;
+export const ForwardRef = 11;
+export const Profiler = 12;
+export const SuspenseComponent = 13;
+export const MemoComponent = 14;
+export const SimpleMemoComponent = 15;
+export const LazyComponent = 16;
+export const IncompleteClassComponent = 17;
+export const DehydratedFragment = 18;
+export const SuspenseListComponent = 19;
+export const ScopeComponent = 21;
+export const OffscreenComponent = 22;
+export const LegacyHiddenComponent = 23;
+export const CacheComponent = 24;
+#+end_src
