@@ -1197,6 +1197,11 @@ export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
 
 1. 找到 listener = dispatchXxxEvent
 2. addEventListener 添加事件程序
+
+
+而它又 ~if (!(rootContainerElement: any)[listeningMarker])~ 成立才会执行，是不是意
+味着它只会在 patch root 的时候执行，那 react 中的所有事件都是在 root element 上
+代理完成了？
 #+end_tip
 
 *** listenToNativeEvent()
@@ -2930,6 +2935,50 @@ function updateOptions(
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
 :CUSTOM_ID: updateContainer
 :END:
+
+流程图：
+[[/img/react/react-dom-update-flow.svg]]
+
+1. eventTime, 即当前更新时的 ~performance.now()~
+2. lane, 当前更新有关的 update lane
+3. update, 创建 update 对象
+
+   #+begin_src typescript
+export function createUpdate(eventTime: number, lane: Lane): Update<*> {
+  const update: Update<*> = {
+    eventTime,
+    lane,
+
+    tag: UpdateState,
+    payload: null,
+    callback: null,
+
+    next: null,
+  };
+  return update;
+}
+   #+end_src
+4. 将 callback -> update.callback, ~render(App, container, callback)~ 的第三个函数
+5. enqueueUpdate() 将本次更新推入更新队列(sharedQueue)，并且是个双向链表
+
+   有两种类型的 update, interleaved 和 pengding，使用 update.next 形成链表
+
+   #+begin_src typescript
+const interleaved = sharedQueue.interleaved
+update.next = interleaved.next
+interleaved.next = update;
+   #+end_src
+6. 启动 scheduler 调度任务， *5* 中只是组织更新链表，这一步才是真正触发 schedule update
+
+   ~scheduleUpdateOnFiber(...)~ -> ~ensureRootIsScheduled()~ -> ... ->
+   ~scheduleCallback()~ ->
+
+   > ~scheduleCallback(ImmediateSchedulerPriority, flushSyncCallbacks)~
+
+   > ~scheduleCallback(schedulerPriorityLevel, performConcurrentWorkOnRoot.bind(null, root))~
+
+   flushSyncCallbacks(对应 syncQueue 队列) 和 performConcurrentWorkOnRoot 最终做为 callback 进入
+   taskQueue 或 timerQueue 等待执行。
 
 ** FiberRootNode(containerInfo, tag, hydrate)
 :PROPERTIES:
