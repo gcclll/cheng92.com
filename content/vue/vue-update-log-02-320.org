@@ -1,4 +1,4 @@
-#+TITLE: Vue3 更新日志 02 - 3.2
+#+TITLE: Vue3 更新日志 02 - 3.2.x
 #+DATE: <2021-08-10 08:30:07>
 #+TAGS[]: vue3, vue-next,
 #+CATEGORIES[]: vue
@@ -23,10 +23,67 @@
 [[/img/bdx/yiyeshu-001.jpg]]
 
 #+begin_quote
-3.2 更新日志 [[https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md][vue-next CHANGELOG]]
+>=3.2.0 更新日志 [[https://github.com/vuejs/vue-next/blob/master/CHANGELOG.md][vue-next CHANGELOG]], 只列出重要或和开发时相关的更新。
 #+end_quote
 
 * 3.2 All Important Changes
+
+- v-on 支持 async...await handler @@html:<a href="#von-async">:link: </a>@@
+- ~vm = createApp({ ...}).mount(...)~ 返回的 vm 上取不到 ~expose({ foo: 1 })~ 出来的
+  属性， ~vm.foo === undefined~ @@html:<a href="#expose-proxy">:link: </a>@@
+
+** [3.2.4] slots.default(a,b,c,...) 插槽使用支持多个参数
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: slot-args
+:END:
+
+
+slot.default(...args) 支持多个参数。
+
+  如： ~h('div', null, slots.default('a', 'b', 'c'))~
+
+  #+begin_src html
+<template>
+  <demo>
+    <template #default="a,b,c">{{a}}, {{b}}, {{c}}</template>
+  </demo>
+</template>
+
+// demo.js
+export default {
+  name: "Demo",
+  props: { ... },
+  render() {
+    return h('h1', null, this.$slots.default("a", "b", "c"))
+  }
+}
+  #+end_src
+
+  FIX:
+
+  #+begin_src diff
+ packages/runtime-core/src/componentSlots.ts
+@@ -63,15 +63,15 @@ const normalizeSlot = (
+  rawSlot: Function,
+  ctx: ComponentInternalInstance | null | undefined
+): Slot => {
+-  const normalized = withCtx((props: any) => {
++  const normalized = withCtx((...args: any[]) => {
+    if (__DEV__ && currentInstance) {
+      warn(
+        `Slot "${key}" invoked outside of the render function: ` +
+          `this will not track dependencies used in the slot. ` +
+          `Invoke the slot function inside the render function instead.`
+      )
+    }
+-    return normalizeSlotValue(rawSlot(props))
++    return normalizeSlotValue(rawSlot(...args))
+  }, ctx) as Slot
+  // NOT a compiled slot
+  ;(normalized as ContextualRenderFn)._c = false
+  #+end_src
+
 ** v-bind style/class 被解析成了 ~[object Object]~ ?
 :PROPERTIES:
 :COLUMNS:  %CUSTOM_ID[(Custom Id)]
@@ -561,6 +618,75 @@ return 0;
     }
     0
     #+end_example
+
+* DONE 3.2.13 (2021-09-21)
+CLOSED: [2021-10-20 Wed 16:39]
+** Bug Fixes [1/1]
+- [X] runtime-core: return the exposeProxy from mount ([[https://github.com/vuejs/vue-next/issues/4606][#4606]]) ([[https://github.com/vuejs/vue-next/commit/5aa425580808d0588aef12ead81c91f7147e1042][5aa4255]])
+  @@html:<span id="expose-proxy"></span>@@
+
+  问题：在 createApp().mount 返回的 vm 上找不到 vm.foo
+
+  FIX:
+
+  #+begin_src typescript
+export function getExposeProxy(instance: ComponentInternalInstance) {
+  if (instance.exposed) {
+    return (
+      instance.exposeProxy ||
+      (instance.exposeProxy = new Proxy(proxyRefs(markRaw(instance.exposed)), {
+        get(target, key: string) {
+          if (key in target) {
+            return target[key]
+          } else if (key in publicPropertiesMap) {
+            return publicPropertiesMap[key](instance)
+          }
+        }
+      }))
+    )
+  }
+}
+  #+end_src
+
+  test:
+
+  #+begin_src typescript
+  test('with mount', () => {
+    const Component = defineComponent({
+      setup(_, { expose }) {
+        expose({
+          foo: 1
+        })
+        return {
+          bar: 2
+        }
+      },
+      render() {
+        return h('div')
+      }
+    })
+    const root = nodeOps.createElement('div')
+    const vm = createApp(Component).mount(root) as any
+    expect(vm.foo).toBe(1)
+    expect(vm.bar).toBe(undefined)
+  })
+  #+end_src
+* DONE 3.2.12(2021-09-17)
+CLOSED: [2021-10-20 Wed 16:24]
+** Bug Fixes [2/2]
+
+- [X] compiler-sfc: support nested await statements ([[https://github.com/vuejs/vue-next/issues/4458][#4458]]) ([[https://github.com/vuejs/vue-next/commit/ae942cdcd9bd686e7b0394c8e91e63a31ff8fb5d][ae942cd]]), closes [[https://github.com/vuejs/vue-next/issues/4448][#4448]]
+
+  ~<script>await (await 1)</script>~
+
+- [X] compiler-core: v-on inline async function expression handler ([[https://github.com/vuejs/vue-next/issues/4569][#4569]]) ([[https://github.com/vuejs/vue-next/commit/fc968d607b181db9d50cd4b30a8d7e4cc5fe9d2b][fc968d6]]), closes [[https://github.com/vuejs/vue-next/issues/4568][#4568]]
+  @@html:<span id="von-async"></span>@@
+
+  ~<div @click="async () => await foo()" />~
+* DONE 3.2.4(2021-08-17)
+CLOSED: [2021-10-20 Wed 16:00]
+** Bug Fixes [1/1]
+- [X] [[#slot-args][runtime-core: ensure consistent arguments for tempalte and render funtion slot usage]] (644971e), closes #4367
 
 * DONE 3.2.0 (2021-08-09)
 CLOSED: [2021-09-08 Wed 15:52]
@@ -1321,7 +1447,7 @@ export function triggerEffects(
 
 * DONE 3.2.0-beta.2 (2021-07-19)
 CLOSED: [2021-09-03 Fri 16:33]
-** Important [0/0]
+** Important
 1. *ADD*: 支持 ~<script setup lang="ts">~ 中使用 ~const enum Foo { A: 100 }~, const
    enum
 2. *FIX*: 支持 ~<div :style="color: `${value}`"/>~ 使用
