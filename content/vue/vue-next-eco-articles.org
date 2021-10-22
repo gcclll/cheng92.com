@@ -62,6 +62,9 @@ UP! UP! UP! :tea: :tea: :tea:
 
 * vue-next 单个功能，特性专题源码分析
 
+- [[/vue/vue-mind-map-runtime-core-1/#headline-71][Vue3 Scheduler nextTick() 函数作用和原理]]
+- [[/vue/vue-mind-map-runtime-core-1/#scheduler][Vue3 Scheduler 任务调度机制源码分析]]
+
 - [[https://www.cheng92.com/vue/vue-teardown-17-async-component/][Vue3 功能拆解⑰ 异步组件 AsyncComopnent]]
 - [[https://www.cheng92.com/vue/vue-teardown-16-prop-and-attrs-modifiers/][Vue3 功能拆解⑯ .prop 和 ^attr 修饰符]]
 - [[https://www.cheng92.com/vue/vue-teardown-15-effect-scope/][Vue3 功能拆解⑮ effect scope]]
