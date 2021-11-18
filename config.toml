@@ -177,11 +177,11 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
     clientSecret = "320c43a98b0d5ae30535d8cf6cb3be7a05895c77"       # Your client secret
 
   [params.utterances]       # https://utteranc.es/
-    owner = ""              # Your GitHub ID
-    repo = ""               # The repo to store comments
+    owner = "gcclll"              # Your GitHub ID
+    repo = "cheng92-comments"               # The repo to store comments
 
   [params.gitalk]           # Gitalk is a comment system based on GitHub issues. see https://github.com/gitalk/gitalk
-    enable = true
+    enable = false
     owner = "gcclll"              # Your GitHub ID
     repo = "cheng92-comments" # "https://github.com/gcclll/cheng92-comments.git"               # The repo to store comments
     clientId = "7251a6b30d0d6c0f4aa2"           # Your client ID
