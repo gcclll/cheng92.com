@@ -50,6 +50,7 @@ UP! UP! UP! :tea: :tea: :tea:
 
 ** 3.2 大版本更新内容相关
 
+- [[/vue/vue-update-log-02-320/#defineProps-destructure][defineProps 支持解构操作]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#fix-vbind-class][<button :class="{btn:true}" v-bind="{disabled:true}"/> 中的 class 被解析成了
   [object Object] 的问题]]
 - [[https://www.cheng92.com/vue/vue-update-log-02-320/#deferredComputed][deferredComputed 异步计算属性]]

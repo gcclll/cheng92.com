@@ -28,9 +28,10 @@
 
 * 3.2 All Important Changes
 
-- v-on 支持 async...await handler @@html:<a href="#von-async">:link: </a>@@
+- ~v-on~ 支持 ~async...await~ handler @@html:<a href="#von-async">:link: </a>@@
 - ~vm = createApp({ ...}).mount(...)~ 返回的 vm 上取不到 ~expose({ foo: 1 })~ 出来的
   属性， ~vm.foo === undefined~ @@html:<a href="#expose-proxy">:link: </a>@@
+- ~defineProps~ 支持解构操作 @@html:<a href="#defineProps-destructure">:link: </a>@@
 
 ** [3.2.4] slots.default(a,b,c,...) 插槽使用支持多个参数
 :PROPERTIES:
@@ -618,6 +619,162 @@ return 0;
     }
     0
     #+end_example
+* DONE 3.2.14~22 (2021-09-22 ~ 2021-11-15)
+CLOSED: [2021-11-25 Thu 22:08]
+
+这段时间的更新还是以修复 bug 为主的，另外更新了一个主要的特性 ~defineProps~ 支持解
+构。
+
+** Bug Fixes [29/29]
+- [X] compiler-core: generate TS-cast safe assignment code for v-model ([[https://github.com/vuejs/vue-next/commit/686d0149b6a4215603fce00b8a54bc310fd5a781][686d014]]), closes [[https://github.com/vuejs/vue-next/issues/4655][#4655]]
+- [X] compiler-core: more robust member expression check in Node ([[https://github.com/vuejs/vue-next/commit/6257adeaac03d1401a67714953909e2e31febed6][6257ade]])
+- [X] compiler-sfc: fix local var access check for bindings in normal script ([[https://github.com/vuejs/vue-next/commit/6d6cc9091280ba132d92850f30db31c9152af599][6d6cc90]]), closes [[https://github.com/vuejs/vue-next/issues/4644][#4644]]
+
+  解决 ~script~ 和 ~script setup~ 一起用的时候找不到变量问题。
+  #+begin_src js
+ expect(() =>
+    compile(`
+        <script>const bar = 1</script>
+        <script setup>
+        defineProps({
+          foo: {
+            default: () => bar
+          }
+        })
+        </script>`)
+).not.toThrow(`cannot reference locally declared variables`)
+  #+end_src
+- [X] devtools: fix prod devtools detection + handle late devtools hook injection ([[https://github.com/vuejs/vue-next/issues/4653][#4651]]) ([[https://github.com/vuejs/vue-next/commit/2476eaad6e9d68f0b75772456775a0a8165631c0][2476eaa]])
+- [X] compiler-ssr: import ssr helpers from updated path ([[https://github.com/vuejs/vue-next/commit/d74f21a42cf067abebb4b170d0818cc5d1c06f8d][d74f21a]])
+- [X] ssr: fix ssr runtime helper import in module mode ([[https://github.com/vuejs/vue-next/commit/8e05b7f9fcb0e4c4ece2afe9fb2efbd29a6d1482][8e05b7f]])
+- [X] build: avoid importing @babel/parser in esm-bundler build ([[https://github.com/vuejs/vue-next/commit/fc85ad28ae55ea9483c923f7d40373cbe27080fe][fc85ad2]]), closes [[https://github.com/vuejs/vue-next/issues/4665][#4665]]
+- [X] compiler-core: should treat attribute key as expression ([[https://github.com/vuejs/vue-next/issues/4658][#4658]]) ([[https://github.com/vuejs/vue-next/commit/7aa0ea06c822d84a1d43b40cf5643b983aae6d36][7aa0ea0]])
+
+  ~<template v-for="a in b" key="c"/>~ 中的 ~c~ 被解析成了变量 ~_ctx.c~ 问题。
+- [X] server-renderer: respect compilerOptions during runtime template compilation ([[https://github.com/vuejs/vue-next/issues/4631][#4631]]) ([[https://github.com/vuejs/vue-next/commit/50d9d3436079419f91231351f20f69062a01505c][50d9d34]])
+- [X] compiler-sfc: fix props codegen w/ leading import ([[https://github.com/vuejs/vue-next/commit/d4c04e979934b81a30467aa4b1e717175b9b2d80][d4c04e9]]), closes [[https://github.com/vuejs/vue-next/issues/4764][#4764]]
+
+  #+begin_src js
+<script setup>import { ref } from 'vue' // this line will cause an error
+ const props=defineProps({
+   foo:String
+ })
+
+const msg = ref('Hello World!')
+</script>
+
+<template>
+  <h1>{{ msg }}</h1>
+  <input v-model="msg">
+</template>
+  #+end_src
+- [X] compiler-sfc: support runtime Enum in normal script ([[https://github.com/vuejs/vue-next/issues/4698][#4698]]) ([[https://github.com/vuejs/vue-next/commit/f66d456b7a39db9dae7e70c28bb431ff293d8fef][f66d456]])
+
+  #+begin_src typescript
+   test('runtime Enum in normal script', () => {
+      const { content, bindings } = compile(
+        `<script lang="ts">
+          export enum D { D = "D" }
+          const enum C { C = "C" }
+          enum B { B = "B" }
+        </script>
+        <script setup lang="ts">
+        enum Foo { A = 123 }
+        </script>`
+      )
+      assertCode(content)
+      expect(bindings).toStrictEqual({
+        D: BindingTypes.SETUP_CONST,
+        C: BindingTypes.SETUP_CONST,
+        B: BindingTypes.SETUP_CONST,
+        Foo: BindingTypes.SETUP_CONST
+      })
+    })
+  #+end_src
+- [X] devtools: clear devtools buffer after timeout ([[https://github.com/vuejs/vue-next/commit/f4639e0a36abe16828b202d7297e1486653b1217][f4639e0]]), closes [[https://github.com/vuejs/vue-next/issues/4738][#4738]]
+- [X] hmr: fix hmr for components with no active instance yet ([[https://github.com/vuejs/vue-next/commit/9e3d7731c7839638f49157123c6b372fec9e4d46][9e3d773]]), closes [[https://github.com/vuejs/vue-next/issues/4757][#4757]]
+- [X] types: ensure that DeepReadonly handles Ref type properly ([[https://github.com/vuejs/vue-next/issues/4714][#4714]]) ([[https://github.com/vuejs/vue-next/commit/ed0071ac1a6d18439f3212711c6901fbb7193288][ed0071a]])
+- [X] types: make toRef return correct type(fix [[https://github.com/vuejs/vue-next/issues/4732][#4732]]) ([[https://github.com/vuejs/vue-next/issues/4734][#4734]]) ([[https://github.com/vuejs/vue-next/commit/925bc346fe85091467fcd2e40d6c1ff07f3b51c4][925bc34]])
+- [X] custom-element: fix custom element props access on initial render ([[https://github.com/vuejs/vue-next/commit/4b7f76e36a7fc650986a20eca258f7a5d912424f][4b7f76e]]), closes [[https://github.com/vuejs/vue-next/issues/4792][#4792]]
+
+  #+begin_src diff
+packages/runtime-dom/src/apiCustomElement.ts
+-      asyncDef().then(resolve)
++      asyncDef()
++        .then(resolve)
++        .then(() => this._update())
+  #+end_src
+- [X] custom-element: fix initial attr type casting for programmtically created elements ([[https://github.com/vuejs/vue-next/commit/3ca83179d1a798f65e4e70215c511e2f1b64adb6][3ca8317]]), closes [[https://github.com/vuejs/vue-next/issues/4772][#4772]]
+
+  [[https://codesandbox.io/s/musing-gates-n5wsn?file=/src/main.js][codesandbox.io]]
+- [X] devtools: avoid open handle in non-browser env ([[https://github.com/vuejs/vue-next/commit/6916d725a06a57e92ff9d046ccf132c305cd0a51][6916d72]]), closes [[https://github.com/vuejs/vue-next/issues/4815][#4815]]
+- [X] devtools: fix memory leak when devtools is not installed ([[https://github.com/vuejs/vue-next/issues/4833][#4833]]) ([[https://github.com/vuejs/vue-next/commit/6b32f0d976c0aac8bb2c1b78fedd03e76fb391eb][6b32f0d]]), closes [[https://github.com/vuejs/vue-next/issues/4829][#4829]]
+- [X] runtime-core: add v-memo to built-in directives check ([[https://github.com/vuejs/vue-next/issues/4787][#4787]]) ([[https://github.com/vuejs/vue-next/commit/5eb72630a53a8dd82c2b8a9705c21a8075161a3d][5eb7263]])
+
+  将 ~memo~ 视为 vue 内置指令：
+
+  #+begin_src diff
+const isBuiltInDirective = /*#__PURE__*/ makeMap(
+-  'bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text'
++  'bind,cloak,else-if,else,for,html,if,model,on,once,pre,show,slot,text,memo'
+)
+  #+end_src
+- [X] runtime-dom: fix behavior regression for v-show + style display binding ([[https://github.com/vuejs/vue-next/commit/3f38d599f5aacdd3eeaa9475251a24f74e7ae3b4][3f38d59]]), closes [[https://github.com/vuejs/vue-next/issues/4768][#4768]]
+- [X] types: fix ref unwrapping type inference for nested shallowReactive & shallowRef ([[https://github.com/vuejs/vue-next/commit/20a361541cc5faffa82cbf3f2d49639a97b3b678][20a3615]]), closes [[https://github.com/vuejs/vue-next/issues/4771][#4771]]
+- [X] compiler-sfc: add type for props include Function in prod mode ([[https://github.com/vuejs/vue-next/issues/4938][#4938]]) ([[https://github.com/vuejs/vue-next/commit/9c42a1e2a3385f3b33faed5cdcc430bf8c1fc4b2][9c42a1e]])
+
+  #+begin_src html
+<script setup lang='ts'>
+
+import { onMounted } from 'vue'
+
+var props = withDefaults(defineProps<{f?: Function}>(),{f:()=>[1,2,3]})
+
+onMounted(()=>{
+  console.log("f:",props.f)
+})
+
+</script>
+  #+end_src
+- [X] compiler-sfc: add type for props's properties in prod mode ([[https://github.com/vuejs/vue-next/issues/4790][#4790]]) ([[https://github.com/vuejs/vue-next/commit/090df0837eb0aedd8a02fd0107b7668ca5c136a1][090df08]]), closes [[https://github.com/vuejs/vue-next/issues/4783][#4783]]
+- [X] compiler-sfc: externalRE support automatic http/https prefix url pattern ([[https://github.com/vuejs/vue-next/issues/4922][#4922]]) ([[https://github.com/vuejs/vue-next/commit/574070f43f804fd855f4ee319936ec770a56cef0][574070f]]), closes [[https://github.com/vuejs/vue-next/issues/4920][#4920]]
+
+  #+begin_src html
+<template>
+  <!-- other stuff -->
+  <img src="//via.placeholder.com/150" />
+  <!-- other stuff -->
+</template>
+  #+end_src
+- [X] compiler-sfc: fix expose codegen edge case ([[https://github.com/vuejs/vue-next/issues/4919][#4919]]) ([[https://github.com/vuejs/vue-next/commit/31fd590fd47e2dc89b84687ffe26a5c6f05fea34][31fd590]]), closes [[https://github.com/vuejs/vue-next/issues/4917][#4917]]
+- [X] devtool: improve devtools late injection browser env detection ([[https://github.com/vuejs/vue-next/issues/4890][#4890]]) ([[https://github.com/vuejs/vue-next/commit/fa2237f1d824eac511c4246135318594c48dc121][fa2237f]])
+- [X] runtime-core: improve dedupe listeners when attr fallthrough ([[https://github.com/vuejs/vue-next/issues/4912][#4912]]) ([[https://github.com/vuejs/vue-next/commit/b4eb7e3866d7dc722d93a48f4faae1696d4e7023][b4eb7e3]]), closes [[https://github.com/vuejs/vue-next/issues/4859][#4859]]
+
+  #+begin_src diff
+ packages/runtime-core/src/vnode.ts
+@@ -791,7 +791,10 @@ export function mergeProps(...args: (Data & VNodeProps)[]) {
+      } else if (isOn(key)) {
+        const existing = ret[key]
+        const incoming = toMerge[key]
+-        if (existing !== incoming) {
++        if (
++          existing !== incoming &&
++          !(isArray(existing) && existing.includes(incoming))
++        ) {
+          ret[key] = existing
+            ? [].concat(existing as any, incoming as any)
+            : incoming
+
+  #+end_src
+- [X] types/sfc: fix withDefaults type inference when using union types ([[https://github.com/vuejs/vue-next/issues/4925][#4925]]) ([[https://github.com/vuejs/vue-next/commit/04e58351965caf489ac68e4961ef70448d954912][04e5835]])
+
+** Features [1/1]
+- [X] [3.2.20]compiler-sfc: <script setup> defineProps destructure transform ([[https://github.com/vuejs/vue-next/issues/4690][#4690]]) ([[https://github.com/vuejs/vue-next/commit/467e113b95a3c9c97f8dc309b61c0b2e3caba66f][467e113]])
+  @@html:<span id="defineProps-destructure"></span>@@
+
+  ~defineProps~ 支持解构操作。
+
+  ~<script setup>const { foo, bar } = defineProps(['foo', 'bar'])</script>~
 
 * DONE 3.2.13 (2021-09-21)
 CLOSED: [2021-10-20 Wed 16:39]
