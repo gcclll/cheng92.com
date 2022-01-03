@@ -1,0 +1,1312 @@
+#+title: 2022  Doom Emacs Configuration
+#+subtitle: The Methods, Management, and Menagerie of Madness
+#+author: Zhicheng Lee
+#+date: @@html:<!--@@@@html:<a href="https://github.com/gcclll/.doom.d/commit/fe602c5" style="text-decoration: none"><code style="padding: 0; color: var(--text-light); font-size: inherit; opacity: 0.7">fe602c5</code></a>@@@@latex:\href{https://github.com/gcclll/.doom.d/commit/fe602c5}{fe602c5}@@@@html:-->@@@@latex:\\\Large\bfseries@@ {{{modification-time(%Y-%m-%d, t)}}} @@latex:\\\normalsize\mdseries@@{{{modification-time(%H:%M, t)}}} @@latex:\acr{\lowercase{@@{{{timezone}}}@@latex:}}\iffalse@@, {{{git-rev}}}@@latex:\fi@@
+#+macro: timezone (eval (substring (shell-command-to-string "date +%Z") 0 -1))
+#+macro: git-rev (eval (format "@@html:<a href=\"https://github.com/gcclll/.doom.d/commit/%1$s\" style=\"text-decoration: none\"><code style=\"padding: 0; color: var(--text-light); font-size: inherit; opacity: 0.7\">%1$s</code></a>@@@@latex:\\href{https://github.com/gcclll/.doom.d/commit/%1$s}{%1$s}@@" (substring (shell-command-to-string "git rev-parse --short HEAD") 0 -1)))
+#+startup: fold
+#+property: header-args:emacs-lisp :tangle yes :cache yes :results silent :comments link
+#+property: header-args:shell :tangle "setup.sh"
+#+property: header-args :tangle no :results silent
+#+html_head: <link rel='shortcut icon' type='image/png' href='https://www.gnu.org/software/emacs/favicon.png'>
+
+#+begin_quote
+Emacs 29 版本 Doom Emacs 配置。
+#+end_quote
+
+#+begin_export html
+<a href="https://github.com/gcclll/.doom.d/"
+   style="font-family: 'Open Sans'; background-image: none; color: inherit;
+   text-decoration: none; position: relative; top: clamp(-26px, calc(1280px - 100vw), 0px); opacity: 0.7;">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg"
+       class="invertible" alt="GitHub Octicon"
+       style="height: 1em; position: relative; top: -0.1em;">
+  View on GitHub</a>
+#+end_export
+#+begin_export latex
+\newpage % because the contents are multi-page, this looks better
+#+end_export
+
+#+begin_quote
+他人配置列表：
+#+end_quote
+
+| name&link                                                        | brief       |
+|------------------------------------------------------------------+-------------|
+| [[https://github.com/zzamboni/dot-doom/blob/master/doom.org][dot-doom/doom.org at master · zzamboni/dot-doom]]                  | -           |
+| [[http://pages.sachachua.com/.emacs.d/Sacha.html][Sacha Chua's Emacs configuration]]                                 | -           |
+| [[https://github.com/daedreth/UncleDavesEmacs#user-content-ido-and-why-i-started-using-helm][daedreth/UncleDavesEmacs: My personal ~/.emacs.d]]                 | -           |
+| [[https://github.com/PythonNut/quark-emacs][PythonNut/quark-emacs: An incredible wonderland of code]]          | -           |
+| [[https://www.masteringemacs.org/][Mastering Emacs]]                                                  | -           |
+| [[https://tecosaur.github.io/emacs-config/config.html][Doom Emacs Configuration]]                                         | -           |
+| [[https://github.com/KaratasFurkan/.emacs.d][GitHub - KaratasFurkan/.emacs.d: My literate Emacs configuration]] | -           |
+| [[https://github.com/eggcaker/.doom.d][eggcaker/.doom.d: My private doom-emacs configurations]]           | rime + pyim |
+| [[https://www.gtrun.org/custom/config.html#org57b461c]]              |             |
+| [[https://emacsredux.com/archive/][Emacs Redux]]                                                      | -           |
+
+
+* Update Logs
+[2022-01-01]
+1. upgrade emacs to emacs29 native
+2. remove some un-required packages
+3. fix: code-review trigger error
+
+   ~$ vim modules/tools/magit/packages.el~
+
+   remove ~code-review~ pin tag.
+
+   ~$ rm -rf .emacs.d/.local/straight/build-29.0.50/code-review~
+
+   and run ~$ doom sync~
+
+[2021-07-02]
+1. upgrade emacs to [[https://emacs-china.org/t/nix-mac-emacs-nativecomp/14509/20][emacs28 native]]
+
+
+[2021-05-30]
+
+1. add ~gcl/async-shell-command-silently~
+
+* Function declaration
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "config.el" :comments no
+:END:
+
+** mine
+#+begin_src emacs-lisp :comments no
+;;;###autoload
+(defun gcl/edit-zsh-configuration ()
+  (interactive)
+  (find-file "~/.zshrc"))
+
+;;;###autoload
+(defun gcl/use-eslint-from-node-modules ()
+    "Set local eslint if available."
+    (let* ((root (locate-dominating-file
+                  (or (buffer-file-name) default-directory)
+                  "node_modules"))
+           (eslint (and root
+                        (expand-file-name "node_modules/eslint/bin/eslint.js"
+                                          root))))
+      (when (and eslint (file-executable-p eslint))
+        (setq-local flycheck-javascript-eslint-executable eslint))))
+
+;;;###autoload
+(defun gcl/goto-match-paren (arg)
+  "Go to the matching if on (){}[], similar to vi style of % ."
+  (interactive "p")
+  (cond ((looking-at "[\[\(\{]") (evil-jump-item))
+        ((looking-back "[\]\)\}]" 1) (evil-jump-item))
+        ((looking-at "[\]\)\}]") (forward-char) (evil-jump-item))
+        ((looking-back "[\[\(\{]" 1) (backward-char) (evil-jump-item))
+        (t nil)))
+
+;;;###autoload
+(defun gcl/string-inflection-cycle-auto ()
+  "switching by major-mode"
+  (interactive)
+  (cond
+   ;; for emacs-lisp-mode
+   ((eq major-mode 'emacs-lisp-mode)
+    (string-inflection-all-cycle))
+   ;; for python
+   ((eq major-mode 'python-mode)
+    (string-inflection-python-style-cycle))
+   ;; for java
+   ((eq major-mode 'java-mode)
+    (string-inflection-java-style-cycle))
+   (t
+    ;; default
+    (string-inflection-all-cycle))))
+
+;; Current time and date
+(defvar current-date-time-format "%Y-%m-%d %H:%M:%S"
+  "Format of date to insert with `insert-current-date-time' func
+See help of `format-time-string' for possible replacements")
+
+(defvar current-time-format "%H:%M:%S"
+  "Format of date to insert with `insert-current-time' func.
+Note the weekly scope of the command's precision.")
+
+;;;###autoload
+(defun insert-current-date-time ()
+  "insert the current date and time into current buffer.
+Uses `current-date-time-format' for the formatting the date/time."
+  (interactive)
+  (insert (format-time-string current-date-time-format (current-time)))
+  )
+
+;;;###autoload
+(defun insert-current-time ()
+  "insert the current time (1-week scope) into the current buffer."
+  (interactive)
+  (insert (format-time-string current-time-format (current-time)))
+  )
+
+;;;###autoload
+(defun my/capitalize-first-char (&optional string)
+  "Capitalize only the first character of the input STRING."
+  (when (and string (> (length string) 0))
+    (let ((first-char (substring string nil 1))
+          (rest-str   (substring string 1)))
+      (concat (capitalize first-char) rest-str))))
+
+;;;###autoload
+(defun my/lowcase-first-char (&optional string)
+  "Capitalize only the first character of the input STRING."
+  (when (and string (> (length string) 0))
+    (let ((first-char (substring string nil 1))
+          (rest-str   (substring string 1)))
+      (concat first-char rest-str))))
+
+;;;###autoload
+(defun gcl/async-shell-command-silently (command)
+  "async shell command silently."
+  (interactive)
+  (let
+      ((display-buffer-alist
+        (list
+         (cons
+          "\\*Async Shell Command\\*.*"
+          (cons #'display-buffer-no-window nil)))))
+    (async-shell-command
+     command)))
+#+end_src
+** embrace
+
+#+begin_src emacs-lisp
+;;;###autoload
+(defun gcl/embrace-prog-mode-hook ()
+  (dolist (lst '((?` "`" . "`")))
+    (embrace-add-pair (car lst) (cadr lst) (cddr lst))))
+
+;;;###autoload
+(defun gcl/embrace-org-mode-hook ()
+  (dolist (lst '((?c "@@html:<font color=\"red\">" . "</font>@@")))
+    (embrace-add-pair (car lst) (cadr lst) (cddr lst))))
+#+end_src
+
+** org-mode
+
+#+begin_src emacs-lisp
+;;;###autoload
+(defun gcl/indent-org-block-automatically ()
+  (interactive)
+  (when (org-in-src-block-p)
+   (org-edit-special)
+   (indent-region (point-min) (point-max))
+   (org-edit-src-exit)))
+#+end_src
+* Init.el
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "init.el" :comments no
+:END:
+
+#+name: init.el
+#+begin_src emacs-lisp :tangle "init.el" :noweb no-export :comments none
+;;; init.el -*- lexical-binding: t; -*-
+
+(doom! :input
+       ;;chinese
+       ;;japanese
+       ;;layout            ; auie,ctsrnm is the superior home row
+
+       :completion
+       company           ; the ultimate code completion backend
+       ;;helm              ; the *other* search engine for love and life
+       ;;ido               ; the other *other* search engine...
+       ;;ivy               ; a search engine for love and life
+       vertico           ; the search engine of the future
+
+       :ui
+       ;;deft              ; notational velocity for Emacs
+       doom              ; what makes DOOM look the way it does
+       doom-dashboard    ; a nifty splash screen for Emacs
+       doom-quit         ; DOOM quit-message prompts when you quit Emacs
+       (emoji +unicode +ascii +github)  ; 🙂
+       hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
+       hydra
+       ;;indent-guides     ; highlighted indent columns
+       (ligatures +extra)         ; ligatures and symbols to make your code pretty again
+       ;;minimap           ; show a map of the code on the side
+       modeline          ; snazzy, Atom-inspired modeline, plus API
+       nav-flash         ; blink cursor line after big motions
+       ;;neotree           ; a project drawer, like NERDTree for vim
+       ophints           ; highlight the region an operation acts on
+       (popup +defaults)   ; tame sudden yet inevitable temporary windows
+       ;;tabs              ; a tab bar for Emacs
+       ;;treemacs          ; a project drawer, like neotree but cooler
+       ;;unicode           ; extended unicode support for various languages
+       vc-gutter         ; vcs diff in the fringe
+       vi-tilde-fringe   ; fringe tildes to mark beyond EOB
+       (window-select +numbers)     ; visually switch windows
+       workspaces        ; tab emulation, persistence & separate workspaces
+       ;;zen               ; distraction-free coding or writing
+
+       :editor
+       (evil +everywhere); come to the dark side, we have cookies
+       file-templates    ; auto-snippets for empty files
+       fold              ; (nigh) universal code folding
+       (format +onsave)  ; automated prettiness
+       ;;god               ; run Emacs commands without modifier keys
+       ;;lispy             ; vim for lisp, for people who don't like vim
+       multiple-cursors  ; editing in many places at once
+       ;;objed             ; text object editing for the innocent
+       ;;parinfer          ; turn lisp into python, sort of
+       rotate-text       ; cycle region at point between text candidates
+       snippets          ; my elves. They type so I don't have to
+       word-wrap         ; soft wrapping with language-aware indent
+
+       :emacs
+       (dired +icons)             ; making dired pretty [functional]
+       electric          ; smarter, keyword-based electric-indent
+       (ibuffer +icons)         ; interactive buffer management
+       undo              ; persistent, smarter undo for your inevitable mistakes
+       vc                ; version-control and Emacs, sitting in a tree
+
+       :term
+       ;;eshell            ; the elisp shell that works everywhere
+       ;;shell             ; simple shell REPL for Emacs
+       ;;term              ; basic terminal emulator for Emacs
+       vterm             ; the best terminal emulation in Emacs
+
+       :checkers
+       syntax              ; tasing you for every semicolon you forget
+       ;;(spell +flyspell) ; tasing you for misspelling mispelling
+       ;;grammar           ; tasing grammar mistake every you make
+
+       :tools
+       ;;ansible
+       ;;biblio            ; Writes a PhD for you (citation needed)
+       ;;debugger          ; FIXME stepping through code, to help you add bugs
+       ;;direnv
+       ;;docker
+       editorconfig      ; let someone else argue about tabs vs spaces
+       ;;ein               ; tame Jupyter notebooks with emacs
+       (eval +overlay)     ; run code, run (also, repls)
+       ;;gist              ; interacting with github gists
+       (lookup
+         +dictionary
+         +docsets)              ; navigate your code and its documentation
+       (lsp +peek)               ; M-x vscode
+       (magit +forge)             ; a git porcelain for Emacs
+       make              ; run make tasks from Emacs
+       ;;pass              ; password manager for nerds
+       pdf               ; pdf enhancements
+       ;;prodigy           ; FIXME managing external services & code builders
+       rgb               ; creating color strings
+       ;;taskrunner        ; taskrunner for all your projects
+       ;;terraform         ; infrastructure as code
+       ;;tmux              ; an API for interacting with tmux
+       upload            ; map local to remote projects via ssh/ftp
+
+       :os
+       (:if IS-MAC macos)  ; improve compatibility with macOS
+       tty               ; improve the terminal Emacs experience
+
+       :lang
+       ;;agda              ; types of types of types of types...
+       ;;beancount         ; mind the GAAP
+       (cc +lsp)                ; C > C++ == 1
+       ;;clojure           ; java with a lisp
+       ;;common-lisp       ; if you've seen one lisp, you've seen them all
+       ;;coq               ; proofs-as-programs
+       ;;crystal           ; ruby at the speed of c
+       ;;csharp            ; unity, .NET, and mono shenanigans
+       data              ; config/data formats
+       ;;(dart +flutter)   ; paint ui and not much else
+       ;;dhall
+       ;;elixir            ; erlang done right
+       ;;elm               ; care for a cup of TEA?
+       emacs-lisp        ; drown in parentheses
+       ;;erlang            ; an elegant language for a more civilized age
+       ;;ess               ; emacs speaks statistics
+       ;;factor
+       ;;faust             ; dsp, but you get to keep your soul
+       ;;fortran           ; in FORTRAN, GOD is REAL (unless declared INTEGER)
+       ;;fsharp            ; ML stands for Microsoft's Language
+       ;;fstar             ; (dependent) types and (monadic) effects and Z3
+       ;;gdscript          ; the language you waited for
+       (go +lsp)         ; the hipster dialect
+       ;;(haskell +lsp)    ; a language that's lazier than I am
+       ;;hy                ; readability of scheme w/ speed of python
+       ;;idris             ; a language you can depend on
+       (json +lsp)              ; At least it ain't XML
+       ;;(java +meghanada) ; the poster child for carpal tunnel syndrome
+       (javascript +lsp)        ; all(hope(abandon(ye(who(enter(here))))))
+       ;;julia             ; a better, faster MATLAB
+       ;;kotlin            ; a better, slicker Java(Script)
+       (latex
+        +latexmk
+        +cdlatex
+        +lsp
+        +fold)            ; writing papers in Emacs has never been so fun
+       ;;lean              ; for folks with too much to prove
+       ;;ledger            ; be audit you can be
+       (lua +lsp)               ; one-based indices? one-based indices
+       markdown          ; writing docs for people to ignore
+       ;;nim               ; python + lisp at the speed of c
+       nix               ; I hereby declare "nix geht mehr!"
+       ;;ocaml             ; an objective camel
+       (org
+        +attach
+        +babel
+        +capture
+        +dragndrop
+        +hugo
+        ;; +jupyter
+        +export
+        +pandoc
+        +gnuplot
+        +pretty
+        +present
+        +protocol
+        +pomodoro
+        +roam2
+        +noter)               ; organize your plain life in plain text
+       (php +lsp)               ; perl's insecure younger brother
+       plantuml          ; diagrams for confusing people more
+       ;;purescript        ; javascript, but functional
+       (python +lsp +pyright)            ; beautiful is better than ugly
+       ;;qt                ; the 'cutest' gui framework ever
+       ;;racket            ; a DSL for DSLs
+       ;;raku              ; the artist formerly known as perl6
+       rest              ; Emacs as a REST client
+       ;;rst               ; ReST in peace
+       (ruby +rails +lsp)     ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
+       (rust +lsp)              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
+       ;;scala             ; java, but good
+       (scheme +guile)   ; a fully conniving family of lisps
+       (sh +lsp +powershell)                ; she sells {ba,z,fi}sh shells on the C xor
+       ;;sml
+       ;;solidity          ; do you need a blockchain? No.
+       ;;swift             ; who asked for emoji variables?
+       ;;terra             ; Earth and Moon in alignment for performance.
+       (web +lsp)               ; the tubes
+       (yaml +lsp)             ; JSON, but readable
+       ;;zig               ; C, but simpler
+
+       :email
+       (mu4e +org +gmail)
+       ;;notmuch
+       ;;(wanderlust +gmail)
+
+       :app
+       calendar
+       emms
+       everywhere        ; *leave* Emacs!? You must be joking
+       irc               ; how neckbeards socialize
+       (rss +org)        ; emacs as an RSS reader
+       twitter           ; twitter client https://twitter.com/vnought
+
+       :config
+       literate
+       (default +bindings +smartparens))
+#+end_src
+
+* Theme Settings
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "config.el" :comments no
+:END:
+
+#+begin_src emacs-lisp
+(setq doom-font (font-spec :family "Fira Code Retina" :size 15 :weight 'light)
+      doom-variable-pitch-font (font-spec :family "Roboto" :style "Regular" :size 12 :weight 'regular))
+;; (setq doom-theme 'spacemacs-light)
+(setq doom-theme 'doom-one)
+#+end_src
+* Basic Settings
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "config.el" :comments no
+:END:
+
+auto generate code into config.el, init.el, packages.el, ..., and run `cp-config-org.sh`
+
+to bakup some of my private things.
+
+enable/disable modes:
+
+保存时自动将 `config.org` 拆解成各个 *.el 文件。
+#+begin_src emacs-lisp
+(add-hook 'org-mode-hook
+          (lambda () (add-hook 'after-save-hook #'org-babel-tangle
+                               :append :local)))
+#+end_src
+
+basic settings
+
+#+begin_src emacs-lisp
+(setq
+ ;; private information
+ user-full-name "Zhicheng Lee"
+ user-mail-address "gccll.love@gmail.com"
+ user-blog-url "https://www.cheng92.com"
+
+ warning-minimum-level :error
+ ;; exit no confirm
+ confirm-kill-emacs nil
+
+ display-line-numbers-type t
+ org-directory "~/.gclrc/org/"
+ org-roam-directory "~/.gclrc/org/roam/"
+ )
+
+(add-to-list 'initial-frame-alist '(fullscreen . maximized))
+(add-hook 'org-mode-hook 'turn-on-auto-fill)
+#+end_src
+* Keybindings
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "config.el" :comments no
+:END:
+
+Keybindings reference:
+
+[[https://github.com/hlissner/doom-emacs/blob/develop/modules/config/default/%2Bevil-bindings.el][evil-bindings.el]]
+
+[[https://github.com/hlissner/doom-emacs/blob/617fc7f1cc6c91d80a30aca0445ae21f1bd5ddc9/modules/editor/evil/config.el][editor/evil/config.el]]
+
+** Key Table
+
+| Key           | Function                         |
+|---------------+----------------------------------|
+| *,*             |                                  |
+| =, O=           | ~org-ol-tree~                      |
+|---------------+----------------------------------|
+| *g*             | evil key                         |
+| =gss=           | ~avy-goto-char-2~                  |
+| ~gs/~           | ~avy-goto-char-timer~              |
+|---------------+----------------------------------|
+| *C*             |                                  |
+| =C-a=           | ~crux-move-beginning-of-line~      |
+| =C-s=           | ~+default/search-buffer~           |
+| =C-)=           | ~sp-forward-slurp-sexp~            |
+| =C-(=           | ~sp-forward-barf-sexp~             |
+| =C-{=           | ~sp-backward-slurp-sexp~           |
+| =C-}=           | ~sp-backward-barf-sexp~            |
+| =C-'=           | ~cycle-quotes~                     |
+| =C-;=           | ~tiny-expand~                      |
+|---------------+----------------------------------|
+| *s(Command)*    |                                  |
+| =s '=           | switch to next window            |
+| =s-i=           | ~gcl/string-inflection-cycle-auto~ |
+| =s--=           | ~sp-splice-sexp~                   |
+| =s-_=           | ~sp-rewrap-sexp~                   |
+|---------------+----------------------------------|
+| *M(Option/Alt)* |                                  |
+| =M-i=           | ~parrot~                           |
+| =M-z=           | ~zzz-to-char~                      |
+| =M-s M-s=       | ~isearch-toggle-color-rg~          |
+|---------------+----------------------------------|
+| *S(Shift)*      |                                  |
+| =S-M-SPC=       | ~counsel-osx-app~                  |
+|---------------+----------------------------------|
+| *C-c*           |                                  |
+| =C-c s [x]=     | search engine                    |
+| =C-c d d=       | ~dash-at-point~                    |
+| =C-c d D=       | ~dash-at-point-with-docset~        |
+|               |                                  |
+|---------------+----------------------------------|
+| *SPC n*         |                                  |
+| =SPC n d=       | ~deft~                             |
+|---------------+----------------------------------|
+| *SPC o*         |                                  |
+| =SPC o o=       | ~+macos/reveal-in-finder~          |
+| =SPC o t=       | ~vterm-toggle~                     |
+| =SPC o T=       | ~vterm-here~                       |
+|---------------+----------------------------------|
+| *SPC b*         |                                  |
+| =SPC b O=       | ~+doom/kill-other-buffers~         |
+|---------------+----------------------------------|
+| *SPC c*         |                                  |
+| =SPC c j=       | ~consult-lsp-symbols~              |
+|---------------+----------------------------------|
+| *SPC s*         |                                  |
+| =SPC s i=       | ~consult-imenu~                    |
+| =SPC s p=       | ~consult-git-grep~                 |
+|               |                                  |
+|---------------+----------------------------------|
+
+** Unbindings
+#+begin_src emacs-lisp
+(global-set-key (kbd "<f1>") nil)        ; ns-print-buffer
+(global-set-key (kbd "<f2>") nil)        ; ns-print-buffer
+(define-key evil-normal-state-map (kbd ",") nil)
+(define-key evil-visual-state-map (kbd ",") nil)
+#+end_src
+** F1~12(kbd)
+
+#+begin_src emacs-lisp
+(global-set-key (kbd "<f1>") 'gcl-everything/body)
+(global-set-key (kbd "<f5>") 'deadgrep)
+(global-set-key (kbd "<M-f5>") 'deadgrep-kill-all-buffers)
+;; (global-set-key (kbd "<f8>") 'quickrun)
+(global-set-key (kbd "<f12>") 'smerge-vc-next-conflict)
+(global-set-key (kbd "<S-f12>") '+vc/smerge-hydra/body)
+(global-set-key (kbd "M-z") 'zzz-to-char)
+;; (global-set-key (kbd "C-t") '+vterm/toggle)
+;; (global-set-key (kbd "C-S-t") '+vterm/here)
+;; (global-set-key (kbd "C-d") 'kill-current-buffer)
+
+#+end_src
+** Common
+
+#+begin_src emacs-lisp
+(setq doom-localleader-key ",")
+(map!
+ :nv    ")" #'sp-forward-sexp
+ :nv    "(" #'sp-backward-up-sexp
+ :nv    "s-)" #'sp-down-sexp
+ :nv    "s-(" #'sp-backward-sexp
+ :nv    "gd"    #'xref-find-definitions
+ :nv    "gD"    #'xref-find-references
+ :nv    "gb"    #'xref-pop-marker-stack
+
+ :niv   "C-e"   #'evil-end-of-line
+ :niv   "C-="   #'er/expand-region
+
+ "C-;"          #'tiny-expand
+ "C-a"          #'crux-move-beginning-of-line
+ "C-s"          #'+default/search-buffer
+
+ "C-c f r"      #'gcl/indent-org-block-automatically
+
+ "C-c i d"      #'insert-current-date-time
+ "C-c i t"      #'insert-current-time
+ ;; "C-c i d"      #'crux-insert-date
+ "C-c i e"      #'emojify-inert-emoji
+ "C-c i f"      #'js-doc-insert-function-doc
+ "C-c i F"      #'js-doc-insert-file-doc
+
+ "C-c o o"      #'crux-open-with
+ "C-c o u"      #'crux-view-url
+ "C-c o t"      #'crux-visit-term-buffer
+ ;; org-roam
+ "C-c o r o"    #'org-roam-ui-open
+
+ "C-c r r"      #'vr/replace
+ "C-c r q"      #'vr/query-replace
+
+ "C-c y y"      #'youdao-dictionary-search-at-point+
+
+ ;; Command/Window
+ "s-<"          #'move-text-up
+ "s->"          #'move-text-down
+ "s-i"          #'gcl/string-inflection-cycle-auto
+ ;; "s--"          #'sp-splice-sexp
+ ;; "s-_"          #'sp-rewrap-sexp
+
+ "M-i"          #'parrot-rotate-next-word-at-point
+ "M--"          #'gcl/goto-match-paren
+ )
+#+end_src
+
+# end lizchicheng
+** SPC leader
+#+begin_src emacs-lisp
+(map! :leader
+      :n "SPC"  #'execute-extended-command
+      (:prefix ("d" . "Dir&Deletion")
+       :n    "d"    #'deft)
+
+      (:prefix ("e" . "Edit&Errors")
+       ;; :n    "l"     #'lsp-treemacs-errors-list
+       ))
+#+end_src
+
+** org-mode
+#+begin_src emacs-lisp
+(map! :map org-mode-map
+      ;; t
+      (:prefix ("t" . "Org Todos")
+       :n "t" #'org-todo
+
+       ;; t c
+       (:prefix ("c" . "Checkbox")
+        :n   "c"     #'org-toggle-checkbox
+        :n   "u"     #'org-update-checkbox-count)
+
+       (:prefix ("p" . "priority")
+       :n "p" #'org-priority
+       :n "u" #'org-priority-up
+       :n "d" #'org-priority-down
+       ))
+
+      ;; C-c
+      (:prefix "C-c"
+       (:prefix ("f" . "Format")
+        :n   "r"     #'gcl/indent-org-block-automatically)
+       (:prefix ("e" . "Emoji")
+        "e" #'all-the-icons-insert
+        "a" #'all-the-icons-insert-faicon
+        "f" #'all-the-icons-insert-fileicon
+        "w" #'all-the-icons-insert-wicon
+        "o" #'all-the-icons-insert-octicon
+        "m" #'all-the-icons-insert-material
+        "i" #'all-the-icons-insert-alltheicon
+        )
+       (:prefix ("c" . "Org Clock")
+        "i" #'org-clock-in
+        "o" #'org-clock-out
+        "h" #'counsel-org-clock-history
+        "g" #'counsel-org-clock-goto
+        "c" #'counsel-org-clock-context
+        "r" #'counsel-org-clock-rebuild-history
+        )
+       (:prefix ("i" . "Insert")
+        "u" #'org-mac-chrome-insert-frontmost-url
+        "c" #'copyright
+        )))
+#+end_src
+* Package Settings
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "config.el" :comments no
+:END:
+
+** mixed-pitch
+#+begin_src emacs-lisp
+(use-package! mixed-pitch
+  :hook (org-mode . mixed-pitch-mode)
+  :config
+  (setq mixed-pitch-face 'variable-pitch))
+#+end_src
+** tiny
+#+begin_src emacs-lisp
+;; (tiny-setup-default)
+#+end_src
+** pangu-spacing
+#+begin_src emacs-lisp
+(global-pangu-spacing-mode 1)
+;; insert whitespace in some specific mode
+(add-hook 'org-mode-hook
+           '(lambda ()
+            (set (make-local-variable 'pangu-spacing-real-insert-separtor) t)))
+#+end_src
+
+** hydra
+#+begin_src emacs-lisp
+(defhydra gcl-repl-hydra (:color blue :columns 3 :hint nil)
+  "REPL "
+  ("e" ielm " ELisp")
+  ("h" httprepl " HTTP")
+  ("j" jq-interactivly " JSON")
+  ("l" +lua/open-repl " Lua")
+  ("n" nodejs-repl " Node.js")
+  ("p" +python/open-repl " Python")
+  ("s" skewer-repl " Skewer"))
+
+(defhydra gcl-roam-ui-hydra (:color green)
+  "Org Roam UI."
+  ("t" orui-sync-theme "Sync Theme"))
+(defhydra gcl-launcher-hydra (:color blue)
+   "Launch"
+   ("h" man "man")
+   ("b" (browse-url "https://www.cheng92.com") "my-blog")
+   ("r" (browse-url "http://www.reddit.com/r/emacs/") "reddit")
+   ("w" (browse-url "http://www.emacswiki.org/") "emacswiki")
+   ("s" shell "shell")
+   ("q" nil "cancel"))
+
+(defhydra gcl-everything (:color blue :columns 3 :hint nil)
+  "🗯 做任何你想不到的事情~~~~ 👁👁👁👁👁👁👁👁👁
+🌻"
+  ("r" gcl-repl-hydra/body "REPL")
+  ("l" gcl-launcher-hydra/body "Launch")
+  ("1" gcl-roam-ui-hydra/body "Roam"))
+#+end_src
+** lsp
+#+begin_src emacs-lisp
+(use-package! lsp-mode
+  :commands lsp
+  :config
+  (setq lsp-idle-delay 0.2
+        lsp-enable-file-watchers nil))
+
+(use-package! lsp-ui
+  :commands lsp-ui-mode
+  :config
+  (setq lsp-headerline-breadcrumb-enable t ; 左上角显示文件路径
+        lsp-lens-enable t                  ; 显示被引用次数
+        )
+  :bind (:map lsp-ui-mode-map
+         ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+         ([remap xref-find-references] . lsp-ui-peek-find-references)
+         ([remap xref-pop-marker-stack] . lsp-ui-peek-jump-backward)
+         ))
+#+end_src
+** which-key
+
+Doom Emacs default configuration is too slow, let’s speed it up.
+
+#+begin_src emacs-lisp
+(after! which-key
+  (setq! which-key-idle-delay 0.1
+         which-key-idle-secondary-delay 0.2))
+
+;; dont display evilem-...
+(setq which-key-allow-multiple-replacements t)
+(after! which-key
+  (pushnew!
+   which-key-replacement-alist
+   '(("" . "\\`+?evil[-:]?\\(?:a-\\)?\\(.*\\)") . (nil . "◂\\1"))
+   '(("\\`g s" . "\\`evilem--?motion-\\(.*\\)") . (nil . "◃\\1"))
+   ))
+
+#+end_src
+** visual-fill-column
+#+begin_src emacs-lisp
+(use-package! visual-fill-column)
+#+end_src
+** multi-iedit
+
+#+begin_src emacs-lisp
+ (use-package! maple-iedit
+    :commands (maple-iedit-match-all maple-iedit-match-next maple-iedit-match-previous)
+    :config
+    (delete-selection-mode t)
+    (setq maple-iedit-ignore-case t)
+    (defhydra maple/iedit ()
+      ("n" maple-iedit-match-next "next")
+      ("t" maple-iedit-skip-and-match-next "skip and next")
+      ("T" maple-iedit-skip-and-match-previous "skip and previous")
+      ("p" maple-iedit-match-previous "prev"))
+    :bind (:map evil-visual-state-map
+           ("n" . maple/iedit/body)
+           ("C-n" . maple-iedit-match-next)
+           ("C-p" . maple-iedit-match-previous)
+           ("C-t" . map-iedit-skip-and-match-next)
+           ("C-T" . map-iedit-skip-and-match-previous)))
+#+end_src
+** exec-path-from-shell
+#+begin_src emacs-lisp
+;; (when (memq window-system '(mac ns x))
+;; (exec-path-from-shell-initialize))
+#+end_src
+** color-rg
+#+begin_src emacs-lisp
+;; (use-package! color-rg
+;;   :commands (color-rg-search-input
+;;              color-rg-search-symbol
+;;              color-rg-search-input-in-project)
+;;   :bind
+;;   (:map isearch-mode-map
+;;    ("M-s M-s" . isearch-toggle-color-rg)))
+#+end_src
+
+** visual-regexp
+
+#+begin_src emacs-lisp
+(use-package! visual-regexp
+  :commands (vr/select-replace vr/select-query-replace))
+
+(use-package! visual-regexp-steriods
+  :commands (vr/select-replace vr/select-query-replace))
+#+end_src
+** org-mode
+#+begin_src emacs-lisp
+(setq org-list-demote-modify-bullet
+      '(("+" . "-")
+        ("-" . "+")
+        ("*" . "+")
+        ("1." . "a.")))
+
+
+(after! org
+  (add-hook 'org-mode-hook (lambda () (visual-line-mode -1)))
+
+  (setq
+   org-todo-keywords
+   '((sequence "TODO(t)" "PROJECT(p)" "NEXT(n)" "WAIT(w)" "HOLD(h)" "IDEA(i)" "SOMEDAY(s)" "MAYBE(m)" "|" "DONE(d)" "CANCELLED(c)")
+     (sequence "[ ](T)" "[-](S)" "[?](W)" "|" "[X](D)")
+     ;; (sequence "|" "OKAY(o)" "YES(y)" "NO(x)")
+     )
+   org-todo-keyword-faces `(("NEXT" . ,(doom-color 'green))
+                            ("TODO" . ,(doom-color 'yellow))
+                            ("PROJECT" . ,(doom-color 'tan))
+                            ("WAIT" . ,(doom-color 'teal))
+                            ("HOLD" . ,(doom-color 'red))
+                            ("IDEA" . ,(doom-color 'tomato))
+                            ("SOMEDAY" . ,(doom-color 'base7))
+                            ("MAYBE" . ,(doom-color 'base5))
+                            ("[ ]" . ,(doom-color 'green))
+                            ("[-]" . ,(doom-color 'yellow))
+                            ("[?]" . ,(doom-color 'red))
+                            )
+   ;; org-enforce-todo-dependencies nil ;; if t, it hides todo entries with todo children from agenda
+   ;; org-enforce-todo-checkbox-dependencies nil
+   org-provide-todo-statistics t
+   org-pretty-entities t
+   org-hierarchical-todo-statistics t
+
+   ;; org-startup-with-inline-images t
+   org-hide-emphasis-markers t
+   ;; org-fontify-whole-heading-line nil
+   org-src-fontify-natively t
+   org-imenu-depth 9
+
+   org-use-property-inheritance t
+
+   org-log-done 'time
+   org-log-redeadline 'time
+   org-log-reschedule 'time
+   org-log-into-drawer "LOGBOOK"
+
+   org-src-preserve-indentation t
+   org-edit-src-content-indentation 0
+   )
+  )
+#+end_src
+*** org-roam-ui
+#+begin_src emacs-lisp
+(use-package! websocket
+  :after org-roam)
+(use-package! org-roam-ui
+  :after org-roam
+  :config
+  (setq org-roam-ui-open-on-start nil
+        org-roam-ui-update-on-save t
+        org-roam-ui-follow t
+        org-roam-ui-sync-theme t
+        org-roam-ui-browser-function #'xwidget-webkit-browse-url))
+#+end_src
+*** org-fragtog
+#+begin_src emacs-lisp
+(use-package! org-fragtog
+  :after org
+  :hook (org-mode . org-fragtog-mode)
+  )
+#+end_src
+*** org-ol-tree
+
+#+begin_src emacs-lisp
+(use-package! org-ol-tree
+  :commands org-ol-tree)
+
+(map! :map org-mode-map
+    :after org
+    :localleader
+    :desc "Outline" "O" #'org-ol-tree)
+#+end_src
+
+*** org-appear
+#+begin_src emacs-lisp
+(use-package! org-appear
+  :hook (org-mode . org-appear-mode)
+  :config
+  (setq org-appear-autoemphasis t
+        org-appear-autosubmarkers t
+        org-appear-autolinks t)
+  )
+#+end_src
+*** org-fancy-priorities
+#+begin_src emacs-lisp
+(use-package! org-fancy-priorities
+    :diminish
+    :hook (org-mode . org-fancy-priorities-mode)
+    :config
+    (setq org-fancy-priorities-list
+          '("🅰" "🅱" "🅲" "🅳" "🅴")))
+#+end_src
+** dash-at-point
+#+begin_src emacs-lisp
+(use-package! dash-at-point
+  :bind
+  (("C-c d d" . dash-at-point)
+   ("C-c d D" . dash-at-point-with-docset)))
+#+end_src
+
+** company
+#+begin_src emacs-lisp
+(after! company
+  (setq company-idle-delay 0.2
+        company-minimum-prefix-length 2)
+  (add-hook 'evil-normal-state-entry-hook #'company-abort)) ;; make aborting less annoying.
+#+end_src
+** counsel-osx-app
+#+begin_src emacs-lisp
+(use-package! counsel-osx-app
+  :bind* ("S-M-SPC" . counsel-osx-app)
+  :commands counsel-osx-app
+  :config
+  (setq counsel-osx-app-location
+        (list "/Applications"
+              "/Applications/Misc"
+              "/Applications/Utilities"
+              (expand-file-name "~/Applications")
+              (expand-file-name "~/.nix-profile/Applications")
+              "/Applications/Xcode.app/Contents/Applications")))
+#+end_src
+
+** cycle-quotes
+#+begin_src emacs-lisp
+(use-package! cycle-quotes
+  :bind
+  ("C-'" . cycle-quotes))
+#+end_src
+** dotenv
+#+begin_src emacs-lisp
+(use-package! dotenv-mode
+  :mode ("\\.env\\.?.*\\'" . dotenv-mode))
+#+end_src
+** emacs-everywhere
+
+#+begin_src emacs-lisp
+(use-package! emacs-everywhere
+  :if (daemonp)
+  :config
+  (require 'spell-fu)
+  (setq emacs-everywhere-major-mode-function #'org-mode
+        emacs-everywhere-frame-name-format "Edit ∷ %s — %s")
+  (defadvice! emacs-everywhere-raise-frame ()
+    :after #'emacs-everywhere-set-frame-name
+    (setq emacs-everywhere-frame-name (format emacs-everywhere-frame-name-format
+                                (emacs-everywhere-app-class emacs-everywhere-current-app)
+                                (truncate-string-to-width
+                                 (emacs-everywhere-app-title emacs-everywhere-current-app)
+                                 45 nil nil "…")))
+    ;; need to wait till frame refresh happen before really set
+    (run-with-timer 0.1 nil #'emacs-everywhere-raise-frame-1))
+  (defun emacs-everywhere-raise-frame-1 ()
+    (call-process "wmctrl" nil nil nil "-a" emacs-everywhere-frame-name)))
+#+end_src
+
+** engine-mode
+#+begin_src emacs-lisp
+(use-package! engine-mode
+  :config
+  (engine/set-keymap-prefix (kbd "C-c s"))
+  (defengine baidu "https://www.baidu.com/s?wd=%s"
+    :keybinding "b")
+  (defengine github
+    "https://github.com/search?ref=simplesearch&q=%s"
+    :keybinding "g")
+  (defengine qwant
+    "https://www.qwant.com/?q=%s"
+    :docstring "什么都能搜到哦~~😍😍"
+    :keybinding "q")
+  (defengine rfcs
+    "http://pretty-rfc.herokuapp.com/search?q=%s"
+    :keybinding "r")
+  (defengine stack-overflow
+    "https://stackoverflow.com/search?q=%s"
+    :keybinding "s")
+  (defengine twitter
+    "https://twitter.com/search?q=%s"
+    :keybinding "t")
+  (defengine wolfram-alpha
+    "http://www.wolframalpha.com/input/?i=%s"
+    :docstring "数学搜索引擎，公式，坐标图等。"
+    :keybinding "w")
+  (defengine google
+    "http://www.google.com/search?ie=utf-8&oe=utf-8&q=%s"
+    :keybinding "/")
+  (defengine youtube
+    "http://www.youtube.com/results?aq=f&oq=&search_query=%s"
+    :keybinding "y")
+  (engine-mode 1))
+#+end_src
+** flycheck
+#+begin_src emacs-lisp
+(use-package! flycheck
+    :config
+    (add-hook 'after-init-hook 'global-flycheck-mode)
+    (add-hook 'flycheck-mode-hook 'gcl/use-eslint-from-node-modules))
+#+end_src
+** js-doc
+#+begin_src emacs-lisp
+(use-package! js-doc
+  :bind (:map js2-mode-map
+         ("@" . js-doc-insert-tag))
+  :config
+  (setq js-doc-mail-address user-mail-address
+       js-doc-author (format "%s<%s>" user-full-name js-doc-mail-address)
+       js-doc-url user-blog-url
+       js-doc-license "MIT"))
+#+end_src
+** leetcode
+#+begin_src emacs-lisp
+(after! leetcode
+  (setq leetcode-prefer-language "javascript"
+        leetcode-prefer-sql "mysql"
+        leetcode-save-solutions t
+        leetcode-directory "~/github/mine/make-leetcode"))
+#+end_src
+** autoinsert
+#+begin_src emacs-lisp
+(setq auto-insert 'other
+      auto-insert-query nil
+      auto-insert-directory (concat doom-private-dir "auto-insert-templates")
+      auto-insert-alist '(
+                          ("\\.\\([Hh]\\|hh\\|hpp\\)\\'" . "template.h")
+                          ("\\.\\(jsx?\\|tsx?\\)\\'" . "my.js")
+                          ("\\.\\(vue\\)\\'" . "my.vue")
+                          ))
+(add-hook 'find-file-hook #'auto-insert)
+#+end_src
+** smartparen
+#+begin_src emacs-lisp
+(sp-local-pair
+ '(org-mode)
+ "<<" ">>"
+ :actions '(insert))
+
+(use-package! smartparens
+  :init
+  (map! :map smartparens-mode-map
+       "C-)" #'sp-forward-slurp-sexp
+       "C-(" #'sp-forward-barf-sexp
+       "C-{" #'sp-backward-slurp-sexp
+       "C-}" #'sp-backward-barf-sexp
+       "s--" #'sp-splice-sexp
+       "s-_" #'sp-rewrap-sexp
+       ))
+#+end_src
+** popper
+#+begin_src emacs-lisp
+(use-package! popper
+  :bind
+  ("C-`" . popper-toggle-latest)
+  ("C-~" . popper-cycle)
+  ("C-s-`" . popper-kill-latest-popup)
+  :custom
+  (popper-reference-buffers
+   '("*eshell*"
+     "*vterm*"
+     "*color-rg*"
+     "Output\\*$"
+     "*Process List*"
+     "COMMIT_EDITMSG"
+     embark-collect-mode
+     deadgrep-mode
+     grep-mode
+     rg-mode
+     rspec-compilation-mode
+     inf-ruby-mode
+     nodejs-repl-mode
+     ts-comint-mode
+     compilation-mode))
+  :config
+  (defun zero-point-thirty-seven () 0.37)
+  (advice-add 'popper-determine-window-height :override #'zero-point-thirty-seven)
+  :init
+  (popper-mode)
+  )
+#+end_src
+** parrot
+#+begin_src emacs-lisp
+;; https://github.com/dp12/parrot
+(use-package! parrot
+  :config
+  (parrot-mode))
+
+;; apend
+(dolist (entry '(
+                 (:rot ("lizchicheng" "fanlingling"))
+                 (:rot ("Array" "Object" "String" "Function"))
+                 ))
+  (add-to-list 'parrot-rotate-dict entry))
+#+end_src
+** org-roam
+
+[[https://www.orgroam.com/manual.html][org-roam manual page]]
+
+#+begin_src emacs-lisp
+(use-package! org-roam
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+         ("C-c n f" . org-roam-node-find)
+         ("C-c n g" . org-roam-graph)
+         ("C-c n i" . org-roam-node-insert)
+         ("C-c n c" . org-roam-capture)
+         ;; Dailies
+         ("C-c n j" . org-roam-dailies-capture-today)
+         )
+    )
+#+end_src
+
+[[id:2ca81d5a-954a-45ea-b89a-b2d184799b6f][org-roam in doom emacs]]
+* Development Settings
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "config.el" :comments no
+:END:
+
+Front-end
+
+#+begin_src emacs-lisp
+(setq
+ css-indent-offset 2
+ js2-basic-offset 2
+ js-switch-indent-offset 2
+ js-indent-level 2
+ js-jsx-indent-level 2
+ js2-mode-show-parse-errors nil
+ js2-mode-show-strict-warnings nil
+ web-mode-attr-indent-offset 2
+ web-mode-code-indent-offset 2
+ web-mode-css-indent-offset 2
+ web-mode-markup-indent-offset 2
+ web-mode-enable-current-element-highlight t
+ web-mode-enable-current-column-highlight t)
+#+end_src
+
+* Packages
+:PROPERTIES:
+:header-args:emacs-lisp: :tangle "packages.el" :comments no
+:END:
+
+#+begin_src emacs-lisp
+(package! spacemacs-theme)
+
+;; File and directory management
+(package! crux)
+(package! deft)
+;; (package! ranger)
+(package! autoinsert)
+
+;; Tools
+;; TODO mu4e
+(package! zoom)
+(package! youdao-dictionary)
+(package! popper
+  :recipe (:host github :repo "waymondo/popper") :disable t)
+(package! engine-mode)
+(package! emacs-everywhere)
+(package! counsel-osx-app)
+(package! dash-at-point
+  :recipe (:host github
+           :repo "waymondo/dash-at-point"))
+;; (package! impatient-mode)
+
+;; search
+(package! deadgrep)
+(package! visual-regexp)
+(package! visual-regexp-steriods
+  :recipe (:host github :repo "benma/visual-regexp-steroids.el"))
+;; (package! color-rg :recipe (:host github :repo "manateelazycat/color-rg"))
+;; (package! exec-path-from-shell)
+
+;; Text
+(package! pangu-spacing)
+(package! move-text)
+(package! string-inflection)
+(package! parrot)
+(package! cycle-quotes)
+(package! visual-fill-column)
+(package! maple-iedit
+  :recipe (:host github
+           :repo "honmaple/emacs-maple-iedit"))
+(package! zzz-to-char)
+(package! tiny)
+(package! evil-nerd-commenter)
+(package! mixed-pitch)
+
+;; org
+(unpin! code-review)
+(unpin! org-roam)
+(package! org-appear)
+(package! org-fancy-priorities)
+(package! org-ol-tree
+  :recipe (:host github :repo "Townk/org-ol-tree"))
+(package! org-fragtog)
+(package! org-roam-ui)
+
+;; study & gaming
+(package! leetcode)
+(package! dotenv-mode)
+(package! prettier-js)
+(package! ob-typescript)
+
+;; programming
+(package! js-doc)
+(package! mmm-mode)
+;; TODO dap-mode
+
+;; Disable
+(disable-packages! bookmark tide eldoc grip-mode)
+#+end_src
+* Usage Practices
+
+** [[https://github.com/abo-abo/tiny][tiny]]
+
+key: ~C-; tiny-expand~
+
+=m10= -> 0 1 2 3 4 5 6 7 8 9 10
+
+~m6\n15%s,0%o,0x%x~, 格式化输出， ~%s~: 十进制， ~%o~: 八进制, ~%x~: 十六进制
+
+~\n~,  mean new line
+
+6,06,0x6
+7,07,0x7
+8,010,0x8
+9,011,0x9
+10,012,0xa
+11,013,0xb
+12,014,0xc
+13,015,0xd
+14,016,0xe
+15,017,0xf
+
+~m5 10*xx~ -> 25 36 49 64 81 100
+
+~m5 10*xxx~ -> 125 216 343 512 729 1000
+
+管道符，将结果转换：
+~m5 10*xx|0x%x~ -> 0x19 0x24 0x31 0x40 0x51 0x64
+
+10 个字符，从 a 开始
+~m10+x?a%c~ -> a b c d e f g h i j k
+
+10 个字符，从 d 开始:
+~m10+x?d%c~ -> d e f g h i j k l m n
+~m10+x?D%c~ -> D E F G H I J K L M N
+
+数字转成字符：
+~m97,105stringx~ -> a,b,c,d,e,f,g,h,i
+
+并大写化， ~x~ 代表替换位
+~m97,105stringxupcasex~ -> aA,bB,cC,dD,eE,fF,gG,hH,iI
+
+~m,3|%(+ x x) and %(* x x) and %s~ -> 0 and 0 and 0,2 and 1 and 1,4 and 4 and 2,6 and 9 and 3
+
+~m1\n5|%d. TODO http://emacsrocks.com/e%02d.html~ ->
+
+1. TODO http://emacsrocks.com/e01.html
+2. TODO http://emacsrocks.com/e02.html
+3. TODO http://emacsrocks.com/e03.html
+4. TODO http://emacsrocks.com/e04.html
+5. TODO http://emacsrocks.com/e05.html
+
+* Fixes
+
+fix the org-roam maybe trigger error(~code-review~ related).
+
+#+begin_src diff
+modified   modules/lang/org/packages.el
+@@ -87,13 +87,15 @@
+  ((featurep! +roam)
+   (package! org-roam
+     :recipe (:host github :repo "org-roam/org-roam-v1")
+-    :pin "946a879a4a18756a0508afba1e0b0fe070c6a8b4"))
++    ;; :pin "946a879a4a18756a0508afba1e0b0fe070c6a8b4"
++))
+  ((featurep! +roam2)
+   (package! org-roam
+     ;; FIXME A :recipe isn't strictly necessary, but without it, our package
+     ;;       bumper fails to distinguish between org-roam v1 and v2.
+     :recipe (:host github :repo "org-roam/org-roam")
+-    :pin "abe63b436035049923ae96639b9b856697047779")))
++    ;; :pin "abe63b436035049923ae96639b9b856697047779"
++   )))
+
+ ;;; Babel
+ (package! ob-async :pin "9aac486073f5c356ada20e716571be33a350a982")
+modified   modules/tools/magit/packages.el
+@@ -6,5 +6,6 @@
+     (package! forge :pin "402773ef7e83ddfab64bfee23daea2776d50dbc1"))
+   (package! magit-gitflow :pin "cc41b561ec6eea947fe9a176349fb4f771ed865b")
+   (package! magit-todos :pin "60152d5c4e4b73e72e15f23ca16e8cc7734906bc")
+-  (package! code-review :pin "b0bedbdb30e019ed8c40fedf1087c3ad28e72c59"
++  ;; b0bedbdb30e019ed8c40fedf1087c3ad28e72c59
++  (package! code-review
+     :recipe (:files ("graphql" "code-review*.el"))))
+
+#+end_src
