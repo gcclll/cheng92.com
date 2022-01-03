@@ -1,7 +1,7 @@
 #+title: 2022  Doom Emacs Configuration
 #+subtitle: The Methods, Management, and Menagerie of Madness
 #+author: Zhicheng Lee
-#+date: @@html:<!--@@@@html:<a href="https://github.com/gcclll/.doom.d/commit/fe602c5" style="text-decoration: none"><code style="padding: 0; color: var(--text-light); font-size: inherit; opacity: 0.7">fe602c5</code></a>@@@@latex:\href{https://github.com/gcclll/.doom.d/commit/fe602c5}{fe602c5}@@@@html:-->@@@@latex:\\\Large\bfseries@@ {{{modification-time(%Y-%m-%d, t)}}} @@latex:\\\normalsize\mdseries@@{{{modification-time(%H:%M, t)}}} @@latex:\acr{\lowercase{@@{{{timezone}}}@@latex:}}\iffalse@@, {{{git-rev}}}@@latex:\fi@@
+#+date: <2022-01-03 14:10:59>
 #+macro: timezone (eval (substring (shell-command-to-string "date +%Z") 0 -1))
 #+macro: git-rev (eval (format "@@html:<a href=\"https://github.com/gcclll/.doom.d/commit/%1$s\" style=\"text-decoration: none\"><code style=\"padding: 0; color: var(--text-light); font-size: inherit; opacity: 0.7\">%1$s</code></a>@@@@latex:\\href{https://github.com/gcclll/.doom.d/commit/%1$s}{%1$s}@@" (substring (shell-command-to-string "git rev-parse --short HEAD") 0 -1)))
 #+startup: fold
