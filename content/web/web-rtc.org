@@ -1,0 +1,34 @@
+#+TITLE: Web RTC 之旅(读书笔记)
+#+DATE: <2022-01-14 08:52:59>
+#+TAGS[]: web, javascript, rtc
+#+CATEGORIES[]: web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+[[/img/bdx/qiwuxia01.png]]
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：满夕霜雪人独影，红尘今古几月明？笑寒饮，惯新晴，千山已过风云行。。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+#+end_export
+
+
+#+begin_quote
+WebRTC[fn:rtc] 读书笔记。
+#+end_quote
+
+* 开启 WebRTC 之旅
+* 获取用户媒体(~MediaStream~)
+* 创建简单的 WebRTC 应用
+* 创建信令服务器
+* 连接客户端
+* 使用 WebRTC 发送数据
+* 文件共享
+* 安全性和优化
+
+* 参考书籍：
+[fn:rtc] [[Learning WebRTC 中文版 （美）Dan Ristic 著 2016年版.pdf]]

@@ -1,5 +1,5 @@
 #+TITLE: Shell 编程
-#+DATE: <2020-12-18 10:49:14>
+#+DATE: <2022-01-16 14:13:12>
 #+TAGS[]: shell
 #+CATEGORIES[]: shell
 #+LANGUAGE: zh-cn
@@ -11,4 +11,841 @@
 [[https://riptutorial.com/bash/example/7580/replace-pattern-in-string][Bash - Replace pattern in string | bash Tutorial]]
 #+end_quote
 
-* Linux Basis :ATTACH:
+* Basis
+
+** 命令替换
+
+=``= 反引号字符使用(~$()~)相当于把内容当做命令来执行，如：
+
+#+begin_src sh
+today=$(date +%Y-%m-%d)
+echo $today
+echo `date +%Y-%m-%d`
+#+end_src
+
+#+RESULTS:
+| 2022-01-16 |
+| 2022-01-16 |
+
+用于数学运算：
+#+begin_src sh
+sum=$(expr 1 + 2)
+echo "sum="$sum
+#+end_src
+
+#+RESULTS:
+: sum=3
+
+** 算术运算符
+
+~++, --, !, **, <<, >>, &, |, &&, ||~~
+
+#+begin_src sh :results output
+i=2
+echo "i=$i, i++=$((i++)), ++i=$((++i))"
+echo "i=$i, i--=$((i--)), --i=$((--i))"
+echo "i=$i, !i=$((!i)), ~i=$((~i))"
+echo "i=$i, i**2=$((i**2))"
+echo "i=$i, i<<2=$((i<<2)), i>>2=$((i>>2))"
+echo "i=$i, i&0=$((i&0)), i&3=$((i&3))"
+echo "i=$i, i&&0=$((i&&0)), i||0=$((i||0))"
+#+end_src
+
+#+RESULTS:
+: i=2, i++=2, ++i=4
+: i=4, i--=4, --i=2
+: i=2, !i=0, ~i=-3
+: i=2, i**2=4
+: i=2, i<<2=8, i>>2=0
+: i=2, i&0=0, i&3=2
+: i=2, i&&0=0, i||0=1
+
+** 逻辑运算符
+
+1. 数值比较
+
+   - =-eq=: 相等, equal
+   - =-ge=: 大于或等于, great or equal
+   - =-gt=: 大于, great then
+   - =-le=: 小于或等于, less or equal
+   - =-lt=: 小于, less then
+   - =-ne=: 不等于， not equal
+
+2. 字符串比较(~=, !=, <, >, <=, >=, -n, -z~)
+
+   =-n string= 判断字符串长度是不是不为零
+
+   =-z string= 判断字符串长度是不是为零
+
+3. 文件判断(常用： ~-d, -e, -f, -x, -h~)
+
+   | 符号             | 描述                                     |
+   |------------------+------------------------------------------|
+   | =-d file=          | 文件是否存在                             |
+   | =-e file=          | 文件或目录是否存在                       |
+   | =-f file=          | 是不是一个文件                           |
+   | =-r file=          | 文件是否可读                             |
+   | =-s file=          | 是否存在并非空                           |
+   | =-w file=          | 是否存在且可写                           |
+   | =-x file=          | 是否存在并可执行                         |
+   | =-h file=          | 文件是不是一个符号链接                   |
+   | =-O file=          | 检查 file 是否存在并属当前用户所有         |
+   | =-G file=          | 检查 file 是否存在并且默认组与当前用户相同 |
+   | =file1 -nt file2=  | 检查 file1 是否比 file2 新, new then         |
+   | =file1 -ot file2== | 检查 file1 是否比 file2 旧, old then         |
+
+
+复合条件判断(~if [ cond1 ] && [ cond2 ]; then ... fi~)
+
+#+begin_src sh :results output
+if [ $USER == gcl ] && [ -z $HOST ] ; then
+    echo "user: $USER, no host 1"
+fi
+
+# 双括号可直接使用 &&, || 复合条件
+if [[ $USER == gcl && -z $HOST ]]; then
+    echo "user: $USER, no host 2"
+fi
+
+if [ -d $HOME/.gclrc ]; then
+    echo "my dotfiles is a directory..."
+fi
+
+if [ -f $HOME/.gclrc/.zshrc ] && [ -h $HOME/.zshrc ]; then
+    echo ".zshrc is a file and it is a symbol link to \n$(ls -al $HOME/.zshrc)..."
+fi
+
+if [ -x $HOME/.gclrc/bin/install-refresh-os ]; then
+    echo "install-refresh-os is a shell file to install everything when re-setup a refresh MacOS..."
+fi
+
+#+end_src
+
+#+RESULTS:
+: user: gcl, no host 1
+: user: gcl, no host 2
+: my dotfiles is a directory...
+: .zshrc is a file and it is a symbol link to
+: lrwxr-xr-x  1 gcl  staff  24 Jan  4 14:22 /Users/gcl/.zshrc -> /Users/gcl/.gclrc/.zshrc...
+: install-refresh-os is a shell file to install everything when re-setup a refresh MacOS...
+
+
+** 各种括号使用
+
+1. =[]=
+2. =[[]]= 用于比较字符串，提供了 *test* 没有的模式匹配等特性
+   #+begin_src sh :results output
+echo  "> check user name start with 'r' ?"
+if [[ $USER == r* ]]; then
+    echo "yes"
+else
+    echo "no"
+fi
+   #+end_src
+
+   #+RESULTS:
+   : > check user name start with 'r' ?
+   : no
+
+3. =()=
+4. =(())= 用于数学表达式或高级字符串处理
+   #+begin_src sh :results output
+val=10
+if (( $val ** 2 > 90 )); then
+    echo "$val ** 2 > 90"
+fi
+   #+end_src
+
+   #+RESULTS:
+   : 10 ** 2 > 90
+
+** 流程控制
+*** if...elif...else
+
+基本语法：
+
+~if command; then expressions fi~
+
+或使用 =test=
+
+~if test condition; then ... fi~
+
+便捷方式：
+
+~if [ condition ]; then ... fi~
+
+#+begin_src sh :results output
+if test $(which ls); then
+    echo "1 has ls"
+fi
+
+if [ -n $(which ls) ]; then
+    echo "2 has ls"
+else
+    echo "2 has not ls"
+
+fi
+#+end_src
+
+#+RESULTS:
+: 1 has ls
+: 2 has ls
+
+*** for
+
+shell 中默认会将空格当做分割符, 可以通过修改 =IFS= 变量来改变这个默认值(**用完记得还原回去**)。
+
+#+begin_src sh :results output
+list="a b c"
+for var in $list
+do
+    echo "char: $var"
+done
+#+end_src
+
+#+RESULTS:
+: char: a
+: char: b
+: char: c
+
+修改 =IFS=
+
+#+begin_src sh :results output
+file="/tmp/test"
+echo "
+line 1;line 1.1
+line 2:line 2.1
+line 3" >$file
+
+echo "修改 IFS 之前:"
+for line in $(cat $file)
+do
+    echo $line
+done
+OLDIFS=$IFS
+IFS=$'\n'
+echo "修改 IFS 之后"
+for line in $(cat $file)
+do
+    echo $line
+done
+
+IFS=';:'
+echo "修改 IFS 之后"
+for line in $(cat $file)
+do
+    echo $line
+done
+
+#+end_src
+
+#+RESULTS:
+#+begin_example
+修改 IFS 之前:
+line
+1;line
+1.1
+line
+2:line
+2.1
+line
+3
+修改 IFS 之后
+line 1;line 1.1
+line 2:line 2.1
+line 3
+修改 IFS 之后
+
+line 1
+line 1.1
+line 2
+line 2.1
+line 3
+#+end_example
+
+#+begin_quote
+*注意* ： $'\n' 如果是转义字符要用 =$= 做前缀，否则会被当前 =n= 字符处理。
+#+end_quote
+
+C 语言风格：
+
+#+begin_src sh :results output
+for (( i=1; i<=5; i++ ))
+do
+    echo "num: $i"
+done
+#+end_src
+
+#+RESULTS:
+: num: 1
+: num: 2
+: num: 3
+: num: 4
+: num: 5
+*** while
+
+#+begin_src sh
+while test command
+do
+ other commands
+done
+#+end_src
+
+test command 和 if 中的一模一样，支持 if 条件的相同语法。
+
+#+begin_src sh
+while [ $var1 -gt 0 ]
+do
+ echo $var1
+ var1=$[ $var1 - 1 ]
+done
+#+end_src
+
+条件中可以用多条命令：
+
+#+begin_src sh :results output
+n=5
+while echo $n
+ [ $n -ge 0 ]
+do
+ echo "This is inside the loop"
+ n=$[ $n - 1 ] # 这里也可以用 n=$((n-1))
+done
+#+end_src
+
+#+RESULTS:
+#+begin_example
+5
+This is inside the loop
+4
+This is inside the loop
+3
+This is inside the loop
+2
+This is inside the loop
+1
+This is inside the loop
+0
+This is inside the loop
+-1
+#+end_example
+*** until
+
+和 while 相反，一直执行循环体直到命令返回的状态码非零结束。
+
+#+begin_src sh
+until test commands
+do
+     other commands
+done
+#+end_src
+
+until 条件中也可以放多个命令
+
+#+begin_src sh :results output
+var1=100
+until [ $var1 -eq 0 ]
+do
+     echo $var1
+     var1=$[ $var1 - 25 ]
+done
+#+end_src
+
+#+RESULTS:
+: 100
+: 75
+: 50
+: 25
+*** break [n],continue
+
+=break= , 跳出当前循环
+
+=break [n]= , 可以指定跳出循环的层级， n=1 当前循环， n=2 …
+
+=continue=  跳出本次循环。
+** 脚本参数
+
+~$1~$n~ 第一~第 n 个参数
+
+~$0~ 是脚本名
+
+如： ~./test 0 1 2 3 4 5~ > ~$0=./test, $1=0, $2=1, …~
+
+如果这样： ~bash /home/Christine/test5.sh~ 运行脚本,
+
+~$0~ 将会是 ~bash /home/Christine/test5.sh~ 但是我们只需要脚本文件名？
+
+~name=$(basename $0)~ 可以取到完整路径中的脚本文件名 ~test5.sh~
+
+| name | desc                         |
+|------+------------------------------|
+| ~$#~   | 参数个数                     |
+| ~$*~   | 所有参数，整体，不能用来遍历 |
+| ~$@~   | 参数列表，可用来遍历         |
+
+如：
+
+~$ ./test12.sh rich barbara katie jessica~
+
+如： ~$*~ 返回所有参数整体
+
+#+begin_src sh
+for param in "$*"
+do
+     echo "\$* Parameter #$count = $param"
+     count=$[ $count + 1 ]
+done
+#+end_src
+
+输出 ~$* Parameter #1 = rich barbara katie jessica~
+
+如： ~$@~ 返回一个参数列表
+
+#+begin_src sh
+for param in "$@"
+do
+     echo "\$@ Parameter #$count = $param"
+     count=$[ $count + 1 ]
+done
+#+end_src
+
+输出：
+
+#+begin_example
+$@ Parameter #1 = rich
+$@ Parameter #2 = barbara
+$@ Parameter #3 = katie
+$@ Parameter #4 = jessica
+#+end_example
+
+~shift~ : 移动参数，在使用 shift 命令时，默认情况下它会将每个参数变量向左移动一个位置。
+所以，变量 $3 的值会移到 $2 中，变量 $2 的值会移到 $1 中，而变量 $1 的值则会被删除
+（注意，变量 $0 的值，也就是程序名，不会改变）。
+
+#+begin_src sh
+count=1
+while [ -n "$1" ]
+do
+     echo "Parameter #$count = $1"
+     count=$[ $count + 1 ]
+     shift
+done
+#+end_src
+
+输出：
+
+#+begin_example
+$ ./test13.sh rich barbara katie jessica
+Parameter #1 = rich
+Parameter #2 = barbara
+Parameter #3 = katie
+Parameter #4 = jessica
+#+end_example
+
+~shift [n]~ 指定数字可以一次移动多个位置。
+
+*** 脚本选项
+
+处理带值的选项：
+
+#+begin_src sh
+$ cat test17.sh
+#!/bin/bash
+# extracting command line options and values
+echo
+while [ -n "$1" ]
+do
+     case "$1" in
+         -a) echo "Found the -a option";;
+        # 所以这里的时候 -a 已经被丢弃了， $1 是 -b $2 是它的值
+         -b) param="$2"
+             echo "Found the -b option, with parameter value $param"
+             shift ;;
+         -c) echo "Found the -c option";;
+         --) shift # 等于处理完一个丢弃一个
+         break ;;
+         *) echo "$1 is not an option";;
+     esac
+     shift
+done
+# 下面的循环是处理选项后面的所有参数
+count=1
+for param in "$@"
+do
+     echo "Parameter #$count: $param"
+     count=$[ $count + 1 ]
+    done
+#+end_src
+
+结果：
+
+#+begin_example
+$ ./test17.sh -a -b test1 -d
+Found the -a option
+Found the -b option, with parameter value test1
+-d is not an option
+#+end_example
+
+合并选项？ ~./test.sh -ac~ 此时要用到 ~getopt~ 命令
+*** getopt
+
+格式： ~getopt optstring parameters~
+
+~optstring~ 定义了命令行有效的选项字母，还定义了哪些选项字
+母需要参数值，需要值的选项后面加上冒号。
+
+如： ~getopt -abc:d~ 表示 ~-abd~ 不需要值， ~-c <value>~ 需要参数值
+
+#+begin_src sh
+$ getopt -q ab:cd -a -b test1 -cde test2 test3
+-a -b ‘test1’ -c -d – ‘test2’ ‘test3’
+#+end_src
+
+~-q~ 忽略 ~optstring~ 中未指定的选项，没有 ~-q~ 当出现未指定的选项会报错。
+
+~set -- $(getopt -q ab:cd "$@")~ 会将复合选项拆分成单独的选项，然后替换原来的命令
+行参数，也就是说 ~test.sh -abc~ 会被拆成 ~test.sh -a -b -c~ 然后就可以通过 case 按照
+正常的选项来处理
+
+#+begin_src sh
+set -- $(getopt -q ab:cd "$@")
+#
+echo
+while [ -n "$1" ]
+do
+     case "$1" in
+     -a) echo "Found the -a option" ;;
+     -b) param="$2"
+     echo "Found the -b option, with parameter value $param"
+     shift ;;
+     -c) echo "Found the -c option" ;;
+     --) shift
+     break ;;
+     *) echo "$1 is not an option";;
+     esac
+     shift
+done
+#
+count=1
+for param in "$@"
+do
+     echo "Parameter #$count: $param"
+     count=$[ $count + 1 ]
+done
+#+end_src
+
+问题： ~$ ./test18.sh -a -b test1 -cd "test2 test3" test4~
+
+~getopt~ 不支持待空格和引号的参数，所以引入了 ~getopts~ 。
+*** getopts
+
+~getopts optstring variable~
+
+#+begin_src sh
+#!/usr/bin/env bash
+
+echo
+while getopts :ab:c opt; do
+    case "$opt" in
+        a) echo "Found the -a option" ;;
+        b) echo "Found the -b option, with value $OPTARG" ;;
+        c) echo "Found the -c option" ;;
+        *) echo "Unknown option: $opt" ;;
+    esac
+done
+#+end_src
+
+结果：
+
+#+begin_example
+Found the -a option
+Found the -b option, with value test1
+Found the -c option
+Unknown option: ?
+#+end_example
+
+~$opt~ 会在遍历过程中自动取下一个选项，通过 ~$OPTARG~ 取该选项对应的选项值。
+
+#+begin_example
+$ ./test19.sh -ab test1 -c
+Found the -a option
+Found the -b option, with value test1
+Found the -c option
+#+end_example
+
+#+begin_quote
+getopts 命令解析命令行选项时会移除开头的单破折线，所以在 case 定义中不用单破折线
+#+end_quote
+
+遍历：
+
+参数值可以有空格 ~$ ./test19.sh -b "test1 test2" -a~
+
+将选项字母和参数值放在一起使用，而不用加空格 ~$ ./test19.sh -abtest1~
+
+~$OPTIND~ 在 ~getopts~ 处理时会自动将 ~$OPTIND~ 加 1
+
+#+begin_src sh
+# ... 这里 while getopts 处理选项
+echo
+while getopts :ab:cd opt
+do
+     case "$opt" in
+     a) echo "Found the -a option" ;;
+     b) echo "Found the -b option, with value $OPTARG" ;;
+     c) echo "Found the -c option" ;;
+     d) echo "Found the -d option" ;;
+     *) echo "Unknown option: $opt" ;;
+     esac
+done
+shift $[ $OPTIND - 1 ] # 这里等于将所有选项移除剩下非选项的参数
+echo
+count=1
+for param in "$@"
+do
+     echo "Parameter $count: $param"
+     count=$[ $count + 1 ]
+done
+#+end_src
+
+结果：
+#+begin_example
+$ ./test20.sh -a -b test1 -d test2 test3 test4
+Found the -a option
+Found the -b option, with value test1
+Found the -d option
+Parameter 1: test2
+Parameter 2: test3
+Parameter 3: test4
+#+end_example
+** 重定向
+
+~STDID(0),STDOUT(1),STDERR(2)~ 对应标准输入、输出、错误。
+
+~1 > test1~ 将标准输出重定向到 test1 文件
+
+~2 > test2~ 将标准错误重定向到 test2 文件
+
+~& > test3~ 同时将标准输出和标准错误重定向到 test3 文件，此时错误信息会优先出现在
+信息之前。
+
+如：
+
+#+begin_src sh
+$ ls -al test test2 test3 badtest &> test7
+$ cat test7
+ls: cannot access test: No such file or directory
+ls: cannot access badtest: No such file or directory
+-rw-rw-r-- 1 rich rich 158 2014-10-16 11:32 test2
+-rw-rw-r--
+#+end_src
+
+在脚本中使用时需要加上 ~&~ 如： ~echo "This is an error" >&2~
+
+*一次性重定向输出* :
+
+如果在整个脚本中都需要将信息或错误重定向，可以使用 ~exec 1>testout~ 而不需要每个地
+方都加上 ~... >testout~
+
+/exec 会启动新的 shell 将 STDOUT 重定向到文件。/
+
+*在脚本中重定向输入* :
+
+#+begin_src sh
+$ cat test12
+#!/bin/bash
+# redirecting file input
+exec 0< testfile
+count=1
+while read line
+do
+ echo "Line #$count: $line"
+ count=$[ $count + 1 ]
+done
+$ ./test12
+Line #1: This is the first line.
+Line #2: This is the second line.
+#+end_src
+
+~exec 0< testfile~ 这一行是将 ~STDIN~ 重定向到了文件 ~testfile~ ，当需要读入(~read~)输入
+时会直接从 ~testfile~ 读取。
+
+创建输出文件描述符: ~exec 3>test13out~
+
+这等于是创建了个一个 3 文件描述符，使用的时候 ... >&3 这表示将 ... 内容重定向到
+test13out 文件。
+
+关闭创建的文件描述符： exec 3>&-
+
+~lsof~: 列出已经打开的文件描述(能用的只有 9 个)
+
+...>/dev/null 丢弃所有信息
+
+* 高级特性
+** 信号处理
+
+| 信号 | 值      | 描述                           | 组合键触发 |
+|------+---------+--------------------------------+------------|
+|    1 | SIGHUP  | 挂起进程                       |            |
+|    2 | SIGINT  | 终止进程                       | Ctrl+C     |
+|    3 | SIGQUIT | 停止进程                       |            |
+|    9 | SIGKILL | 无条件终止进程                 |            |
+|   15 | SIGTERM | 尽可能终止进程                 |            |
+|   17 | SIGSTOP | 无条件停止进程，但不是终止进程 |            |
+|   18 | SIGTSTP | 停止或暂停进程，但不终止进程   | Ctrl+Z     |
+|   19 | SIGCONT | 继续运行停止的进程             |            |
+
+
+* 常用命令
+
+** read
+
+获取用户输入。
+
+1. ~read [varname]~ 会从用户输入获取内容，然后赋值给遍历 varname
+
+2. ~read -p <tip> [varname]~ 允许指定提示符可以不指定变量，那么会将输入的内容存放
+   到 ~$REPLY~ 变量中。
+
+3. ~read -t <seconds> [varname]~ 指定等待的描述，不然会一直阻塞在等待用户输入，当
+   超时时 read 会返回一个非零的退出码
+
+4. ~read -n1 -p "Do you want to continue [Y/N]? " answer~
+
+   ~-n1~ 指定用户输入多少个字符就结束。
+
+   #+begin_src sh
+read -n1 -p "Do you want to continue [Y/N]? " answer
+case $answer in
+ Y | y) echo
+  echo "fine, continue on…";;
+ N | n) echo
+  echo OK, goodbye
+  exit;;
+esac
+echo "This is the end of the script"
+   #+end_src
+
+5. 隐藏输入内容，比如输入密码(=-s=)
+
+   #+begin_src sh
+read -s -p "Enter your password: " pass
+   #+end_src
+
+
+测试：~read~ 读取文件时，每次回读取一行，直到结束，结合 ~cat~ 和管道可以在脚本中从一
+个文件读取内容
+
+#+begin_src sh :results output
+count=1
+cat /tmp/test | while read line
+do
+     echo "[$count]: $line"
+     count=$[ $count + 1]
+ done
+echo "Finished processing the file"
+#+end_src
+
+#+RESULTS:
+: [1]:
+: [2]: line 1;line 1.1
+: [3]: line 2:line 2.1
+: [4]: line 3
+: Finished processing the file
+** mktemp
+
+创建临时文件。
+
+~$ mktemp testing.XXXXXX~ 会创建一个 ~testing.xxxxx~ 的临时文件后面的 ~XXXXXX~ 会是一个
+随机的 6 位字符，长度根据 XXXXXX 长度而定。
+
+~$ mktemp testing.XXXXXX~
+
+#+begin_example
+testing.1DRLuV
+#+end_example
+
+~$ mktemp testing.XXXXXX~
+
+#+begin_example
+testing.lVBtkW $ mktemp testing.XXXX
+#+end_example
+
+~-t 强制在系统临时目录创建文件，并且会返回文件完整路径~
+
+#+begin_src sh
+$ mktemp -t test.XXXXXX
+/tmp/test.xG3374
+$ ls -al /tmp/test*
+-rw——- 1 rich rich 0 2014-10-29 18:41 /tmp/test.xG3374
+#+end_src
+
+~-d~ 创建临时目录。
+
+** tee
+
+tee 记录消息。
+
+会将输入显示在终端并且还会重定向到指定文件中。
+
+~$ tee filename~ 覆盖形式非追加
+~$ tee -a filename~ 追加
+
+~tee~命令相当于管道的一个T型接头。它将从 ~STDIN~ 过来的数据同时发往两处。一处是
+ ~STDOUT~ ，另一处是 tee 命令行所指定的文件名
+
+#+begin_example
+$ date | tee testfile
+Sun Oct 19 18:56:21 EDT 2014
+$ cat testfile
+Sun Oct 19 18:56:21 EDT 2014
+#+end_example
+
+典型 sql 语句生成实例：
+
+#+begin_src sh
+#!/bin/bash
+# read file and create INSERT statements for MySQL
+outfile='members.sql'
+IFS=','
+while read lname fname address city state zip
+do
+ cat >> $outfile << EOF
+ INSERT INTO members (lname,fname,address,city,state,zip) VALUES
+('$lname', '$fname', '$address', '$city', '$state', '$zip');
+EOF
+done < ${1}
+#+end_src
+
+~while … < ${1}~ 指从标准输入读取内容，存到 对应的 lname fname … 中 ~cat >> $outfile
+<< EOF~
+
+这里分两步，首先 EOF 指定输入的内容并且作为 cat 的输入，而不再是标准输入，完事之
+后 cat >> $outfile 会将 EOF 的内容重定向到 $outfile 中。
+
+所以这一句的执行顺序是先 cat EOF 再 >> $outfile 。
+
+测试：
+
+#+begin_src sh
+$ cat members.csv
+Blum,Richard,123 Main St.,Chicago,IL,60601
+Blum,Barbara,123 Main St.,Chicago,IL,60601
+Bresnahan,Christine,456 Oak Ave.,Columbus,OH,43201
+Bresnahan,Timothy,456 Oak Ave.,Columbus,OH,43201
+#+end_src
+
+~$ ./test23 < members.csv~
+
+结果：
+#+begin_example
+$ cat members.sql
+INSERT INTO members (lname,fname,address,city,state,zip) VALUES (‘Blum’,
+‘Richard’, ‘123 Main St.’, ‘Chicago’, ‘IL’, ‘60601’);
+INSERT INTO members (lname,fname,address,city,state,zip) VALUES (‘Blum’,
+‘Barbara’, ‘123 Main St.’, ‘Chicago’, ‘IL’, ‘60601’);
+INSERT INTO members (lname,fname,address,city,state,zip) VALUES (‘Bresnahan’,
+‘Christine’, ‘456 Oak Ave.’, ‘Columbus’, ‘OH’, ‘43201’);
+INSERT INTO members (lname,fname,address,city,state,zip) VALUES (‘Bresnahan’,
+‘Timothy’, ‘456 Oak Ave.’, ‘Columbus’, ‘OH’, ‘43201’);
+#+end_example

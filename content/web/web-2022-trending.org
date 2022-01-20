@@ -1,0 +1,18 @@
+#+TITLE: Web Trending 2022
+#+DATE: <2022-01-05 08:34:51>
+#+EMAIL: Lee ZhiCheng<604522194@qq.com>
+#+TAGS[]: web, 2022
+#+CATEGORIES[]: web
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+
+* 工具(Tools)
+1. [[https://pnpm.io/][pnpm]] Fast, disk space efficient package manager -- 快速的，节省磁盘空间的包管理工具
+2. monorepos
+3. deno
+
+** [[https://github.com/cacjs/cac][cac]]
+
+/Simple yet powerful framework for building command-line apps./
+
