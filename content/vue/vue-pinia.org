@@ -994,3 +994,212 @@ function createOptionsStore<
 
 所以对于 options 的使用其实也是将 ~{ state, actions, getters }~ 简单的
 ~assign(...)~ 合并在一起了，同时对 ~getters~ 进行了一层封装，将它们转成了计算属性。
+* options api(mapHelpers)
+
+** mapGetters=mapState(useStore, keysOrMapper)
+
+方式一：
+#+begin_src js
+  export default {
+    computed: {
+      // other computed properties
+      // useCounterStore has a state property named `count` and a getter `double`
+      ...mapState(useCounterStore, {
+        n: 'count',
+        triple: store => store.n * 3,
+        // note we can't use an arrow function if we want to use `this`
+        custom(store) {
+          return this.someComponentValue + store.n
+        },
+        doubleN: 'double'
+      })
+   },
+
+    created() {
+      this.n // 2
+      this.doubleN // 4
+    }
+  }
+#+end_src
+
+方式二：
+#+begin_src js
+  export default {
+    computed: {
+      // other computed properties
+      ...mapState(useCounterStore, ['count', 'double'])
+    },
+
+    created() {
+      this.count // 2
+      this.double // 4
+    }
+  }
+#+end_src
+
+实现：
+#+begin_src typescript
+export function mapState<
+  Id extends string,
+  S extends StateTree,
+  G extends _GettersTree<S>,
+  A
+>(
+  useStore: StoreDefinition<Id, S, G, A>,
+  keysOrMapper: any
+): _MapStateReturn<S, G> | _MapStateObjectReturn<Id, S, G, A> {
+  return Array.isArray(keysOrMapper)
+    ? keysOrMapper.reduce((reduced, key) => {
+        reduced[key] = function (this: ComponentPublicInstance) {
+          return useStore(this.$pinia)[key]
+        } as () => any
+        return reduced
+      }, {} as _MapStateReturn<S, G>)
+    : Object.keys(keysOrMapper).reduce((reduced, key: string) => {
+        // @ts-expect-error
+        reduced[key] = function (this: ComponentPublicInstance) {
+          const store = useStore(this.$pinia)
+          const storeKey = keysOrMapper[key]
+          // for some reason TS is unable to infer the type of storeKey to be a
+          // function
+          return typeof storeKey === 'function'
+            ? (storeKey as (store: Store<Id, S, G, A>) => any).call(this, store)
+            : store[storeKey]
+        }
+        return reduced
+      }, {} as _MapStateObjectReturn<Id, S, G, A>)
+}
+#+end_src
+
+如果是： ~['counter', 'name']~ 数组形式：
+
+#+begin_src typescript
+reduced[key] = function (this: ComponentPublicInstance) {
+  return useStore(this.$pinia)[key]
+} as () => any
+#+end_src
+
+如果是对象(成员值是函数执行返回结果，如果值不是函数用这个值做为 key 去 store 中
+取值相当于别名)：
+#+begin_src typescript
+reduced[key] = function (this: ComponentPublicInstance) {
+    const store = useStore(this.$pinia)
+    const storeKey = keysOrMapper[key]
+    // for some reason TS is unable to infer the type of storeKey to be a
+    // function
+    return typeof storeKey === 'function'
+    ? (storeKey as (store: Store<Id, S, G, A>) => any).call(this, store)
+    : store[storeKey]
+}
+#+end_src
+** mapActions(useStore,keysOrMapper)
+
+实现原理和 ~mapState~ 一样，无非是 ~useStore(this.$pinia)[key](...args)~ 取到对应的
+函数后执行它。
+
+#+begin_src typescript
+export function mapActions<
+  Id extends string,
+  S extends StateTree,
+  G extends _GettersTree<S>,
+  A,
+  KeyMapper extends Record<string, keyof A>
+>(
+  useStore: StoreDefinition<Id, S, G, A>,
+  keysOrMapper: Array<keyof A> | KeyMapper
+): _MapActionsReturn<A> | _MapActionsObjectReturn<A, KeyMapper> {
+  return Array.isArray(keysOrMapper)
+    ? keysOrMapper.reduce((reduced, key) => {
+        // @ts-expect-error
+        reduced[key] = function (
+          this: ComponentPublicInstance,
+          ...args: any[]
+        ) {
+          return useStore(this.$pinia)[key](...args)
+        }
+        return reduced
+      }, {} as _MapActionsReturn<A>)
+    : Object.keys(keysOrMapper).reduce((reduced, key: keyof KeyMapper) => {
+        // @ts-expect-error
+        reduced[key] = function (
+          this: ComponentPublicInstance,
+          ...args: any[]
+        ) {
+          return useStore(this.$pinia)[keysOrMapper[key]](...args)
+        }
+        return reduced
+      }, {} as _MapActionsObjectReturn<A, KeyMapper>)
+}
+#+end_src
+** mapWritableState(useStore,keysOrMapper)
+
+通过重写成员值的访问器函数实现。
+
+#+begin_src typescript
+export function mapWritableState<
+  Id extends string,
+  S extends StateTree,
+  G extends _GettersTree<S>,
+  A,
+  KeyMapper extends Record<string, keyof S>
+>(
+  useStore: StoreDefinition<Id, S, G, A>,
+  keysOrMapper: Array<keyof S> | KeyMapper
+): _MapWritableStateReturn<S> | _MapWritableStateObjectReturn<S, KeyMapper> {
+  return Array.isArray(keysOrMapper)
+    ? keysOrMapper.reduce((reduced, key) => {
+        // @ts-ignore
+        reduced[key] = {
+          get(this: ComponentPublicInstance) {
+            return useStore(this.$pinia)[key]
+          },
+          set(this: ComponentPublicInstance, value) {
+            // it's easier to type it here as any
+            return (useStore(this.$pinia)[key] = value as any)
+          },
+        }
+        return reduced
+      }, {} as _MapWritableStateReturn<S>)
+    : Object.keys(keysOrMapper).reduce((reduced, key: keyof KeyMapper) => {
+        // @ts-ignore
+        reduced[key] = {
+          get(this: ComponentPublicInstance) {
+            return useStore(this.$pinia)[keysOrMapper[key]]
+          },
+          set(this: ComponentPublicInstance, value) {
+            // it's easier to type it here as any
+            return (useStore(this.$pinia)[keysOrMapper[key]] = value as any)
+          },
+        }
+        return reduced
+      }, {} as _MapWritableStateObjectReturn<S, KeyMapper>)
+}
+#+end_src
+* storeToRefs(store)
+
+#+begin_src typescript
+export function storeToRefs<SS extends StoreGeneric>(
+  store: SS
+): ToRefs<
+  StoreState<SS> & StoreGetters<SS> & PiniaCustomStateProperties<StoreState<SS>>
+> {
+  store = toRaw(store)
+
+  const refs = {} as ToRefs<
+    StoreState<SS> &
+      StoreGetters<SS> &
+      PiniaCustomStateProperties<StoreState<SS>>
+  >
+  for (const key in store) {
+    const value = store[key]
+    if (isRef(value) || isReactive(value)) {
+      // @ts-expect-error: the key is state or getter
+      refs[key] =
+        // ---
+        toRef(store, key)
+    }
+  }
+
+  return refs
+}
+#+end_src
