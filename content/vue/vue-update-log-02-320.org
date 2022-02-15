@@ -107,7 +107,7 @@ export default {
 </style>
   #+end_src
 
-  第1，2个按钮能正常解析出 ~btn~ 类名，但是第三个按钮的 class 变成了 ~[object Object]~
+  第 1，2 个按钮能正常解析出 ~btn~ 类名，但是第三个按钮的 class 变成了 ~[object Object]~
 
   这要看下 [[https://github.com/vuejs/vue-next/tree/master/packages/runtime-core/src/vnode.ts][runtime-core/src/vnode.ts:mergeProps]] 中是如何对属性进行合并的：
 
@@ -619,6 +619,73 @@ return 0;
     }
     0
     #+end_example
+* 3.2.23~29(2021-11-16 ~ 2022-01-23)
+
+** Bug Fixes [1/1]
+- [X] runtime-core: handle initial undefined attrs ([[https://github.com/vuejs/core/issues/5017][#5017]]) ([[https://github.com/vuejs/core/commit/6d887aaf591cfa05d5fea978bbd87e3e502bfa86][6d887aa]]), closes [[https://github.com/vuejs/core/issues/5016][#5016]]
+
+  值为 =undefined= 的 attrs 在值发生变化时会被解析到 props 中去。
+
+  #+begin_src diff
+ packages/runtime-core/src/componentProps.ts
+@@ -369,7 +369,7 @@ function setFullProps(
+            continue
+          }
+        }
+-        if (value !== attrs[key]) {
++        if (!(key in attrs) || value !== attrs[key]) {
+          attrs[key] = value
+          hasAttrsChanged = true
+        }
+  #+end_src
+** Features [3/3]
+- [X] reactivity: support default value in toRef() ([[https://github.com/vuejs/core/commit/2db9c909c2cf3845f57b2c930c05cd6c17abe3b0][2db9c90]])
+
+  支持设置默认值： =toRef(obj, 'x', 1)=
+
+  #+begin_src diff
+packages/reactivity/src/ref.ts
+
+class ObjectRefImpl<T extends object, K extends keyof T> {
+-  constructor(private readonly _object: T, private readonly _key: K) {}
++  constructor(
++    private readonly _object: T,
++    private readonly _key: K,
++    private readonly _defaultValue?: T[K]
++  ) {}
+
+  get value() {
+-    return this._object[this._key]
++    const val = this._object[this._key]
++    return val === undefined ? (this._defaultValue as T[K]) : val
+  }
+  #+end_src
+- [X] support ref in v-for, remove compat deprecation warnings ([[https://github.com/vuejs/core/commit/41c18effea9dd32ab899b5de3bb0513abdb52ee4][41c18ef]])
+- [X] types/script-setup: add generic type to defineExpose ([[https://github.com/vuejs/core/issues/5035][#5035]]) ([[https://github.com/vuejs/core/commit/34985fee6b23018b6eb6322239db6165c1b0e273][34985fe]])
+  OLD:
+  #+begin_src html
+<script setup lang="ts">
+    import type { IMyComponent } from './MyComponent';
+
+    const publicAPI: IMyComponent = {
+        doSomething() {
+            // ...
+        },
+    };
+
+    defineExpose(publicAPI);
+</script>
+  #+end_src
+
+  NEW:
+  #+begin_src typescript
+defineExpose<IMyComponent>({
+    doSomething() {
+        // ...
+    },
+});
+
+  #+end_src
 * DONE 3.2.14~22 (2021-09-22 ~ 2021-11-15)
 CLOSED: [2021-11-25 Thu 22:08]
 
@@ -1683,7 +1750,7 @@ packages/compiler-sfc/src/compileScript.ts
   #+end_src
 - [X] reactivity: computed should not trigger scheduler if stopped ([[https://github.com/vuejs/vue-next/commit/6eb47f000a1b54b2419c031979502d2793c5189d][6eb47f0]]), closes [[https://github.com/vuejs/vue-next/issues/4149][#4149]]
 
-  组件 deactivated 之后不应该再执行 compute 计算，3.2.1中好像又改回去了？
+  组件 deactivated 之后不应该再执行 compute 计算，3.2.1 中好像又改回去了？
 
   #+begin_src js
 (async function () {

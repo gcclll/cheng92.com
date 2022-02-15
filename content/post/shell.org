@@ -363,6 +363,76 @@ done
 =break [n]= , 可以指定跳出循环的层级， n=1 当前循环， n=2 …
 
 =continue=  跳出本次循环。
+*** select
+
+~select opt in list; do ... done~
+
+elect 命令会将每个 列表项显示成一个带编号的选项，然后为选项显示一个由 PS3 环境变量
+定义的特殊提示符
+
+#+begin_src sh
+diskspace() {
+    clear
+    df -k
+}
+
+whoseon() {
+    clear
+    who
+}
+
+memusage() {
+    clear
+    cat /proc/meminfo
+}
+
+PS3="Enter Option..."
+select option in "Display disk space"
+                 "Display logged on users"
+                 "Display memory usage"
+                 "Exit program"
+do
+    case $option in
+   "Exit program")
+         break ;;
+   "Display disk space")
+         diskspace ;;
+   "Display logged on users")
+         whoseon ;;
+   "Display memory usage")
+       memusage ;;
+   ,*)
+       clear
+       echo "Sorry, wrong selection";;
+   esac
+done
+clear
+#+end_src
+
+1. select 会无限循环执行下去，所以记得在必要的时候用 ~break~ 或 ~exit~ 跳出循环
+2. select 会自动将 list 按照序号排列开，等待输入对应的数字来选择对应的项
+3. select 默认使用 ~PS3~ 变量来做为提示符，所以可以通过修改这个变量的值来变更提示
+   符(默认是： ~#?~)
+
+
+示例 2：
+#+begin_src sh
+PS3="Enter Option...>"
+select cmd in "ls -F" date pwd exit; do
+    case $cmd in
+        "ls -F") ls -F ;;
+        date) date ;;
+        pwd) pwd ;;
+        exit) exit ;;
+        *)
+            echo "help..."
+            exit
+            ;;
+    esac
+done
+clear
+#+end_src
+
 ** 脚本参数
 
 ~$1~$n~ 第一~第 n 个参数

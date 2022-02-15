@@ -1,0 +1,996 @@
+#+TITLE: vue pinia 新状态管理库
+#+DATE: <2022-02-15 08:15:52>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: vue, pinia, vuex
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+<script src="/js/utils.js"></script>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+官方文档： [[https://pinia.vuejs.org/introduction.html#why-should-i-use-pinia][Introduction | Pinia]]
+
+目录结构：
+
+#+begin_src sh
+➜  pinia git:(v2) ✗ tree ./packages/pinia/src
+./packages/pinia/src
+├── createPinia.ts
+├── devtools
+│   ├── actions.ts
+│   ├── file-saver.ts
+│   ├── formatting.ts
+│   ├── index.ts
+│   ├── plugin.ts
+│   └── utils.ts
+├── env.ts
+├── global.d.ts
+├── globalExtensions.ts
+├── hmr.ts
+├── index.ts
+├── mapHelpers.ts
+├── rootStore.ts
+├── store.ts
+├── storeToRefs.ts
+├── subscriptions.ts
+├── types.ts
+└── vue2-plugin.ts
+
+1 directory, 19 files
+#+end_src
+
+使用步骤：
+
+1. 安装： ~$ yarn add pinia~ 或 ~$ npm install pinia~
+
+2. 引入 pinia
+
+   #+begin_src js
+import { createPinia } from 'pinia'
+
+app.use(createPinia())
+   #+end_src
+
+3. 定义 store(如： ~src/stores/user.ts~)
+
+   #+begin_src js
+import { defineStore } from 'pinia'
+
+export const useCounterStore = defineStore('counter', {
+  state() {
+    return { counter: 1, /* ... */ }
+  }
+})
+   #+end_src
+
+4. 使用 store
+
+   #+begin_src js
+// XxxUserComponent.ts
+import { useCounterStore } from '@/stores/counter'
+
+export default {
+  setup() {
+    const store = useCounterStore()
+    return { store }
+  }
+}
+   #+end_src
+
+   或非 setup() 函数中使用：
+
+   #+begin_src js
+import { mapState } from 'pinia'
+import { useCounterStore } from '@/stores/counter'
+
+export default {
+  computed: {
+    // 使用后组件中就可以通过 `this.counter` 直接读取值
+    ...mapState(useCounterStore, ['counter']),
+    // 更高级灵活的使用，
+    ...mapState(useCounterStore, {
+      // 重命名， this.myOwnName 读取
+      myOwnName: 'counter',
+      // 可以直接调用this.double() 来修改 store
+      double: store => store.counter * 2,
+      // 可以访问 store this 但是类型可以不能正确的被分析到
+      magicValue(store) {
+        return store.someGetter + this.counter + this.double
+      }
+    })
+  }
+}
+   #+end_src
+
+   提供可以直接修改 ~this.counter++~ 的能力：
+   #+begin_src js
+import { mapWritableState } from 'pinia'
+import { useCounterStore } from '../stores/counterStore'
+
+export default {
+  computed: {
+    // 具备可以直接 this.counter++ 读取且修改 store 能力
+    ...mapWritableState(useCounterStore, ['counter'])
+    // 如上， this.myOwnName++
+    ...mapWritableState(useCounterStore, {
+      myOwnName: 'counter',
+    }),
+  },
+}
+   #+end_src
+
+5. 修改 state 方式
+
+   ~store.$patch(payload)~:
+   #+begin_src js
+store.$patch({ counter: store.counter + 1, name: 'xxx' })
+   #+end_src
+
+   ~store.$patch(stateFn)~:
+   #+begin_src js
+store.$patch(state => {
+  state.items.push({ name: 'shoes', quantity: 1 })
+  state.hasChanged = true
+})
+   #+end_src
+
+   直接替换 ~store.$state~
+
+   ~store.$state = { counter: 666, name: 'Paimon' }~
+
+   直接替换整个 app 的 state:
+   #+begin_src js
+pinia.state.value = {}
+   #+end_src
+
+6. 订阅 state 变更(~store.$subscribe~ 或 ~watch(pinia.state, state=>{...},{deep:true})~
+
+   #+begin_src js
+cartStore.$subscribe((mutation, state) => {
+  // import { MutationType } from 'pinia'
+  mutation.type // 'direct' | 'patch object' | 'patch function'
+  // same as cartStore.$id
+  mutation.storeId // 'cart'
+  // only available with mutation.type === 'patch object'
+  mutation.payload // patch object passed to cartStore.$patch()
+
+  // persist the whole state to the local storage whenever it changes
+  localStorage.setItem('cart', JSON.stringify(state))
+})
+   #+end_src
+
+   component setup() 中使用，卸载时移除，如果不想被移除需要指定
+   ~{detached:true}~ options
+
+   #+begin_src js
+export default {
+  setup() {
+    const someStore = useSomeStore()
+
+    // this subscription will be kept after the component is unmounted
+    someStore.$subscribe(callback, { detached: true })
+
+    // ...
+  },
+}
+   #+end_src
+
+   监听整个 app state 变化：
+   #+begin_src js
+watch(
+  pinia.state,
+  (state) => {
+    // persist the whole state to the local storage whenever it changes
+    localStorage.setItem('piniaState', JSON.stringify(state))
+  },
+  { deep: true }
+)
+   #+end_src
+
+
+* createPinia()
+
+创建 pinia 实例，在调用 ~Vue.use(createPinia)~ 之后，就可以在组件内通过
+~this.$pinia~ 来调用这个实例，因为它会将 pinia 实例挂到
+~app.config.globalProperties.$pinia~ 上。
+
+#+begin_src typescript
+/**
+ ,* Creates a Pinia instance to be used by the application
+ ,*/
+export function createPinia(): Pinia {
+  // 1. 声明一个 app 级的 state: Ref<Record<string, StateTree>>
+  // NOTE: here we could check the window object for a state and directly set it
+  // if there is anything like it with Vue 3 SSR
+  const state = scope.run<Ref<Record<string, StateTree>>>(() =>
+    ref<Record<string, StateTree>>({})
+  )!
+
+  // 2. 插件列表
+  let _p: Pinia['_p'] = []
+  // plugins added before calling app.use(pinia)
+  let toBeInstalled: PiniaPlugin[] = []
+
+  // 3. vue 插件类型对象({ install, use })
+  const pinia: Pinia = markRaw({
+    install(app: App) {
+      // this allows calling useStore() outside of a component setup after
+      // installing pinia's plugin
+      setActivePinia(pinia)
+      if (!isVue2) {
+        pinia._a = app
+        app.provide(piniaSymbol, pinia)
+        app.config.globalProperties.$pinia = pinia
+        /* istanbul ignore else */
+        if (__DEV__ && IS_CLIENT) {
+          registerPiniaDevtools(app, pinia)
+        }
+        toBeInstalled.forEach((plugin) => _p.push(plugin))
+        toBeInstalled = []
+      }
+    },
+
+    use(plugin) {
+      if (!this._a && !isVue2) {
+        toBeInstalled.push(plugin)
+      } else {
+        _p.push(plugin)
+      }
+      return this
+    },
+
+    _p,
+    // it's actually undefined here
+    // @ts-expect-error
+    _a: null,
+    _e: scope,
+    // 4. 这个用来保存 defineStore(id, ...) 定义的 store， Map<id => Store>
+    _s: new Map<string, StoreGeneric>(),
+    state,
+  })
+
+  // ... devtools
+
+  return pinia
+}
+#+end_src
+
+* defineStore()
+
+声明：
+#+begin_src typescript
+/**
+ * Creates a `useStore` function that retrieves the store instance
+ *
+ * @param id - id of the store (must be unique)
+ * @param options - options to define the store
+ */
+export function defineStore<
+  Id extends string,
+  S extends StateTree = {},
+  G extends _GettersTree<S> = {},
+  // cannot extends ActionsTree because we loose the typings
+  A /* extends ActionsTree */ = {}
+>(
+  id: Id,
+  options: Omit<DefineStoreOptions<Id, S, G, A>, 'id'>
+): StoreDefinition<Id, S, G, A>
+
+/**
+ * Creates a `useStore` function that retrieves the store instance
+ *
+ * @param options - options to define the store
+ */
+export function defineStore<
+  Id extends string,
+  S extends StateTree = {},
+  G extends _GettersTree<S> = {},
+  // cannot extends ActionsTree because we loose the typings
+  A /* extends ActionsTree */ = {}
+>(options: DefineStoreOptions<Id, S, G, A>): StoreDefinition<Id, S, G, A>
+
+/**
+ * Creates a `useStore` function that retrieves the store instance
+ *
+ * @param id - id of the store (must be unique)
+ * @param storeSetup - function that defines the store
+ * @param options - extra options
+ */
+export function defineStore<Id extends string, SS>(
+  id: Id,
+  storeSetup: () => SS,
+  options?: DefineSetupStoreOptions<
+    Id,
+    _ExtractStateFromSetupStore<SS>,
+    _ExtractGettersFromSetupStore<SS>,
+    _ExtractActionsFromSetupStore<SS>
+  >
+): StoreDefinition<
+  Id,
+  _ExtractStateFromSetupStore<SS>,
+  _ExtractGettersFromSetupStore<SS>,
+  _ExtractActionsFromSetupStore<SS>
+>
+export function defineStore(
+  // TODO: add proper types from above
+  idOrOptions: any,
+  setup?: any,
+  setupOptions?: any
+): StoreDefinition
+#+end_src
+
+上面三种声明对应下面三种使用方式：
+
+#+begin_src js
+// defineStore(id, options)
+defineStore('storeId', {
+  state() {
+    return { counter: 1 /*...*/ }
+  },
+  getters: {
+    counter(state) {
+      return state.counter
+    }
+  },
+  actions: {
+    increment(state) {
+      state.counter++
+    }
+  }
+})
+
+// defineStore(options) 这个和上面的一样，只不过是将 id 放到了 options 中
+defineStore({
+  id: 'storeId',
+  // ...
+})
+
+// defineStore(id, storeSetup, options?)
+defineStore('storeId', function storeSetup() {
+  return { counter: 1 /* setup state */ }
+}, { /* ...options */ })
+#+end_src
+
+API 实现
+
+~defineStore(idOrOptions: any, setup?: any, setupOptions?: any): StoreDefinition~
+
+#+begin_src typescript
+export function defineStore(
+  // TODO: add proper types from above
+  idOrOptions: any,
+  setup?: any,
+  setupOptions?: any
+): StoreDefinition {
+  let id: string
+  let options:
+    | DefineStoreOptions<
+        string,
+        StateTree,
+        _GettersTree<StateTree>,
+        _ActionsTree
+      >
+    | DefineSetupStoreOptions<
+        string,
+        StateTree,
+        _GettersTree<StateTree>,
+        _ActionsTree
+      >
+
+  // 1. 解析参数，支持三种调用方式
+  const isSetupStore = typeof setup === 'function'
+  if (typeof idOrOptions === 'string') {
+    id = idOrOptions
+    // the option store setup will contain the actual options in this case
+    options = isSetupStore ? setupOptions : setup
+  } else {
+    options = idOrOptions
+    id = idOrOptions.id
+  }
+
+  // 2. 实现 useStore, 返回值也是这个函数
+  function useStore(pinia?: Pinia | null, hot?: StoreGeneric): StoreGeneric {
+    const currentInstance = getCurrentInstance()
+    pinia = pinia || (currentInstance && inject(piniaSymbol))
+    if (pinia) setActivePinia(pinia)
+
+    // ... dev error check
+
+    pinia = activePinia!
+
+    if (!pinia._s.has(id)) {
+      // creating the store registers it in `pinia._s`
+      if (isSetupStore) {
+        createSetupStore(id, setup, options, pinia)
+      } else {
+        createOptionsStore(id, options as any, pinia)
+      }
+
+      /* istanbul ignore else */
+      if (__DEV__) {
+        // @ts-expect-error: not the right inferred type
+        useStore._pinia = pinia
+      }
+    }
+
+    const store: StoreGeneric = pinia._s.get(id)!
+
+    // ... dev hot 热更新
+
+    // ... devtools
+
+    // StoreGeneric cannot be casted towards Store
+    return store as any
+  }
+
+  useStore.$id = id
+
+  return useStore
+}
+#+end_src
+
+~defineStore()~ 实现就两部分，一个是解析参数来支持多种调用方式，一个是实现
+~useStore()~ 这个也是其核心代码。
+
+#+begin_src typescript
+function useStore(pinia?: Pinia | null, hot?: StoreGeneric): StoreGeneric {
+    const currentInstance = getCurrentInstance()
+    pinia = pinia || (currentInstance && inject(piniaSymbol))
+    if (pinia) setActivePinia(pinia)
+
+    // ... dev error check
+
+    pinia = activePinia!
+
+    if (!pinia._s.has(id)) {
+      // creating the store registers it in `pinia._s`
+      if (isSetupStore) {
+        createSetupStore(id, setup, options, pinia)
+      } else {
+        createOptionsStore(id, options as any, pinia)
+      }
+
+      /* istanbul ignore else */
+      if (__DEV__) {
+        // @ts-expect-error: not the right inferred type
+        useStore._pinia = pinia
+      }
+    }
+
+    const store: StoreGeneric = pinia._s.get(id)!
+
+    // ... dev hot 热更新
+
+    // ... devtools
+
+    // StoreGeneric cannot be casted towards Store
+    return store as any
+  }
+#+end_src
+
+1. 取出 pinia 在当前应用中的实例 ~pinia = pinia || (currentInstance && inject(piniaSymbol))~
+
+   ~inject(piniaSymbol)~ 是取出在 ~app.use(createPinia())~ 中注入的一个应用全局变量：
+
+   代码： _src/createPinia.ts:createPinia()_
+
+   state 定义：
+
+   #+begin_src typescript
+  const state = scope.run<Ref<Record<string, StateTree>>>(() =>
+    ref<Record<string, StateTree>>({})
+  )!
+   #+end_src
+
+   注入(~pinia.install(app)~)：
+   #+begin_src typescript
+    app.provide(piniaSymbol, pinia)
+    app.config.globalProperties.$pinia = pinia
+   #+end_src
+
+2. 检查是不是每次调用 ~useStore()~
+
+   #+begin_src typescript
+    if (!pinia._s.has(id)) {
+      // creating the store registers it in `pinia._s`
+      if (isSetupStore) {
+        createSetupStore(id, setup, options, pinia)
+      } else {
+        createOptionsStore(id, options as any, pinia)
+      }
+    }
+   #+end_src
+
+   两和创建方式，一个是 ~setup()~ 函数式，一个 ~{ state() {} }~ 对象方式。
+
+   ~defineStore('storeId', function storeSetup() {...}, { ...options }~
+
+   ~defineStore('storeId', { state() {}, ...otherOptions })~
+
+   ~createOptionsStore()~ 最终也是会调用 ~createSetupStore()~ 所以创建 store 的核心
+   代码在后者。
+
+* createSetupStore($id, setup, options, pinia, hot?)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createSetupStore
+:END:
+
+声明：
+
+#+begin_src typescript
+function createSetupStore<
+  Id extends string,
+  SS,
+  S extends StateTree,
+  G extends Record<string, _Method>,
+  A extends _ActionsTree
+>(
+  $id: Id,
+  setup: () => SS,
+  options:
+    | DefineSetupStoreOptions<Id, S, G, A>
+    | DefineStoreOptions<Id, S, G, A> = {},
+  pinia: Pinia,
+  hot?: boolean
+): Store<Id, S, G, A>
+#+end_src
+
+简化版：
+#+begin_src typescript
+function createSetupStore(
+  $id: Id,
+  setup: () => SS,
+  options
+  pinia: Pinia,
+  hot?: boolean
+): Store<Id, S, G, A> {
+  let scope!: EffectScope
+  const buildState = (options as DefineStoreOptions<Id, S, G, A>).state
+
+  const optionsForPlugin: DefineStoreOptionsInPlugin<Id, S, G, A> = assign(
+    { actions: {} as A },
+    options
+  )
+
+  // watcher options for $subscribe
+  const $subscribeOptions: WatchOptions = {
+    deep: true,
+    // flush: 'post',
+  }
+
+  // 1. 初始化 pinia.state, pinia.state.value[$id] = {}
+
+  // 2. store.$patch() 函数实现
+
+  // 3. store.$reset
+
+  // 4. store.$dispose() 根据 $id 删除当前的 store
+
+  // 5. wrapAction(name, action)
+
+  // 6. partialStore & store 对象
+
+  // 7. 执行 setup() 得到 setupStore
+
+  // 8. 合并 setupStore 到 store 中
+
+  // 9. 定义 store.$state -> { get, set }
+
+  // 10. SSR hydrate 合并
+  return store
+}
+#+end_src
+
+1. 初始化 state
+
+   非首次使用时， ~pinia.state.value~ 中会有当前 store 记录，直接取出，如果没有默
+   认初始值为 ~undefined~ :
+
+   ~const initialState = pinia.state.value[$id] as UnwrapRef<S> | undefined~
+
+   #+begin_src typescript
+  // avoid setting the state for option stores are it is set
+  // by the setup
+  if (!buildState && !initialState && (!__DEV__ || !hot)) {
+    /* istanbul ignore if */
+    if (isVue2) {
+      set(pinia.state.value, $id, {})
+    } else {
+      pinia.state.value[$id] = {}
+    }
+  }
+   #+end_src
+
+   这里区分 vue2/vue3, 因为 vue2 无法直接监听对象新增成员，所以要用 ~set()~ 函数，
+   而 vue3 是使用 ~proxy+reflect~ 实现的 reactivity 因此直接赋值即可。
+
+2. ~$patch(partialStateOrMutator)~ 用来更新 state 状态
+
+   #+begin_src typescript
+  function $patch(
+    partialStateOrMutator:
+      | _DeepPartial<UnwrapRef<S>>
+      | ((state: UnwrapRef<S>) => void)
+  ): void {
+    let subscriptionMutation: SubscriptionCallbackMutation<S>
+    isListening = isSyncListening = false
+
+    // 分析参数，支持 $patch({...}) 或 $patch(state=> {...})
+    if (typeof partialStateOrMutator === 'function') {
+      partialStateOrMutator(pinia.state.value[$id] as UnwrapRef<S>)
+      subscriptionMutation = {
+        type: MutationType.patchFunction,
+        storeId: $id,
+        events: debuggerEvents as DebuggerEvent[],
+      }
+    } else {
+      mergeReactiveObjects(pinia.state.value[$id], partialStateOrMutator)
+      subscriptionMutation = {
+        type: MutationType.patchObject,
+        payload: partialStateOrMutator,
+        storeId: $id,
+        events: debuggerEvents as DebuggerEvent[],
+      }
+    }
+    nextTick().then(() => {
+      isListening = true
+    })
+    isSyncListening = true
+    // because we paused the watcher, we need to manually call the subscriptions
+    triggerSubscriptions(
+      subscriptions,
+      subscriptionMutation,
+      pinia.state.value[$id] as UnwrapRef<S>
+    )
+  }
+   #+end_src
+
+   ~$patch()~ 支持两种调用方式： ~$patch({...})~ 或 ~$patch(state=>{...})~
+
+   封装 ~mutation~ 手动触发 reactivity trigger
+
+   #+begin_src typescript
+export function triggerSubscriptions<T extends _Method>(
+  subscriptions: T[],
+  ...args: Parameters<T>
+) {
+  subscriptions.slice().forEach((callback) => {
+    callback(...args)
+  })
+}
+   #+end_src
+
+   手动调用 ~subscriptions~ 这是个数组，会在调用 ~$subscribe()~ 时候收集订阅。
+
+3. ~$reset()~ 函数
+
+4. ~$dispose()~ 释放当前的 store，会从 ~pinia._s~ 中删除它并清理 ~subscriptions~
+
+   #+begin_src typescript
+  function $dispose() {
+    scope.stop()
+    subscriptions = []
+    actionSubscriptions = []
+    pinia._s.delete($id)
+  }
+   #+end_src
+
+5. ~wrapAction(name: string, action: _Method)~
+
+   封装 action。
+
+   #+begin_src typescript
+  function wrapAction(name: string, action: _Method) {
+    return function (this: any) {
+      setActivePinia(pinia)
+      const args = Array.from(arguments)
+
+      const afterCallbackList: Array<(resolvedReturn: any) => any> = []
+      const onErrorCallbackList: Array<(error: unknown) => unknown> = []
+      function after(callback: _ArrayType<typeof afterCallbackList>) {
+        afterCallbackList.push(callback)
+      }
+      function onError(callback: _ArrayType<typeof onErrorCallbackList>) {
+        onErrorCallbackList.push(callback)
+      }
+
+      // @ts-expect-error
+      triggerSubscriptions(actionSubscriptions, {
+        args,
+        name,
+        store,
+        after,
+        onError,
+      })
+
+      let ret: any
+      try {
+        ret = action.apply(this && this.$id === $id ? this : store, args)
+        // handle sync errors
+      } catch (error) {
+        triggerSubscriptions(onErrorCallbackList, error)
+        throw error
+      }
+
+      if (ret instanceof Promise) {
+        return ret
+          .then((value) => {
+            triggerSubscriptions(afterCallbackList, value)
+            return value
+          })
+          .catch((error) => {
+            triggerSubscriptions(onErrorCallbackList, error)
+            return Promise.reject(error)
+          })
+      }
+
+      // allow the afterCallback to override the return value
+      triggerSubscriptions(afterCallbackList, ret)
+      return ret
+    }
+  }
+   #+end_src
+
+6. partialStore & store 对象
+
+   对象包含： ~{ _p: pinia, $id, $onAction, $patch, $reset, $subscribe, $dispose }~
+
+   ~$onAction: addSubscription.bind(null, actionSubscriptions)~ 添加订阅用。
+
+   #+begin_src typescript
+    $subscribe(callback, options = {}) {
+      const removeSubscription = addSubscription(
+        subscriptions,
+        callback,
+        options.detached,
+        () => stopWatcher()
+      )
+      const stopWatcher = scope.run(() =>
+        watch(
+          () => pinia.state.value[$id] as UnwrapRef<S>,
+          (state) => {
+            if (options.flush === 'sync' ? isSyncListening : isListening) {
+              callback(
+                {
+                  storeId: $id,
+                  type: MutationType.direct,
+                  events: debuggerEvents as DebuggerEvent,
+                },
+                state
+              )
+            }
+          },
+          assign({}, $subscribeOptions, options)
+        )
+      )!
+
+      return removeSubscription
+    }
+   #+end_src
+
+   store:
+
+   #+begin_src typescript
+  const store: Store<Id, S, G, A> = reactive(
+    assign(
+      __DEV__ && IS_CLIENT
+        ? // devtools custom properties
+          {
+            _customProperties: markRaw(new Set<string>()),
+            _hmrPayload,
+          }
+        : {},
+      partialStore
+      // must be added later
+      // setupStore
+    )
+  ) as unknown as Store<Id, S, G, A>
+   #+end_src
+
+7. 执行 setup 得到其返回值做为 state
+
+   #+begin_src typescript
+  // TODO: idea create skipSerialize that marks properties as non serializable and they are skipped
+  const setupStore = pinia._e.run(() => {
+    scope = effectScope()
+    return scope.run(() => setup())
+  })!
+   #+end_src
+
+   对 setup state 进行加工处理，如 wrap action
+
+   #+begin_src typescript
+  // overwrite existing actions to support $onAction
+  for (const key in setupStore) {
+    const prop = setupStore[key]
+
+    // 检查值是不是 Ref 或 Reactive 类型
+    if ((isRef(prop) && !isComputed(prop)) || isReactive(prop)) {
+      // options.state
+      if (!buildState) {
+        // in setup stores we must hydrate the state and sync pinia state tree with the refs the user just created
+        if (initial
+          if (isRef(prop)) {
+            prop.value = initialState[key]
+          } else {
+            // probably a reactive object, lets recursively assign
+            mergeReactiveObjects(prop, initialState[key])
+          }
+        }
+        // transfer the ref to the pinia state to keep everything in sync
+        /* istanbul ignore if */
+        if (isVue2) {
+          set(pinia.state.value[$id], key, prop)
+        } else {
+          pinia.state.value[$id][key] = prop
+        }
+      }
+
+    } else if (typeof prop === 'function') {
+      // @ts-expect-error: we are overriding the function we avoid wrapping if
+      const actionValue = __DEV__ && hot ? prop : wrapAction(key, prop)
+      // this a hot module replacement store because the hotUpdate method needs
+      // to do it with the right context
+      /* istanbul ignore if */
+      if (isVue2) {
+        set(setupStore, key, actionValue)
+      } else {
+        // @ts-expect-error
+        setupStore[key] = actionValue
+      }
+
+      // list actions so they can be used in plugins
+      // @ts-expect-error
+      optionsForPlugin.actions[key] = prop
+    } // ... __DEV__
+   #+end_src
+
+8. 经过步骤 *7* 之后，将 ~setupStore~ 合并到 ~store~ 和 ~toRaw(store)~
+
+   #+begin_src typescript
+  if (isVue2) {
+    Object.keys(setupStore).forEach((key) => {
+      set(
+        store,
+        key,
+        // @ts-expect-error: valid key indexing
+        setupStore[key]
+      )
+    })
+  } else {
+    assign(store, setupStore)
+    // allows retrieving reactive objects with `storeToRefs()`. Must be called after assigning to the reactive object.
+    // Make `storeToRefs()` work with `reactive()` #799
+    assign(toRaw(store), setupStore)
+  }
+   #+end_src
+
+   这一行 ~assign(toRaw(store), setupStore)~ 是考虑到可能需要解构 ~store~ 需要用到
+   ~storeToRefs()~ 的情况。
+
+9. 最后定义 ~store.$state~ 的读写操作
+
+   #+begin_src typescript
+  // use this instead of a computed with setter to be able to create it anywhere
+  // without linking the computed lifespan to wherever the store is first
+  // created.
+  Object.defineProperty(store, '$state', {
+    get: () => (__DEV__ && hot ? hotState.value : pinia.state.value[$id]),
+    set: (state) => {
+      /* istanbul ignore if */
+      if (__DEV__ && hot) {
+        throw new Error('cannot set hotState')
+      }
+      $patch(($state) => {
+        assign($state, state)
+      })
+    },
+  })
+   #+end_src
+
+
+经过上面的分析下来， ~defineStore~ -> ~createSetupStore~ 中关键几个函数;
+
+~$patch(partialStateOrMutator)~ 批量更新 state 触发 ~triggerSubscriptions(
+subscriptions )~ 执行， state 递归合并原则(~mergeRectiveObjects~)。
+
+~$subscribe(callback, options={})~ 订阅 state(~pinia.state.value[$id]~) 的变化，其实
+现也是通过 ~watch()~ 监听 ~pinia.state.value[$id]~ 实现。
+
+* createOptionsStore(id, options, pinia, hot?)
+:PROPERTIES:
+:COLUMNS:  %CUSTOM_ID[(Custom Id)]
+:CUSTOM_ID: createOptionsStore
+:END:
+
+
+这个函数是对 ~defineStore(id, options)~ 或 ~defineStore(options)~ 的 options 是对象时的处理逻辑，它最终也是调用
+了 [[#createSetupStore][createSetupStore()]] 是将 options 封装成了 setup 函数。
+
+#+begin_src typescript
+function createOptionsStore<
+  Id extends string,
+  S extends StateTree,
+  G extends _GettersTree<S>,
+  A extends _ActionsTree
+>(
+  id: Id,
+  options: DefineStoreOptions<Id, S, G, A>,
+  pinia: Pinia,
+  hot?: boolean
+): Store<Id, S, G, A> {
+  const { state, actions, getters } = options
+
+  const initialState: StateTree | undefined = pinia.state.value[id]
+
+  let store: Store<Id, S, G, A>
+
+  function setup() {
+    if (!initialState && (!__DEV__ || !hot)) {
+      /* istanbul ignore if */
+      if (isVue2) {
+        set(pinia.state.value, id, state ? state() : {})
+      } else {
+        pinia.state.value[id] = state ? state() : {}
+      }
+    }
+
+    // avoid creating a state in pinia.state.value
+    const localState =
+      __DEV__ && hot
+        ? // use ref() to unwrap refs inside state TODO: check if this is still necessary
+          toRefs(ref(state ? state() : {}).value)
+        : toRefs(pinia.state.value[id])
+
+    return assign(
+      localState,
+      actions,
+      Object.keys(getters || {}).reduce((computedGetters, name) => {
+        computedGetters[name] = markRaw(
+          computed(() => {
+            setActivePinia(pinia)
+            // it was created just before
+            const store = pinia._s.get(id)!
+
+            // allow cross using stores
+            /* istanbul ignore next */
+            if (isVue2 && !store._r) return
+
+            // @ts-expect-error
+            // return getters![name].call(context, context)
+            // TODO: avoid reading the getter while assigning with a global variable
+            return getters![name].call(store, store)
+          })
+        )
+        return computedGetters
+      }, {} as Record<string, ComputedRef>)
+    )
+  }
+
+  store = createSetupStore(id, setup, options, pinia, hot)
+
+  store.$reset = function $reset() {
+    const newState = state ? state() : {}
+    // we use a patch to group all changes into one single subscription
+    this.$patch(($state) => {
+      assign($state, newState)
+    })
+  }
+
+  return store as any
+}
+#+end_src
+
+所以对于 options 的使用其实也是将 ~{ state, actions, getters }~ 简单的
+~assign(...)~ 合并在一起了，同时对 ~getters~ 进行了一层封装，将它们转成了计算属性。
