@@ -49,6 +49,17 @@
 1 directory, 19 files
 #+end_src
 
+源码大致结构流程图：
+
+[[/img/vue3/pinia/vue-pinia.svg]]
+
+#+begin_quote
+从图中就可以看出来 pinia 核心的代码其实就在 ~createSetupStore()~ 这个函数里，它的实
+现包含了 store 中的 ~state~, ~getters~, ~actions~ 处理，以及用到的核心 api ~$patch~,
+~$dispose~, ~$subscribe~, ~$reset~ 的实现和封装。
+#+end_quote
+
+
 使用步骤：
 
 1. 安装： ~$ yarn add pinia~ 或 ~$ npm install pinia~
