@@ -1,0 +1,24 @@
+#+TITLE: Mermaid 绘图工具(Markdown+Org)
+#+DATE: <2023-02-18 22:34:51>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: mermaid
+#+CATEGORIES[]: tools
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+[[https://github.com/mermaid-js/mermaid][mermaid-js/mermaid: Generation of diagram and flowchart from text in a similar manner as markdown]]
+
+在线编辑器，非编程式绘图：
+
+[[https://mermaid-js.github.io/mermaid-live-editor/edit#pako:eNpVkM-KwkAMxl8l5OSCfYEeBG3Vi6Cgt46H0InOIPOHdMoibd99p5aF3ZyS7_t9IWTANmjGEp9C0cCtVh5ybZvKiO2So-4ORbEZj5zABc_vEXarY4DOhBitf34t_G6GoBpOM8aQjPWvabGqT_7seYS6OVFMId7_OrfvMMK-sReT1_93jHBOHZoHlQ8qWhKoSD4IrtGxOLI6nz7MisJk2LHCMrea5KVQ-SlzfdSUeK9tCoJlkp7XSH0K17dvf-eFqS3lL7hFnH4ABg5bBA][Online FlowChart & Diagrams Editor - Mermaid Live Editor]]
+
+#+begin_src mermaid :file ~/.d/static/img/tmp/test.svg :background-color "red"
+sequenceDiagram
+    Alice->>+John: Hello John, how are you?
+    Alice->>+John: John, can you hear me?
+    John-->>-Alice: Hi Alice, I can hear you!
+    John-->>-Alice: I feel great!
+#+end_src
+
+#+RESULTS:
+[[file:~/.d/static/img/tmp/test.svg]]
