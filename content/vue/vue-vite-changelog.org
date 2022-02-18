@@ -1,0 +1,20 @@
+#+TITLE: vite 更新日记[TODO]
+#+DATE: <2022-02-17 09:03:48>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: vue, vite
+#+CATEGORIES[]: vue
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<link href="https://fonts.goo~gleapis.com/cs~s2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+<kbd>
+<font color="blue" size="3" style="font-family: 'ZCOOL XiaoWei', serif;">
+  诗号：六道同坠，魔劫万千，引渡如来。
+</font>
+</kbd><br><br>
+#+end_export
+
+[[/img/bdx/yiyeshu-001.jpg]]
+
+[[https://github.com/vitejs/vite/blob/main/packages/vite/CHANGELOG.md][vite/CHANGELOG.md at main · vitejs/vite]]
