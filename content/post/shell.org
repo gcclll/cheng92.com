@@ -129,7 +129,6 @@ fi
 : lrwxr-xr-x  1 gcl  staff  24 Jan  4 14:22 /Users/gcl/.zshrc -> /Users/gcl/.gclrc/.zshrc...
 : install-refresh-os is a shell file to install everything when re-setup a refresh MacOS...
 
-
 ** 各种括号使用
 
 1. =[]=
@@ -765,7 +764,6 @@ test13out 文件。
 |   18 | SIGTSTP | 停止或暂停进程，但不终止进程   | Ctrl+Z     |
 |   19 | SIGCONT | 继续运行停止的进程             |            |
 
-
 * 常用命令
 
 ** read
@@ -919,3 +917,141 @@ INSERT INTO members (lname,fname,address,city,state,zip) VALUES (‘Bresnahan’
 INSERT INTO members (lname,fname,address,city,state,zip) VALUES (‘Bresnahan’,
 ‘Timothy’, ‘456 Oak Ave.’, ‘Columbus’, ‘OH’, ‘43201’);
 #+end_example
+** grep
+
+选项;
+
+=-c= 只将匹配的行总数输出
+#+begin_src sh
+➜  .doom.d git:(native-29) ✗ grep -c3 "grep" ./*.org
+11
+#+end_src
+
+=-n= 显示行号
+#+begin_src sh
+➜  .doom.d git:(native-29) ✗ grep -n "grep" ./*.org
+548:(global-set-key (kbd "<f2>") 'rgrep)
+549:(global-set-key (kbd "<f5>") 'deadgrep)
+550:(global-set-key (kbd "<M-f5>") 'deadgrep-kill-all-buffers)
+2020:     deadgrep-mode
+2021:     grep-mode
+2139:(package! deadgrep)
+2321:| =SPC s p=       | ~consult-git-grep~                 |
+2369:search keyword in all typed files and replace it with ~wgrep~
+2371:1. ~rgrep~ search in all files
+2372:2. ~wgrep-change-to-wgrep-mode~ enable wgrep mode
+2374:4. ~wgrep-finish-edit, C-c C-c~ write to all files
+#+end_src
+
+=-i= 忽略大小写
+#+begin_src sh
+# 不忽略大小写
+➜  test git:(master) ✗ grep -n "aaaa" ./a.org
+38:aaaaaaa
+39:aaaaaaa
+43:aaaaaaa
+# 忽略大小写
+➜  test git:(master) ✗ grep -ni "aaaa" ./a.org
+38:aaaaaaa
+39:aaaaaaa
+40:AAAAAAA
+41:AAAAAAA
+42:AAAAAAA
+43:aaaaaaa
+#+end_src
+
+=-I= 忽略 binary 文件。
+
+=-v= 反向过滤
+#+begin_src sh
+➜  test git:(master) ✗ grep -nvi "aaaa" ./a.org
+7:bbbbbbb
+8:BBBBBBB
+9:BBBBBBB
+10:bbbbbbb
+11:bbbbbbb
+➜  test git:(master) ✗ cat ./a.org
+aaaaaaa
+bbbbbbb
+➜  test git:(master) ✗ grep -nvi "aaaa" ./a.org
+2:bbbbbbb
+➜  test git:(master) ✗ grep -ni "aaaa" ./a.org
+1:aaaaaaa
+➜  test git:(master) ✗
+#+end_src
+
+=[]= 查找集合字符
+#+begin_src sh
+➜  test git:(master) ✗ cat ./a.org
+aaaaaaa
+bbbbbbb
+ccccccc
+ddddddd
+eeeeeee
+➜  test git:(master) ✗ grep -ni "[ac]" ./a.org
+1:aaaaaaa
+3:ccccccc
+#+end_src
+
+=-e pattern, --regexp=pattern= 正则，可多次使用
+#+begin_src sh
+➜  test git:(master) ✗ grep -ni -e "[abc]" -e "111" ./a.org
+1:aaaaaaa1111
+2:bbbbbbb
+3:ccccccc2222
+4:ddddddd1111
+#+end_src
+
+=--exclude pattern=, =--exclude-dir pattern= 排除 pattern 正则指定的文件/目录名，和
+=--include= 先后顺序由使用时前后顺序而定
+#+begin_src sh
+# 使用之前
+➜  test git:(master) ✗ grep -ni -e "a\{2,\}" -e "[bc]+" -e "111" ./[ab].org
+./a.org:1:aaaaaaa1111
+./a.org:4:ddddddd1111
+./b.org:1:aaaaaaa1111
+./b.org:4:ddddddd1111
+
+# 使用之后(--exclude "b.org")
+➜  test git:(master) ✗ grep -ni -e "a\{2,\}" -e "[bc]+" -e "111" --exclude "b.org" ./[ab].org
+./a.org:1:aaaaaaa1111
+./a.org:4:ddddddd1111
+#+end_src
+
+=--include pattern, --include-dir pattern= 指定搜索的文件/目录。
+
+=-m num, --max-count=num= 限制输出匹配结果中的最大行。
+#+begin_src sh
+➜  test git:(master) ✗ cat -n ./a.org
+     1	aaaaaaa
+     2	bbbbbbb
+     3	ccccccc
+     4	ddddddd
+     5	eeeeeee
+     6	eeeeeee
+     # ...7~16
+    17	eeeeeee
+    18	eeeeeee
+# -m 4 所以只输出了 5~8 行的匹配结果
+➜  test git:(master) ✗ grep -ni -m 4 "eeee" ./a.org
+5:eeeeeee
+6:eeeeeee
+7:eeeeeee
+8:eeeeeee
+# -m 4 所以只输出了 5~9 行的匹配结果
+➜  test git:(master) ✗ grep -ni -m 5 "eeee" ./a.org
+5:eeeeeee
+6:eeeeeee
+7:eeeeeee
+8:eeeeeee
+9:eeeeeee
+#+end_src
+
+=-R, -r, --recursive=, 递归搜索目录(行为类似 ~rgrep~)
+
+返回值：
+#+begin_src sh
+     0     匹配到至少一行内容
+     1     未匹配到任何结果
+     >1    其它错误
+#+end_src
