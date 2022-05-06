@@ -1,0 +1,11 @@
+#+TITLE: 新博客地址https://blog.cheng92.com
+#+DATE: <2022-05-06 11:32:42>
+#+EMAIL: Lee ZhiCheng<gccll.love@gmail.com>
+#+TAGS[]: blog
+#+CATEGORIES[]: blog
+#+LANGUAGE: zh-cn
+#+STARTUP: indent
+
+#+begin_export html
+<script>location.href = "https://blog.cheng92.com"</script>
+#+end_export
